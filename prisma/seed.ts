@@ -32,6 +32,22 @@ const platformCategories = [
   { slug: "japonesa", name: "Japonesa", icon: "fish" },
   { slug: "acai", name: "Açaí", icon: "ice-cream-bowl" },
   { slug: "self-service", name: "Self service", icon: "utensils-crossed" },
+  { slug: "hamburguer", name: "Hambúrguer", icon: "hamburger" },
+  { slug: "massas", name: "Massas", icon: "wheat" },
+  { slug: "lasanha", name: "Lasanha", icon: "cooking-pot" },
+  { slug: "calzone", name: "Calzone", icon: "pizza" },
+  { slug: "drinks", name: "Drinks", icon: "martini" },
+  { slug: "sorvete", name: "Sorvete", icon: "ice-cream-cone" },
+  { slug: "churrasco", name: "Churrasco", icon: "beef" },
+  { slug: "espetinho", name: "Espetinho", icon: "flame" },
+  { slug: "peixes-e-frutos-do-mar", name: "Peixes e frutos do mar", icon: "shrimp" },
+  { slug: "comida-regional", name: "Comida regional", icon: "leaf" },
+  { slug: "pastel", name: "Pastel", icon: "croissant" },
+  { slug: "salgados", name: "Salgados", icon: "drumstick" },
+  { slug: "cachorro-quente", name: "Cachorro-quente", icon: "sandwich" },
+  { slug: "padaria-e-cafe", name: "Padaria e café", icon: "coffee" },
+  { slug: "saudavel", name: "Saudável", icon: "salad" },
+  { slug: "doces-e-bolos", name: "Doces e bolos", icon: "cake" },
 ];
 
 type DemoProduct = { name: string; description: string; price: number; promo?: number; featured?: boolean };
