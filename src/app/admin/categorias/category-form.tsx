@@ -1,8 +1,9 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Pencil, Plus } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 
+import { useOpenUntilSaved } from "@/components/panel/use-open-until-saved";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,14 +62,6 @@ function CategoryFields({ category, state }: { category?: Category; state: Categ
       )}
     </>
   );
-}
-
-// O formulário fica aberto enquanto não houver um salvamento com sucesso
-// depois do clique que o abriu.
-function useOpenUntilSaved(state: CategoryFormState) {
-  const [openedAt, setOpenedAt] = useState<CategoryFormState | null>(null);
-  const open = openedAt !== null && (openedAt === state || !state.ok);
-  return [open, () => setOpenedAt(state), () => setOpenedAt(null)] as const;
 }
 
 export function NewCategoryForm() {

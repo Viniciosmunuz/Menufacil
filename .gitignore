@@ -51,3 +51,6 @@ next-env.d.ts
 
 # contexto local da CLI da Neon (projeto e branch vinculados)
 /.neon
+
+# fotos enviadas no desenvolvimento (driver local de armazenamento)
+/public/uploads

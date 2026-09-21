@@ -81,12 +81,25 @@ export const slug = z
   .max(60, "Use no máximo 60 caracteres.")
   .regex(SLUG_PATTERN, "Use só letras minúsculas, números e hífens, sem espaços nem acentos.");
 
-/** "12,50" | "12.50" | "R$ 1.234,56" -> centavos; vazio -> null */
+/**
+ * "12,50" | "12.50" | "12" | "R$ 1.234,56" | "1.234" -> centavos.
+ * Vazio -> null. Qualquer outra coisa (letras, negativo) -> NaN.
+ */
 export function parseMoneyToCents(input: string | null | undefined): number | null {
-  if (!input) return null;
-  const cleaned = input.replace(/[^\d,.-]/g, "");
-  if (!cleaned) return null;
-  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+  const raw = (input ?? "").trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (!raw) return null;
+  if (!/^[\d.,]+$/.test(raw) || !/\d/.test(raw)) return NaN;
+
+  let normalized: string;
+  if (raw.includes(",")) {
+    // vírgula é o decimal; pontos são milhar
+    if (raw.indexOf(",") !== raw.lastIndexOf(",")) return NaN;
+    normalized = raw.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) {
+    normalized = raw.replace(/\./g, ""); // "1.234" = mil duzentos e trinta e quatro
+  } else {
+    normalized = raw;
+  }
   const value = Number(normalized);
   if (!Number.isFinite(value) || value < 0) return NaN;
   return Math.round(value * 100);

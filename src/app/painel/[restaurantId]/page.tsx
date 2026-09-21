@@ -7,18 +7,23 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { formatCents, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
+import { isOpenNow, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { activationChecklist } from "@/server/restaurants/checklist";
+
+import { OpenNowCard } from "./open-now-card";
+import { StatusCard } from "./status-card";
 
 export const metadata: Metadata = { title: "Início" };
 
 export default async function RestaurantDashboardPage({ params }: PageProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
-  const { restaurant } = await requireRestaurantAccess(restaurantId);
+  const { restaurant, viaAdmin } = await requireRestaurantAccess(restaurantId);
 
   const today = startOfToday();
   const todayWhere = { restaurantId: restaurant.id, createdAt: { gte: today } };
 
-  const [ordersToday, inProgress, completedToday, soldToday, topProducts] = await Promise.all([
+  const [ordersToday, inProgress, completedToday, soldToday, topProducts, checklist, details] = await Promise.all([
     db.order.count({ where: { ...todayWhere, status: { not: "CANCELED" } } }),
     db.order.count({ where: { restaurantId: restaurant.id, status: { in: OPEN_ORDER_STATUSES } } }),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
@@ -29,6 +34,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
+    }),
+    activationChecklist(restaurant.id),
+    db.restaurant.findUniqueOrThrow({
+      where: { id: restaurant.id },
+      select: { openMode: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
     }),
   ]);
 
@@ -41,6 +51,22 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         </div>
         <Badge tone={restaurantStatusTone[restaurant.status]}>{restaurantStatusLabel[restaurant.status]}</Badge>
       </div>
+
+      <StatusCard
+        restaurantId={restaurant.id}
+        slug={restaurant.slug}
+        status={restaurant.status}
+        checklist={checklist.items}
+        ready={checklist.ready}
+        viaAdmin={viaAdmin}
+      />
+
+      <OpenNowCard
+        restaurantId={restaurant.id}
+        open={isOpenNow(details.openMode, details.openingHours)}
+        openMode={details.openMode}
+        today={todayLabel(details.openingHours)}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pedidos hoje" value={ordersToday} icon={<ReceiptText />} />

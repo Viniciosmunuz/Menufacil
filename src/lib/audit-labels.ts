@@ -10,6 +10,27 @@ const actionLabel: Record<string, string> = {
   "owner.remove": "Acesso de dono removido",
   "owner.password_reset": "Nova senha provisória gerada",
   "user.password_change": "Senha alterada",
+  "restaurant.info": "Informações e fotos alteradas",
+  "restaurant.contact": "Contato alterado",
+  "restaurant.address": "Endereço alterado",
+  "restaurant.hours": "Horários alterados",
+  "restaurant.open_mode": "Aberto/fechado alterado",
+  "restaurant.delivery": "Entrega e retirada alteradas",
+  "restaurant.payment": "Pix alterado",
+  "menu.category_create": "Categoria do cardápio criada",
+  "menu.category_update": "Categoria do cardápio alterada",
+  "menu.category_delete": "Categoria do cardápio excluída",
+  "menu.product_create": "Produto criado",
+  "menu.product_update": "Produto alterado",
+  "menu.product_delete": "Produto excluído",
+  "menu.product_available": "Disponibilidade do produto alterada",
+  "menu.product_featured": "Destaque do produto alterado",
+};
+
+const openModeLabel: Record<string, string> = {
+  AUTO: "seguir o horário",
+  OPEN: "aberto manualmente",
+  CLOSED: "fechado manualmente",
 };
 
 const fieldLabel: Record<string, string> = {
@@ -34,6 +55,13 @@ export function describeAudit(action: string, details: unknown): { title: string
     return { title, detail: fields.length ? `Mudou: ${fields.join(", ")}` : "Categorias revisadas" };
   }
   if (typeof d?.email === "string") return { title, detail: d.email };
+  if (action === "restaurant.open_mode" && typeof d?.openMode === "string") {
+    return { title, detail: openModeLabel[d.openMode] ?? d.openMode };
+  }
+  if (action === "menu.product_available" && typeof d?.name === "string") {
+    return { title, detail: `${d.name}: ${d.value ? "disponível" : "esgotado"}` };
+  }
+  if (action.startsWith("menu.") && typeof d?.name === "string") return { title, detail: d.name };
   if (action === "restaurant.create" && typeof d?.ownerEmail === "string") {
     return { title, detail: `Dono: ${d.ownerEmail}` };
   }
