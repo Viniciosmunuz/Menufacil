@@ -2,35 +2,10 @@ import { ArrowRight, ChefHat, Eye, ImageOff, MapPin, MessageCircle, Smartphone, 
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LogoIcon } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { CategoryIcon } from "@/lib/category-icons";
 import { cn } from "@/lib/cn";
-
-/** a cúpula com raios e coração da referência, em traço laranja */
-function ClocheArt({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 220 170" fill="none" aria-hidden="true" className={cn("text-brand", className)}>
-      <g stroke="currentColor" strokeLinecap="round" strokeWidth="5">
-        {/* raios */}
-        <path d="M110 14v14M72 26l7 12M148 26l-7 12M44 52l12 7M176 52l-12 7" />
-        {/* cúpula */}
-        <circle cx="110" cy="48" r="6" />
-        <path d="M110 54v6" />
-        <path d="M40 118a70 70 0 0 1 140 0" strokeWidth="6" />
-        <path d="M58 92h104" strokeWidth="4" opacity=".7" />
-        <path d="M28 120h164" strokeWidth="6" />
-        <path d="M44 132c18 12 40 17 66 17s48-5 66-17" strokeWidth="6" />
-      </g>
-      {/* coração */}
-      <path
-        d="M196 60c-4-9-17-7-17 3 0 8 17 18 17 18s17-10 17-18c0-10-13-12-17-3z"
-        stroke="currentColor"
-        strokeWidth="4.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: string | null }) {
   return (
@@ -62,8 +37,8 @@ export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: 
           </Link>
         </div>
         <div className="relative mx-auto flex w-full max-w-xs flex-col items-center sm:max-w-sm">
-          <ClocheArt className="w-44 sm:w-56" />
-          <p className="-mt-2 rotate-[-8deg] self-end font-script text-2xl leading-tight text-ink sm:text-3xl">
+          <LogoIcon className="h-28 drop-shadow-[0_0_22px_rgb(255_138_31/0.45)] sm:h-36" />
+          <p className="mt-4 rotate-[-8deg] self-end font-script text-2xl leading-tight text-ink sm:text-3xl">
             {hasRestaurants ? "Feito na hora, pertinho de você!" : "Em breve, novos sabores por aqui!"}
             <svg viewBox="0 0 120 12" className="mt-1 ml-auto h-3 w-28 text-brand" aria-hidden="true">
               <path d="M2 10c30-6 70-9 116-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
