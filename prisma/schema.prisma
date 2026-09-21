@@ -1,0 +1,521 @@
+// MenuFácil: esquema do banco
+//
+// Multi-tenant por linha: tudo que pertence a um restaurante carrega
+// restaurantId, e toda consulta do painel filtra por ele (ver src/server/auth).
+// Valores em dinheiro sao guardados em centavos (Int), nunca em float.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Usuarios, sessoes e permissoes
+// ============================================================
+
+enum UserRole {
+  ADMIN // dono da plataforma: acesso a todos os restaurantes
+  RESTAURANT_OWNER // acesso apenas aos restaurantes ligados a ele
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id                 String     @id @default(cuid())
+  name               String
+  email              String     @unique
+  phone              String? // somente digitos, com DDI (preparado para login por WhatsApp)
+  passwordHash       String
+  role               UserRole
+  status             UserStatus @default(ACTIVE)
+  // obriga a trocar a senha no primeiro acesso (senha entregue pelo admin)
+  mustChangePassword Boolean    @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  sessions      Session[]
+  ownerships    RestaurantOwner[]
+  tokens        VerificationToken[]
+  auditLogs     AuditLog[]
+  statusChanges OrderStatusEvent[]
+
+  @@index([role])
+}
+
+// Sessao em banco: o cookie guarda um token aleatorio; aqui fica so o hash.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum VerificationTokenType {
+  PASSWORD_RESET
+  LOGIN_CODE
+  EMAIL_VERIFICATION
+}
+
+// Preparado para: recuperacao de senha, login por codigo e verificacao de e-mail.
+model VerificationToken {
+  id        String                @id @default(cuid())
+  userId    String
+  type      VerificationTokenType
+  tokenHash String                @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+// ============================================================
+// Restaurantes
+// ============================================================
+
+enum RestaurantStatus {
+  DRAFT // em implantacao pelo admin: nao aparece no site
+  PENDING_REVIEW // aguardando aprovacao do admin
+  ACTIVE // publico
+  INACTIVE // desativado: some do site, dados preservados
+  BLOCKED // bloqueado pelo admin: some do site e o dono nao entra no painel
+}
+
+enum OpenMode {
+  AUTO // segue o horario de funcionamento
+  OPEN // aberto manualmente
+  CLOSED // fechado manualmente
+}
+
+enum PixKeyType {
+  CPF
+  CNPJ
+  EMAIL
+  PHONE
+  RANDOM
+}
+
+// Categorias da plataforma (Lanches, Pizzas, Bebidas...), gerenciadas pelo admin.
+model PlatformCategory {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  icon      String? // nome do icone usado na interface
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  restaurants Restaurant[]
+}
+
+model Restaurant {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String?
+  logoUrl     String?
+  coverUrl    String?
+  status      RestaurantStatus @default(DRAFT)
+  featured    Boolean          @default(false)
+
+  // contato
+  whatsapp  String? // somente digitos, com DDI
+  phone     String?
+  email     String?
+  instagram String?
+
+  // endereco
+  street       String?
+  number       String?
+  complement   String?
+  neighborhood String?
+  city         String?
+  state        String?
+  zipCode      String?
+
+  // funcionamento
+  openMode OpenMode @default(AUTO)
+
+  // entrega e retirada
+  deliveryEnabled  Boolean @default(true)
+  pickupEnabled    Boolean @default(true)
+  deliveryFeeCents Int     @default(0)
+  minOrderCents    Int     @default(0)
+  deliveryTimeMin  Int? // minutos
+  deliveryTimeMax  Int?
+
+  // pagamento
+  pixKey              String?
+  pixKeyType          PixKeyType?
+  pixHolderName       String?
+  paymentInstructions String?
+
+  // avaliacao (preenchida no futuro por avaliacoes reais)
+  ratingAverage Float?
+  ratingCount   Int    @default(0)
+
+  // numeracao sequencial dos pedidos deste restaurante (#1, #2...)
+  orderSeq Int @default(0)
+
+  activatedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  categories          PlatformCategory[]
+  owners              RestaurantOwner[]
+  openingHours        OpeningHour[]
+  menuCategories      MenuCategory[]
+  products            Product[]
+  orders              Order[]
+  whatsappIntegration WhatsAppIntegration?
+  messages            WhatsAppMessage[]
+  auditLogs           AuditLog[]
+
+  @@index([status])
+  @@index([city])
+}
+
+enum OwnerRole {
+  OWNER
+  STAFF // preparado para funcionarios no futuro
+}
+
+model RestaurantOwner {
+  id           String    @id @default(cuid())
+  restaurantId String
+  userId       String
+  role         OwnerRole @default(OWNER)
+  createdAt    DateTime  @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, userId])
+  @@index([userId])
+}
+
+// Um intervalo por dia da semana (0 = domingo ... 6 = sabado).
+model OpeningHour {
+  id           String  @id @default(cuid())
+  restaurantId String
+  weekday      Int
+  opensAt      String // "HH:MM"
+  closesAt     String // "HH:MM" (pode passar da meia-noite: 18:00 as 02:00)
+  closed       Boolean @default(false)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, weekday])
+}
+
+// ============================================================
+// Cardapio
+// ============================================================
+
+model MenuCategory {
+  id           String   @id @default(cuid())
+  restaurantId String
+  name         String
+  description  String?
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products   Product[]
+
+  @@index([restaurantId, sortOrder])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  restaurantId    String
+  categoryId      String
+  name            String
+  description     String?
+  imageUrl        String?
+  priceCents      Int
+  promoPriceCents Int?
+  available       Boolean  @default(true)
+  featured        Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([restaurantId, categoryId, sortOrder])
+}
+
+// ============================================================
+// Clientes e pedidos
+// ============================================================
+
+// Cliente sem conta: identificado pelo WhatsApp.
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  whatsapp  String   @unique // somente digitos, com DDI
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses Address[]
+  orders    Order[]
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  customerId   String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  reference    String?
+  city         String?
+  createdAt    DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+}
+
+enum PaymentMethod {
+  PIX
+}
+
+enum OrderStatus {
+  NEW
+  AWAITING_PAYMENT
+  PAYMENT_SENT
+  CONFIRMED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELED
+}
+
+model Order {
+  id           String @id @default(cuid())
+  restaurantId String
+  number       Int // sequencial dentro do restaurante
+  code         String @unique // codigo publico para o cliente acompanhar
+
+  customerId           String
+  // retrato do cliente e do endereco no momento do pedido
+  customerName         String
+  customerWhatsapp     String
+  addressId            String?
+  deliveryStreet       String?
+  deliveryNumber       String?
+  deliveryComplement   String?
+  deliveryNeighborhood String?
+  deliveryReference    String?
+
+  type          OrderType
+  paymentMethod PaymentMethod
+  status        OrderStatus   @default(NEW)
+  notes         String?
+
+  subtotalCents    Int
+  deliveryFeeCents Int
+  totalCents       Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer     Customer           @relation(fields: [customerId], references: [id])
+  address      Address?           @relation(fields: [addressId], references: [id])
+  items        OrderItem[]
+  statusEvents OrderStatusEvent[]
+  payment      Payment?
+  messages     WhatsAppMessage[]
+
+  @@unique([restaurantId, number])
+  @@index([restaurantId, status, createdAt])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  productId      String?
+  // retrato do produto no momento do pedido
+  productName    String
+  unitPriceCents Int
+  quantity       Int
+  notes          String?
+  totalCents     Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model OrderStatusEvent {
+  id              String      @id @default(cuid())
+  orderId         String
+  status          OrderStatus
+  note            String?
+  changedByUserId String?
+  createdAt       DateTime    @default(now())
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User? @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+}
+
+enum PaymentStatus {
+  PENDING // aguardando o cliente pagar
+  PROOF_SENT // cliente diz que enviou o comprovante
+  CONFIRMED // restaurante confirmou
+  REFUNDED
+  CANCELED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String        @unique
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amountCents Int
+  // retrato da chave Pix exibida ao cliente
+  pixKey      String?
+  pixKeyType  PixKeyType?
+  proofSentAt DateTime?
+  confirmedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// WhatsApp (API oficial da Meta)
+// ============================================================
+
+enum WhatsAppProvider {
+  MOCK // desenvolvimento: registra a mensagem sem enviar
+  CLOUD_API // WhatsApp Business Platform (Cloud API)
+}
+
+// Numero proprio do restaurante conectado a Cloud API (opcional, futuro).
+// Sem isso, o envio usa o numero da plataforma configurado nas variaveis de ambiente.
+model WhatsAppIntegration {
+  id                   String           @id @default(cuid())
+  restaurantId         String           @unique
+  provider             WhatsAppProvider @default(MOCK)
+  enabled              Boolean          @default(false)
+  phoneNumberId        String?
+  businessAccountId    String?
+  displayPhone         String?
+  // token criptografado no servidor (nunca vai para o navegador)
+  accessTokenEncrypted String?
+  notifyRestaurant     Boolean          @default(true)
+  notifyCustomer       Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+enum WhatsAppMessageKind {
+  ORDER_TO_RESTAURANT
+  PAYMENT_INSTRUCTIONS
+  ORDER_STATUS
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// Fila de envio e registro do resultado: cada mensagem vira uma linha aqui
+// antes de sair, e o resultado do provedor e gravado de volta.
+model WhatsAppMessage {
+  id                String                @id @default(cuid())
+  restaurantId      String
+  orderId           String?
+  kind              WhatsAppMessageKind
+  provider          WhatsAppProvider
+  toPhone           String
+  body              String
+  templateName      String?
+  templateParams    Json?
+  status            WhatsAppMessageStatus @default(QUEUED)
+  providerMessageId String?               @unique
+  error             String?
+  attempts          Int                   @default(0)
+  nextAttemptAt     DateTime              @default(now())
+  sentAt            DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  order      Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([orderId])
+}
+
+// ============================================================
+// Comercial e auditoria
+// ============================================================
+
+// "Quero cadastrar meu restaurante": vira um contato para o admin, nao um restaurante.
+model RestaurantLead {
+  id             String   @id @default(cuid())
+  contactName    String
+  restaurantName String
+  whatsapp       String
+  city           String?
+  message        String?
+  handled        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  restaurantId String?
+  action       String // ex.: "restaurant.update", "product.create", "order.status"
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  actor      User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, createdAt])
+}

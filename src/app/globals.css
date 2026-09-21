@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Identidade MenuFácil
+   Fundo quase preto azulado, laranja como cor de ação, cartões com borda
+   fina e cantos bem arredondados. Tirado das telas de referência.
+   ============================================================ */
+@theme {
+  --color-bg: #0a0e14;
+  --color-surface: #111822;
+  --color-surface-2: #172030;
+  --color-surface-3: #1e2939;
+  --color-line: #232e3d;
+  --color-line-strong: #33415a;
+
+  --color-ink: #f3f5f8;
+  --color-muted: #a3adba;
+  --color-faint: #6f7a89;
+
+  /* laranja da marca; texto escuro por cima (9:1) */
+  --color-brand: #ff8a1f;
+  --color-brand-hover: #ff9c42;
+  --color-brand-press: #e8740b;
+  --color-brand-ink: #1a1206;
+  --color-brand-soft: rgb(255 138 31 / 0.12);
+
+  --color-success: #34d27b;
+  --color-warning: #f5b53d;
+  --color-danger: #f26363;
+  --color-info: #5aa2ff;
+
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-script: var(--font-caveat), "Segoe Script", cursive;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background: var(--color-bg);
+    /* dois toques rapidos nao dao zoom no celular; o zoom de pinca continua */
+    touch-action: manipulation;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: var(--color-brand-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
