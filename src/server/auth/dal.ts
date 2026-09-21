@@ -41,8 +41,15 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
-export async function requireAdmin(): Promise<CurrentUser> {
+/** usuário que já trocou a senha provisória: o único que pode mexer em dados */
+async function requireReadyUser(): Promise<CurrentUser> {
   const user = await requireUser();
+  if (user.mustChangePassword) redirect("/conta/senha");
+  return user;
+}
+
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await requireReadyUser();
   if (user.role !== "ADMIN") redirect("/painel");
   return user;
 }
@@ -78,7 +85,7 @@ export const getRestaurantAccess = cache(
 );
 
 export async function requireRestaurantAccess(restaurantId: string): Promise<RestaurantAccess> {
-  const user = await requireUser();
+  const user = await requireReadyUser();
   const access = await getRestaurantAccess(restaurantId);
   if (!access) {
     // dono do restaurante bloqueado ve a explicação em /painel

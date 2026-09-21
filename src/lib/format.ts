@@ -20,3 +20,34 @@ export function normalizePhone(input: string) {
   if (!digits) return "";
   return digits.length <= 11 ? `55${digits}` : digits;
 }
+
+// Fuso usado para datas e para "hoje" nos painéis. O servidor na nuvem roda
+// em UTC; sem isso, o dia viraria às 20h em Manaus.
+export const TIME_ZONE = process.env.NEXT_PUBLIC_TIME_ZONE || "America/Manaus";
+
+/** 21/09/2026 14:05 */
+export function formatDateTime(date: Date | string) {
+  return new Date(date).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: TIME_ZONE });
+}
+
+/** 14:05 */
+export function formatTime(date: Date | string) {
+  return new Date(date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TIME_ZONE });
+}
+
+/** meia-noite de hoje no fuso da plataforma, como instante UTC */
+export function startOfToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const zoned = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+  const offset = Math.round((zoned - now.getTime()) / 60000) * 60000;
+  return new Date(Date.UTC(get("year"), get("month") - 1, get("day")) - offset);
+}

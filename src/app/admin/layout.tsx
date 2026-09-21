@@ -1,12 +1,10 @@
 import { LayoutDashboard, MessageSquareText, ReceiptText, Store, Tags } from "lucide-react";
-import { redirect } from "next/navigation";
 
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireAdmin } from "@/server/auth/dal";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await requireAdmin();
-  if (user.mustChangePassword) redirect("/conta/senha");
 
   return (
     <PanelShell

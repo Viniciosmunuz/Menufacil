@@ -38,3 +38,27 @@ export const OPEN_ORDER_STATUSES: OrderStatus[] = [
   "READY",
   "OUT_FOR_DELIVERY",
 ];
+
+export const RESTAURANT_STATUSES = Object.keys(restaurantStatusLabel) as RestaurantStatus[];
+
+export function isRestaurantStatus(value: unknown): value is RestaurantStatus {
+  return typeof value === "string" && value in restaurantStatusLabel;
+}
+
+export const ORDER_STATUSES = Object.keys(orderStatusLabel) as OrderStatus[];
+
+export function isOrderStatus(value: unknown): value is OrderStatus {
+  return typeof value === "string" && value in orderStatusLabel;
+}
+
+export const orderStatusTone: Record<OrderStatus, "info" | "success" | "warning" | "danger" | "neutral" | "brand"> = {
+  NEW: "brand",
+  AWAITING_PAYMENT: "warning",
+  PAYMENT_SENT: "warning",
+  CONFIRMED: "info",
+  PREPARING: "info",
+  READY: "success",
+  OUT_FOR_DELIVERY: "info",
+  COMPLETED: "neutral",
+  CANCELED: "danger",
+};

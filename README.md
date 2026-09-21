@@ -28,6 +28,16 @@ npm run dev             # http://localhost:3000
 O seed mostra no terminal as senhas provisórias. Elas precisam ser trocadas
 no primeiro acesso.
 
+Sem banco na nuvem, dá para usar um PostgreSQL local do próprio Prisma:
+
+```bash
+npx prisma dev --name menufacil --detach
+```
+
+Ele mostra o endereço TCP (`postgres://postgres:postgres@localhost:.../template1`).
+Use esse endereço no `DATABASE_URL` e o do banco sombra (a porta seguinte) no
+`SHADOW_DATABASE_URL`.
+
 ## Estrutura
 
 - `prisma/schema.prisma`: o banco (usuários, restaurantes, cardápio,

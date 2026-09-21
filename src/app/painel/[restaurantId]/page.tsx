@@ -5,7 +5,7 @@ import { StatCard } from "@/components/panel/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { formatCents } from "@/lib/format";
+import { formatCents, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
@@ -15,8 +15,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfToday();
   const todayWhere = { restaurantId: restaurant.id, createdAt: { gte: today } };
 
   const [ordersToday, inProgress, completedToday, soldToday, topProducts] = await Promise.all([
@@ -43,7 +42,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         <Badge tone={restaurantStatusTone[restaurant.status]}>{restaurantStatusLabel[restaurant.status]}</Badge>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pedidos hoje" value={ordersToday} icon={<ReceiptText />} />
         <StatCard label="Em andamento" value={inProgress} icon={<Clock />} />
         <StatCard label="Concluídos hoje" value={completedToday} icon={<CheckCircle2 />} />

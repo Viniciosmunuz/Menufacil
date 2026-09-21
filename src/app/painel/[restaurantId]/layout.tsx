@@ -1,6 +1,5 @@
 import { BookOpen, LayoutDashboard, ReceiptText, ShieldCheck, Store } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireRestaurantAccess } from "@/server/auth/dal";
@@ -11,7 +10,6 @@ export default async function RestaurantPanelLayout({
 }: LayoutProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
   const { user, restaurant, viaAdmin } = await requireRestaurantAccess(restaurantId);
-  if (user.mustChangePassword) redirect("/conta/senha");
 
   const base = `/painel/${restaurant.id}`;
 
