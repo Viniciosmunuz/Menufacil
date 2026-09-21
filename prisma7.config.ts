@@ -10,7 +10,9 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // migrations precisam da conexão direta; na Vercel com Neon ela vem em
+    // DATABASE_URL_UNPOOLED (o app usa a DATABASE_URL, com pooler)
+    url: process.env["DIRECT_DATABASE_URL"] || process.env["DATABASE_URL_UNPOOLED"] || process.env["DATABASE_URL"],
     // Só para `migrate dev`: o banco local do `prisma dev` tem um banco sombra próprio.
     shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"] || undefined,
   },

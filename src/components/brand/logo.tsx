@@ -32,9 +32,12 @@ export function LogoIcon({ className }: { className?: string }) {
 
 export function Logo({
   withSlogan = false,
+  sloganClassName,
   className,
 }: {
   withSlogan?: boolean;
+  /** para esconder o slogan em telas pequenas */
+  sloganClassName?: string;
   className?: string;
 }) {
   return (
@@ -45,7 +48,7 @@ export function Logo({
           Menu<span className="text-brand">Fácil</span>
         </span>
         {withSlogan && (
-          <span className="mt-1 text-xs font-medium text-muted">
+          <span className={cn("mt-1 text-xs font-medium text-muted", sloganClassName)}>
             Seu cardápio, mais perto do cliente
           </span>
         )}

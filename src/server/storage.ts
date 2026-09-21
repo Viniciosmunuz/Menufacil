@@ -4,15 +4,17 @@ import { randomBytes } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { del, put } from "@vercel/blob";
 import sharp, { type Sharp } from "sharp";
 
 // Fotos do restaurante e do cardápio. Toda imagem passa pelo sharp: gira
 // conforme a câmera, reduz para o tamanho de uso, vira WebP e perde os
 // metadados (inclusive a localização GPS que o celular grava na foto).
 //
-// O armazenamento fica atrás de um "driver". Hoje: "local", que grava em
-// public/uploads e serve só para desenvolvimento. Para publicar, entra um
-// driver de nuvem (S3/R2, Vercel Blob...) sem mudar quem chama saveImage.
+// O armazenamento fica atrás de um "driver": "local" grava em public/uploads
+// (só desenvolvimento); "vercel-blob" usa o Vercel Blob, ligado sozinho
+// quando existe BLOB_READ_WRITE_TOKEN. Outro provedor (S3/R2) entra aqui sem
+// mudar quem chama saveImage.
 
 export type ImageKind = "logo" | "cover" | "product";
 
@@ -45,9 +47,28 @@ const localDriver: StorageDriver = {
   },
 };
 
+const vercelBlobDriver: StorageDriver = {
+  async put(key, data, contentType) {
+    const blob = await put(`menufacil/${key}`, data, {
+      access: "public",
+      contentType,
+      addRandomSuffix: false, // o nome já é aleatório
+      cacheControlMaxAge: 60 * 60 * 24 * 365, // nome novo a cada troca: pode guardar por muito tempo
+    });
+    return blob.url;
+  },
+  async remove(url) {
+    if (!/^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//.test(url)) return;
+    await del(url);
+  },
+};
+
 function driver(): StorageDriver {
-  const name = process.env.STORAGE_DRIVER || (process.env.NODE_ENV === "production" ? "" : "local");
+  const name =
+    process.env.STORAGE_DRIVER ||
+    (process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : process.env.NODE_ENV === "production" ? "" : "local");
   if (name === "local") return localDriver;
+  if (name === "vercel-blob") return vercelBlobDriver;
   throw new ImageError("O envio de fotos ainda não está configurado neste servidor.");
 }
 
