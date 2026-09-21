@@ -38,6 +38,22 @@ Ele mostra o endereço TCP (`postgres://postgres:postgres@localhost:.../template
 Use esse endereço no `DATABASE_URL` e o do banco sombra (a porta seguinte) no
 `SHADOW_DATABASE_URL`.
 
+## Publicação (Vercel)
+
+O projeto `menufacil` na Vercel publica sozinho a cada push no `main`.
+
+- **Banco:** Neon pela aba Storage da Vercel, com prefixo `DATABASE`
+  (`DATABASE_URL` com pooler para o app, `DATABASE_URL_UNPOOLED` para as
+  migrations).
+- **Fotos:** Vercel Blob público, com `BLOB_READ_WRITE_TOKEN`.
+- **Build:** o script `vercel-build` roda `prisma migrate deploy`, o seed
+  (não duplica nada) e o `next build`.
+- **Admin:** `ADMIN_EMAIL` nas variáveis da Vercel. No primeiro deploy, a
+  senha provisória aparece no log do build e precisa ser trocada no
+  primeiro acesso.
+- **WhatsApp:** `WHATSAPP_PROVIDER=mock` até a conta da Meta estar pronta.
+  As outras variáveis estão no `.env.example`.
+
 ## Estrutura
 
 - `prisma/schema.prisma`: o banco (usuários, restaurantes, cardápio,
