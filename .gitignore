@@ -43,8 +43,11 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# guias do Prisma para assistentes de IA (instalados pelo prisma init; ficam so locais)
+# guias do Prisma e da Neon para assistentes de IA (instalados pelas CLIs; ficam so locais)
 /.agents/
 /.windsurf/
 /.claude/skills/
 /skills-lock.json
+
+# contexto local da CLI da Neon (projeto e branch vinculados)
+/.neon

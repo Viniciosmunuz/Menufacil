@@ -11,5 +11,7 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // Só para `migrate dev`: o banco local do `prisma dev` tem um banco sombra próprio.
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"] || undefined,
   },
 });
