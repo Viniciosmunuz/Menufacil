@@ -3,6 +3,9 @@
 /** cidade escolhida no topo do site */
 export const CITY_COOKIE = "mf_cidade";
 
+/** restaurante em que o cliente entrou pelo link: o site fica só nele (proxy.ts) */
+export const STORE_COOKIE = "mf_loja";
+
 /** endereço público do site, para links em mensagens (WhatsApp); só no servidor */
 export function appUrl() {
   // na Vercel, sem APP_URL, usa o domínio de produção que ela informa

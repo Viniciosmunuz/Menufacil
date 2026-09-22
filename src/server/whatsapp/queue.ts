@@ -40,15 +40,19 @@ async function enqueue(
 type OrderRow = Parameters<typeof orderToRestaurant>[0] & { restaurantId: string };
 type RestaurantRow = Parameters<typeof orderToRestaurant>[1] & { whatsapp: string | null };
 
-/** pedido novo: aviso para o restaurante e instruções do Pix para o cliente */
-export async function queueNewOrderMessages(tx: Tx, { order, restaurant }: { order: OrderRow; restaurant: RestaurantRow }) {
-  await enqueue(tx, {
+/** pedido completo para o WhatsApp do restaurante */
+export function queueOrderToRestaurant(tx: Tx, { order, restaurant }: { order: OrderRow; restaurant: RestaurantRow }) {
+  return enqueue(tx, {
     restaurantId: restaurant.id,
     orderId: order.id,
     kind: "ORDER_TO_RESTAURANT",
     toPhone: restaurant.whatsapp,
     content: orderToRestaurant(order, restaurant),
   });
+}
+
+/** pedido novo: instruções do Pix para o cliente (o restaurante é avisado quando o cliente copia a chave) */
+export async function queueNewOrderMessages(tx: Tx, { order, restaurant }: { order: OrderRow; restaurant: RestaurantRow }) {
   await enqueue(tx, {
     restaurantId: restaurant.id,
     orderId: order.id,

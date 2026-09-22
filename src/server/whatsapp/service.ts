@@ -2,12 +2,13 @@ import "server-only";
 
 import { after } from "next/server";
 
+import type { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 
-import { orderToRestaurant, paymentInstructions } from "./messages";
+import { paymentInstructions } from "./messages";
 import { processWhatsAppQueue } from "./processor";
-import { queueStatusMessage } from "./queue";
+import { queueOrderToRestaurant, queueStatusMessage } from "./queue";
 import { activeProvider } from "./providers";
 
 // Porta de entrada do WhatsApp para o resto do sistema.
@@ -30,8 +31,8 @@ export function scheduleWhatsAppDelivery(orderId?: string) {
   });
 }
 
-async function loadOrder(orderId: string) {
-  return db.order.findUniqueOrThrow({
+async function loadOrder(orderId: string, client: Prisma.TransactionClient = db) {
+  return client.order.findUniqueOrThrow({
     where: { id: orderId },
     include: {
       items: { select: { productName: true, quantity: true, totalCents: true, notes: true } },
@@ -52,24 +53,17 @@ async function loadOrder(orderId: string) {
 }
 
 export const WhatsAppService = {
-  /** "NOVO PEDIDO #..." para o restaurante (o pedido novo já faz isso; aqui é o reenvio) */
+  /** "NOVO PEDIDO #..." para o restaurante, uma vez por pedido */
   async sendOrderMessage(orderId: string) {
-    const order = await loadOrder(orderId);
-    if (!order.restaurant.whatsapp) throw new Error("O restaurante não tem WhatsApp cadastrado.");
-    const content = orderToRestaurant(order, order.restaurant);
-    await db.whatsAppMessage.create({
-      data: {
-        restaurantId: order.restaurantId,
-        orderId,
-        kind: "ORDER_TO_RESTAURANT",
-        provider: activeProvider(order.restaurant.whatsappIntegration),
-        toPhone: order.restaurant.whatsapp,
-        body: content.body,
-        templateName: content.templateName,
-        templateParams: content.templateParams,
-      },
+    const queued = await db.$transaction(async (tx) => {
+      // trava o pedido: dois toques ao mesmo tempo não geram duas mensagens
+      await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+      const already = await tx.whatsAppMessage.findFirst({ where: { orderId, kind: "ORDER_TO_RESTAURANT" }, select: { id: true } });
+      if (already) return false;
+      const order = await loadOrder(orderId, tx);
+      return !!(await queueOrderToRestaurant(tx, { order, restaurant: order.restaurant }));
     });
-    scheduleWhatsAppDelivery(orderId);
+    if (queued) scheduleWhatsAppDelivery(orderId);
   },
 
   /** chave Pix e valor para o cliente pagar */

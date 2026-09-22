@@ -1,9 +1,11 @@
 import { CircleAlert, CircleCheck, ExternalLink, Send } from "lucide-react";
 import Link from "next/link";
 
-import { SubmitButton } from "@/components/ui/submit-button";
 import { buttonClasses } from "@/components/ui/button";
+import { CopyLinkButton } from "@/components/ui/copy-link-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { RestaurantStatus } from "@/generated/prisma/enums";
+import { appUrl } from "@/lib/site";
 import type { ChecklistItem } from "@/server/restaurants/checklist";
 
 import { requestReview } from "./restaurante/actions";
@@ -39,16 +41,24 @@ export function StatusCard({
   const base = `/painel/${restaurantId}`;
 
   if (status === "ACTIVE") {
+    const url = `${appUrl()}/restaurante/${slug}`;
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-success/30 bg-success/10 px-5 py-4">
+      <div className="flex flex-col gap-3 rounded-card border border-success/30 bg-success/10 px-5 py-4">
         <p className="flex items-center gap-2 font-bold text-success">
           <CircleCheck className="size-5" aria-hidden="true" />
           Seu restaurante está no ar e recebendo pedidos.
         </p>
-        <Link href={`/restaurante/${slug}`} target="_blank" className={buttonClasses("secondary", "sm")}>
-          <ExternalLink className="size-4" aria-hidden="true" />
-          Ver minha página
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="min-w-0 flex-1 basis-60 truncate rounded-control border border-line bg-bg/60 px-3 py-2 font-mono text-sm">
+            {url.replace(/^https?:\/\//, "")}
+          </span>
+          <CopyLinkButton url={url} />
+          <Link href={`/restaurante/${slug}`} target="_blank" className={buttonClasses("secondary", "sm")}>
+            <ExternalLink className="size-4" aria-hidden="true" />
+            Ver minha página
+          </Link>
+        </div>
+        <p className="text-sm text-muted">Mande este link aos seus clientes: quem entra por ele vê só o seu restaurante.</p>
       </div>
     );
   }

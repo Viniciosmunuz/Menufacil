@@ -14,7 +14,7 @@ import { formatCents, formatDateTime, formatPhone, formatTime } from "@/lib/form
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
-import { markPaymentSent } from "./actions";
+import { markPaymentSent, sendOrderToRestaurant } from "./actions";
 import { AutoRefresh, ClearCartAfterOrder } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
@@ -70,10 +70,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           <CircleCheck className="mx-auto size-12 text-success" aria-hidden="true" />
         )}
         <h1 className="text-2xl font-extrabold sm:text-3xl">
-          {sp.novo === "1" ? "Pedido enviado!" : `Pedido #${order.number}`}
+          {sp.novo === "1" ? "Pedido feito!" : `Pedido #${order.number}`}
         </h1>
+        {sp.novo === "1" && showPix && (
+          <p className="font-bold text-brand">Copie a chave Pix abaixo: o pedido vai direto para o WhatsApp do restaurante.</p>
+        )}
         <p className="text-muted">
-          {sp.novo === "1" ? `Seu pedido #${order.number} chegou em ` : ""}
+          {sp.novo === "1" ? `Pedido #${order.number} em ` : ""}
           <Link href={`/restaurante/${r.slug}`} className="font-bold text-ink hover:text-brand">
             {r.name}
           </Link>
@@ -97,7 +100,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             <p className="text-sm text-muted">{pay.pixKeyType ? pixKeyTypeLabel[pay.pixKeyType] : "Chave Pix"}</p>
             <p className="mt-0.5 font-mono text-lg font-bold break-all">{formatPixKey(pay.pixKeyType, pay.pixKey!)}</p>
             {r.pixHolderName && <p className="mt-1 text-sm text-muted">Nome: {r.pixHolderName}</p>}
-            <CopyButton text={pay.pixKey!} label="Copiar chave Pix" copiedLabel="Chave copiada!" variant="primary" size="lg" className="mt-4 w-full" />
+            <CopyButton
+              text={pay.pixKey!}
+              label="Copiar chave Pix"
+              copiedLabel="Chave copiada!"
+              variant="primary"
+              size="lg"
+              className="mt-4 w-full"
+              onCopyAction={sendOrderToRestaurant.bind(null, order.code)}
+            />
           </div>
           {r.paymentInstructions && <p className="text-sm text-muted">{r.paymentInstructions}</p>}
           <p className="rounded-control bg-brand-soft px-4 py-3 font-bold text-brand">

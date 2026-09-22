@@ -54,3 +54,6 @@ next-env.d.ts
 
 # fotos enviadas no desenvolvimento (driver local de armazenamento)
 /public/uploads
+
+# material recebido dos restaurantes (cardápio em PDF etc.), só para consulta local
+/implantacao/

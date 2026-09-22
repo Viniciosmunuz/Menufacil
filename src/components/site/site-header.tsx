@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { CitySelect } from "./city-select";
 import { HideOnRestaurantPage } from "./hide-on-restaurant-page";
 import { MobileMenu } from "./mobile-menu";
+import type { NavCategory } from "./site-nav";
 
 export function SearchBox({ defaultValue, className, autoFocus }: { defaultValue?: string; className?: string; autoFocus?: boolean }) {
   return (
@@ -26,11 +27,19 @@ export function SearchBox({ defaultValue, className, autoFocus }: { defaultValue
   );
 }
 
-export function SiteHeader({ cities, city }: { cities: { city: string; state: string | null }[]; city: string | null }) {
+export function SiteHeader({
+  cities,
+  city,
+  categories,
+}: {
+  cities: { city: string; state: string | null }[];
+  city: string | null;
+  categories: NavCategory[];
+}) {
   return (
     <header className="z-30 border-b border-line bg-bg/90 backdrop-blur lg:sticky lg:top-0">
       <div className="mx-auto flex max-w-[90rem] items-center gap-2 px-4 py-3 sm:gap-3 lg:px-6">
-        <MobileMenu />
+        <MobileMenu categories={categories} />
         <Link href="/" className="min-w-0 shrink" aria-label="MenuFácil: início">
           <Logo />
         </Link>

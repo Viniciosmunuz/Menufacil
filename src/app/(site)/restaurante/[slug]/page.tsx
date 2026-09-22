@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { getPublicRestaurant } from "@/server/public/restaurants";
+import { lockedStore } from "@/server/public/store";
 
 export async function generateMetadata({ params }: PageProps<"/restaurante/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -41,6 +42,8 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   const data = await getPublicRestaurant(slug, sp.previa === "1");
   if (!data) notFound();
   const { restaurant: r, isPreview, open } = data;
+  // entrou pelo link do restaurante: nada que leve aos outros (voltar, favoritos)
+  const standalone = (await lockedStore())?.slug === r.slug;
 
   const status = openStatusLabel(r.openMode, r.openingHours);
   const place = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood, [r.city, r.state].filter(Boolean).join(" - ")]
@@ -79,10 +82,10 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-bg/40" aria-hidden="true" />
               <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-                <BackButton />
+                {standalone ? <span /> : <BackButton />}
                 <div className="flex gap-2">
                   <ShareButton title={r.name} />
-                  <FavoriteButton slug={r.slug} name={r.name} />
+                  {!standalone && <FavoriteButton slug={r.slug} name={r.name} />}
                 </div>
               </div>
             </div>

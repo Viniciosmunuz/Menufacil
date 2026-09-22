@@ -5,6 +5,22 @@ import { useState } from "react";
 
 import { Button } from "./button";
 
+export async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // navegador sem permissão para a área de transferência: cópia manual
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+}
+
 export function CopyButton({
   text,
   label = "Copiar",
@@ -12,6 +28,7 @@ export function CopyButton({
   variant = "secondary",
   size = "sm",
   className,
+  onCopyAction,
 }: {
   text: string;
   label?: string;
@@ -19,25 +36,15 @@ export function CopyButton({
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   className?: string;
+  onCopyAction?: () => unknown;
 }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // navegador sem permissão para a área de transferência: cópia manual
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
+    await copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    onCopyAction?.();
   }
 
   return (

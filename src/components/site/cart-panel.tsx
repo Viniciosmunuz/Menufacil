@@ -17,12 +17,15 @@ export function CartPanel({
   minOrderCents = 0,
   closed = false,
   className,
+  storeSlug,
 }: {
   /** na página de um restaurante: só mostra se o carrinho é dele */
   restaurantId?: string;
   minOrderCents?: number;
   closed?: boolean;
   className?: string;
+  /** cliente que entrou pelo link do restaurante: o carrinho vazio leva ao cardápio dele */
+  storeSlug?: string;
 }) {
   const cart = useCart();
   const mine = !restaurantId || cart.restaurant?.id === restaurantId;
@@ -36,11 +39,11 @@ export function CartPanel({
         <ShoppingBag className="size-10 text-faint" strokeWidth={1.5} aria-hidden="true" />
         <p className="mt-3 font-extrabold">Seu carrinho está vazio</p>
         <p className="mt-1 text-sm text-muted">
-          {restaurantId ? "Toque em um produto para adicionar." : "Escolha um restaurante e monte seu pedido."}
+          {restaurantId ? "Toque em um produto para adicionar." : storeSlug ? "Escolha no cardápio e monte seu pedido." : "Escolha um restaurante e monte seu pedido."}
         </p>
         {!restaurantId && (
-          <Link href="/restaurantes" className={buttonClasses("primary", "md", "mt-5")}>
-            Ver restaurantes
+          <Link href={storeSlug ? `/restaurante/${storeSlug}` : "/restaurantes"} className={buttonClasses("primary", "md", "mt-5")}>
+            {storeSlug ? "Ver o cardápio" : "Ver restaurantes"}
           </Link>
         )}
       </div>

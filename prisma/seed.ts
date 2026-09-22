@@ -17,6 +17,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 
 import { demoRestaurants } from "./demo-data";
+import { launchRestaurants } from "./launch-data";
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
@@ -198,9 +199,78 @@ async function seedDemo() {
   }
 }
 
+const LAUNCH_MARK = "launch.content";
+
+/** restaurantes reais (launch-data.ts): criados uma vez só; depois, vale o painel */
+async function seedLaunches() {
+  for (const launch of launchRestaurants) {
+    if (await db.restaurant.findUnique({ where: { slug: launch.slug }, select: { id: true } })) {
+      console.log(`• "${launch.name}" já implantado.`);
+      continue;
+    }
+    await db.$transaction(
+      async (tx) => {
+        const restaurant = await tx.restaurant.create({
+          data: {
+            slug: launch.slug,
+            name: launch.name,
+            description: launch.description,
+            logoUrl: launch.logo,
+            coverUrl: launch.cover,
+            status: "ACTIVE",
+            activatedAt: new Date(),
+            whatsapp: launch.whatsapp,
+            instagram: launch.instagram,
+            ...launch.address,
+            openMode: "AUTO",
+            deliveryEnabled: launch.delivery.enabled,
+            deliveryFeeCents: launch.delivery.fee,
+            deliveryTimeMin: launch.delivery.timeMin,
+            deliveryTimeMax: launch.delivery.timeMax,
+            pickupEnabled: launch.pickup,
+            pixKey: launch.pix.key,
+            pixKeyType: launch.pix.type,
+            pixHolderName: launch.pix.holder,
+            categories: { connect: launch.categories.map((slug) => ({ slug })) },
+            openingHours: {
+              create: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, opensAt: launch.hours.opensAt, closesAt: launch.hours.closesAt, closed: false })),
+            },
+          },
+        });
+        for (const [categoryOrder, category] of launch.menu.entries()) {
+          await tx.menuCategory.create({
+            data: {
+              restaurantId: restaurant.id,
+              name: category.name,
+              description: category.description ?? null,
+              sortOrder: categoryOrder,
+              products: {
+                create: category.products.map((p, i) => ({
+                  restaurantId: restaurant.id,
+                  name: p.name,
+                  description: p.description ?? null,
+                  imageUrl: p.image ?? null,
+                  priceCents: p.price,
+                  featured: p.featured ?? false,
+                  sortOrder: i,
+                })),
+              },
+            },
+          });
+        }
+        await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: LAUNCH_MARK } });
+      },
+      { timeout: 120_000 },
+    );
+    const products = launch.menu.reduce((sum, c) => sum + c.products.length, 0);
+    console.log(`• "${launch.name}" implantado (${products} produtos).`);
+  }
+}
+
 async function main() {
   await seedAdmin();
   await seedCategories();
+  await seedLaunches();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 

@@ -7,11 +7,11 @@ import { useRef } from "react";
 import { Logo } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 
-import { SiteNavLinks } from "./site-nav";
+import { SiteNavLinks, type NavCategory } from "./site-nav";
 
 // Gaveta do menu no celular (o "hambúrguer" da referência). <dialog> nativo:
 // fecha com o voltar do Android, com Esc e prende o foco lá dentro.
-export function MobileMenu() {
+export function MobileMenu({ categories }: { categories: NavCategory[] }) {
   const ref = useRef<HTMLDialogElement>(null);
   const close = () => ref.current?.close();
 
@@ -38,7 +38,7 @@ export function MobileMenu() {
               <X className="size-6" aria-hidden="true" />
             </button>
           </div>
-          <SiteNavLinks onNavigate={close} />
+          <SiteNavLinks categories={categories} onNavigate={close} />
           <div className="mt-auto flex flex-col gap-2 border-t border-line pt-4">
             <Link href="/cadastre-seu-restaurante" onClick={close} className={buttonClasses("primary")}>
               Cadastrar meu restaurante

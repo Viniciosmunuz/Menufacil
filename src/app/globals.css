@@ -77,6 +77,21 @@
   }
 }
 
+/* <details class="drawer">: abre e fecha deslizando onde o navegador permite */
+details.drawer {
+  interpolate-size: allow-keywords;
+}
+details.drawer::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 200ms ease-out,
+    content-visibility 200ms allow-discrete;
+}
+details.drawer[open]::details-content {
+  block-size: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

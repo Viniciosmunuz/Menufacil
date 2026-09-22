@@ -116,6 +116,16 @@ export async function listPublicCategories() {
   });
 }
 
+/** as categorias com mais restaurantes no ar (empate mantém a ordem do admin) */
+export async function listPopularCategories(limit = 6) {
+  const categories = await listPublicCategories();
+  return categories
+    .filter((c) => c._count.restaurants > 0)
+    .sort((a, b) => b._count.restaurants - a._count.restaurants)
+    .slice(0, limit)
+    .map(({ slug, name, icon }) => ({ slug, name, icon }));
+}
+
 /**
  * Página do restaurante. Fora do ar, só abre em prévia para quem gerencia
  * o restaurante (dono ou admin); para os outros é como se não existisse.

@@ -1,4 +1,4 @@
-import { isRestaurantStatus, restaurantStatusLabel } from "./labels";
+import { isOrderStatus, isRestaurantStatus, orderStatusLabel, restaurantStatusLabel } from "./labels";
 
 // Texto legível para cada linha do histórico (AuditLog).
 
@@ -26,6 +26,9 @@ const actionLabel: Record<string, string> = {
   "menu.product_available": "Disponibilidade do produto alterada",
   "menu.product_featured": "Destaque do produto alterado",
   "demo.content": "Conteúdo de demonstração preenchido",
+  "launch.content": "Restaurante implantado pela equipe (cardápio inicial)",
+  "order.update": "Pedido alterado",
+  "order.delete": "Pedido excluído",
 };
 
 const openModeLabel: Record<string, string> = {
@@ -54,6 +57,10 @@ export function describeAudit(action: string, details: unknown): { title: string
   if (action === "restaurant.update" && d?.changes && typeof d.changes === "object") {
     const fields = Object.keys(d.changes).map((k) => fieldLabel[k] ?? k);
     return { title, detail: fields.length ? `Mudou: ${fields.join(", ")}` : "Categorias revisadas" };
+  }
+  if (action.startsWith("order.") && typeof d?.number === "number") {
+    const move = isOrderStatus(d.from) && isOrderStatus(d.to) ? `: ${orderStatusLabel[d.from]} → ${orderStatusLabel[d.to]}` : "";
+    return { title, detail: `Pedido #${d.number}${move}` };
   }
   if (typeof d?.email === "string") return { title, detail: d.email };
   if (action === "restaurant.open_mode" && typeof d?.openMode === "string") {

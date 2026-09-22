@@ -1,4 +1,12 @@
-import type { OrderStatus, RestaurantStatus } from "@/generated/prisma/enums";
+import type { OrderStatus, PaymentStatus, RestaurantStatus } from "@/generated/prisma/enums";
+
+export const paymentStatusLabel: Record<PaymentStatus, string> = {
+  PENDING: "Aguardando pagamento",
+  PROOF_SENT: "Comprovante enviado",
+  CONFIRMED: "Confirmado",
+  REFUNDED: "Estornado",
+  CANCELED: "Cancelado",
+};
 
 export const restaurantStatusLabel: Record<RestaurantStatus, string> = {
   DRAFT: "Em implantação",
