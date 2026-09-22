@@ -28,7 +28,6 @@ export function CopyButton({
   variant = "secondary",
   size = "sm",
   className,
-  onCopyAction,
 }: {
   text: string;
   label?: string;
@@ -36,7 +35,6 @@ export function CopyButton({
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   className?: string;
-  onCopyAction?: () => unknown;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -44,7 +42,6 @@ export function CopyButton({
     await copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    onCopyAction?.();
   }
 
   return (

@@ -12,6 +12,8 @@ export type LaunchRestaurant = {
   description: string;
   categories: string[];
   logo: string;
+  /** logos que a equipe já usou: se o restaurante ainda está com uma delas, o seed troca pela atual */
+  previousLogos?: string[];
   cover: string;
   whatsapp: string;
   instagram: string;
@@ -57,7 +59,9 @@ export const launchRestaurants: LaunchRestaurant[] = [
     description:
       "Lanchonete e restaurante na Praça da Cultura, no Centro de Presidente Figueiredo. Grelhados, sanduíches, pizzas, yakisoba, massas e petiscos. Algumas fotos são ilustrativas.",
     categories: ["lanches", "pizzas", "massas", "porcoes", "comida-regional", "bebidas"],
-    logo: pl("logo"),
+    // desenho da capa do cardápio; a foto de perfil do Instagram só vem em 150 px
+    logo: pl("logo-cardapio"),
+    previousLogos: [pl("logo")],
     cover: pl("capa"),
     whatsapp: "5592999130838",
     instagram: "papaleguas_lanchonete_pf",

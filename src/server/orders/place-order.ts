@@ -207,8 +207,8 @@ export async function placeOrder(params: {
       include: { items: true },
     });
 
-    // as instruções do Pix entram na fila junto com o pedido; o aviso ao
-    // restaurante sai quando o cliente copia a chave (WhatsAppService)
+    // as instruções do Pix entram na fila junto com o pedido; ao restaurante,
+    // o pedido chega pelo WhatsApp do próprio cliente (página do pedido)
     await queueNewOrderMessages(tx, { order: created, restaurant });
     return created;
   });

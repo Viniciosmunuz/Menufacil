@@ -204,8 +204,15 @@ const LAUNCH_MARK = "launch.content";
 /** restaurantes reais (launch-data.ts): criados uma vez só; depois, vale o painel */
 async function seedLaunches() {
   for (const launch of launchRestaurants) {
-    if (await db.restaurant.findUnique({ where: { slug: launch.slug }, select: { id: true } })) {
-      console.log(`• "${launch.name}" já implantado.`);
+    const existing = await db.restaurant.findUnique({ where: { slug: launch.slug }, select: { id: true, logoUrl: true } });
+    if (existing) {
+      // troca de logo feita pela equipe: só se ninguém mudou a logo pelo painel
+      if (existing.logoUrl && launch.previousLogos?.includes(existing.logoUrl)) {
+        await db.restaurant.update({ where: { id: existing.id }, data: { logoUrl: launch.logo } });
+        console.log(`• "${launch.name}": logo atualizada.`);
+      } else {
+        console.log(`• "${launch.name}" já implantado.`);
+      }
       continue;
     }
     await db.$transaction(

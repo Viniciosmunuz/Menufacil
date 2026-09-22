@@ -121,6 +121,38 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
   };
 }
 
+/** o pedido que o próprio cliente manda ao restaurante (link wa.me da página do pedido) */
+export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
+  const delivery = o.type === "DELIVERY";
+  return [
+    `Olá, ${r.name}! Quero fazer este pedido:`,
+    "",
+    `*Pedido #${o.number}*`,
+    ...o.items.flatMap((i) => [
+      `${i.quantity}x ${i.productName} — ${formatCents(i.totalCents)}`,
+      ...(i.notes ? [`   _Obs.: ${i.notes}_`] : []),
+    ]),
+    "",
+    `Subtotal: ${formatCents(o.subtotalCents)}`,
+    ...(delivery ? [`Taxa de entrega: ${o.deliveryFeeCents > 0 ? formatCents(o.deliveryFeeCents) : "Grátis"}`] : []),
+    `*Total: ${formatCents(o.totalCents)}*`,
+    "",
+    delivery ? `*Entrega:* ${addressLine(o)}` : "*Retirada no local*",
+    ...(delivery && o.deliveryComplement ? [`Complemento: ${o.deliveryComplement}`] : []),
+    ...(delivery && o.deliveryReference ? [`Referência: ${o.deliveryReference}`] : []),
+    ...(o.notes ? [`*Observações:* ${o.notes}`] : []),
+    "",
+    `*Nome:* ${o.customerName}`,
+    `*WhatsApp:* ${formatPhone(o.customerWhatsapp)}`,
+    "",
+    "*Pagamento:* Pix. Assim que pagar, mando o comprovante aqui.",
+    "",
+    `Acompanhar o pedido: ${trackingUrl(o.code)}`,
+  ].join("\n");
+}
+
+export const waMeLink = (phone: string, text: string) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+
 /** instruções do Pix para o cliente, logo depois do pedido */
 export function paymentInstructions(o: OrderForMessage, r: RestaurantForMessage): MessageContent {
   const keyType = r.pixKeyType ? pixKeyTypeLabel[r.pixKeyType] : "Chave";

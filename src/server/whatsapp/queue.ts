@@ -51,7 +51,7 @@ export function queueOrderToRestaurant(tx: Tx, { order, restaurant }: { order: O
   });
 }
 
-/** pedido novo: instruções do Pix para o cliente (o restaurante é avisado quando o cliente copia a chave) */
+/** pedido novo: instruções do Pix para o cliente (o restaurante recebe o pedido do próprio cliente, pelo wa.me) */
 export async function queueNewOrderMessages(tx: Tx, { order, restaurant }: { order: OrderRow; restaurant: RestaurantRow }) {
   await enqueue(tx, {
     restaurantId: restaurant.id,

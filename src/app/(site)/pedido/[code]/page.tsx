@@ -14,9 +14,10 @@ import { db } from "@/lib/db";
 import { formatCents, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
+import { orderFromCustomer, waMeLink } from "@/server/whatsapp/messages";
 
-import { markPaymentSent, sendOrderToRestaurant } from "./actions";
-import { ClearCartAfterOrder } from "./order-live";
+import { markPaymentSent } from "./actions";
+import { ClearCartAfterOrder, CopyPixAndSendOrder } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
 
@@ -58,6 +59,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
 
   const proofText = encodeURIComponent(`Olá! Segue o comprovante do Pix do pedido #${order.number} (${formatCents(order.totalCents)}).`);
   const whatsappLink = r.whatsapp ? `https://wa.me/${r.whatsapp}?text=${proofText}` : null;
+  // o pedido chega ao restaurante pelo WhatsApp do próprio cliente, já escrito
+  const sendOrderLink = r.whatsapp ? waMeLink(r.whatsapp, orderFromCustomer(order, r)) : null;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
@@ -73,8 +76,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         <h1 className="text-2xl font-extrabold sm:text-3xl">
           {sp.novo === "1" ? "Pedido feito!" : `Pedido #${order.number}`}
         </h1>
-        {sp.novo === "1" && showPix && (
-          <p className="font-bold text-brand">Copie a chave Pix abaixo: o pedido vai direto para o WhatsApp do restaurante.</p>
+        {sp.novo === "1" && showPix && sendOrderLink && (
+          <p className="font-bold text-brand">Copie a chave Pix abaixo: o WhatsApp do restaurante abre com o seu pedido pronto. É só tocar em enviar.</p>
         )}
         <p className="text-muted">
           {sp.novo === "1" ? `Pedido #${order.number} em ` : ""}
@@ -101,15 +104,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             <p className="text-sm text-muted">{pay.pixKeyType ? pixKeyTypeLabel[pay.pixKeyType] : "Chave Pix"}</p>
             <p className="mt-0.5 font-mono text-lg font-bold break-all">{formatPixKey(pay.pixKeyType, pay.pixKey!)}</p>
             {r.pixHolderName && <p className="mt-1 text-sm text-muted">Nome: {r.pixHolderName}</p>}
-            <CopyButton
-              text={pay.pixKey!}
-              label="Copiar chave Pix"
-              copiedLabel="Chave copiada!"
-              variant="primary"
-              size="lg"
-              className="mt-4 w-full"
-              onCopyAction={sendOrderToRestaurant.bind(null, order.code)}
-            />
+            {sendOrderLink ? (
+              <CopyPixAndSendOrder pixKey={pay.pixKey!} whatsappUrl={sendOrderLink} className="mt-4 w-full" />
+            ) : (
+              <CopyButton text={pay.pixKey!} label="Copiar chave Pix" copiedLabel="Chave copiada!" variant="primary" size="lg" className="mt-4 w-full" />
+            )}
           </div>
           {r.paymentInstructions && <p className="text-sm text-muted">{r.paymentInstructions}</p>}
           <p className="rounded-control bg-brand-soft px-4 py-3 font-bold text-brand">
