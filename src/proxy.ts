@@ -8,8 +8,9 @@ import { STORE_COOKIE } from "@/lib/site";
 const SESSION_COOKIE = "mf_sessao";
 
 // Quem chega ao restaurante pelo link dele (WhatsApp, Instagram, digitado)
-// fica só naquele restaurante: as páginas que mostram os outros voltam para
-// ele. Assim um restaurante não perde o cliente que ele mesmo trouxe.
+// fica só naquele restaurante: navegando pelo site, as páginas que mostram
+// os outros voltam para ele. Assim um restaurante não perde o cliente que
+// ele mesmo trouxe. Abrir o link da plataforma (o início) é outro caminho.
 const STORE_DAYS = 30;
 const MARKETPLACE = ["/", "/restaurantes", "/categorias", "/favoritos", "/sobre", "/contato", "/cadastre-seu-restaurante"];
 
@@ -49,7 +50,16 @@ function storeRules(request: NextRequest) {
   if (!locked) return NextResponse.next();
   const otherStore = !!entered && entered !== locked;
   const marketplace = MARKETPLACE.some((p) => (p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`)));
-  // /loja confere se o restaurante ainda existe antes de mandar para ele
+
+  // abriu o link da plataforma (início, lista) de fora: é outro caminho, a trava acaba
+  if (marketplace && isExternalEntry(request)) {
+    request.cookies.delete(STORE_COOKIE);
+    const response = NextResponse.next({ request: { headers: request.headers } });
+    response.cookies.delete(STORE_COOKIE);
+    return response;
+  }
+  // dentro do site, a partir do restaurante: nada leva aos outros
+  // (/loja confere se o restaurante ainda existe antes de mandar para ele)
   if (otherStore || marketplace) return NextResponse.redirect(new URL("/loja", request.url));
   return NextResponse.next();
 }
