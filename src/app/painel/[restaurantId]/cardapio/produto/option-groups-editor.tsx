@@ -4,7 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/field";
+import { Input, Select } from "@/components/ui/field";
 import { MoneyInput } from "@/components/ui/money-input";
 import { cn } from "@/lib/cn";
 
@@ -12,16 +12,26 @@ import { cn } from "@/lib/cn";
 // servidor num campo escondido, em JSON; o servidor confere tudo de novo.
 
 export type EditableOption = { id?: string; name: string; price: string; available: boolean };
-export type EditableGroup = { id?: string; name: string; required: boolean; max: number; options: EditableOption[] };
+export type EditableGroup = {
+  id?: string;
+  name: string;
+  required: boolean;
+  max: number;
+  /** meio a meio: aceita 2 opções, cobrando a mais cara */
+  half: boolean;
+  /** a partir de qual opção de outro grupo (posições na tela); null = sempre */
+  halfFrom: { group: number; option: number } | null;
+  options: EditableOption[];
+};
 
 const newOption = (): EditableOption => ({ name: "", price: "", available: true });
-const newGroup = (): EditableGroup => ({ name: "", required: true, max: 1, options: [newOption(), newOption()] });
+const newGroup = (): EditableGroup => ({ name: "", required: true, max: 1, half: false, halfFrom: null, options: [newOption(), newOption()] });
 
 // modelos comuns para começar mais rápido
 const TEMPLATES: { label: string; group: () => EditableGroup }[] = [
   {
     label: "Meia / Inteira",
-    group: () => ({ name: "Porção", required: true, max: 1, options: [{ name: "Meia", price: "0,00", available: true }, { name: "Inteira", price: "", available: true }] }),
+    group: () => ({ name: "Porção", required: true, max: 1, half: false, halfFrom: null, options: [{ name: "Meia", price: "0,00", available: true }, { name: "Inteira", price: "", available: true }] }),
   },
   {
     label: "Tamanho P / M / G",
@@ -29,6 +39,8 @@ const TEMPLATES: { label: string; group: () => EditableGroup }[] = [
       name: "Tamanho",
       required: true,
       max: 1,
+      half: false,
+      halfFrom: null,
       options: [
         { name: "Pequeno", price: "0,00", available: true },
         { name: "Médio", price: "", available: true },
@@ -36,7 +48,11 @@ const TEMPLATES: { label: string; group: () => EditableGroup }[] = [
       ],
     }),
   },
-  { label: "Adicionais", group: () => ({ name: "Adicionais", required: false, max: 5, options: [newOption()] }) },
+  { label: "Adicionais", group: () => ({ name: "Adicionais", required: false, max: 5, half: false, halfFrom: null, options: [newOption()] }) },
+  {
+    label: "Sabores (meio a meio)",
+    group: () => ({ name: "Sabor", required: true, max: 1, half: true, halfFrom: null, options: [newOption(), newOption()] }),
+  },
 ];
 
 export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[]; error?: string }) {
@@ -46,6 +62,27 @@ export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[
     setGroups((gs) => gs.map((g, i) => (i === index ? { ...g, ...patch } : g)));
   const updateOption = (gi: number, oi: number, patch: Partial<EditableOption>) =>
     setGroups((gs) => gs.map((g, i) => (i === gi ? { ...g, options: g.options.map((o, j) => (j === oi ? { ...o, ...patch } : o)) } : g)));
+
+  // o "a partir de" do meio a meio aponta para posições: acompanha as remoções
+  const removeGroup = (gi: number) =>
+    setGroups((gs) =>
+      gs
+        .filter((_, i) => i !== gi)
+        .map((g) => {
+          if (!g.halfFrom) return g;
+          if (g.halfFrom.group === gi) return { ...g, halfFrom: null };
+          return g.halfFrom.group > gi ? { ...g, halfFrom: { ...g.halfFrom, group: g.halfFrom.group - 1 } } : g;
+        }),
+    );
+  const removeOption = (gi: number, oi: number) =>
+    setGroups((gs) =>
+      gs.map((g, i) => {
+        const next = i === gi ? { ...g, options: g.options.filter((_, j) => j !== oi) } : g;
+        if (!next.halfFrom || next.halfFrom.group !== gi) return next;
+        if (next.halfFrom.option === oi) return { ...next, halfFrom: null };
+        return next.halfFrom.option > oi ? { ...next, halfFrom: { group: gi, option: next.halfFrom.option - 1 } } : next;
+      }),
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -67,7 +104,7 @@ export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[
               <span className="text-sm font-bold">Nome do grupo</span>
               <Input value={g.name} onChange={(e) => updateGroup(gi, { name: e.target.value })} maxLength={40} placeholder="Ex.: Tamanho" />
             </label>
-            <Button variant="ghost" onClick={() => setGroups((gs) => gs.filter((_, i) => i !== gi))} aria-label={`Remover o grupo ${g.name || gi + 1}`}>
+            <Button variant="ghost" onClick={() => removeGroup(gi)} aria-label={`Remover o grupo ${g.name || gi + 1}`}>
               <Trash2 className="size-4" aria-hidden="true" />
             </Button>
           </div>
@@ -88,6 +125,45 @@ export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[
                 className="h-10 w-20"
               />
             </label>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-control border border-dashed border-line p-3 text-sm">
+            <label className="flex items-center gap-2 font-semibold">
+              <input
+                type="checkbox"
+                checked={g.half}
+                onChange={(e) => updateGroup(gi, { half: e.target.checked, halfFrom: e.target.checked ? g.halfFrom : null })}
+                className="size-4 accent-brand"
+              />
+              Aceita meio a meio (2 sabores numa pizza, cobra o mais caro)
+            </label>
+            {g.half && groups.some((other, i) => i !== gi && other.options.length > 0) && (
+              <label className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">Vale a partir de</span>
+                <Select
+                  value={g.halfFrom ? `${g.halfFrom.group}:${g.halfFrom.option}` : ""}
+                  onChange={(e) => {
+                    const [group, option] = e.target.value.split(":").map(Number);
+                    updateGroup(gi, { halfFrom: e.target.value ? { group, option } : null });
+                  }}
+                  className="h-10 w-auto min-w-52"
+                >
+                  <option value="">Todos os tamanhos</option>
+                  {groups.map((other, ogi) =>
+                    ogi === gi
+                      ? null
+                      : other.options.map((o, oi) =>
+                          o.name.trim() ? (
+                            <option key={`${ogi}:${oi}`} value={`${ogi}:${oi}`}>
+                              {other.name || "Grupo"}: {o.name}
+                            </option>
+                          ) : null,
+                        ),
+                  )}
+                </Select>
+                <span className="text-faint">Vale para essa opção e as que vêm depois dela na lista.</span>
+              </label>
+            )}
           </div>
 
           <ul className="flex flex-col gap-2">
@@ -119,7 +195,7 @@ export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => updateGroup(gi, { options: g.options.filter((_, j) => j !== oi) })}
+                  onClick={() => removeOption(gi, oi)}
                   aria-label={`Remover a opção ${o.name || oi + 1}`}
                 >
                   <Trash2 className="size-4" aria-hidden="true" />

@@ -35,6 +35,8 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
             name: true,
             minSelect: true,
             maxSelect: true,
+            halfHalf: true,
+            halfFromOptionId: true,
             options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
           },
         },
@@ -56,13 +58,20 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
         categories={categories}
         product={{
           ...product,
-          optionGroups: product.optionGroups.map((g) => ({
-            id: g.id,
-            name: g.name,
-            required: g.minSelect > 0,
-            max: g.maxSelect,
-            options: g.options.map((o) => ({ id: o.id, name: o.name, price: centsToInput(o.priceCents), available: o.available })),
-          })),
+          optionGroups: product.optionGroups.map((g) => {
+            // o "a partir de" do meio a meio vira posição (grupo, opção) no editor
+            const group = product.optionGroups.findIndex((og) => og.options.some((o) => o.id === g.halfFromOptionId));
+            const option = group >= 0 ? product.optionGroups[group].options.findIndex((o) => o.id === g.halfFromOptionId) : -1;
+            return {
+              id: g.id,
+              name: g.name,
+              required: g.minSelect > 0,
+              max: g.maxSelect,
+              half: g.halfHalf,
+              halfFrom: g.halfHalf && group >= 0 ? { group, option } : null,
+              options: g.options.map((o) => ({ id: o.id, name: o.name, price: centsToInput(o.priceCents), available: o.available })),
+            };
+          }),
         }}
       />
     </div>

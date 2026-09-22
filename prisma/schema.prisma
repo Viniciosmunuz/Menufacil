@@ -279,6 +279,11 @@ model ProductOptionGroup {
   minSelect Int    @default(1)
   maxSelect Int    @default(1)
   sortOrder Int    @default(0)
+  // meio a meio (sabores de pizza): aceita 2 opções, cobrando a mais cara.
+  // halfFromOptionId: opção de outro grupo (ex.: Tamanho "Pequena") a partir
+  // da qual vale, na ordem do grupo; vazio = vale sempre
+  halfHalf         Boolean @default(false)
+  halfFromOptionId String?
 
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   options ProductOption[]

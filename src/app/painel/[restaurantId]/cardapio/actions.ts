@@ -149,6 +149,8 @@ const groupSchema = z.object({
   name: text("Dê um nome para cada grupo de opções (ex.: Tamanho).", 40),
   required: z.boolean(),
   max: z.number().int().min(1).max(20),
+  half: z.boolean().optional().default(false),
+  halfFrom: z.object({ group: z.number().int().min(0), option: z.number().int().min(0) }).nullable().optional().default(null),
   options: z.array(optionSchema).min(1, "Cada grupo precisa de pelo menos uma opção.").max(40, "No máximo 40 opções por grupo."),
 });
 const groupsSchema = z.array(groupSchema).max(10, "No máximo 10 grupos de opções.");
@@ -158,6 +160,9 @@ type ParsedGroup = {
   name: string;
   minSelect: number;
   maxSelect: number;
+  halfHalf: boolean;
+  /** posição (grupo, opção) da opção "a partir de" do meio a meio */
+  halfFrom: { group: number; option: number } | null;
   options: { id?: string; name: string; priceCents: number; available: boolean }[];
 };
 
@@ -182,7 +187,13 @@ function parseOptionGroups(raw: FormDataEntryValue | null): { groups: ParsedGrou
       options.push({ id: o.id, name: o.name, priceCents, available: o.available });
     }
     const maxSelect = Math.min(g.max, options.length);
-    groups.push({ id: g.id, name: g.name, minSelect: g.required ? 1 : 0, maxSelect, options });
+    groups.push({ id: g.id, name: g.name, minSelect: g.required ? 1 : 0, maxSelect, halfHalf: g.half, halfFrom: g.half ? g.halfFrom : null, options });
+  }
+  // o "a partir de" precisa apontar para uma opção de outro grupo que existe
+  for (const [index, g] of groups.entries()) {
+    if (!g.halfFrom) continue;
+    const target = groups[g.halfFrom.group]?.options[g.halfFrom.option];
+    if (!target || g.halfFrom.group === index) g.halfFrom = null;
   }
   return { groups };
 }
@@ -194,18 +205,29 @@ async function syncOptionGroups(tx: Prisma.TransactionClient, productId: string,
   const keepGroups = groups.map((g) => g.id).filter((id): id is string => !!id && existingGroups.has(id));
   await tx.productOptionGroup.deleteMany({ where: { productId, id: { notIn: keepGroups } } });
 
+  const optionIds: string[][] = [];
+  const groupIds: string[] = [];
   for (const [groupOrder, g] of groups.entries()) {
-    const data = { name: g.name, minSelect: g.minSelect, maxSelect: g.maxSelect, sortOrder: groupOrder };
+    const data = { name: g.name, minSelect: g.minSelect, maxSelect: g.maxSelect, halfHalf: g.halfHalf, sortOrder: groupOrder };
     const known = g.id ? existingGroups.get(g.id) : undefined;
     const groupId = known && g.id ? (await tx.productOptionGroup.update({ where: { id: g.id }, data })).id : (await tx.productOptionGroup.create({ data: { ...data, productId } })).id;
 
     const keepOptions = g.options.map((o) => o.id).filter((id): id is string => !!id && !!known?.has(id));
     await tx.productOption.deleteMany({ where: { groupId, id: { notIn: keepOptions } } });
+    const ids: string[] = [];
     for (const [optionOrder, o] of g.options.entries()) {
       const optionData = { name: o.name, priceCents: o.priceCents, available: o.available, sortOrder: optionOrder };
-      if (o.id && known?.has(o.id)) await tx.productOption.update({ where: { id: o.id }, data: optionData });
-      else await tx.productOption.create({ data: { ...optionData, groupId } });
+      if (o.id && known?.has(o.id)) ids.push((await tx.productOption.update({ where: { id: o.id }, data: optionData })).id);
+      else ids.push((await tx.productOption.create({ data: { ...optionData, groupId } })).id);
     }
+    optionIds.push(ids);
+    groupIds.push(groupId);
+  }
+
+  // meio a meio: com as opções já gravadas, a posição vira o id da opção
+  for (const [index, g] of groups.entries()) {
+    const halfFromOptionId = g.halfFrom ? (optionIds[g.halfFrom.group]?.[g.halfFrom.option] ?? null) : null;
+    await tx.productOptionGroup.update({ where: { id: groupIds[index] }, data: { halfFromOptionId } });
   }
 }
 

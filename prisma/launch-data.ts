@@ -8,7 +8,14 @@
 // de opções 40; opção 60.
 
 /** grupo de opções; o preço de cada opção (centavos) soma ao do produto */
-export type LaunchOptionGroup = { name: string; min: number; max: number; options: { name: string; price: number }[] };
+export type LaunchOptionGroup = {
+  name: string;
+  min: number;
+  max: number;
+  options: { name: string; price: number }[];
+  /** meio a meio (2 sabores, cobra o mais caro); from = nome da opção de outro grupo a partir da qual vale */
+  half?: { from?: string };
+};
 
 export type LaunchProduct = {
   name: string;
@@ -105,7 +112,8 @@ export const launchRestaurants: LaunchRestaurant[] = [
     pickup: true,
     pix: { key: "+5592994750615", type: "PHONE", holder: null },
     // v2: tamanho, sabor e meia/inteira viraram opções do produto
-    menuVersion: 2,
+    // v3: pizzas meio a meio a partir da pequena
+    menuVersion: 3,
     menu: [
       {
         name: "Grelhados",
@@ -165,12 +173,12 @@ export const launchRestaurants: LaunchRestaurant[] = [
           priced("Pizza tradicional", "Tamanho", PIZZA_TAMANHOS(22, 32, 52), {
             description: PIZZA_TRADICIONAL,
             image: pl("pizza-tradicional"),
-            options: [pick("Sabor", SABORES_TRADICIONAIS)],
+            options: [{ ...pick("Sabor", SABORES_TRADICIONAIS), half: { from: "Pequena (4 fatias)" } }],
           }),
           priced("Pizza especial", "Tamanho", PIZZA_TAMANHOS(24, 35, 56), {
             description: PIZZA_ESPECIAL,
             image: pl("pizza-especial"),
-            options: [pick("Sabor", SABORES_ESPECIAIS)],
+            options: [{ ...pick("Sabor", SABORES_ESPECIAIS), half: { from: "Pequena (4 fatias)" } }],
           }),
         ],
       },

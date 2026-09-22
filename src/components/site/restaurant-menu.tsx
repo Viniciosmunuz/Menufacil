@@ -10,11 +10,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import {
+  effectiveMax,
+  halfAllowed,
+  halfFromLabel,
   hasPricedOptions,
   optionsPrice,
   optionsText,
   selectionProblems,
   startingPrice,
+  trimSelection,
   type OptionData,
   type OptionGroupData,
 } from "@/lib/options";
@@ -59,14 +63,19 @@ function Price({ p, className }: { p: MenuProduct; className?: string }) {
 /** grupo de opções na janela do produto: escolha única vira "bolinha", múltipla vira "quadradinho" */
 function OptionGroupPicker({
   group,
+  groups,
   selected,
   onToggle,
 }: {
   group: OptionGroupData;
+  groups: OptionGroupData[];
   selected: string[];
   onToggle: (group: OptionGroupData, option: OptionData) => void;
 }) {
-  const single = group.maxSelect === 1;
+  const max = effectiveMax(group, groups, selected);
+  const half = halfAllowed(group, groups, selected);
+  const halfFrom = group.halfHalf && !half ? halfFromLabel(group, groups) : null;
+  const single = max === 1;
   const count = group.options.filter((o) => selected.includes(o.id)).length;
   return (
     <fieldset className="flex flex-col gap-2">
@@ -79,9 +88,11 @@ function OptionGroupPicker({
           )}
         >
           {group.minSelect > 0 ? "Obrigatório" : "Opcional"}
-          {group.maxSelect > 1 ? ` · até ${group.maxSelect}` : ""}
+          {half ? " · meio a meio: até 2" : max > 1 ? ` · até ${max}` : ""}
         </span>
       </legend>
+      {half && count < 2 && <p className="-mt-1 text-sm text-muted">Quer meio a meio? Marque 2 sabores. Vale o preço do mais caro.</p>}
+      {halfFrom && <p className="-mt-1 text-sm text-muted">Meio a meio a partir de {halfFrom}.</p>}
       {group.options.map((o) => {
         const checked = selected.includes(o.id);
         return (
@@ -255,20 +266,28 @@ export function RestaurantMenu({
     dialogRef.current?.close();
   }
 
+  const groups = product?.optionGroups ?? [];
+
   function toggleOption(group: OptionGroupData, option: OptionData) {
     setSelected((current) => {
       const inGroup = new Set(group.options.map((o) => o.id));
+      const max = effectiveMax(group, groups, current);
+      let next: string[];
       if (current.includes(option.id)) {
         // escolha única obrigatória: tocar na mesma não desmarca
-        return group.maxSelect === 1 && group.minSelect > 0 ? current : current.filter((id) => id !== option.id);
+        next = max === 1 && group.minSelect > 0 ? current : current.filter((id) => id !== option.id);
+      } else if (max === 1) {
+        next = [...current.filter((id) => !inGroup.has(id)), option.id];
+      } else if (current.filter((id) => inGroup.has(id)).length >= max) {
+        next = current;
+      } else {
+        next = [...current, option.id];
       }
-      if (group.maxSelect === 1) return [...current.filter((id) => !inGroup.has(id)), option.id];
-      if (current.filter((id) => inGroup.has(id)).length >= group.maxSelect) return current;
-      return [...current, option.id];
+      // trocou para um tamanho sem meio a meio: fica só o primeiro sabor
+      return trimSelection(groups, next);
     });
   }
 
-  const groups = product?.optionGroups ?? [];
   const problems = product ? selectionProblems(groups, selected) : [];
   const itemPrice = product ? unitPrice(product) + optionsPrice(groups, selected) : 0;
 
@@ -493,7 +512,7 @@ export function RestaurantMenu({
                   <Price p={product} className="mt-3 text-xl" />
                 </div>
                 {product.available &&
-                  groups.map((g) => <OptionGroupPicker key={g.id} group={g} selected={selected} onToggle={toggleOption} />)}
+                  groups.map((g) => <OptionGroupPicker key={g.id} group={g} groups={groups} selected={selected} onToggle={toggleOption} />)}
                 {canOrder && product.available && (
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-bold">Alguma observação?</span>

@@ -142,6 +142,8 @@ export async function placeOrder(params: {
           name: true,
           minSelect: true,
           maxSelect: true,
+          halfHalf: true,
+          halfFromOptionId: true,
           options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
         },
       },

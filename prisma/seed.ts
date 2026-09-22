@@ -227,6 +227,7 @@ async function createLaunchMenu(tx: Tx, restaurantId: string, menu: (typeof laun
                 name: g.name,
                 minSelect: g.min,
                 maxSelect: g.max,
+                halfHalf: !!g.half,
                 sortOrder: groupOrder,
                 options: { create: g.options.map((o, optionOrder) => ({ name: o.name, priceCents: o.price, sortOrder: optionOrder })) },
               })),
@@ -235,6 +236,18 @@ async function createLaunchMenu(tx: Tx, restaurantId: string, menu: (typeof laun
         },
       },
     });
+  }
+
+  // meio a meio "a partir de": com tudo criado, o nome da opção vira o id
+  const halfGroups = await tx.productOptionGroup.findMany({
+    where: { halfHalf: true, product: { restaurantId } },
+    select: { id: true, name: true, product: { select: { name: true, optionGroups: { select: { options: { select: { id: true, name: true } } } } } } },
+  });
+  const products = menu.flatMap((c) => c.products);
+  for (const g of halfGroups) {
+    const from = products.find((p) => p.name === g.product.name)?.options?.find((og) => og.name === g.name)?.half?.from;
+    const optionId = from ? g.product.optionGroups.flatMap((og) => og.options).find((o) => o.name === from)?.id : undefined;
+    if (optionId) await tx.productOptionGroup.update({ where: { id: g.id }, data: { halfFromOptionId: optionId } });
   }
 }
 
