@@ -11,6 +11,7 @@ import { Button } from "./button";
 export function ConfirmButton({
   children,
   confirmText,
+  cancelText = "Cancelar",
   name,
   value,
   variant = "danger",
@@ -18,6 +19,8 @@ export function ConfirmButton({
 }: {
   children: ReactNode;
   confirmText: string;
+  /** texto de desistir (troque quando a própria ação já se chama "cancelar") */
+  cancelText?: string;
   name?: string;
   value?: string;
   variant?: "primary" | "secondary" | "danger" | "outline";
@@ -40,7 +43,7 @@ export function ConfirmButton({
         {pending ? "Aguarde..." : confirmText}
       </Button>
       <Button variant="ghost" size={size} onClick={() => setAsking(false)} disabled={pending}>
-        Cancelar
+        {cancelText}
       </Button>
     </span>
   );

@@ -10,8 +10,18 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { ORDER_STATUSES, orderStatusLabel } from "@/lib/labels";
+import type { OrderFormState } from "@/server/orders/update-order";
 
-import { deleteOrder, updateOrder, type OrderFormState } from "./actions";
+// "Editar" e "Excluir" de um pedido, nos dois painéis. As ações chegam de
+// fora: cada painel confere o próprio acesso. Sem deleteAction, não há
+// "Excluir" (o restaurante cancela o pedido em vez de apagar).
+
+type UpdateAction = (state: OrderFormState, formData: FormData) => Promise<OrderFormState>;
+type Hidden = Record<string, string>;
+
+function HiddenFields({ fields }: { fields?: Hidden }) {
+  return Object.entries(fields ?? {}).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />);
+}
 
 export type EditableOrder = {
   id: string;
@@ -27,10 +37,21 @@ export type EditableOrder = {
   notes: string;
 };
 
-export function OrderActions({ order }: { order: EditableOrder }) {
+export function OrderActions({
+  order,
+  updateAction,
+  deleteAction,
+  hidden,
+}: {
+  order: EditableOrder;
+  updateAction: UpdateAction;
+  deleteAction?: (formData: FormData) => Promise<void>;
+  /** campos extras enviados junto (ex.: restaurantId no painel do restaurante) */
+  hidden?: Hidden;
+}) {
   const [editing, setEditing] = useState(false);
 
-  if (editing) return <OrderEditForm order={order} onDone={() => setEditing(false)} />;
+  if (editing) return <OrderEditForm order={order} updateAction={updateAction} hidden={hidden} onDone={() => setEditing(false)} />;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -38,20 +59,33 @@ export function OrderActions({ order }: { order: EditableOrder }) {
         <Pencil className="size-4" aria-hidden="true" />
         Editar
       </Button>
-      <form action={deleteOrder}>
-        <input type="hidden" name="orderId" value={order.id} />
-        <ConfirmButton size="sm" confirmText="Excluir de vez">
-          <Trash2 className="size-4" aria-hidden="true" />
-          Excluir
-        </ConfirmButton>
-      </form>
+      {deleteAction && (
+        <form action={deleteAction}>
+          <input type="hidden" name="orderId" value={order.id} />
+          <HiddenFields fields={hidden} />
+          <ConfirmButton size="sm" confirmText="Excluir de vez">
+            <Trash2 className="size-4" aria-hidden="true" />
+            Excluir
+          </ConfirmButton>
+        </form>
+      )}
     </div>
   );
 }
 
-function OrderEditForm({ order, onDone }: { order: EditableOrder; onDone: () => void }) {
+function OrderEditForm({
+  order,
+  updateAction,
+  hidden,
+  onDone,
+}: {
+  order: EditableOrder;
+  updateAction: UpdateAction;
+  hidden?: Hidden;
+  onDone: () => void;
+}) {
   const [state, action] = useActionState(async (prev: OrderFormState, formData: FormData) => {
-    const result = await updateOrder(prev, formData);
+    const result = await updateAction(prev, formData);
     if (result.ok) onDone();
     return result;
   }, {});
@@ -62,6 +96,7 @@ function OrderEditForm({ order, onDone }: { order: EditableOrder; onDone: () => 
   return (
     <form action={action} className="flex flex-col gap-4 rounded-control border border-line bg-surface-2/40 p-4">
       <input type="hidden" name="orderId" value={order.id} />
+      <HiddenFields fields={hidden} />
       {state.error && <Alert tone="danger">{state.error}</Alert>}
       {state.fieldErrors && !state.error && <Alert tone="danger">Confira os campos marcados em vermelho.</Alert>}
 

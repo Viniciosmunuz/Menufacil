@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
@@ -15,7 +16,7 @@ import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
 import { markPaymentSent, sendOrderToRestaurant } from "./actions";
-import { AutoRefresh, ClearCartAfterOrder } from "./order-live";
+import { ClearCartAfterOrder } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
 
