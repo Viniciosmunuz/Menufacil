@@ -2,8 +2,9 @@
 // vez (pelo endereço/slug); depois disso, tudo se ajusta pelo painel. Uma
 // versão nova do cardápio (menuVersion) só entra se ninguém mexeu no
 // cardápio pelo painel.
-// Fotos: do Instagram do próprio restaurante e do Unsplash (licença livre),
-// em public/implantacao; algumas reaproveitam as de public/demo.
+// Fotos: do Instagram do próprio restaurante e do Unsplash e Pexels (licença
+// livre), em public/implantacao; algumas reaproveitam as de public/demo.
+// Fotos novas (imagesVersion) só preenchem produtos que estão sem foto.
 // Limites do painel: categoria 50 e descrição 200; produto 80 e 400; grupo
 // de opções 40; opção 60.
 
@@ -43,8 +44,16 @@ export type LaunchRestaurant = {
   pickup: boolean;
   pix: { key: string; type: "PHONE" | "EMAIL" | "CPF" | "CNPJ" | "RANDOM"; holder: string | null };
   menuVersion: number;
+  imagesVersion: number;
   menu: { name: string; description?: string; products: LaunchProduct[] }[];
 };
+
+type LaunchMenu = LaunchRestaurant["menu"];
+
+/** fotos ilustrativas pelo nome do produto, para os que não têm foto própria */
+function withPhotos(menu: LaunchMenu, photos: Record<string, string>): LaunchMenu {
+  return menu.map((c) => ({ ...c, products: c.products.map((p) => (p.image || !photos[p.name] ? p : { ...p, image: photos[p.name] })) }));
+}
 
 const pl = (path: string) => `/implantacao/papaleguas/${path}.webp`;
 const demo = (path: string) => `/demo/${path}.webp`;
@@ -114,7 +123,9 @@ export const launchRestaurants: LaunchRestaurant[] = [
     // v2: tamanho, sabor e meia/inteira viraram opções do produto
     // v3: pizzas meio a meio a partir da pequena
     menuVersion: 3,
-    menu: [
+    // v1: foto ilustrativa para cada produto que estava sem
+    imagesVersion: 1,
+    menu: withPhotos([
       {
         name: "Grelhados",
         description: "Prato individual.",
@@ -335,6 +346,45 @@ export const launchRestaurants: LaunchRestaurant[] = [
           item("Vodka Skarloff", 3.5),
         ],
       },
-    ],
+    ], {
+      "Carne de sol": pl("carne-de-sol"),
+      "Filé de frango": pl("file-de-frango"),
+      "Filé de pirarucu": pl("file-de-pirarucu"),
+      "Parmegiana de carne": pl("parmegiana-carne"),
+      "Parmegiana de frango": pl("parmegiana-frango"),
+      "Bauru": pl("bauru"),
+      "Sanduíche natural": pl("sanduiche-natural"),
+      "Omelete": pl("omelete"),
+      "Macaxeira frita": pl("macaxeira-frita"),
+      "Carne de sol com macaxeira ou batata": pl("carne-de-sol-macaxeira"),
+      "Filé com macaxeira ou batata": pl("file-com-fritas"),
+      "Filé mignon": pl("file-mignon"),
+      "Calabresa": pl("calabresa"),
+      "Mista 1": pl("mista-1"),
+      "Mista 2": pl("mista-2"),
+      "Camarão alho e óleo": pl("camarao-alho-oleo"),
+      "Casquinha de caranguejo": pl("casquinha-caranguejo"),
+      "Queijo coalho": pl("queijo-coalho"),
+      "Queijo à milanesa": pl("queijo-milanesa"),
+      "Azeitona": pl("azeitona"),
+      "Arroz branco": pl("arroz"),
+      "Feijão": pl("feijao"),
+      "Farofa": pl("farofa"),
+      "Purê": pl("pure"),
+      "Pão de alho": pl("pao-de-alho"),
+      "Pão de forma": pl("pao-de-forma"),
+      "Salada quente": pl("salada-quente"),
+      "Suco em lata": pl("suco-lata"),
+      "Suco detox": pl("suco-detox"),
+      "Vitaminada": pl("vitaminada"),
+      "Água tônica lata": pl("agua-tonica"),
+      "Whisky": pl("whisky"),
+      "Cuba livre": pl("cuba-livre"),
+      "Campari": pl("campari"),
+      "Montilla": pl("montilla"),
+      "Martini": pl("martini"),
+      "Cachaça": pl("cachaca"),
+      "Vodka Skarloff": pl("vodka"),
+    }),
   },
 ];

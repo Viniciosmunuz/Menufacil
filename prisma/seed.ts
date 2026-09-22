@@ -201,6 +201,21 @@ async function seedDemo() {
 
 const LAUNCH_MARK = "launch.content";
 const menuMark = (version: number) => `launch.menu.v${version}`;
+const imagesMark = (version: number) => `launch.images.v${version}`;
+
+/** fotos da equipe: só preenchem produto sem foto (a do dono nunca é trocada), uma vez por versão */
+async function fillLaunchImages(restaurantId: string, launch: (typeof launchRestaurants)[number]) {
+  const mark = imagesMark(launch.imagesVersion);
+  if (await db.auditLog.findFirst({ where: { restaurantId, action: mark }, select: { id: true } })) return;
+  let filled = 0;
+  for (const p of launch.menu.flatMap((c) => c.products)) {
+    if (!p.image) continue;
+    const { count } = await db.product.updateMany({ where: { restaurantId, name: p.name, imageUrl: null }, data: { imageUrl: p.image } });
+    filled += count;
+  }
+  await db.auditLog.create({ data: { restaurantId, action: mark, details: { filled } } });
+  console.log(`• "${launch.name}": ${filled} fotos preenchidas (versão ${launch.imagesVersion}).`);
+}
 
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -280,9 +295,11 @@ async function seedLaunches() {
             { timeout: 120_000 },
           );
           console.log(`• "${launch.name}": cardápio atualizado para a versão ${launch.menuVersion} (${products} produtos).`);
+          await fillLaunchImages(existing.id, launch);
           continue;
         }
       }
+      await fillLaunchImages(existing.id, launch);
       console.log(`• "${launch.name}" já implantado.`);
       continue;
     }
@@ -318,6 +335,7 @@ async function seedLaunches() {
         await createLaunchMenu(tx, restaurant.id, launch.menu);
         await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: LAUNCH_MARK } });
         await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: menuMark(launch.menuVersion), details: { products } } });
+        await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: imagesMark(launch.imagesVersion) } });
       },
       { timeout: 120_000 },
     );
