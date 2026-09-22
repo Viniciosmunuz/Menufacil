@@ -20,7 +20,7 @@ export function ClearCartAfterOrder({ restaurantId }: { restaurantId: string }) 
  * Logo depois do pedido, abre sozinho o WhatsApp do restaurante com o pedido
  * escrito. Uma vez só por pedido: voltar ou recarregar a página não reabre.
  */
-export function OpenWhatsAppOnce({ code, url }: { code: string; url: string }) {
+export function OpenWhatsAppOnce({ code, appUrl, webUrl }: { code: string; appUrl: string; webUrl: string }) {
   useEffect(() => {
     const key = `mf_whats_${code}`;
     try {
@@ -28,6 +28,9 @@ export function OpenWhatsAppOnce({ code, url }: { code: string; url: string }) {
     } catch {
       // sem armazenamento: abre mesmo assim
     }
+    // no celular, whatsapp:// vai direto para o app, sem passar pela página do
+    // WhatsApp no navegador; no computador, o wa.me abre o WhatsApp Web
+    const phone = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     // um instante para a pessoa ver que o pedido foi feito
     const timer = setTimeout(() => {
       try {
@@ -35,10 +38,10 @@ export function OpenWhatsAppOnce({ code, url }: { code: string; url: string }) {
       } catch {
         // idem
       }
-      window.location.assign(url);
+      window.location.assign(phone ? appUrl : webUrl);
     }, 800);
     return () => clearTimeout(timer);
-  }, [code, url]);
+  }, [code, appUrl, webUrl]);
   return null;
 }
 

@@ -226,3 +226,6 @@ export function orderStatusUpdate(
     templateParams: [o.customerName, String(o.number), r.name, label, trackingUrl(o.code)].map(param),
   };
 }
+
+/** abre o app direto no celular, sem passar pela página do WhatsApp no navegador */
+export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
