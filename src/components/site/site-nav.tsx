@@ -76,7 +76,7 @@ export function BottomNav() {
             >
               <span className="relative">
                 <Icon className="size-6" aria-hidden="true" />
-                {badge !== undefined && badge > 0 && (
+                {badge !== undefined && (
                   <span className="absolute -top-2 -right-3 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[0.7rem] font-extrabold text-brand-ink tabular-nums">
                     {badge}
                   </span>

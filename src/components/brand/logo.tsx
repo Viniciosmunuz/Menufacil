@@ -7,17 +7,11 @@ import { cn } from "@/lib/cn";
 // Uso: o ícone sozinho é a marca principal. Ícone + nome só onde é preciso
 // dizer o nome (topo). A logo completa, com o slogan, fica para poucos
 // lugares (tela de entrada).
-export function LogoIcon({ className, title }: { className?: string; title?: string }) {
+
+/** os traços do ícone, no sistema de coordenadas original (viewBox 44 50 676 540) */
+export function LogoMark() {
   return (
-    <svg
-      viewBox="44 50 676 540"
-      fill="none"
-      role={title ? "img" : undefined}
-      aria-hidden={title ? undefined : true}
-      aria-label={title}
-      // sem classe, 36px de altura; com classe, quem chama define o tamanho
-      className={cn("w-auto shrink-0 text-brand", className ?? "h-9")}
-    >
+    <>
       <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
         {/* pegador da cúpula */}
         <circle cx="452" cy="100" r="31" strokeWidth="30" />
@@ -39,6 +33,22 @@ export function LogoIcon({ className, title }: { className?: string; title?: str
         fillRule="evenodd"
         d="M220 505H630L619 552Q612 585 578 585H252Q220 585 220 553ZM410 540H462A11 11 0 0 1 462 562H410A11 11 0 0 1 410 540Z"
       />
+    </>
+  );
+}
+
+export function LogoIcon({ className, title }: { className?: string; title?: string }) {
+  return (
+    <svg
+      viewBox="44 50 676 540"
+      fill="none"
+      role={title ? "img" : undefined}
+      aria-hidden={title ? undefined : true}
+      aria-label={title}
+      // sem classe, 36px de altura; com classe, quem chama define o tamanho
+      className={cn("w-auto shrink-0 text-brand", className ?? "h-9")}
+    >
+      <LogoMark />
     </svg>
   );
 }

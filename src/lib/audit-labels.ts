@@ -25,6 +25,7 @@ const actionLabel: Record<string, string> = {
   "menu.product_delete": "Produto excluído",
   "menu.product_available": "Disponibilidade do produto alterada",
   "menu.product_featured": "Destaque do produto alterado",
+  "demo.content": "Conteúdo de demonstração preenchido",
 };
 
 const openModeLabel: Record<string, string> = {

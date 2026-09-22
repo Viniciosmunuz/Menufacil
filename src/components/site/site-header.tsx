@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 
 import { CitySelect } from "./city-select";
+import { HideOnRestaurantPage } from "./hide-on-restaurant-page";
 import { MobileMenu } from "./mobile-menu";
 
 export function SearchBox({ defaultValue, className, autoFocus }: { defaultValue?: string; className?: string; autoFocus?: boolean }) {
@@ -19,7 +20,7 @@ export function SearchBox({ defaultValue, className, autoFocus }: { defaultValue
         placeholder="Busque por restaurantes, lanches, pizzas..."
         aria-label="Buscar restaurantes e pratos"
         enterKeyHint="search"
-        className="h-12 w-full rounded-full border border-line bg-surface-2 pr-4 pl-12 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+        className="h-12 w-full rounded-2xl border border-line bg-surface-2 pr-4 pl-12 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
       />
     </form>
   );
@@ -39,14 +40,17 @@ export function SiteHeader({ cities, city }: { cities: { city: string; state: st
           <CitySelect cities={cities} current={city} />
         </div>
       </div>
-      <div className="flex flex-col gap-2 px-4 pb-3 lg:hidden">
-        <SearchBox />
-        {cities.length > 1 && (
-          <div className="flex justify-end">
-            <CitySelect cities={cities} current={city} />
-          </div>
-        )}
-      </div>
+      {/* na página do restaurante a busca geral sai: a capa aparece inteira */}
+      <HideOnRestaurantPage>
+        <div className="flex flex-col gap-2 px-4 pb-3 lg:hidden">
+          <SearchBox />
+          {cities.length > 1 && (
+            <div className="flex justify-end">
+              <CitySelect cities={cities} current={city} />
+            </div>
+          )}
+        </div>
+      </HideOnRestaurantPage>
     </header>
   );
 }

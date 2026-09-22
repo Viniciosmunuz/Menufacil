@@ -4,19 +4,25 @@ import Link from "next/link";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-/** "É dono de um restaurante?" (home e coluna da direita) */
-export function OwnerCta({ className }: { className?: string }) {
+/** "É dono de um restaurante?" (home e coluna da direita); compact = ao lado do destaque no celular */
+export function OwnerCta({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-card border border-brand/60 bg-[linear-gradient(160deg,rgb(255_138_31/0.14),transparent_70%)] p-5",
+        "flex flex-col rounded-card border border-brand/70 bg-[linear-gradient(160deg,rgb(255_138_31/0.16),rgb(255_138_31/0.03)_60%)]",
+        compact ? "gap-2 p-3.5" : "gap-3 p-5",
         className,
       )}
     >
-      <Store className="size-10 text-brand" strokeWidth={1.6} aria-hidden="true" />
-      <h2 className="text-xl leading-tight font-extrabold">É dono de um restaurante?</h2>
-      <p className="text-muted">Cadastre seu estabelecimento e comece a receber pedidos em poucos minutos.</p>
-      <Link href="/cadastre-seu-restaurante" className={buttonClasses("primary", "md", "mt-1")}>
+      <Store className={cn("text-brand", compact ? "size-8" : "size-10")} strokeWidth={1.6} aria-hidden="true" />
+      <h2 className={cn("leading-tight font-extrabold", compact ? "text-[1.05rem]" : "text-xl")}>É dono de um restaurante?</h2>
+      <p className={cn("text-muted", compact ? "text-[0.78rem] leading-snug" : "")}>
+        Cadastre seu estabelecimento e comece a receber pedidos em poucos minutos.
+      </p>
+      <Link
+        href="/cadastre-seu-restaurante"
+        className={cn(buttonClasses("primary", compact ? "sm" : "md"), "mt-auto w-full", compact && "h-10 px-2 text-[0.8rem]")}
+      >
         Quero cadastrar
       </Link>
     </div>

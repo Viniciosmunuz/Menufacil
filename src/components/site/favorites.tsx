@@ -65,8 +65,8 @@ export function FavoriteButton({ slug, name, className }: { slug: string; name: 
       aria-pressed={on}
       aria-label={on ? `Tirar ${name} dos favoritos` : `Favoritar ${name}`}
       className={cn(
-        "grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur transition-colors",
-        on ? "border-brand/60 bg-brand-soft text-brand" : "border-line bg-bg/70 text-ink hover:text-brand",
+        "grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur-md transition active:scale-95",
+        on ? "border-brand/60 bg-bg/70 text-brand" : "border-white/10 bg-bg/60 text-ink hover:text-brand",
         className,
       )}
     >

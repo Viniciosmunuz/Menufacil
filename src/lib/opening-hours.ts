@@ -63,3 +63,29 @@ export function todayLabel(hours: OpeningHourData[], now = new Date()) {
   if (!today || today.closed) return "Hoje: fechado";
   return `Hoje: ${today.opensAt} às ${today.closesAt}`;
 }
+
+/** "Aberto · até 23:30" | "Fechado · abre às 11:00" | "Fechado · abre amanhã às 11:00" */
+export function openStatusLabel(openMode: OpenMode, hours: OpeningHourData[], now = new Date()) {
+  const open = isOpenNow(openMode, hours, now);
+  if (openMode === "OPEN") return { open, detail: null };
+  if (openMode === "CLOSED") return { open, detail: null };
+  if (hours.length === 0) return { open, detail: null };
+
+  const { weekday, minutes } = localClock(now);
+  const today = hours.find((h) => h.weekday === weekday);
+  if (open) {
+    // aberto por um horário de ontem que passou da meia-noite
+    const yesterday = hours.find((h) => h.weekday === (weekday + 6) % 7);
+    const closing = today && !today.closed && minutes >= toMinutes(today.opensAt) ? today.closesAt : yesterday?.closesAt;
+    return { open, detail: closing ? `até ${closing}` : null };
+  }
+  if (today && !today.closed && minutes < toMinutes(today.opensAt)) return { open, detail: `abre às ${today.opensAt}` };
+  for (let i = 1; i <= 7; i++) {
+    const day = hours.find((h) => h.weekday === (weekday + i) % 7);
+    if (day && !day.closed) {
+      const when = i === 1 ? "amanhã" : WEEKDAYS[day.weekday].toLowerCase();
+      return { open, detail: `abre ${when} às ${day.opensAt}` };
+    }
+  }
+  return { open, detail: null };
+}

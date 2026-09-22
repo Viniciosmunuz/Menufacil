@@ -1,17 +1,17 @@
-import { ArrowLeft, AtSign, Bike, Clock, Eye, MapPin, ShoppingBag, Star, Store } from "lucide-react";
+import { AtSign, Bike, ChevronDown, Clock, Eye, MapPin, ShoppingBag, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LogoIcon } from "@/components/brand/logo";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
 import { CartPanel } from "@/components/site/cart-panel";
 import { FavoriteButton } from "@/components/site/favorites";
+import { BackButton, ShareButton } from "@/components/site/restaurant-actions";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
-import { WEEKDAYS, localClock, todayLabel } from "@/lib/opening-hours";
+import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 
 export async function generateMetadata({ params }: PageProps<"/restaurante/[slug]">): Promise<Metadata> {
@@ -26,6 +26,15 @@ export async function generateMetadata({ params }: PageProps<"/restaurante/[slug
   };
 }
 
+function Chip({ icon: Icon, children }: { icon: typeof Clock; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-[0.8rem] font-bold text-ink/90">
+      <Icon className="size-4 text-brand" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
 export default async function RestaurantPage({ params, searchParams }: PageProps<"/restaurante/[slug]">) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -33,42 +42,34 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   if (!data) notFound();
   const { restaurant: r, isPreview, open } = data;
 
+  const status = openStatusLabel(r.openMode, r.openingHours);
   const place = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood, [r.city, r.state].filter(Boolean).join(" - ")]
     .filter(Boolean)
     .join(" · ");
   const time = deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax);
   const today = localClock().weekday;
-  const nextOpen = r.openingHours.find((h) => h.weekday === today && !h.closed);
-
   const categories = r.menuCategories.filter((c) => c.products.length > 0);
   const canOrder = open && !isPreview;
   const closedMessage = isPreview
     ? "Prévia: o restaurante ainda não está no ar."
     : !open
-      ? r.openMode === "CLOSED" || !nextOpen
-        ? "O restaurante está fechado agora."
-        : `O restaurante está fechado agora. Hoje abre às ${nextOpen.opensAt}.`
+      ? `O restaurante está fechado agora${status.detail ? ` e ${status.detail}` : ""}.`
       : null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col">
       {isPreview && (
-        <div className="flex items-center gap-2 rounded-card border border-info/40 bg-info/10 px-4 py-3 text-sm font-bold text-info">
+        <div className="mb-4 flex items-center gap-2 rounded-card border border-info/40 bg-info/10 px-4 py-3 text-sm font-bold text-info">
           <Eye className="size-4 shrink-0" aria-hidden="true" />
           Prévia: só quem gerencia o restaurante vê esta página enquanto ele não está no ar.
         </div>
       )}
 
-      <Link href="/restaurantes" className="inline-flex w-fit items-center gap-1.5 text-sm font-bold text-muted hover:text-ink">
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Restaurantes
-      </Link>
-
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
-          {/* capa e identificação */}
-          <section className="overflow-hidden rounded-card border border-line bg-surface">
-            <div className="relative aspect-[16/9] bg-surface-2 sm:aspect-[16/6]">
+          {/* capa de ponta a ponta no celular */}
+          <section className="-mx-4 -mt-4 lg:mx-0 lg:mt-0">
+            <div className="relative h-60 overflow-hidden bg-surface-2 sm:h-72 lg:rounded-card lg:border lg:border-line">
               {r.coverUrl ? (
                 <Image src={r.coverUrl} alt="" fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
               ) : (
@@ -76,73 +77,64 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                   <LogoIcon className="h-16 opacity-50" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" aria-hidden="true" />
-              <FavoriteButton slug={r.slug} name={r.name} className="absolute top-3 right-3" />
+              <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-bg/40" aria-hidden="true" />
+              <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+                <BackButton />
+                <div className="flex gap-2">
+                  <ShareButton title={r.name} />
+                  <FavoriteButton slug={r.slug} name={r.name} />
+                </div>
+              </div>
             </div>
-            <div className="relative flex flex-col gap-4 px-5 pb-5">
-              <div className="-mt-12 flex items-end gap-4">
-                <span className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-surface bg-surface-3 shadow-xl">
+
+            <div className="relative -mt-16 px-4 lg:px-6">
+              <div className="flex items-end justify-between gap-3">
+                <span className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-2xl">
                   {r.logoUrl ? (
-                    <Image src={r.logoUrl} alt="" fill sizes="96px" className="object-cover" />
+                    <Image src={r.logoUrl} alt={`Logo de ${r.name}`} fill sizes="96px" className="object-cover" />
                   ) : (
-                    <Store className="size-9 text-brand" aria-hidden="true" />
+                    <LogoIcon className="h-10" />
                   )}
                 </span>
                 <span
                   className={cn(
-                    "mb-1 inline-flex h-8 items-center gap-2 rounded-full px-3 text-sm font-extrabold",
-                    open ? "bg-success/15 text-success" : "bg-surface-3 text-muted",
+                    "mb-2 inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[0.82rem] font-extrabold",
+                    open ? "bg-success/15 text-success ring-1 ring-success/30" : "bg-surface-2 text-muted ring-1 ring-line",
                   )}
                 >
-                  <span className={cn("size-2 rounded-full", open ? "bg-success" : "bg-faint")} aria-hidden="true" />
-                  {open ? "Aberto agora" : "Fechado"}
+                  <span className={cn("size-2 rounded-full", open ? "animate-pulse bg-success" : "bg-faint")} aria-hidden="true" />
+                  {open ? "Aberto" : "Fechado"}
+                  {status.detail && <span className="font-bold opacity-80">· {status.detail}</span>}
                 </span>
               </div>
-              <div>
-                <h1 className="text-3xl leading-tight font-extrabold">{r.name}</h1>
-                {r.categories.length > 0 && <p className="text-muted">{r.categories.map((c) => c.name).join(" · ")}</p>}
-                {r.description && <p className="mt-2 max-w-2xl text-ink/90">{r.description}</p>}
-              </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                <li className="flex items-center gap-1.5 font-bold">
-                  {r.ratingCount > 0 && r.ratingAverage ? (
-                    <>
-                      <Star className="size-4 fill-brand text-brand" aria-hidden="true" />
-                      {r.ratingAverage.toFixed(1).replace(".", ",")} ({r.ratingCount} avaliações)
-                    </>
-                  ) : (
-                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-extrabold text-brand">Novo no MenuFácil</span>
-                  )}
-                </li>
-                <li className="flex items-center gap-1.5 text-muted">
-                  <Clock className="size-4 text-faint" aria-hidden="true" />
-                  {r.openMode === "AUTO" ? todayLabel(r.openingHours) : open ? "Aberto agora" : "Fechado agora"}
-                </li>
+
+              <h1 className="mt-3 text-[1.75rem] leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
+              {r.categories.length > 0 && <p className="mt-0.5 text-sm font-semibold text-muted">{r.categories.map((c) => c.name).join(" • ")}</p>}
+              {r.description && <p className="mt-3 max-w-2xl text-[0.95rem] leading-relaxed text-ink/85">{r.description}</p>}
+
+              <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+                {time && <Chip icon={Clock}>{time}</Chip>}
                 {r.deliveryEnabled && (
-                  <li className="flex items-center gap-1.5 text-muted">
-                    <Bike className="size-4 text-faint" aria-hidden="true" />
-                    {time ? `${time} · ` : ""}
-                    {r.deliveryFeeCents > 0 ? `entrega ${formatCents(r.deliveryFeeCents)}` : "entrega grátis"}
-                  </li>
+                  <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
                 )}
-                {r.pickupEnabled && (
-                  <li className="flex items-center gap-1.5 text-muted">
-                    <ShoppingBag className="size-4 text-faint" aria-hidden="true" />
-                    Retirada no local
-                  </li>
-                )}
-                {r.minOrderCents > 0 && <li className="text-muted">Pedido mínimo {formatCents(r.minOrderCents)}</li>}
-              </ul>
-              <details className="group rounded-control border border-line bg-surface-2 px-4 py-3 text-sm">
-                <summary className="cursor-pointer font-bold">Endereço e horários</summary>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2 text-muted">
-                    {place && (
-                      <p className="flex gap-2">
-                        <MapPin className="mt-0.5 size-4 shrink-0 text-faint" aria-hidden="true" />
-                        {place}
-                      </p>
-                    )}
+                {r.pickupEnabled && <Chip icon={ShoppingBag}>Retirada</Chip>}
+                {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}
+              </div>
+
+              <details className="group mt-4 rounded-card border border-line bg-surface">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <MapPin className="size-4 shrink-0 text-brand" aria-hidden="true" />
+                    <span className="truncate">Endereço, horários e pagamento</span>
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="grid gap-4 border-t border-line px-4 py-4 text-sm sm:grid-cols-2">
+                  <div className="flex flex-col gap-3 text-muted">
+                    {place && <p>{place}</p>}
+                    <p>
+                      <span className="font-bold text-ink">Pagamento:</span> Pix, com a chave mostrada depois do pedido.
+                    </p>
                     {r.instagram && (
                       <a
                         href={`https://instagram.com/${r.instagram}`}
@@ -159,8 +151,8 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                     <table className="w-full">
                       <tbody>
                         {r.openingHours.map((h) => (
-                          <tr key={h.weekday} className={cn(h.weekday === today && "font-extrabold text-ink")}>
-                            <td className="py-0.5 pr-4 text-muted">{WEEKDAYS[h.weekday]}</td>
+                          <tr key={h.weekday} className={cn(h.weekday === today ? "font-extrabold text-ink" : "text-muted")}>
+                            <td className="py-0.5 pr-4">{WEEKDAYS[h.weekday]}</td>
                             <td className="py-0.5 text-right tabular-nums">{h.closed ? "Fechado" : `${h.opensAt} às ${h.closesAt}`}</td>
                           </tr>
                         ))}
@@ -172,22 +164,18 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
             </div>
           </section>
 
-          {closedMessage && !isPreview && (
-            <p className="mt-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-sm font-bold text-muted">
-              {closedMessage} Você pode ver o cardápio à vontade.
-            </p>
-          )}
-
-          {categories.length === 0 ? (
-            <p className="mt-8 text-center text-muted">O cardápio ainda está sendo montado.</p>
-          ) : (
-            <RestaurantMenu
-              restaurant={{ id: r.id, slug: r.slug, name: r.name }}
-              categories={categories}
-              canOrder={canOrder}
-              closedMessage={closedMessage}
-            />
-          )}
+          <div className="lg:px-6">
+            {categories.length === 0 ? (
+              <p className="mt-10 text-center text-muted">O cardápio ainda está sendo montado.</p>
+            ) : (
+              <RestaurantMenu
+                restaurant={{ id: r.id, slug: r.slug, name: r.name }}
+                categories={categories}
+                canOrder={canOrder}
+                closedMessage={closedMessage}
+              />
+            )}
+          </div>
         </div>
 
         <aside className="sticky top-[5.75rem] hidden lg:block">
