@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, ReceiptText, ShieldCheck, Store } from "lucide-react";
+import { BookOpen, LayoutDashboard, ReceiptText, Store } from "lucide-react";
 import Link from "next/link";
 
 import { PanelShell } from "@/components/panel/panel-shell";
@@ -13,26 +13,23 @@ export default async function RestaurantPanelLayout({
 
   const base = `/painel/${restaurant.id}`;
 
-  // O admin da plataforma entra com a própria conta. A faixa deixa claro,
-  // o tempo todo, que ele está mexendo no restaurante de um cliente.
-  const adminBanner = viaAdmin ? (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand/40 bg-brand-soft px-4 py-2.5 text-sm sm:px-6">
-      <p className="flex items-center gap-2 font-semibold text-brand">
-        <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
-        Você está gerenciando <strong className="font-extrabold">{restaurant.name}</strong> como administrador.
-      </p>
-      <Link href={`/admin/restaurantes/${restaurant.id}`} className="font-bold text-ink underline-offset-4 hover:underline">
-        Voltar ao admin
+  // o admin entra com a própria conta: só um link discreto de volta, ao lado do nome
+  const context = viaAdmin ? (
+    <span className="flex flex-wrap items-center gap-x-2">
+      {restaurant.name}
+      <Link href={`/admin/restaurantes/${restaurant.id}`} className="font-bold text-brand underline-offset-4 hover:underline">
+        · Voltar ao admin
       </Link>
-    </div>
-  ) : null;
+    </span>
+  ) : (
+    restaurant.name
+  );
 
   return (
     <PanelShell
       homeHref={base}
-      context={restaurant.name}
+      context={context}
       userName={user.name}
-      banner={adminBanner}
       nav={[
         { href: base, label: "Início", icon: <LayoutDashboard />, exact: true },
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
