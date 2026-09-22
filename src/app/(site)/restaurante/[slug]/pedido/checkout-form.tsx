@@ -2,11 +2,11 @@
 
 import { Banknote, Bike, CreditCard, QrCode, ShoppingBag, Store } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useActionState, useState, useSyncExternalStore } from "react";
+import { Fragment, useActionState, useEffect, useState, useSyncExternalStore } from "react";
 
-import { cartSubtotal, useCart } from "@/components/site/cart-store";
+import { cartSubtotal, setQuantity as setCartQuantity, useCart } from "@/components/site/cart-store";
 import { Alert } from "@/components/ui/alert";
-import { buttonClasses } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { MoneyInput } from "@/components/ui/money-input";
@@ -14,6 +14,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { CardType, PaymentMethod } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import { selectionProblems, type OptionGroupData } from "@/lib/options";
 import { cardTypeLabel } from "@/lib/payment";
 
 import { submitOrder, type CheckoutState } from "./actions";
@@ -31,6 +32,8 @@ type RestaurantInfo = {
   open: boolean;
   /** formas que o restaurante aceita (Pix só com chave cadastrada) */
   payments: { pix: boolean; card: boolean; cash: boolean };
+  /** produtos que dá para pedir agora e as opções de cada um */
+  menu: Record<string, OptionGroupData[]>;
 };
 
 const choiceClasses = (selected: boolean, enabled = true) =>
@@ -82,6 +85,12 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const [cardType, setCardType] = useState<CardType | undefined>(state.values?.cardType as CardType | undefined);
   const [needsChange, setNeedsChange] = useState<"nao" | "sim" | undefined>(state.values?.needsChange as "nao" | "sim" | undefined);
 
+  // erro num campo: rola até ele (no celular o botão fica longe do topo)
+  useEffect(() => {
+    if (!state.fieldErrors) return;
+    document.querySelector<HTMLElement>('form [aria-invalid="true"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [state]);
+
   const mine = cart.restaurant?.id === restaurant.id && cart.items.length > 0;
   if (!mine) {
     return (
@@ -94,6 +103,24 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
       </Card>
     );
   }
+
+  // itens que saíram do cardápio, esgotaram ou mudaram de opções depois de irem para o carrinho
+  const stale = cart.items.filter((i) => {
+    const groups = restaurant.menu[i.productId];
+    return !groups || selectionProblems(groups, i.optionIds ?? []).length > 0;
+  });
+  const staleNotice = stale.length > 0 && (
+    <Alert tone="warning" className="flex flex-col items-start gap-2">
+      <span>
+        {stale.length === 1 ? "Este item saiu do cardápio ou mudou" : "Estes itens saíram do cardápio ou mudaram"}:{" "}
+        <strong>{stale.map((i) => i.name).join(", ")}</strong>. Tire do carrinho e, se quiser, escolha de novo no cardápio.
+      </span>
+      <Button size="sm" variant="secondary" onClick={() => stale.forEach((i) => setCartQuantity(i.key, 0))}>
+        Tirar do carrinho
+      </Button>
+    </Alert>
+  );
+  const firstError = state.error ?? (state.fieldErrors ? Object.values(state.fieldErrors)[0] : undefined);
 
   const subtotal = cartSubtotal(cart);
   const fee = type === "DELIVERY" ? restaurant.deliveryFeeCents : 0;
@@ -157,6 +184,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
       </div>
 
       <div className="flex min-w-0 flex-col gap-5">
+        {staleNotice}
         {state.error && <Alert tone="danger">{state.error}</Alert>}
         {state.fieldErrors && !state.error && <Alert tone="danger">Confira os campos marcados em vermelho.</Alert>}
 
@@ -368,7 +396,10 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
           )}
           {missing > 0 && <Alert tone="warning">Faltam {formatCents(missing)} para o pedido mínimo.</Alert>}
           {!restaurant.open && <Alert tone="warning">O restaurante está fechado agora.</Alert>}
-          <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || !method} className="w-full justify-between">
+          {staleNotice}
+          {/* o aviso também fica aqui: no celular, o topo do formulário está longe do botão */}
+          {firstError && <Alert tone="danger">{firstError}</Alert>}
+          <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || !method || stale.length > 0} className="w-full justify-between">
             <span>Fazer pedido</span>
             <span className="tabular-nums">{formatCents(total)}</span>
           </SubmitButton>

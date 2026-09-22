@@ -16,6 +16,10 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
   const { restaurant: r, open } = data;
 
   const address = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood].filter(Boolean).join(" - ") || null;
+  // cardápio atual (só o que dá para pedir): o checkout confere o carrinho antes de enviar
+  const menu = Object.fromEntries(
+    r.menuCategories.flatMap((c) => c.products.filter((p) => p.available).map((p) => [p.id, p.optionGroups] as const)),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,6 +37,7 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           address,
           open,
           payments: { pix: !!r.pixKey, card: r.acceptsCard, cash: r.acceptsCash },
+          menu,
         }}
       />
     </div>
