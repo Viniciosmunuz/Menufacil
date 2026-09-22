@@ -8,6 +8,7 @@ import type { OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/format";
 import { isOpenNow } from "@/lib/opening-hours";
+import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
 import { queueNewOrderMessages } from "@/server/whatsapp/queue";
 
@@ -39,6 +40,7 @@ const itemsSchema = z
         .min(1, "Quantidade inválida.")
         .max(MAX_QTY, `Quantidade acima do permitido (máximo ${MAX_QTY} de cada).`),
       notes: z.string().trim().max(140, "Observação muito longa.").optional().default(""),
+      optionIds: z.array(z.string().max(40), { error: "Opção inválida no carrinho." }).max(30).optional().default([]),
     }),
     { error: "Carrinho inválido." },
   )
@@ -126,7 +128,24 @@ export async function placeOrder(params: {
   const ids = [...new Set(items.map((i) => i.productId))];
   const products = await db.product.findMany({
     where: { id: { in: ids }, restaurantId: restaurant.id },
-    select: { id: true, name: true, priceCents: true, promoPriceCents: true, available: true, category: { select: { active: true } } },
+    select: {
+      id: true,
+      name: true,
+      priceCents: true,
+      promoPriceCents: true,
+      available: true,
+      category: { select: { active: true } },
+      optionGroups: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          name: true,
+          minSelect: true,
+          maxSelect: true,
+          options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
+        },
+      },
+    },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
   const lines = items.map((item) => {
@@ -135,10 +154,16 @@ export async function placeOrder(params: {
       throw new OrderError("Um item do carrinho saiu do cardápio. Confira o carrinho e tente de novo.");
     }
     if (!product.available) throw new OrderError(`"${product.name}" esgotou. Tire do carrinho para continuar.`);
-    const unit = product.promoPriceCents ?? product.priceCents;
+    // opções conferidas com o banco: o preço vem daqui, não do carrinho
+    const problems = selectionProblems(product.optionGroups, item.optionIds);
+    if (problems.length) {
+      throw new OrderError(`"${product.name}" mudou no cardápio (${problems[0]}). Tire do carrinho e escolha de novo.`);
+    }
+    const unit = (product.promoPriceCents ?? product.priceCents) + optionsPrice(product.optionGroups, item.optionIds);
     return {
       productId: product.id,
       productName: product.name,
+      optionsText: optionsText(product.optionGroups, item.optionIds),
       unitPriceCents: unit,
       quantity: item.quantity,
       notes: item.notes || null,

@@ -264,9 +264,39 @@ model Product {
 
   restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
+  orderItems   OrderItem[]
+  optionGroups ProductOptionGroup[]
 
   @@index([restaurantId, categoryId, sortOrder])
+}
+
+// Opções do produto (Tamanho, Sabor, Porção...). O preço de cada opção soma
+// ao preço do produto; minSelect 0 = opcional, 1 ou mais = obrigatório.
+model ProductOptionGroup {
+  id        String @id @default(cuid())
+  productId String
+  name      String
+  minSelect Int    @default(1)
+  maxSelect Int    @default(1)
+  sortOrder Int    @default(0)
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options ProductOption[]
+
+  @@index([productId, sortOrder])
+}
+
+model ProductOption {
+  id         String  @id @default(cuid())
+  groupId    String
+  name       String
+  priceCents Int     @default(0)
+  available  Boolean @default(true)
+  sortOrder  Int     @default(0)
+
+  group ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, sortOrder])
 }
 
 // ============================================================
@@ -381,6 +411,8 @@ model OrderItem {
   unitPriceCents Int
   quantity       Int
   notes          String?
+  // retrato das opções escolhidas: "Tamanho: Grande · Sabor: Calabresa"
+  optionsText    String?
   totalCents     Int
 
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)

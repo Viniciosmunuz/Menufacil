@@ -1,10 +1,23 @@
 // Restaurantes reais implantados pela equipe. O seed cria cada um uma única
-// vez (pelo endereço/slug); depois disso, tudo se ajusta pelo painel.
+// vez (pelo endereço/slug); depois disso, tudo se ajusta pelo painel. Uma
+// versão nova do cardápio (menuVersion) só entra se ninguém mexeu no
+// cardápio pelo painel.
 // Fotos: do Instagram do próprio restaurante e do Unsplash (licença livre),
 // em public/implantacao; algumas reaproveitam as de public/demo.
-// Limites do painel: nome da categoria 50, descrição 200; produto 80 e 400.
+// Limites do painel: categoria 50 e descrição 200; produto 80 e 400; grupo
+// de opções 40; opção 60.
 
-export type LaunchProduct = { name: string; description?: string; price: number; image?: string; featured?: boolean };
+/** grupo de opções; o preço de cada opção (centavos) soma ao do produto */
+export type LaunchOptionGroup = { name: string; min: number; max: number; options: { name: string; price: number }[] };
+
+export type LaunchProduct = {
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  featured?: boolean;
+  options?: LaunchOptionGroup[];
+};
 
 export type LaunchRestaurant = {
   slug: string;
@@ -22,6 +35,7 @@ export type LaunchRestaurant = {
   delivery: { enabled: boolean; fee: number; timeMin: number | null; timeMax: number | null };
   pickup: boolean;
   pix: { key: string; type: "PHONE" | "EMAIL" | "CPF" | "CNPJ" | "RANDOM"; holder: string | null };
+  menuVersion: number;
   menu: { name: string; description?: string; products: LaunchProduct[] }[];
 };
 
@@ -33,24 +47,43 @@ type Extra = Omit<LaunchProduct, "name" | "price">;
 
 const item = (name: string, reais: number, extra: Extra = {}): LaunchProduct => ({ name, price: cents(reais), ...extra });
 
-/** meia e inteira viram dois produtos, cada um com o seu preço */
-const halfWhole = (name: string, meia: number, inteira: number, extra: Extra = {}): LaunchProduct[] => [
-  item(`${name} (meia)`, meia, extra),
-  item(`${name} (inteira)`, inteira, extra),
-];
+/** escolha obrigatória de uma opção; o preço do produto é o da mais barata e as outras somam a diferença */
+function choice(name: string, entries: [string, number][]): { group: LaunchOptionGroup; base: number } {
+  const base = Math.min(...entries.map(([, reais]) => reais));
+  return {
+    base,
+    group: { name, min: 1, max: 1, options: entries.map(([label, reais]) => ({ name: label, price: cents(reais) - cents(base) })) },
+  };
+}
 
-/** calzone: pequeno e grande */
-const smallLarge = (name: string, pequeno: number, grande: number, extra: Extra = {}): LaunchProduct[] => [
-  item(`${name} (pequeno)`, pequeno, extra),
-  item(`${name} (grande)`, grande, extra),
-];
+/** opção que não muda o preço (sabor, tipo de massa) */
+const pick = (name: string, labels: string[]): LaunchOptionGroup => ({ name, min: 1, max: 1, options: labels.map((label) => ({ name: label, price: 0 })) });
 
+/** produto com preço que depende de uma escolha (porção, tamanho) e, antes dela, escolhas sem preço */
+function priced(name: string, groupName: string, entries: [string, number][], extra: Extra = {}, before: LaunchOptionGroup[] = []): LaunchProduct {
+  const { base, group } = choice(groupName, entries);
+  return item(name, base, { ...extra, options: [...before, group, ...(extra.options ?? [])] });
+}
+
+/** meia ou inteira */
+const halfWhole = (name: string, meia: number, inteira: number, extra: Extra = {}, before: LaunchOptionGroup[] = []) =>
+  priced(name, "Porção", [["Meia", meia], ["Inteira", inteira]], extra, before);
+
+const SABORES_TRADICIONAIS = ["Portuguesa", "Calabresa", "Atum", "Presunto", "Milho", "Vegetariana", "Cupuaçu", "Margarita", "Romeu e Julieta", "Mussarela"];
+const SABORES_ESPECIAIS = ["À moda da casa", "3 queijos", "Carne de sol com catupiry", "Frango com catupiry", "Palmito", "Bacon", "Camarão"];
 const PIZZA_TRADICIONAL =
-  "Sabor na observação: Portuguesa (presunto, calabresa, cebola, tomate, pimentão, ovo, azeitona, ervilha), Calabresa (calabresa, cebola), Atum (atum, cebola, azeitona), Presunto (presunto, tomate, azeitona), Milho, Vegetariana (azeitona, cogumelo, ervilha, milho verde, palmito), Cupuaçu (geleia), Margarita (tomate, manjericão), Romeu e Julieta (goiabada), Mussarela.";
+  "Portuguesa (presunto, calabresa, cebola, tomate, pimentão, ovo, azeitona, ervilha), Calabresa (calabresa, cebola), Atum (atum, cebola, azeitona), Presunto (presunto, tomate, azeitona), Milho, Vegetariana (azeitona, cogumelo, ervilha, milho verde, palmito), Cupuaçu (geleia), Margarita (tomate, manjericão), Romeu e Julieta (goiabada), Mussarela.";
 const PIZZA_ESPECIAL =
-  "Sabor na observação: À moda da casa (filé, cogumelo, cebola, queijo, azeitona), 3 queijos (provolone, requeijão), Carne de sol com catupiry (carne de sol, cogumelo, requeijão, cebola, azeitona), Frango com catupiry (molho de frango, requeijão), Palmito, Bacon (bacon, tomate, cebola), Camarão (molho de camarão).";
+  "À moda da casa (filé, cogumelo, cebola, queijo, azeitona), 3 queijos (provolone, requeijão), Carne de sol com catupiry (carne de sol, cogumelo, requeijão, cebola, azeitona), Frango com catupiry (molho de frango, requeijão), Palmito, Bacon (bacon, tomate, cebola), Camarão (molho de camarão).";
+const MASSA = pick("Massa", ["Espaguete", "Talharim"]);
+const ACOMPANHAMENTO = pick("Acompanhamento", ["Macaxeira", "Batata"]);
 const COM_ARROZ = "com porção de arroz";
-const SABOR_SUCO = "Sabores diversos: escolha na observação.";
+const SABOR_SUCO = "Sabores diversos: diga qual na observação.";
+const PIZZA_TAMANHOS = (brotinho: number, pequena: number, grande: number): [string, number][] => [
+  ["Brotinho", brotinho],
+  ["Pequena (4 fatias)", pequena],
+  ["Grande (8 fatias)", grande],
+];
 
 export const launchRestaurants: LaunchRestaurant[] = [
   {
@@ -71,6 +104,8 @@ export const launchRestaurants: LaunchRestaurant[] = [
     delivery: { enabled: false, fee: 0, timeMin: null, timeMax: null },
     pickup: true,
     pix: { key: "+5592994750615", type: "PHONE", holder: null },
+    // v2: tamanho, sabor e meia/inteira viraram opções do produto
+    menuVersion: 2,
     menu: [
       {
         name: "Grelhados",
@@ -124,68 +159,66 @@ export const launchRestaurants: LaunchRestaurant[] = [
         ],
       },
       {
-        name: "Pizzas tradicionais",
-        description: "Todas com mussarela. Escreva o sabor na observação do pedido.",
+        name: "Pizzas",
+        description: "Todas com mussarela. Escolha o tamanho e o sabor.",
         products: [
-          item("Pizza tradicional brotinho", 22, { description: PIZZA_TRADICIONAL, image: pl("pizza-tradicional") }),
-          item("Pizza tradicional pequena (4 fatias)", 32, { description: PIZZA_TRADICIONAL, image: pl("pizza-tradicional") }),
-          item("Pizza tradicional grande (8 fatias)", 52, { description: PIZZA_TRADICIONAL, image: pl("pizza-tradicional") }),
-        ],
-      },
-      {
-        name: "Pizzas especiais",
-        description: "Todas com mussarela. Escreva o sabor na observação do pedido.",
-        products: [
-          item("Pizza especial brotinho", 24, { description: PIZZA_ESPECIAL, image: pl("pizza-especial") }),
-          item("Pizza especial pequena (4 fatias)", 35, { description: PIZZA_ESPECIAL, image: pl("pizza-especial") }),
-          item("Pizza especial grande (8 fatias)", 56, { description: PIZZA_ESPECIAL, image: pl("pizza-especial") }),
+          priced("Pizza tradicional", "Tamanho", PIZZA_TAMANHOS(22, 32, 52), {
+            description: PIZZA_TRADICIONAL,
+            image: pl("pizza-tradicional"),
+            options: [pick("Sabor", SABORES_TRADICIONAIS)],
+          }),
+          priced("Pizza especial", "Tamanho", PIZZA_TAMANHOS(24, 35, 56), {
+            description: PIZZA_ESPECIAL,
+            image: pl("pizza-especial"),
+            options: [pick("Sabor", SABORES_ESPECIAIS)],
+          }),
         ],
       },
       {
         name: "Calzones",
         products: [
-          ...smallLarge("Calzone de filé", 35, 58, { image: pl("calzone") }),
-          ...smallLarge("Calzone de frango", 36, 56, { image: pl("calzone") }),
-          ...smallLarge("Calzone de queijo e presunto", 35, 57, { image: pl("calzone") }),
+          priced("Calzone de filé", "Tamanho", [["Pequeno", 35], ["Grande", 58]], { image: pl("calzone") }),
+          priced("Calzone de frango", "Tamanho", [["Pequeno", 36], ["Grande", 56]], { image: pl("calzone") }),
+          priced("Calzone de queijo e presunto", "Tamanho", [["Pequeno", 35], ["Grande", 57]], { image: pl("calzone") }),
         ],
       },
       {
         name: "Yakisoba",
         products: [
-          ...halfWhole("Big-Yakisoba", 37, 48, { description: "Carne, frango, calabresa, bacon e camarão.", image: demo("sushi/yakisoba"), featured: true }),
-          ...halfWhole("Yakisoba de carne", 23, 34, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de frango", 24, 34, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba misto", 27, 38, { description: "Carne e frango.", image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de camarão", 33, 44, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de peixe", 18, 29, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de carne com bacon", 24, 36, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de carne com calabresa", 23, 35, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de frango com calabresa", 22, 33, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de bacon", 23, 33, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de calabresa", 22, 32, { image: demo("sushi/yakisoba") }),
-          ...halfWhole("Yakisoba de legumes", 18, 25, { image: demo("sushi/yakisoba") }),
+          halfWhole("Big-Yakisoba", 37, 48, { description: "Carne, frango, calabresa, bacon e camarão.", image: demo("sushi/yakisoba"), featured: true }),
+          halfWhole("Yakisoba de carne", 23, 34, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de frango", 24, 34, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba misto", 27, 38, { description: "Carne e frango.", image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de camarão", 33, 44, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de peixe", 18, 29, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de carne com bacon", 24, 36, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de carne com calabresa", 23, 35, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de frango com calabresa", 22, 33, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de bacon", 23, 33, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de calabresa", 22, 32, { image: demo("sushi/yakisoba") }),
+          halfWhole("Yakisoba de legumes", 18, 25, { image: demo("sushi/yakisoba") }),
         ],
       },
       {
         name: "Massas",
-        description: "Espaguete ou talharim: escolha na observação do pedido.",
+        description: "Espaguete ou talharim.",
         products: [
-          ...halfWhole("Massa à bolonhesa", 22, 36, { description: "Carne moída e molho vermelho.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao molho de frango", 24, 39, { description: "Molho de frango e molho branco.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao molho de camarão", 34, 44, { description: "Molho branco e camarão fresco.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao molho à moda", 28, 39, { description: "Filé de carne e molho rosé.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao molho de atum", 24, 35, { description: "Atum, molho de tomate e creme de leite.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao molho de presunto", 18, 27, { description: "Molho branco e presunto.", image: pl("espaguete") }),
-          ...halfWhole("Massa ao sugo", 11, 17, { description: "Molho à base de tomate.", image: pl("espaguete") }),
-          ...halfWhole("Massa alho e óleo", 11, 18, { description: "Alho e óleo.", image: pl("espaguete") }),
+          halfWhole("Massa à bolonhesa", 22, 36, { description: "Carne moída e molho vermelho.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao molho de frango", 24, 39, { description: "Molho de frango e molho branco.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao molho de camarão", 34, 44, { description: "Molho branco e camarão fresco.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao molho à moda", 28, 39, { description: "Filé de carne e molho rosé.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao molho de atum", 24, 35, { description: "Atum, molho de tomate e creme de leite.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao molho de presunto", 18, 27, { description: "Molho branco e presunto.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa ao sugo", 11, 17, { description: "Molho à base de tomate.", image: pl("espaguete") }, [MASSA]),
+          halfWhole("Massa alho e óleo", 11, 18, { description: "Alho e óleo.", image: pl("espaguete") }, [MASSA]),
         ],
       },
       {
         name: "Lasanhas",
         description: "Sem acompanhamento.",
         products: [
-          ...halfWhole("Lasanha à bolonhesa", 25, 39, { description: "Carne moída, queijo e presunto.", image: pl("lasanha") }),
-          ...halfWhole("Lasanha de frango", 25, 40, { description: "Molho de frango, queijo e presunto.", image: pl("lasanha") }),
+          halfWhole("Lasanha à bolonhesa", 25, 39, { description: "Carne moída, queijo e presunto.", image: pl("lasanha") }),
+          halfWhole("Lasanha de frango", 25, 40, { description: "Molho de frango, queijo e presunto.", image: pl("lasanha") }),
         ],
       },
       {
@@ -203,17 +236,17 @@ export const launchRestaurants: LaunchRestaurant[] = [
       {
         name: "Iscas e petiscos",
         products: [
-          ...halfWhole("Batata frita", 16, 29, { image: demo("burger/batata-frita") }),
-          ...halfWhole("Macaxeira frita", 18, 28),
-          ...halfWhole("Frango à passarinho", 25, 35, { image: pl("frango-passarinho") }),
-          ...halfWhole("Carne de sol acebolada", 22, 33, { image: pl("carne-acebolada") }),
-          ...halfWhole("Carne de sol com macaxeira ou batata", 27, 36, { description: "Escolha macaxeira ou batata na observação." }),
-          ...halfWhole("Filé com macaxeira ou batata", 28, 38, { description: "Escolha macaxeira ou batata na observação." }),
-          ...halfWhole("Filé mignon", 27, 38),
-          ...halfWhole("Calabresa", 18, 26),
-          ...halfWhole("Mista 1", 29, 39, { description: "Filé, calabresa e batata." }),
-          ...halfWhole("Mista 2", 29, 39, { description: "Carne de sol, calabresa e macaxeira." }),
-          ...halfWhole("Pirarucu à milanesa", 28, 37, { image: pl("pirarucu-milanesa") }),
+          halfWhole("Batata frita", 16, 29, { image: demo("burger/batata-frita") }),
+          halfWhole("Macaxeira frita", 18, 28),
+          halfWhole("Frango à passarinho", 25, 35, { image: pl("frango-passarinho") }),
+          halfWhole("Carne de sol acebolada", 22, 33, { image: pl("carne-acebolada") }),
+          halfWhole("Carne de sol com macaxeira ou batata", 27, 36, {}, [ACOMPANHAMENTO]),
+          halfWhole("Filé com macaxeira ou batata", 28, 38, {}, [ACOMPANHAMENTO]),
+          halfWhole("Filé mignon", 27, 38),
+          halfWhole("Calabresa", 18, 26),
+          halfWhole("Mista 1", 29, 39, { description: "Filé, calabresa e batata." }),
+          halfWhole("Mista 2", 29, 39, { description: "Carne de sol, calabresa e macaxeira." }),
+          halfWhole("Pirarucu à milanesa", 28, 37, { image: pl("pirarucu-milanesa") }),
           item("Camarão alho e óleo", 33),
           item("Casquinha de caranguejo", 27),
           item("Queijo coalho", 19),
@@ -235,46 +268,39 @@ export const launchRestaurants: LaunchRestaurant[] = [
       {
         name: "Caldos",
         products: [
-          ...halfWhole("Canja de galinha", 10, 20, { image: pl("caldo") }),
-          ...halfWhole("Caldo de carne com legumes", 11, 21, { image: pl("caldo") }),
-          ...halfWhole("Caldo verde", 11, 21, { image: pl("caldo") }),
-          ...halfWhole("Mocotó", 11, 21, { image: pl("caldo") }),
+          halfWhole("Canja de galinha", 10, 20, { image: pl("caldo") }),
+          halfWhole("Caldo de carne com legumes", 11, 21, { image: pl("caldo") }),
+          halfWhole("Caldo verde", 11, 21, { image: pl("caldo") }),
+          halfWhole("Mocotó", 11, 21, { image: pl("caldo") }),
         ],
       },
       {
         name: "Saladas",
         products: [
-          ...halfWhole("Salada Papaléguas", 18, 28, { description: "Alface, tomate, pepino, palmito, cogumelo e cenoura ralada.", image: pl("salada") }),
-          ...halfWhole("Salada simples", 10, 18, { description: "Alface, tomate e pepino.", image: pl("salada") }),
-          ...halfWhole("Salada quente", 17, 22, { description: "Repolho, couve-flor, brócolis, pimentão, cebola e cenoura." }),
+          halfWhole("Salada Papaléguas", 18, 28, { description: "Alface, tomate, pepino, palmito, cogumelo e cenoura ralada.", image: pl("salada") }),
+          halfWhole("Salada simples", 10, 18, { description: "Alface, tomate e pepino.", image: pl("salada") }),
+          halfWhole("Salada quente", 17, 22, { description: "Repolho, couve-flor, brócolis, pimentão, cebola e cenoura." }),
         ],
       },
       {
         name: "Sobremesas",
-        products: [
-          item("Salada de fruta 500 ml", 17, { image: pl("salada-de-fruta") }),
-          item("Salada de fruta 250 ml", 10, { image: pl("salada-de-fruta") }),
-        ],
+        products: [priced("Salada de fruta", "Tamanho", [["250 ml", 10], ["500 ml", 17]], { image: pl("salada-de-fruta") })],
       },
       {
         name: "Bebidas",
         products: [
-          item("Refrigerante lata", 6, { image: demo("comum/refrigerante") }),
-          item("Refrigerante mini", 2, { image: demo("comum/refrigerante") }),
-          item("Refrigerante 1 litro", 9, { image: demo("comum/refrigerante") }),
-          item("Refrigerante 2 litros", 15, { image: demo("comum/refrigerante") }),
-          item("Suco 300 ml", 8, { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
-          item("Suco com leite 300 ml", 9, { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
-          item("Suco jarra", 20, { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
-          item("Suco com leite jarra", 25, { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
+          priced(
+            "Refrigerante",
+            "Tamanho",
+            [["Mini", 2], ["Lata", 6], ["1 litro", 9], ["2 litros", 15]],
+            { description: "Diga o sabor na observação.", image: demo("comum/refrigerante") },
+          ),
+          priced("Suco", "Tamanho", [["300 ml", 8], ["Jarra", 20]], { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
+          priced("Suco com leite", "Tamanho", [["300 ml", 9], ["Jarra", 25]], { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
           item("Suco em lata", 5, { description: SABOR_SUCO }),
-          item("Suco detox 300 ml", 9.5),
-          item("Suco detox jarra", 24),
-          item("Vitaminada 300 ml", 9.5),
-          item("Vitaminada jarra", 25),
-          item("Água mineral 350 ml", 2.5, { image: demo("comum/agua") }),
-          item("Água mineral 500 ml", 4, { image: demo("comum/agua") }),
-          item("Água mineral 2 litros", 7, { image: demo("comum/agua") }),
+          priced("Suco detox", "Tamanho", [["300 ml", 9.5], ["Jarra", 24]]),
+          priced("Vitaminada", "Tamanho", [["300 ml", 9.5], ["Jarra", 25]]),
+          priced("Água mineral", "Tamanho", [["350 ml", 2.5], ["500 ml", 4], ["2 litros", 7]], { image: demo("comum/agua") }),
           item("Água com gás 350 ml", 4, { image: demo("comum/agua") }),
           item("Água tônica lata", 6),
         ],
@@ -283,19 +309,20 @@ export const launchRestaurants: LaunchRestaurant[] = [
         name: "Drinks",
         description: "Venda proibida para menores de 18 anos.",
         products: [
-          item("Cerveja lata", 6, { image: pl("cerveja") }),
-          item("Cerveja long neck", 12, { image: pl("cerveja") }),
-          item("Cerveja 600 ml", 19, { image: pl("cerveja") }),
-          item("Caipirinha", 10, { description: "Limão, açúcar, gelo e cachaça.", image: pl("caipirinha") }),
-          item("Caipirinha verde", 12, { description: "Limão, açúcar, gelo, cachaça e couve.", image: pl("caipirinha") }),
-          item("Caipirosca", 11, { description: "Limão, açúcar, gelo e vodka Skarloff.", image: pl("caipirinha") }),
-          item("Caipirosca verde", 13, { description: "Limão, açúcar, gelo, vodka Skarloff e couve.", image: pl("caipirinha") }),
+          priced("Cerveja", "Tamanho", [["Lata", 6], ["Long neck", 12], ["600 ml", 19]], { image: pl("cerveja") }),
+          priced("Caipirinha", "Tipo", [["Tradicional", 10], ["Verde (com couve)", 12]], {
+            description: "Limão, açúcar, gelo e cachaça.",
+            image: pl("caipirinha"),
+          }),
+          priced("Caipirosca", "Tipo", [["Tradicional", 11], ["Verde (com couve)", 13]], {
+            description: "Limão, açúcar, gelo e vodka Skarloff.",
+            image: pl("caipirinha"),
+          }),
+          priced("Whisky", "Tipo", [["8 anos", 20], ["12 anos", 25]]),
           item("Cuba livre", 13),
           item("Campari", 11),
           item("Montilla", 11),
           item("Martini", 10),
-          item("Whisky 8 anos", 20),
-          item("Whisky 12 anos", 25),
           item("Cachaça", 3),
           item("Vodka Skarloff", 3.5),
         ],

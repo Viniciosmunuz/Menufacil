@@ -16,6 +16,18 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 import { deleteProduct, saveProduct, type MenuFormState } from "../actions";
 
+import { OptionGroupsEditor, type EditableGroup } from "./option-groups-editor";
+
+/** o que voltou do servidor com erro (JSON do editor) ou o que está salvo */
+function initialGroups(raw: string | undefined, saved: EditableGroup[]) {
+  if (!raw) return saved;
+  try {
+    return JSON.parse(raw) as EditableGroup[];
+  } catch {
+    return saved;
+  }
+}
+
 export type ProductFormData = {
   id?: string;
   categoryId: string;
@@ -26,6 +38,7 @@ export type ProductFormData = {
   promoPriceCents: number | null;
   available: boolean;
   featured: boolean;
+  optionGroups: EditableGroup[];
 };
 
 export function ProductForm({
@@ -71,7 +84,8 @@ export function ProductForm({
             <Textarea id="description" name="description" maxLength={400} rows={3} defaultValue={pick("description", product.description ?? "")} placeholder="Ex.: Molho de tomate, muçarela, calabresa e cebola. 8 fatias." />
           </Field>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Field label="Preço" htmlFor="price" error={err.price}>
+            <Field label="Preço" htmlFor="price" error={err.price} hint="Com opções de preço (tamanho, porção), é o menor valor.">
+
               <MoneyInput id="price" name="price" required defaultValue={pick("price", centsToInput(product.priceCents))} aria-invalid={!!err.price} />
             </Field>
             <Field
@@ -83,6 +97,13 @@ export function ProductForm({
               <MoneyInput id="promoPrice" name="promoPrice" defaultValue={pick("promoPrice", centsToInput(product.promoPriceCents))} aria-invalid={!!err.promoPrice} />
             </Field>
           </div>
+        </Card>
+
+        <Card className="flex flex-col gap-2">
+          <SectionTitle description="Tamanho, sabor, meia/inteira ou adicionais. O valor de cada opção soma ao preço do produto: deixe 0,00 quando não muda o preço.">
+            Opções
+          </SectionTitle>
+          <OptionGroupsEditor initial={initialGroups(v?.optionGroups, product.optionGroups)} error={err.optionGroups} />
         </Card>
 
         <Card className="flex flex-col gap-5">

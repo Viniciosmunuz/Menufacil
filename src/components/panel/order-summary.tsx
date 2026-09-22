@@ -30,7 +30,7 @@ export const orderSummarySelect = {
   totalCents: true,
   createdAt: true,
   paymentMethod: true,
-  items: { orderBy: { id: "asc" }, select: { id: true, productName: true, quantity: true, totalCents: true, notes: true } },
+  items: { orderBy: { id: "asc" }, select: { id: true, productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
   payment: { select: { status: true, cardType: true, changeForCents: true } },
 } satisfies Prisma.OrderSelect;
 
@@ -66,6 +66,7 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
             <li key={i.id} className="flex justify-between gap-3">
               <span className="min-w-0">
                 <span className="font-bold">{i.quantity}x</span> {i.productName}
+                {i.optionsText && <span className="block font-semibold text-brand">{i.optionsText}</span>}
                 {i.notes && <span className="block text-muted">Obs.: {i.notes}</span>}
               </span>
               <span className="shrink-0 tabular-nums">{formatCents(i.totalCents)}</span>

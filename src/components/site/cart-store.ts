@@ -7,14 +7,18 @@ import { useSyncExternalStore } from "react";
 // pedido de verdade é o servidor, com os preços do banco.
 
 export type CartItem = {
-  /** produto + observação: o mesmo lanche "sem cebola" é outra linha */
+  /** produto + opções + observação: a mesma pizza em outro tamanho é outra linha */
   key: string;
   productId: string;
   name: string;
+  /** já com as opções somadas */
   unitPriceCents: number;
   quantity: number;
   notes: string;
   imageUrl: string | null;
+  /** carrinhos salvos antes das opções não têm estes campos */
+  optionIds?: string[];
+  optionsText?: string | null;
 };
 
 export type CartRestaurant = { id: string; slug: string; name: string };
@@ -93,11 +97,12 @@ export function addToCart(
   }
   const base = cart.restaurant?.id === restaurant.id ? cart.items : [];
   const notes = item.notes.trim().slice(0, 140);
-  const key = `${item.productId}:${notes.toLowerCase()}`;
+  const optionIds = [...(item.optionIds ?? [])].sort();
+  const key = `${item.productId}:${optionIds.join(",")}:${notes.toLowerCase()}`;
   const existing = base.find((i) => i.key === key);
   const items = existing
     ? base.map((i) => (i.key === key ? { ...i, quantity: Math.min(MAX_QUANTITY, i.quantity + item.quantity) } : i))
-    : [...base, { ...item, notes, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
+    : [...base, { ...item, notes, optionIds, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
   write({ restaurant, items });
   return "ok";
 }

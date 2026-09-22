@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/panel/page-header";
+import { centsToInput } from "@/components/ui/money-input";
 import { db } from "@/lib/db";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
@@ -27,6 +28,16 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
         promoPriceCents: true,
         available: true,
         featured: true,
+        optionGroups: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            name: true,
+            minSelect: true,
+            maxSelect: true,
+            options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
+          },
+        },
       },
     }),
     db.menuCategory.findMany({
@@ -40,7 +51,20 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
   return (
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: `/painel/${restaurant.id}/cardapio#categoria-${product.categoryId}`, label: "Cardápio" }} title={product.name} />
-      <ProductForm restaurantId={restaurant.id} categories={categories} product={product} />
+      <ProductForm
+        restaurantId={restaurant.id}
+        categories={categories}
+        product={{
+          ...product,
+          optionGroups: product.optionGroups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            required: g.minSelect > 0,
+            max: g.maxSelect,
+            options: g.options.map((o) => ({ id: o.id, name: o.name, price: centsToInput(o.priceCents), available: o.available })),
+          })),
+        }}
+      />
     </div>
   );
 }

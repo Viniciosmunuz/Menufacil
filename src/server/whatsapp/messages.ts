@@ -3,6 +3,7 @@ import "server-only";
 import type { CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
+import { itemLabel } from "@/lib/options";
 import { paymentHint, paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { appUrl } from "@/lib/site";
@@ -38,7 +39,7 @@ type OrderForMessage = {
   totalCents: number;
   paymentMethod: PaymentMethod;
   payment: { cardType: CardType | null; changeForCents: number | null } | null;
-  items: { productName: string; quantity: number; totalCents: number; notes: string | null }[];
+  items: { productName: string; optionsText?: string | null; quantity: number; totalCents: number; notes: string | null }[];
 };
 
 /** "Cartão de débito" + "Levar a maquininha na entrega." (nada extra no Pix) */
@@ -87,7 +88,7 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
     "",
     "*Itens*",
     ...o.items.flatMap((i) => [
-      `${i.quantity}x ${i.productName} — ${formatCents(i.totalCents)}`,
+      `${i.quantity}x ${itemLabel(i)} — ${formatCents(i.totalCents)}`,
       ...(i.notes ? [`   _Obs.: ${i.notes}_`] : []),
     ]),
     "",
@@ -109,7 +110,7 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
   ];
 
   const itemsInline = o.items
-    .map((i) => `${i.quantity}x ${i.productName}${i.notes ? ` (${i.notes})` : ""}`)
+    .map((i) => `${i.quantity}x ${itemLabel(i)}${i.notes ? ` (${i.notes})` : ""}`)
     .join("; ");
 
   return {
@@ -149,7 +150,7 @@ export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
     "",
     `*Pedido #${o.number}*`,
     ...o.items.flatMap((i) => [
-      `${i.quantity}x ${i.productName} — ${formatCents(i.totalCents)}`,
+      `${i.quantity}x ${itemLabel(i)} — ${formatCents(i.totalCents)}`,
       ...(i.notes ? [`   _Obs.: ${i.notes}_`] : []),
     ]),
     "",

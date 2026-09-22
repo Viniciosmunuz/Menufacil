@@ -9,6 +9,15 @@ import { LogoIcon } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import {
+  hasPricedOptions,
+  optionsPrice,
+  optionsText,
+  selectionProblems,
+  startingPrice,
+  type OptionData,
+  type OptionGroupData,
+} from "@/lib/options";
 
 import { addToCart, cartCount, cartSubtotal, useCart, type CartRestaurant } from "./cart-store";
 import { QuantityStepper } from "./quantity-stepper";
@@ -22,11 +31,14 @@ export type MenuProduct = {
   promoPriceCents: number | null;
   available: boolean;
   featured: boolean;
+  optionGroups: OptionGroupData[];
 };
 
 export type MenuCategory = { id: string; name: string; description: string | null; products: MenuProduct[] };
 
 const unitPrice = (p: MenuProduct) => p.promoPriceCents ?? p.priceCents;
+/** preço do cardápio: com opções que mudam o preço, o menor possível */
+const listPrice = (p: MenuProduct) => startingPrice(unitPrice(p), p.optionGroups);
 const normalize = (text: string) =>
   text
     .normalize("NFD")
@@ -34,11 +46,71 @@ const normalize = (text: string) =>
     .toLowerCase();
 
 function Price({ p, className }: { p: MenuProduct; className?: string }) {
+  const from = hasPricedOptions(p.optionGroups);
   return (
     <span className={cn("flex flex-wrap items-baseline gap-x-2", className)}>
-      <span className={cn("font-extrabold", !!p.promoPriceCents && "text-brand")}>{formatCents(unitPrice(p))}</span>
-      {!!p.promoPriceCents && <s className="text-[0.8em] text-faint">{formatCents(p.priceCents)}</s>}
+      {from && <span className="text-[0.8em] font-semibold text-muted">a partir de</span>}
+      <span className={cn("font-extrabold", !!p.promoPriceCents && "text-brand")}>{formatCents(listPrice(p))}</span>
+      {!!p.promoPriceCents && !from && <s className="text-[0.8em] text-faint">{formatCents(p.priceCents)}</s>}
     </span>
+  );
+}
+
+/** grupo de opções na janela do produto: escolha única vira "bolinha", múltipla vira "quadradinho" */
+function OptionGroupPicker({
+  group,
+  selected,
+  onToggle,
+}: {
+  group: OptionGroupData;
+  selected: string[];
+  onToggle: (group: OptionGroupData, option: OptionData) => void;
+}) {
+  const single = group.maxSelect === 1;
+  const count = group.options.filter((o) => selected.includes(o.id)).length;
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-2 flex w-full items-center justify-between gap-3">
+        <span className="font-extrabold">{group.name}</span>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-0.5 text-xs font-bold",
+            group.minSelect > 0 && count < group.minSelect ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted",
+          )}
+        >
+          {group.minSelect > 0 ? "Obrigatório" : "Opcional"}
+          {group.maxSelect > 1 ? ` · até ${group.maxSelect}` : ""}
+        </span>
+      </legend>
+      {group.options.map((o) => {
+        const checked = selected.includes(o.id);
+        return (
+          <label
+            key={o.id}
+            className={cn(
+              "flex min-h-12 cursor-pointer items-center gap-3 rounded-control border px-4 py-2.5",
+              !o.available && "cursor-not-allowed opacity-50",
+              checked ? "border-brand bg-brand-soft" : "border-line bg-surface-2 hover:border-line-strong",
+            )}
+          >
+            <input
+              type={single ? "radio" : "checkbox"}
+              name={`opcao-${group.id}`}
+              checked={checked}
+              disabled={!o.available}
+              onChange={() => onToggle(group, o)}
+              onClick={() => single && checked && group.minSelect === 0 && onToggle(group, o)}
+              className="size-4 shrink-0 accent-brand"
+            />
+            <span className="min-w-0 flex-1 font-semibold">
+              {o.name}
+              {!o.available && <span className="ml-1 text-sm font-normal text-faint">(acabou)</span>}
+            </span>
+            {o.priceCents > 0 && <span className="shrink-0 text-sm font-bold text-muted tabular-nums">+ {formatCents(o.priceCents)}</span>}
+          </label>
+        );
+      })}
+    </fieldset>
   );
 }
 
@@ -62,7 +134,7 @@ function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) =>
       <button
         type="button"
         onClick={() => onOpen(p)}
-        aria-label={`${p.name}, ${formatCents(unitPrice(p))}${p.available ? "" : ", esgotado"}`}
+        aria-label={`${p.name}, ${hasPricedOptions(p.optionGroups) ? "a partir de " : ""}${formatCents(listPrice(p))}${p.available ? "" : ", esgotado"}`}
         className="group flex w-full items-stretch gap-3 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99]"
       >
         <span className={cn("flex min-w-0 flex-1 flex-col", !p.available && "opacity-55")}>
@@ -116,6 +188,7 @@ export function RestaurantMenu({
   const [product, setProduct] = useState<MenuProduct | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [conflict, setConflict] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
@@ -173,6 +246,7 @@ export function RestaurantMenu({
     setProduct(p);
     setQuantity(1);
     setNotes("");
+    setSelected([]);
     setConflict(false);
     dialogRef.current?.showModal();
   }
@@ -181,11 +255,37 @@ export function RestaurantMenu({
     dialogRef.current?.close();
   }
 
+  function toggleOption(group: OptionGroupData, option: OptionData) {
+    setSelected((current) => {
+      const inGroup = new Set(group.options.map((o) => o.id));
+      if (current.includes(option.id)) {
+        // escolha única obrigatória: tocar na mesma não desmarca
+        return group.maxSelect === 1 && group.minSelect > 0 ? current : current.filter((id) => id !== option.id);
+      }
+      if (group.maxSelect === 1) return [...current.filter((id) => !inGroup.has(id)), option.id];
+      if (current.filter((id) => inGroup.has(id)).length >= group.maxSelect) return current;
+      return [...current, option.id];
+    });
+  }
+
+  const groups = product?.optionGroups ?? [];
+  const problems = product ? selectionProblems(groups, selected) : [];
+  const itemPrice = product ? unitPrice(product) + optionsPrice(groups, selected) : 0;
+
   function add(replace = false) {
-    if (!product) return;
+    if (!product || problems.length > 0) return;
     const result = addToCart(
       restaurant,
-      { productId: product.id, name: product.name, unitPriceCents: unitPrice(product), quantity, notes, imageUrl: product.imageUrl },
+      {
+        productId: product.id,
+        name: product.name,
+        unitPriceCents: itemPrice,
+        quantity,
+        notes,
+        imageUrl: product.imageUrl,
+        optionIds: selected,
+        optionsText: optionsText(groups, selected),
+      },
       { replace },
     );
     if (result === "conflict") {
@@ -392,6 +492,8 @@ export function RestaurantMenu({
                   {product.description && <p className="mt-1.5 leading-relaxed text-muted">{product.description}</p>}
                   <Price p={product} className="mt-3 text-xl" />
                 </div>
+                {product.available &&
+                  groups.map((g) => <OptionGroupPicker key={g.id} group={g} selected={selected} onToggle={toggleOption} />)}
                 {canOrder && product.available && (
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-bold">Alguma observação?</span>
@@ -429,12 +531,15 @@ export function RestaurantMenu({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <QuantityStepper value={quantity} onChange={setQuantity} label={product.name} />
-                  <Button size="lg" className="flex-1 justify-between rounded-2xl" onClick={() => add()}>
-                    <span>Adicionar</span>
-                    <span className="tabular-nums">{formatCents(unitPrice(product) * quantity)}</span>
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  {problems.length > 0 && <p className="text-center text-sm font-bold text-brand">{problems[0]}</p>}
+                  <div className="flex items-center gap-3">
+                    <QuantityStepper value={quantity} onChange={setQuantity} label={product.name} />
+                    <Button size="lg" className="flex-1 justify-between rounded-2xl" onClick={() => add()} disabled={problems.length > 0}>
+                      <span>Adicionar</span>
+                      <span className="tabular-nums">{formatCents(itemPrice * quantity)}</span>
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

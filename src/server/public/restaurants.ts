@@ -155,6 +155,16 @@ export async function getPublicRestaurant(slug: string, preview: boolean) {
               promoPriceCents: true,
               available: true,
               featured: true,
+              optionGroups: {
+                orderBy: { sortOrder: "asc" },
+                select: {
+                  id: true,
+                  name: true,
+                  minSelect: true,
+                  maxSelect: true,
+                  options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
+                },
+              },
             },
           },
         },

@@ -64,6 +64,7 @@ export function CartPanel({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-bold">{item.name}</p>
+                {item.optionsText && <p className="text-sm text-ink/80">{item.optionsText}</p>}
                 {item.notes && <p className="text-sm text-muted">Obs.: {item.notes}</p>}
               </div>
               <p className="shrink-0 font-extrabold tabular-nums">{formatCents(item.unitPriceCents * item.quantity)}</p>

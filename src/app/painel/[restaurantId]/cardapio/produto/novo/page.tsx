@@ -40,6 +40,7 @@ export default async function NewProductPage({ params, searchParams }: PageProps
           promoPriceCents: null,
           available: true,
           featured: false,
+          optionGroups: [],
         }}
       />
     </div>

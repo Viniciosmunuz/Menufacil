@@ -229,6 +229,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             <li key={i.id} className="flex justify-between gap-3">
               <span>
                 <span className="font-bold">{i.quantity}x</span> {i.productName}
+                {i.optionsText && <span className="block text-sm text-ink/80">{i.optionsText}</span>}
                 {i.notes && <span className="block text-sm text-muted">Obs.: {i.notes}</span>}
               </span>
               <span className="shrink-0 tabular-nums">{formatCents(i.totalCents)}</span>

@@ -101,7 +101,9 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const missing = Math.max(0, restaurant.minOrderCents - subtotal);
   const err = state.fieldErrors ?? {};
   const v = (key: string) => state.values?.[key] ?? saved[key] ?? "";
-  const items = JSON.stringify(cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity, notes: i.notes })));
+  const items = JSON.stringify(
+    cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity, notes: i.notes, optionIds: i.optionIds ?? [] })),
+  );
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     try {
@@ -324,6 +326,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               <li key={i.key} className="flex justify-between gap-3">
                 <span className="min-w-0">
                   <span className="font-bold">{i.quantity}x</span> {i.name}
+                  {i.optionsText && <span className="block text-ink/80">{i.optionsText}</span>}
                   {i.notes && <span className="block text-muted">Obs.: {i.notes}</span>}
                 </span>
                 <span className="shrink-0 tabular-nums">{formatCents(i.unitPriceCents * i.quantity)}</span>

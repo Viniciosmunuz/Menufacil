@@ -200,19 +200,77 @@ async function seedDemo() {
 }
 
 const LAUNCH_MARK = "launch.content";
+const menuMark = (version: number) => `launch.menu.v${version}`;
+
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+/** cardápio da implantação: categorias, produtos e opções */
+async function createLaunchMenu(tx: Tx, restaurantId: string, menu: (typeof launchRestaurants)[number]["menu"]) {
+  for (const [categoryOrder, category] of menu.entries()) {
+    await tx.menuCategory.create({
+      data: {
+        restaurantId,
+        name: category.name,
+        description: category.description ?? null,
+        sortOrder: categoryOrder,
+        products: {
+          create: category.products.map((p, i) => ({
+            restaurantId,
+            name: p.name,
+            description: p.description ?? null,
+            imageUrl: p.image ?? null,
+            priceCents: p.price,
+            featured: p.featured ?? false,
+            sortOrder: i,
+            optionGroups: {
+              create: (p.options ?? []).map((g, groupOrder) => ({
+                name: g.name,
+                minSelect: g.min,
+                maxSelect: g.max,
+                sortOrder: groupOrder,
+                options: { create: g.options.map((o, optionOrder) => ({ name: o.name, priceCents: o.price, sortOrder: optionOrder })) },
+              })),
+            },
+          })),
+        },
+      },
+    });
+  }
+}
 
 /** restaurantes reais (launch-data.ts): criados uma vez só; depois, vale o painel */
 async function seedLaunches() {
   for (const launch of launchRestaurants) {
+    const products = launch.menu.reduce((sum, c) => sum + c.products.length, 0);
     const existing = await db.restaurant.findUnique({ where: { slug: launch.slug }, select: { id: true, logoUrl: true } });
     if (existing) {
       // troca de logo feita pela equipe: só se ninguém mudou a logo pelo painel
       if (existing.logoUrl && launch.previousLogos?.includes(existing.logoUrl)) {
         await db.restaurant.update({ where: { id: existing.id }, data: { logoUrl: launch.logo } });
         console.log(`• "${launch.name}": logo atualizada.`);
-      } else {
-        console.log(`• "${launch.name}" já implantado.`);
       }
+      // cardápio novo da equipe: só entra se ninguém mexeu no cardápio pelo painel
+      const mark = menuMark(launch.menuVersion);
+      const applied = await db.auditLog.findFirst({ where: { restaurantId: existing.id, action: mark }, select: { id: true } });
+      if (!applied) {
+        const edited = await db.auditLog.findFirst({ where: { restaurantId: existing.id, action: { startsWith: "menu." } }, select: { id: true } });
+        if (edited) {
+          console.log(`• "${launch.name}": cardápio já foi mexido pelo painel, a versão ${launch.menuVersion} não foi aplicada.`);
+        } else {
+          await db.$transaction(
+            async (tx) => {
+              // pedidos antigos guardam nome e preço próprios: continuam intactos
+              await tx.menuCategory.deleteMany({ where: { restaurantId: existing.id } });
+              await createLaunchMenu(tx, existing.id, launch.menu);
+              await tx.auditLog.create({ data: { restaurantId: existing.id, action: mark, details: { products } } });
+            },
+            { timeout: 120_000 },
+          );
+          console.log(`• "${launch.name}": cardápio atualizado para a versão ${launch.menuVersion} (${products} produtos).`);
+          continue;
+        }
+      }
+      console.log(`• "${launch.name}" já implantado.`);
       continue;
     }
     await db.$transaction(
@@ -244,32 +302,12 @@ async function seedLaunches() {
             },
           },
         });
-        for (const [categoryOrder, category] of launch.menu.entries()) {
-          await tx.menuCategory.create({
-            data: {
-              restaurantId: restaurant.id,
-              name: category.name,
-              description: category.description ?? null,
-              sortOrder: categoryOrder,
-              products: {
-                create: category.products.map((p, i) => ({
-                  restaurantId: restaurant.id,
-                  name: p.name,
-                  description: p.description ?? null,
-                  imageUrl: p.image ?? null,
-                  priceCents: p.price,
-                  featured: p.featured ?? false,
-                  sortOrder: i,
-                })),
-              },
-            },
-          });
-        }
+        await createLaunchMenu(tx, restaurant.id, launch.menu);
         await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: LAUNCH_MARK } });
+        await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: menuMark(launch.menuVersion), details: { products } } });
       },
       { timeout: 120_000 },
     );
-    const products = launch.menu.reduce((sum, c) => sum + c.products.length, 0);
     console.log(`• "${launch.name}" implantado (${products} produtos).`);
   }
 }

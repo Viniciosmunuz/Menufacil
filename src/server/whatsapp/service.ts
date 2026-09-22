@@ -35,7 +35,7 @@ async function loadOrder(orderId: string, client: Prisma.TransactionClient = db)
   return client.order.findUniqueOrThrow({
     where: { id: orderId },
     include: {
-      items: { select: { productName: true, quantity: true, totalCents: true, notes: true } },
+      items: { select: { productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
       payment: { select: { cardType: true, changeForCents: true } },
       restaurant: {
         select: {

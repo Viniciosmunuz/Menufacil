@@ -50,7 +50,7 @@ type Details = Record<string, unknown> | null | undefined;
 
 export function describeAudit(action: string, details: unknown): { title: string; detail?: string } {
   const d = (details && typeof details === "object" ? details : null) as Details;
-  const title = actionLabel[action] ?? action;
+  const title = actionLabel[action] ?? (action.startsWith("launch.menu.") ? "Cardápio atualizado pela equipe" : action);
 
   if (action === "restaurant.status" && d && isRestaurantStatus(d.from) && isRestaurantStatus(d.to)) {
     return { title, detail: `${restaurantStatusLabel[d.from]} → ${restaurantStatusLabel[d.to]}` };
