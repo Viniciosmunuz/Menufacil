@@ -38,7 +38,7 @@ type OrderForMessage = {
   deliveryFeeCents: number;
   totalCents: number;
   paymentMethod: PaymentMethod;
-  payment: { cardType: CardType | null; changeForCents: number | null } | null;
+  payment: { cardType: CardType | null; changeForCents: number | null; pixKey?: string | null; pixKeyType?: PixKeyType | null } | null;
   items: { productName: string; optionsText?: string | null; quantity: number; totalCents: number; notes: string | null }[];
 };
 
@@ -144,7 +144,7 @@ export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
         ? change
           ? `Dinheiro, troco para ${formatCents(change)} (troco de ${formatCents(change - o.totalCents)}).`
           : "Dinheiro, não preciso de troco."
-        : "Pix. Assim que pagar, mando o comprovante aqui.";
+        : `Pix${o.payment?.pixKey ? ` na chave ${formatPixKey(o.payment.pixKeyType, o.payment.pixKey)}` : ""}. Assim que pagar, mando o comprovante aqui.`;
   return [
     `Olá, ${r.name}! Quero fazer este pedido:`,
     "",

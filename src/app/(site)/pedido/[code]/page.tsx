@@ -18,7 +18,7 @@ import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { orderFromCustomer, waMeLink } from "@/server/whatsapp/messages";
 
 import { markPaymentSent } from "./actions";
-import { ClearCartAfterOrder, CopyPixAndSendOrder } from "./order-live";
+import { ClearCartAfterOrder, CopyPixAndSendOrder, OpenWhatsAppOnce } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
 
@@ -86,11 +86,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           {sp.novo === "1" ? "Pedido feito!" : `Pedido #${order.number}`}
         </h1>
         {sp.novo === "1" && sendOrderLink && (showPix || payOnReceive) && (
-          <p className="font-bold text-brand">
-            {showPix
-              ? "Copie a chave Pix abaixo: o WhatsApp do restaurante abre com o seu pedido pronto. É só tocar em enviar."
-              : "Envie o pedido no WhatsApp do restaurante: ele abre com tudo pronto, é só tocar em enviar."}
-          </p>
+          <>
+            <OpenWhatsAppOnce code={order.code} url={sendOrderLink} />
+            <p className="font-bold text-brand">
+              {showPix
+                ? "Abrindo o WhatsApp do restaurante com o seu pedido: toque em enviar. Depois pague o Pix com a chave já copiada e mande o comprovante na mesma conversa."
+                : "Abrindo o WhatsApp do restaurante com o seu pedido: é só tocar em enviar."}
+            </p>
+            <p className="text-sm text-muted">Se não abrir, use o botão de enviar o pedido aqui embaixo.</p>
+          </>
         )}
         <p className="text-muted">
           {sp.novo === "1" ? `Pedido #${order.number} em ` : ""}

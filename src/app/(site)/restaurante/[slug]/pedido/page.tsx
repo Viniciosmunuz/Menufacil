@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
+import { formatPixKey } from "@/lib/pix";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 
 import { CheckoutForm } from "./checkout-form";
@@ -37,6 +38,7 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           address,
           open,
           payments: { pix: !!r.pixKey, card: r.acceptsCard, cash: r.acceptsCash },
+          pix: r.pixKey ? { key: r.pixKey, display: formatPixKey(r.pixKeyType, r.pixKey), holder: r.pixHolderName } : null,
           menu,
         }}
       />

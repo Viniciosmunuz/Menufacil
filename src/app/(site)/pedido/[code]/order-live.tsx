@@ -17,6 +17,32 @@ export function ClearCartAfterOrder({ restaurantId }: { restaurantId: string }) 
 }
 
 /**
+ * Logo depois do pedido, abre sozinho o WhatsApp do restaurante com o pedido
+ * escrito. Uma vez só por pedido: voltar ou recarregar a página não reabre.
+ */
+export function OpenWhatsAppOnce({ code, url }: { code: string; url: string }) {
+  useEffect(() => {
+    const key = `mf_whats_${code}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+    } catch {
+      // sem armazenamento: abre mesmo assim
+    }
+    // um instante para a pessoa ver que o pedido foi feito
+    const timer = setTimeout(() => {
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        // idem
+      }
+      window.location.assign(url);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [code, url]);
+  return null;
+}
+
+/**
  * Copia a chave Pix e abre o WhatsApp do restaurante com o pedido escrito:
  * o cliente só toca em enviar (nenhum site envia pelo WhatsApp da pessoa).
  */

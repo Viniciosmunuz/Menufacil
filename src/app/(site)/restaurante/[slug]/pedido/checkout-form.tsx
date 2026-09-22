@@ -8,6 +8,7 @@ import { cartSubtotal, setQuantity as setCartQuantity, useCart } from "@/compone
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { copyToClipboard } from "@/components/ui/copy-button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { MoneyInput } from "@/components/ui/money-input";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -32,6 +33,8 @@ type RestaurantInfo = {
   open: boolean;
   /** formas que o restaurante aceita (Pix só com chave cadastrada) */
   payments: { pix: boolean; card: boolean; cash: boolean };
+  /** mostrada antes do pedido e copiada ao fazer o pedido */
+  pix: { key: string; display: string; holder: string | null } | null;
   /** produtos que dá para pedir agora e as opções de cada um */
   menu: Record<string, OptionGroupData[]>;
 };
@@ -133,6 +136,9 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   );
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    // copia ainda no toque do botão (depois o navegador não deixa): a pessoa
+    // sai do WhatsApp para o banco com a chave pronta para colar
+    if (method === "PIX" && restaurant.pix) void copyToClipboard(restaurant.pix.key);
     try {
       if (!remember) {
         localStorage.removeItem(SAVED_KEY);
@@ -253,7 +259,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Forma de pagamento">
                 {available.map((m) => {
                   const info = {
-                    PIX: { title: "Pix", text: "A chave aparece depois do pedido.", Icon: QrCode },
+                    PIX: { title: "Pix", text: "Pague e mande o comprovante no WhatsApp.", Icon: QrCode },
                     CARD: {
                       title: "Cartão",
                       text: type === "DELIVERY" ? "Crédito ou débito. O entregador leva a maquininha." : "Crédito ou débito, no balcão.",
@@ -282,6 +288,17 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               </div>
             )}
             {err.paymentMethod && <p className="text-sm text-danger">{err.paymentMethod}</p>}
+
+            {method === "PIX" && restaurant.pix && (
+              <div className="rounded-control border border-line bg-surface-2 p-4">
+                <p className="text-sm text-muted">Chave Pix</p>
+                <p className="mt-0.5 font-mono text-lg font-bold break-all">{restaurant.pix.display}</p>
+                {restaurant.pix.holder && <p className="mt-1 text-sm text-muted">Nome: {restaurant.pix.holder}</p>}
+                <p className="mt-2 text-sm font-semibold text-brand">
+                  Ao fazer o pedido, a chave já fica copiada. Pague no app do banco e mande o comprovante na conversa do WhatsApp.
+                </p>
+              </div>
+            )}
 
             {method === "CARD" && (
               <div className="flex flex-col gap-2">
@@ -387,7 +404,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               </p>
               <p className="text-muted">
                 {method === "PIX"
-                  ? "A chave Pix aparece assim que você fizer o pedido."
+                  ? "A chave é copiada ao fazer o pedido."
                   : type === "DELIVERY"
                     ? "Você paga ao receber o pedido."
                     : "Você paga na retirada."}
@@ -403,7 +420,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
             <span>Fazer pedido</span>
             <span className="tabular-nums">{formatCents(total)}</span>
           </SubmitButton>
-          <p className="text-center text-xs text-faint">Os valores são conferidos pelo restaurante na hora do pedido.</p>
+          <p className="text-center text-xs text-faint">O WhatsApp do restaurante abre com o seu pedido pronto: é só tocar em enviar.</p>
         </Card>
       </aside>
     </form>
