@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { AtSign, Bike, ChevronDown, Clock, Eye, MapPin, ShoppingBag, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -12,6 +14,7 @@ import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
+import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 import { lockedStore } from "@/server/public/store";
 
@@ -20,10 +23,16 @@ export async function generateMetadata({ params }: PageProps<"/restaurante/[slug
   const data = await getPublicRestaurant(slug, false);
   if (!data) return { title: "Restaurante" };
   const r = data.restaurant;
+  // prévia do link no WhatsApp: logo pequena ao lado e uma frase curta
+  const version = r.logoUrl ? createHash("sha1").update(r.logoUrl).digest("hex").slice(0, 8) : null;
+  const image = version
+    ? { url: `${appUrl()}/api/restaurantes/${r.slug}/logo?v=${version}`, width: SHARE_LOGO_SIZE, height: SHARE_LOGO_SIZE }
+    : { url: `${appUrl()}/apple-icon.png`, width: 180, height: 180 };
   return {
     title: r.name,
     description: r.description ?? `Cardápio e pedidos de ${r.name} no MenuFácil.`,
-    openGraph: { title: r.name, description: r.description ?? undefined, images: r.coverUrl ? [r.coverUrl] : undefined },
+    openGraph: { title: r.name, description: "Veja o cardápio e faça seu pedido.", images: [image] },
+    twitter: { card: "summary" },
   };
 }
 

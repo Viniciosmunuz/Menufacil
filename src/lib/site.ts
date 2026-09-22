@@ -12,3 +12,6 @@ export function appUrl() {
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   return (process.env.APP_URL || (vercel ? `https://${vercel}` : "http://localhost:3000")).replace(/\/+$/, "");
 }
+
+/** logo da prévia do link: com menos de 300px, o WhatsApp mostra a miniatura ao lado do texto */
+export const SHARE_LOGO_SIZE = 240;
