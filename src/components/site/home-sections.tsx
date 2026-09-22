@@ -63,7 +63,7 @@ export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: 
           </h1>
           <p className="mt-2 text-[0.72rem] leading-snug text-ink/80 sm:mt-4 sm:max-w-md sm:text-lg">
             {hasRestaurants
-              ? `Cardápio atualizado e pagamento por Pix${city ? ` em ${city}` : ""}, sem cadastro.`
+              ? `Cardápio atualizado e pagamento por Pix, cartão ou dinheiro${city ? ` em ${city}` : ""}, sem cadastro.`
               : "Seja bem-vindo ao MenuFácil! Aqui você encontra os melhores restaurantes, lanchonetes e muito mais da sua região."}
           </p>
           <Link

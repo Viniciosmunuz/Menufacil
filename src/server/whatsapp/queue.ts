@@ -53,6 +53,7 @@ export function queueOrderToRestaurant(tx: Tx, { order, restaurant }: { order: O
 
 /** pedido novo: instruções do Pix para o cliente (o restaurante recebe o pedido do próprio cliente, pelo wa.me) */
 export async function queueNewOrderMessages(tx: Tx, { order, restaurant }: { order: OrderRow; restaurant: RestaurantRow }) {
+  if (order.paymentMethod !== "PIX") return; // cartão e dinheiro: nada a pagar antes
   await enqueue(tx, {
     restaurantId: restaurant.id,
     orderId: order.id,
@@ -68,7 +69,7 @@ export const NOTIFY_STATUSES: OrderStatus[] = ["CONFIRMED", "PREPARING", "READY"
 export async function queueStatusMessage(
   tx: Tx,
   params: {
-    order: { id: string; restaurantId: string; number: number; code: string; customerName: string; customerWhatsapp: string; type: "DELIVERY" | "PICKUP" };
+    order: Parameters<typeof orderStatusUpdate>[0] & { id: string; restaurantId: string; customerWhatsapp: string };
     restaurant: { name: string };
     status: OrderStatus;
   },

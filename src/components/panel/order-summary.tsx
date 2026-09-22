@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone, paymentStatusLabel } from "@/lib/labels";
+import { paymentHint, paymentText } from "@/lib/payment";
 
 import type { EditableOrder } from "./order-actions";
 
@@ -28,8 +29,9 @@ export const orderSummarySelect = {
   deliveryFeeCents: true,
   totalCents: true,
   createdAt: true,
+  paymentMethod: true,
   items: { orderBy: { id: "asc" }, select: { id: true, productName: true, quantity: true, totalCents: true, notes: true } },
-  payment: { select: { status: true } },
+  payment: { select: { status: true, cardType: true, changeForCents: true } },
 } satisfies Prisma.OrderSelect;
 
 export type OrderSummaryData = Prisma.OrderGetPayload<{ select: typeof orderSummarySelect }>;
@@ -53,6 +55,8 @@ export function editableOrder(o: OrderSummaryData): EditableOrder {
 
 export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
   const delivery = o.type === "DELIVERY";
+  const choice = { method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: o.payment?.changeForCents };
+  const hint = paymentHint(choice, o.type, o.totalCents);
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <div className="flex flex-col gap-2">
@@ -104,7 +108,10 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
         </div>
         <div>
           <dt className="font-bold text-muted">Pagamento</dt>
-          <dd>Pix · {o.payment ? paymentStatusLabel[o.payment.status] : "sem registro"}</dd>
+          <dd>
+            {paymentText(choice)} · {o.payment ? paymentStatusLabel[o.payment.status] : "sem registro"}
+          </dd>
+          {hint && <dd className="mt-1 font-bold text-brand">{hint}</dd>}
         </div>
         {o.notes && (
           <div>

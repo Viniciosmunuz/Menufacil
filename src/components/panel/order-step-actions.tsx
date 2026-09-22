@@ -1,6 +1,6 @@
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { OrderStatus, OrderType } from "@/generated/prisma/enums";
+import type { OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 import { FINAL_ORDER_STATUSES, nextOrderStep } from "@/lib/order-flow";
 
 // Botão do próximo passo do atendimento e "Cancelar pedido". O "from" leva
@@ -12,13 +12,13 @@ export function OrderStepActions({
   hidden,
   size = "sm",
 }: {
-  order: { id: string; status: OrderStatus; type: OrderType };
+  order: { id: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod };
   action: (formData: FormData) => Promise<void>;
   hidden?: Record<string, string>;
   size?: "sm" | "md";
 }) {
   if (FINAL_ORDER_STATUSES.includes(order.status)) return null;
-  const step = nextOrderStep(order.status, order.type);
+  const step = nextOrderStep(order.status, order.type, order.paymentMethod);
 
   const fields = (to: OrderStatus) => (
     <>

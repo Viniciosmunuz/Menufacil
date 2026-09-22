@@ -1,7 +1,7 @@
 import type { OrderStatus, PaymentStatus, RestaurantStatus } from "@/generated/prisma/enums";
 
 export const paymentStatusLabel: Record<PaymentStatus, string> = {
-  PENDING: "Aguardando pagamento",
+  PENDING: "A receber",
   PROOF_SENT: "Comprovante enviado",
   CONFIRMED: "Confirmado",
   REFUNDED: "Estornado",

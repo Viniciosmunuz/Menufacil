@@ -165,6 +165,9 @@ model Restaurant {
   pixKeyType          PixKeyType?
   pixHolderName       String?
   paymentInstructions String?
+  // pagamento na entrega/retirada (o Pix vale quando há chave cadastrada)
+  acceptsCard Boolean @default(true)
+  acceptsCash Boolean @default(true)
 
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?
@@ -306,6 +309,13 @@ enum OrderType {
 
 enum PaymentMethod {
   PIX
+  CARD // na entrega (maquininha) ou no balcão, na retirada
+  CASH
+}
+
+enum CardType {
+  CREDIT
+  DEBIT
 }
 
 enum OrderStatus {
@@ -410,6 +420,9 @@ model Payment {
   // retrato da chave Pix exibida ao cliente
   pixKey      String?
   pixKeyType  PixKeyType?
+  // cartão: crédito ou débito; dinheiro: troco para quanto (vazio = não precisa)
+  cardType       CardType?
+  changeForCents Int?
   proofSentAt DateTime?
   confirmedAt DateTime?
   createdAt   DateTime      @default(now())

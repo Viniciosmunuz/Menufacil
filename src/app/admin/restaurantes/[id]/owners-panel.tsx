@@ -135,6 +135,23 @@ function AddOwnerForm({ restaurantId, onCancel }: { restaurantId: string; onCanc
       <Field label="Celular" htmlFor="owner-phone" error={err.phone} hint="Opcional.">
         <Input id="owner-phone" name="phone" type="tel" inputMode="tel" defaultValue={state.values?.phone} placeholder="(92) 99999-0000" aria-invalid={!!err.phone} />
       </Field>
+      <Field
+        label="Senha provisória"
+        htmlFor="owner-password"
+        error={err.password}
+        hint="Opcional. Mínimo de 8 caracteres. Em branco, o sistema cria uma. O dono troca no primeiro acesso."
+      >
+        <Input
+          id="owner-password"
+          name="password"
+          type="text"
+          minLength={8}
+          maxLength={72}
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={!!err.password}
+        />
+      </Field>
       <div className="flex flex-wrap gap-2">
         <SubmitButton pendingText="Criando...">Criar acesso</SubmitButton>
         {onCancel && (

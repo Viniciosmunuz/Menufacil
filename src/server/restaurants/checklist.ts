@@ -20,6 +20,8 @@ export async function activationChecklist(restaurantId: string) {
       select: {
         whatsapp: true,
         pixKey: true,
+        acceptsCard: true,
+        acceptsCash: true,
         city: true,
         logoUrl: true,
         deliveryEnabled: true,
@@ -32,7 +34,12 @@ export async function activationChecklist(restaurantId: string) {
 
   const items: ChecklistItem[] = [
     { key: "whatsapp", label: "WhatsApp para receber os pedidos", ok: !!restaurant.whatsapp, required: true },
-    { key: "pix", label: "Chave Pix para o pagamento", ok: !!restaurant.pixKey, required: true },
+    {
+      key: "pix",
+      label: "Forma de pagamento (Pix, cartão ou dinheiro)",
+      ok: !!restaurant.pixKey || restaurant.acceptsCard || restaurant.acceptsCash,
+      required: true,
+    },
     { key: "city", label: "Cidade do restaurante", ok: !!restaurant.city, required: true },
     { key: "menu", label: "Pelo menos 1 produto disponível no cardápio", ok: availableProducts > 0, required: true },
     {

@@ -1,8 +1,9 @@
 import "server-only";
 
-import type { OrderStatus, OrderType, PixKeyType } from "@/generated/prisma/enums";
+import type { CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
+import { paymentHint, paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { appUrl } from "@/lib/site";
 
@@ -35,8 +36,16 @@ type OrderForMessage = {
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
+  paymentMethod: PaymentMethod;
+  payment: { cardType: CardType | null; changeForCents: number | null } | null;
   items: { productName: string; quantity: number; totalCents: number; notes: string | null }[];
 };
+
+/** "Cartão de débito" + "Levar a maquininha na entrega." (nada extra no Pix) */
+function paymentOf(o: OrderForMessage) {
+  const choice = { method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: o.payment?.changeForCents };
+  return { text: paymentText(choice), hint: paymentHint(choice, o.type, o.totalCents) };
+}
 
 type RestaurantForMessage = {
   id: string;
@@ -66,6 +75,8 @@ export const panelOrderUrl = (restaurantId: string, orderId: string) => `${appUr
 /** "NOVO PEDIDO #1024" para o WhatsApp do restaurante */
 export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): MessageContent {
   const type = o.type === "DELIVERY" ? "Entrega" : "Retirada no local";
+  const pay = paymentOf(o);
+  const payment = o.paymentMethod === "PIX" ? "Pix (aguardando comprovante do cliente)" : `${pay.text}. ${pay.hint ?? ""}`.trim();
   const lines = [
     `*NOVO PEDIDO #${o.number}*`,
     r.name,
@@ -84,7 +95,7 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
     ...(o.type === "DELIVERY" ? [`Taxa de entrega: ${formatCents(o.deliveryFeeCents)}`] : []),
     `*Total: ${formatCents(o.totalCents)}*`,
     "",
-    "*Pagamento:* Pix (aguardando comprovante do cliente)",
+    `*Pagamento:* ${payment}`,
     ...(o.type === "DELIVERY"
       ? [
           `*Endereço:* ${addressLine(o)}`,
@@ -113,7 +124,7 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
       formatCents(o.subtotalCents),
       formatCents(o.deliveryFeeCents),
       formatCents(o.totalCents),
-      "Pix",
+      payment,
       addressLine(o) + (o.deliveryComplement ? ` (${o.deliveryComplement})` : "") + (o.deliveryReference ? ` - Ref.: ${o.deliveryReference}` : ""),
       o.notes ?? "",
       panelOrderUrl(r.id, o.id),
@@ -124,6 +135,15 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
 /** o pedido que o próprio cliente manda ao restaurante (link wa.me da página do pedido) */
 export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
   const delivery = o.type === "DELIVERY";
+  const change = o.payment?.changeForCents;
+  const payment =
+    o.paymentMethod === "CARD"
+      ? `${paymentText({ method: "CARD", cardType: o.payment?.cardType })}, ${delivery ? "na entrega (por favor, tragam a maquininha)." : "na retirada."}`
+      : o.paymentMethod === "CASH"
+        ? change
+          ? `Dinheiro, troco para ${formatCents(change)} (troco de ${formatCents(change - o.totalCents)}).`
+          : "Dinheiro, não preciso de troco."
+        : "Pix. Assim que pagar, mando o comprovante aqui.";
   return [
     `Olá, ${r.name}! Quero fazer este pedido:`,
     "",
@@ -145,7 +165,7 @@ export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
     `*Nome:* ${o.customerName}`,
     `*WhatsApp:* ${formatPhone(o.customerWhatsapp)}`,
     "",
-    "*Pagamento:* Pix. Assim que pagar, mando o comprovante aqui.",
+    `*Pagamento:* ${payment}`,
     "",
     `Acompanhar o pedido: ${trackingUrl(o.code)}`,
   ].join("\n");
@@ -180,13 +200,13 @@ export function paymentInstructions(o: OrderForMessage, r: RestaurantForMessage)
 
 /** aviso de mudança de status para o cliente */
 export function orderStatusUpdate(
-  o: { number: number; code: string; customerName: string; type: OrderType },
+  o: { number: number; code: string; customerName: string; type: OrderType; paymentMethod: PaymentMethod },
   r: { name: string },
   status: OrderStatus,
 ): MessageContent {
   const label = orderStatusLabel[status];
   const extra: Partial<Record<OrderStatus, string>> = {
-    CONFIRMED: "Pagamento confirmado. Obrigado!",
+    CONFIRMED: o.paymentMethod === "PIX" ? "Pagamento confirmado. Obrigado!" : "Seu pedido foi aceito!",
     PREPARING: "Seu pedido já está sendo preparado.",
     READY: o.type === "PICKUP" ? "Pode vir buscar!" : "Já já sai para entrega.",
     OUT_FOR_DELIVERY: "Seu pedido está a caminho.",

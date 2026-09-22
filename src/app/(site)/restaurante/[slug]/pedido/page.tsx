@@ -32,6 +32,7 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           deliveryTime: deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax),
           address,
           open,
+          payments: { pix: !!r.pixKey, card: r.acceptsCard, cash: r.acceptsCash },
         }}
       />
     </div>

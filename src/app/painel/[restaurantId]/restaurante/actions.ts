@@ -287,6 +287,20 @@ export async function savePayment(_prev: SectionState, formData: FormData): Prom
   return saved();
 }
 
+// ---- Cartão e dinheiro (pagos na entrega ou no balcão) --------------------
+
+const paymentMethodsSchema = z.object({ acceptsCard: checkbox, acceptsCash: checkbox });
+
+export async function savePaymentMethods(_prev: SectionState, formData: FormData): Promise<SectionState> {
+  const acc = await access(formData);
+  const parsed = parse(paymentMethodsSchema, formData);
+  if ("state" in parsed) return parsed.state;
+  const { acceptsCard, acceptsCash } = parsed.data;
+  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { acceptsCard, acceptsCash } });
+  await panelAudit(acc, "restaurant.payment_methods", { acceptsCard, acceptsCash });
+  return saved();
+}
+
 // ---- Pedir publicação ---------------------------------------------------
 
 export async function requestReview(formData: FormData) {

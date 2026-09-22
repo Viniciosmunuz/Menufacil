@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import type { Prisma } from "@/generated/prisma/client";
-import type { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { ORDER_STATUSES } from "@/lib/labels";
 import { fieldErrors, formObject, optionalText, phone, text, type FieldErrors } from "@/lib/validation";
@@ -41,9 +41,10 @@ const detailsSchema = z.object({
 
 const PAID: OrderStatus[] = ["CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED"];
 
-/** o pagamento acompanha o status do pedido */
-function paymentStatusFor(status: OrderStatus): PaymentStatus {
+/** o pagamento acompanha o status do pedido (cartão e dinheiro: pago ao concluir) */
+function paymentStatusFor(status: OrderStatus, method: PaymentMethod): PaymentStatus {
   if (status === "CANCELED") return "CANCELED";
+  if (method !== "PIX") return status === "COMPLETED" ? "CONFIRMED" : "PENDING";
   if (PAID.includes(status)) return "CONFIRMED";
   if (status === "PAYMENT_SENT") return "PROOF_SENT";
   return "PENDING";
@@ -55,7 +56,7 @@ const orderSelect = {
   number: true,
   type: true,
   status: true,
-  payment: { select: { status: true, confirmedAt: true, proofSentAt: true } },
+  payment: { select: { method: true, status: true, confirmedAt: true, proofSentAt: true } },
 } satisfies Prisma.OrderSelect;
 
 type OrderRow = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
@@ -69,7 +70,7 @@ async function recordStatus(tx: Prisma.TransactionClient, order: OrderRow, statu
   await tx.orderStatusEvent.create({ data: { orderId: order.id, status, note: actor.note, changedByUserId: actor.userId } });
   const payment = order.payment;
   if (!payment || payment.status === "REFUNDED") return;
-  const next = paymentStatusFor(status);
+  const next = paymentStatusFor(status, payment.method);
   if (next === payment.status) return;
   await tx.payment.update({
     where: { orderId: order.id },

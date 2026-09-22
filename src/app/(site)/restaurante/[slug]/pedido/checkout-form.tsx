@@ -1,6 +1,6 @@
 "use client";
 
-import { Bike, ShoppingBag, Store } from "lucide-react";
+import { Banknote, Bike, CreditCard, QrCode, ShoppingBag, Store } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useActionState, useState, useSyncExternalStore } from "react";
 
@@ -9,9 +9,12 @@ import { Alert } from "@/components/ui/alert";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { MoneyInput } from "@/components/ui/money-input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import type { CardType, PaymentMethod } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import { cardTypeLabel } from "@/lib/payment";
 
 import { submitOrder, type CheckoutState } from "./actions";
 
@@ -26,7 +29,22 @@ type RestaurantInfo = {
   deliveryTime: string | null;
   address: string | null;
   open: boolean;
+  /** formas que o restaurante aceita (Pix só com chave cadastrada) */
+  payments: { pix: boolean; card: boolean; cash: boolean };
 };
+
+const choiceClasses = (selected: boolean, enabled = true) =>
+  cn(
+    "flex cursor-pointer gap-3 rounded-control border px-4 py-3",
+    !enabled && "cursor-not-allowed opacity-50",
+    selected ? "border-brand bg-brand-soft" : "border-line bg-surface-2 hover:border-line-strong",
+  );
+
+const chipClasses = (selected: boolean) =>
+  cn(
+    "flex h-11 cursor-pointer items-center gap-2 rounded-control border px-4 font-bold",
+    selected ? "border-brand bg-brand-soft text-brand" : "border-line bg-surface-2 text-muted hover:border-line-strong",
+  );
 
 // dados do cliente lembrados neste aparelho, para o próximo pedido
 const SAVED_KEY = "mf_cliente";
@@ -55,6 +73,14 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
     (state.values?.type as "DELIVERY" | "PICKUP" | undefined) ?? (restaurant.deliveryEnabled ? "DELIVERY" : "PICKUP"),
   );
   const [remember, setRemember] = useState(true);
+  const available = (["PIX", "CARD", "CASH"] as PaymentMethod[]).filter((m) =>
+    m === "PIX" ? restaurant.payments.pix : m === "CARD" ? restaurant.payments.card : restaurant.payments.cash,
+  );
+  const [method, setMethod] = useState<PaymentMethod | undefined>(
+    (state.values?.paymentMethod as PaymentMethod | undefined) ?? available[0],
+  );
+  const [cardType, setCardType] = useState<CardType | undefined>(state.values?.cardType as CardType | undefined);
+  const [needsChange, setNeedsChange] = useState<"nao" | "sim" | undefined>(state.values?.needsChange as "nao" | "sim" | undefined);
 
   const mine = cart.restaurant?.id === restaurant.id && cart.items.length > 0;
   if (!mine) {
@@ -190,7 +216,93 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
           </Card>
 
           <Card className="flex flex-col gap-4">
-            <Field label="Observações do pedido" htmlFor="notes" error={err.notes} hint="Opcional. Ex.: troco, portão, interfone.">
+            <h2 className="text-lg font-extrabold">Como você vai pagar?</h2>
+            {available.length === 0 ? (
+              <Alert tone="warning">Este restaurante ainda não configurou as formas de pagamento.</Alert>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Forma de pagamento">
+                {available.map((m) => {
+                  const info = {
+                    PIX: { title: "Pix", text: "A chave aparece depois do pedido.", Icon: QrCode },
+                    CARD: {
+                      title: "Cartão",
+                      text: type === "DELIVERY" ? "Crédito ou débito. O entregador leva a maquininha." : "Crédito ou débito, no balcão.",
+                      Icon: CreditCard,
+                    },
+                    CASH: { title: "Dinheiro", text: type === "DELIVERY" ? "Pague ao receber." : "Pague na retirada.", Icon: Banknote },
+                  }[m];
+                  return (
+                    <label key={m} className={choiceClasses(method === m)}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={m}
+                        checked={method === m}
+                        onChange={() => setMethod(m)}
+                        className="mt-1 size-4 accent-brand"
+                      />
+                      <info.Icon className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+                      <span>
+                        <span className="block font-bold">{info.title}</span>
+                        <span className="block text-sm text-muted">{info.text}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {err.paymentMethod && <p className="text-sm text-danger">{err.paymentMethod}</p>}
+
+            {method === "CARD" && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-bold">Crédito ou débito?</p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tipo do cartão">
+                  {(["CREDIT", "DEBIT"] as CardType[]).map((c) => (
+                    <label key={c} className={chipClasses(cardType === c)}>
+                      <input type="radio" name="cardType" value={c} checked={cardType === c} onChange={() => setCardType(c)} className="size-4 accent-brand" />
+                      {cardTypeLabel[c]}
+                    </label>
+                  ))}
+                </div>
+                {err.cardType && <p className="text-sm text-danger">{err.cardType}</p>}
+              </div>
+            )}
+
+            {method === "CASH" && (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-bold">Precisa de troco?</p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Troco">
+                  {(
+                    [
+                      ["nao", "Não preciso"],
+                      ["sim", "Sim, preciso"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label key={value} className={chipClasses(needsChange === value)}>
+                      <input
+                        type="radio"
+                        name="needsChange"
+                        value={value}
+                        checked={needsChange === value}
+                        onChange={() => setNeedsChange(value)}
+                        className="size-4 accent-brand"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                {err.needsChange && <p className="text-sm text-danger">{err.needsChange}</p>}
+                {needsChange === "sim" && (
+                  <Field label="Troco para quanto?" htmlFor="changeFor" error={err.changeFor} hint={`O total é ${formatCents(total)}.`} className="sm:max-w-xs">
+                    <MoneyInput id="changeFor" name="changeFor" required defaultValue={state.values?.changeFor ?? ""} placeholder="100,00" aria-invalid={!!err.changeFor} />
+                  </Field>
+                )}
+              </div>
+            )}
+          </Card>
+
+          <Card className="flex flex-col gap-4">
+            <Field label="Observações do pedido" htmlFor="notes" error={err.notes} hint="Opcional. Ex.: portão, interfone, ponto da carne.">
               <Textarea id="notes" name="notes" maxLength={300} rows={2} defaultValue={state.values?.notes ?? ""} />
             </Field>
             <label className="flex items-center gap-3 text-sm">
@@ -237,13 +349,23 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               <dd className="tabular-nums">{formatCents(total)}</dd>
             </div>
           </dl>
-          <div className="rounded-control border border-line bg-surface-2 p-3 text-sm">
-            <p className="font-bold">Pagamento: Pix</p>
-            <p className="text-muted">A chave Pix aparece assim que você fizer o pedido.</p>
-          </div>
+          {method && (
+            <div className="rounded-control border border-line bg-surface-2 p-3 text-sm">
+              <p className="font-bold">
+                Pagamento: {method === "PIX" ? "Pix" : method === "CARD" ? `Cartão${cardType ? ` de ${cardTypeLabel[cardType].toLowerCase()}` : ""}` : "Dinheiro"}
+              </p>
+              <p className="text-muted">
+                {method === "PIX"
+                  ? "A chave Pix aparece assim que você fizer o pedido."
+                  : type === "DELIVERY"
+                    ? "Você paga ao receber o pedido."
+                    : "Você paga na retirada."}
+              </p>
+            </div>
+          )}
           {missing > 0 && <Alert tone="warning">Faltam {formatCents(missing)} para o pedido mínimo.</Alert>}
           {!restaurant.open && <Alert tone="warning">O restaurante está fechado agora.</Alert>}
-          <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open} className="w-full justify-between">
+          <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || !method} className="w-full justify-between">
             <span>Fazer pedido</span>
             <span className="tabular-nums">{formatCents(total)}</span>
           </SubmitButton>

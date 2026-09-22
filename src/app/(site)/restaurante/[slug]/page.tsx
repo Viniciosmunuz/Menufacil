@@ -136,7 +136,12 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                   <div className="flex flex-col gap-3 text-muted">
                     {place && <p>{place}</p>}
                     <p>
-                      <span className="font-bold text-ink">Pagamento:</span> Pix, com a chave mostrada depois do pedido.
+                      <span className="font-bold text-ink">Pagamento:</span>{" "}
+                      {[r.pixKey && "Pix", r.acceptsCard && "cartão (crédito ou débito)", r.acceptsCash && "dinheiro"]
+                        .filter(Boolean)
+                        .join(", ")
+                        .replace(/, ([^,]*)$/, " ou $1") || "combine com o restaurante"}
+                      .
                     </p>
                     {r.instagram && (
                       <a

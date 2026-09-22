@@ -8,7 +8,7 @@ import type { OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/format";
 import { isOpenNow } from "@/lib/opening-hours";
-import { phone, text, optionalText } from "@/lib/validation";
+import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
 import { queueNewOrderMessages } from "@/server/whatsapp/queue";
 
 // Criação do pedido feito pelo cliente no site. Nada que vem do navegador é
@@ -56,8 +56,24 @@ export const checkoutSchema = z
     neighborhood: optionalText(80),
     reference: optionalText(120),
     notes: optionalText(300),
+    paymentMethod: z.enum(["PIX", "CARD", "CASH"], { error: "Escolha a forma de pagamento." }),
+    cardType: z.enum(["CREDIT", "DEBIT"]).optional().catch(undefined),
+    needsChange: z.enum(["nao", "sim"]).optional().catch(undefined),
+    changeFor: optionalText(20),
   })
   .superRefine((v, ctx) => {
+    if (v.paymentMethod === "CARD" && !v.cardType) {
+      ctx.addIssue({ code: "custom", path: ["cardType"], message: "Escolha crédito ou débito." });
+    }
+    if (v.paymentMethod === "CASH") {
+      if (!v.needsChange) ctx.addIssue({ code: "custom", path: ["needsChange"], message: "Diga se precisa de troco." });
+      if (v.needsChange === "sim") {
+        const cents = parseMoneyToCents(v.changeFor);
+        if (cents === null || Number.isNaN(cents) || cents <= 0 || cents > 10_000_00) {
+          ctx.addIssue({ code: "custom", path: ["changeFor"], message: "Informe para quanto é o troco. Ex.: 100,00" });
+        }
+      }
+    }
     if (v.type !== "DELIVERY") return;
     if (!v.street) ctx.addIssue({ code: "custom", path: ["street"], message: "Informe a rua." });
     if (!v.number) ctx.addIssue({ code: "custom", path: ["number"], message: "Informe o número (ou s/n)." });
@@ -102,7 +118,9 @@ export async function placeOrder(params: {
   const type = input.type as OrderType;
   if (type === "DELIVERY" && !restaurant.deliveryEnabled) throw new OrderError("Este restaurante não faz entrega.", "type");
   if (type === "PICKUP" && !restaurant.pickupEnabled) throw new OrderError("Este restaurante não tem retirada no local.", "type");
-  if (!restaurant.pixKey) throw new OrderError("Este restaurante ainda não configurou o pagamento.");
+  const method = input.paymentMethod;
+  const accepted = method === "PIX" ? !!restaurant.pixKey : method === "CARD" ? restaurant.acceptsCard : restaurant.acceptsCash;
+  if (!accepted) throw new OrderError("O restaurante não aceita essa forma de pagamento. Escolha outra.", "paymentMethod");
 
   // produtos: deste restaurante, disponíveis, em categoria visível
   const ids = [...new Set(items.map((i) => i.productId))];
@@ -134,6 +152,13 @@ export async function placeOrder(params: {
   }
   const deliveryFeeCents = type === "DELIVERY" ? restaurant.deliveryFeeCents : 0;
   const totalCents = subtotalCents + deliveryFeeCents;
+
+  const changeForCents = method === "CASH" && input.needsChange === "sim" ? parseMoneyToCents(input.changeFor) : null;
+  if (changeForCents !== null && changeForCents < totalCents) {
+    throw new OrderError(`O troco precisa ser para um valor igual ou maior que o total (${formatCents(totalCents)}).`, "changeFor");
+  }
+  // Pix: espera o pagamento; cartão e dinheiro: pagos na entrega ou no balcão
+  const initialStatus = method === "PIX" ? "AWAITING_PAYMENT" : "NEW";
 
   // freio contra envio repetido/abuso: poucos pedidos por WhatsApp em 10 min
   const recent = await db.order.count({
@@ -186,25 +211,26 @@ export async function placeOrder(params: {
         deliveryNeighborhood: address?.neighborhood,
         deliveryReference: address?.reference,
         type,
-        paymentMethod: "PIX",
-        status: "AWAITING_PAYMENT",
+        paymentMethod: method,
+        status: initialStatus,
         notes: input.notes,
         subtotalCents,
         deliveryFeeCents,
         totalCents,
         items: { create: lines },
-        statusEvents: { create: { status: "AWAITING_PAYMENT", note: "Pedido feito pelo site" } },
+        statusEvents: { create: { status: initialStatus, note: "Pedido feito pelo site" } },
         payment: {
           create: {
-            method: "PIX",
+            method,
             status: "PENDING",
             amountCents: totalCents,
-            pixKey: restaurant.pixKey,
-            pixKeyType: restaurant.pixKeyType,
+            ...(method === "PIX" ? { pixKey: restaurant.pixKey, pixKeyType: restaurant.pixKeyType } : {}),
+            cardType: method === "CARD" ? (input.cardType ?? null) : null,
+            changeForCents,
           },
         },
       },
-      include: { items: true },
+      include: { items: true, payment: { select: { cardType: true, changeForCents: true } } },
     });
 
     // as instruções do Pix entram na fila junto com o pedido; ao restaurante,

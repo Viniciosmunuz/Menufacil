@@ -58,9 +58,9 @@ export async function linkOwner(
   return { ok: true, userId: user.id, credentials: { name: user.name, email: user.email, password: params.password } };
 }
 
-/** o hash do bcrypt é lento: prepara fora da transação */
-export async function prepareTemporaryPassword() {
-  const password = generateTemporaryPassword();
+/** o hash do bcrypt é lento: prepara fora da transação (sem senha escolhida, gera uma) */
+export async function prepareTemporaryPassword(chosen?: string | null) {
+  const password = chosen || generateTemporaryPassword();
   return { password, passwordHash: await hashPassword(password) };
 }
 

@@ -67,8 +67,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // a equipe logada (admin e donos) navega livre pelo site
-  if (hasSession) return NextResponse.next();
+  // vale para todos, logados ou não: quem entrou pelo link vê só o restaurante
   return storeRules(request);
 }
 

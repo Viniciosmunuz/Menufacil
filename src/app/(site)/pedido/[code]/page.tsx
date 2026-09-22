@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { formatCents, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
+import { paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { orderFromCustomer, waMeLink } from "@/server/whatsapp/messages";
 
@@ -23,11 +24,16 @@ export const metadata: Metadata = { title: "Seu pedido", robots: { index: false,
 
 const FINAL: OrderStatus[] = ["COMPLETED", "CANCELED"];
 
-function steps(type: "DELIVERY" | "PICKUP"): { status: OrderStatus[]; label: string }[] {
+function steps(type: "DELIVERY" | "PICKUP", pix: boolean): { status: OrderStatus[]; label: string }[] {
   return [
     { status: ["NEW", "AWAITING_PAYMENT"], label: "Pedido recebido" },
-    { status: ["PAYMENT_SENT"], label: "Pagamento enviado" },
-    { status: ["CONFIRMED"], label: "Pagamento confirmado" },
+    // cartão e dinheiro: sem etapa de pagamento antes, ele acontece na entrega
+    ...(pix
+      ? [
+          { status: ["PAYMENT_SENT"] as OrderStatus[], label: "Pagamento enviado" },
+          { status: ["CONFIRMED"] as OrderStatus[], label: "Pagamento confirmado" },
+        ]
+      : [{ status: ["CONFIRMED"] as OrderStatus[], label: "Pedido aceito" }]),
     { status: ["PREPARING"], label: "Em preparo" },
     { status: ["READY"], label: type === "PICKUP" ? "Pronto para retirar" : "Pronto" },
     ...(type === "DELIVERY" ? [{ status: ["OUT_FOR_DELIVERY"] as OrderStatus[], label: "Saiu para entrega" }] : []),
@@ -51,10 +57,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
 
   const r = order.restaurant;
   const pay = order.payment;
-  const flow = steps(order.type);
+  const pix = order.paymentMethod === "PIX";
+  const flow = steps(order.type, pix);
   const currentIndex = flow.findIndex((s) => s.status.includes(order.status));
   const canceled = order.status === "CANCELED";
-  const showPix = !canceled && !!pay?.pixKey && (pay.status === "PENDING" || pay.status === "PROOF_SENT");
+  const showPix = pix && !canceled && !!pay?.pixKey && (pay.status === "PENDING" || pay.status === "PROOF_SENT");
+  const payOnReceive = !pix && !canceled && !FINAL.includes(order.status);
+  const choice = { method: order.paymentMethod, cardType: pay?.cardType, changeForCents: pay?.changeForCents };
   const reachedAt = (status: OrderStatus[]) => order.statusEvents.find((e) => status.includes(e.status))?.createdAt;
 
   const proofText = encodeURIComponent(`Olá! Segue o comprovante do Pix do pedido #${order.number} (${formatCents(order.totalCents)}).`);
@@ -76,8 +85,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         <h1 className="text-2xl font-extrabold sm:text-3xl">
           {sp.novo === "1" ? "Pedido feito!" : `Pedido #${order.number}`}
         </h1>
-        {sp.novo === "1" && showPix && sendOrderLink && (
-          <p className="font-bold text-brand">Copie a chave Pix abaixo: o WhatsApp do restaurante abre com o seu pedido pronto. É só tocar em enviar.</p>
+        {sp.novo === "1" && sendOrderLink && (showPix || payOnReceive) && (
+          <p className="font-bold text-brand">
+            {showPix
+              ? "Copie a chave Pix abaixo: o WhatsApp do restaurante abre com o seu pedido pronto. É só tocar em enviar."
+              : "Envie o pedido no WhatsApp do restaurante: ele abre com tudo pronto, é só tocar em enviar."}
+          </p>
         )}
         <p className="text-muted">
           {sp.novo === "1" ? `Pedido #${order.number} em ` : ""}
@@ -93,6 +106,38 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           </Badge>
         </div>
       </Card>
+
+      {payOnReceive && (
+        <Card className="flex flex-col gap-4 border-brand/50">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xl font-extrabold">{order.type === "DELIVERY" ? "Pagamento na entrega" : "Pagamento na retirada"}</h2>
+            <p className="text-2xl font-extrabold text-brand tabular-nums">{formatCents(order.totalCents)}</p>
+          </div>
+          <div className="rounded-control border border-line bg-surface-2 p-4">
+            <p className="text-lg font-bold">{paymentText(choice)}</p>
+            <p className="mt-1 text-sm text-muted">
+              {order.paymentMethod === "CARD"
+                ? order.type === "DELIVERY"
+                  ? "O entregador leva a maquininha."
+                  : "Pague no balcão, ao buscar."
+                : pay?.changeForCents
+                  ? `Seu troco: ${formatCents(pay.changeForCents - order.totalCents)}.`
+                  : "Sem troco."}
+            </p>
+          </div>
+          {sendOrderLink && (
+            <a
+              href={sendOrderLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-13 items-center justify-center gap-2 rounded-control bg-success px-6 text-base font-extrabold text-bg hover:bg-success/90"
+            >
+              <MessageCircle className="size-5" aria-hidden="true" />
+              Enviar pedido no WhatsApp
+            </a>
+          )}
+        </Card>
+      )}
 
       {showPix && pay && (
         <Card className="flex flex-col gap-4 border-brand/50">

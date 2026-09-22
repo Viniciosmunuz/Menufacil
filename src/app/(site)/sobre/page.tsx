@@ -17,7 +17,7 @@ export default function AboutPage() {
           <h1 className="text-3xl font-extrabold">Seu cardápio, mais perto do cliente.</h1>
           <p className="text-lg text-muted">
             O MenuFácil nasceu para os restaurantes, lanchonetes e pizzarias da nossa região venderem mais, sem complicação:
-            cardápio digital sempre atualizado, pedido organizado chegando no WhatsApp e pagamento por Pix.
+            cardápio digital sempre atualizado, pedido organizado chegando no WhatsApp e pagamento por Pix, cartão ou dinheiro.
           </p>
           <p className="text-muted">
             Para quem pede, é simples: escolhe, monta o carrinho e faz o pedido sem precisar criar conta. Para o restaurante, um

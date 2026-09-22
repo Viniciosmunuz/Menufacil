@@ -20,6 +20,7 @@ import {
 } from "@/lib/validation";
 import { audit } from "@/server/audit";
 import { requireAdmin } from "@/server/auth/dal";
+import { MIN_PASSWORD_LENGTH } from "@/server/auth/password";
 import { linkOwner, prepareTemporaryPassword, resetOwnerPassword, type NewCredentials } from "@/server/owners";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { availableSlug, isSlugTaken } from "@/server/restaurants/slug";
@@ -245,6 +246,12 @@ const ownerSchema = z.object({
   name: text("Informe o nome do dono.", 80),
   email: email(),
   phone: optionalPhone,
+  // opcional: o admin escolhe a senha provisória; o dono troca no primeiro acesso
+  password: z
+    .string()
+    .optional()
+    .transform((v) => v || null)
+    .refine((v) => v === null || (v.length >= MIN_PASSWORD_LENGTH && v.length <= 72), `A senha precisa ter de ${MIN_PASSWORD_LENGTH} a 72 caracteres.`),
 });
 
 export async function addOwner(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
@@ -257,7 +264,7 @@ export async function addOwner(_prev: AdminFormState, formData: FormData): Promi
   const restaurant = await db.restaurant.findUnique({ where: { id: data.restaurantId }, select: { id: true } });
   if (!restaurant) return { error: "Restaurante não encontrado." };
 
-  const temp = await prepareTemporaryPassword();
+  const temp = await prepareTemporaryPassword(data.password);
   const result = await db.$transaction((tx) =>
     linkOwner(tx, { restaurantId: data.restaurantId, name: data.name, email: data.email, phone: data.phone, ...temp }),
   );

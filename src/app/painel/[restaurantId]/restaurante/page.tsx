@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { isOpenNow } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
-import { AddressSection, ContactSection, DeliverySection, HoursSection, InfoSection, PaymentSection } from "./forms";
+import { AddressSection, ContactSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection } from "./forms";
 
 export const metadata: Metadata = { title: "Meu restaurante" };
 
@@ -82,6 +82,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
           <HoursSection r={{ ...r, hours }} />
           <DeliverySection r={{ ...r, hours }} />
           <PaymentSection r={{ ...r, hours }} />
+          <PaymentMethodsSection r={{ ...r, hours }} />
         </div>
       </div>
     </div>

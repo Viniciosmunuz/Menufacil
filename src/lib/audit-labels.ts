@@ -17,6 +17,7 @@ const actionLabel: Record<string, string> = {
   "restaurant.open_mode": "Aberto/fechado alterado",
   "restaurant.delivery": "Entrega e retirada alteradas",
   "restaurant.payment": "Pix alterado",
+  "restaurant.payment_methods": "Cartão e dinheiro alterados",
   "menu.category_create": "Categoria do cardápio criada",
   "menu.category_update": "Categoria do cardápio alterada",
   "menu.category_delete": "Categoria do cardápio excluída",

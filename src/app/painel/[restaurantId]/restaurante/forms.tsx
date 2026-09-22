@@ -13,7 +13,7 @@ import { formatPhone } from "@/lib/format";
 import { WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { PIX_KEY_TYPES, formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
-import { saveAddress, saveContact, saveDelivery, saveHours, saveInfo, savePayment } from "./actions";
+import { saveAddress, saveContact, saveDelivery, saveHours, saveInfo, savePayment, savePaymentMethods } from "./actions";
 
 export type RestaurantFormData = {
   id: string;
@@ -44,6 +44,8 @@ export type RestaurantFormData = {
   pixKeyType: PixKeyType | null;
   pixHolderName: string | null;
   paymentInstructions: string | null;
+  acceptsCard: boolean;
+  acceptsCash: boolean;
 };
 
 /** valor do campo: o que a pessoa digitou (se voltou com erro) ou o salvo */
@@ -286,6 +288,35 @@ export function DeliverySection({ r }: { r: RestaurantFormData }) {
             </Field>
           </div>
         </>
+      )}
+    </SectionForm>
+  );
+}
+
+export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
+  return (
+    <SectionForm
+      id="formas-de-pagamento"
+      title="Cartão e dinheiro"
+      description="Pagos na entrega (o entregador leva a maquininha e o troco) ou no balcão, na retirada."
+      action={savePaymentMethods}
+      restaurantId={r.id}
+    >
+      {(s) => (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Checkbox
+            name="acceptsCard"
+            defaultChecked={s.values ? s.values.acceptsCard === "on" : r.acceptsCard}
+            label="Aceita cartão"
+            hint="Crédito e débito. O cliente diz qual vai usar."
+          />
+          <Checkbox
+            name="acceptsCash"
+            defaultChecked={s.values ? s.values.acceptsCash === "on" : r.acceptsCash}
+            label="Aceita dinheiro"
+            hint="O cliente diz se precisa de troco e para quanto."
+          />
+        </div>
       )}
     </SectionForm>
   );

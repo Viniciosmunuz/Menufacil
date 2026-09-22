@@ -36,6 +36,7 @@ async function loadOrder(orderId: string, client: Prisma.TransactionClient = db)
     where: { id: orderId },
     include: {
       items: { select: { productName: true, quantity: true, totalCents: true, notes: true } },
+      payment: { select: { cardType: true, changeForCents: true } },
       restaurant: {
         select: {
           id: true,
