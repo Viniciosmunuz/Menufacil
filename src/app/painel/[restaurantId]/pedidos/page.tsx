@@ -86,7 +86,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      <AutoRefresh seconds={15} />
+      <AutoRefresh seconds={15} background />
       <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
       <PrintSettings
         base={base}

@@ -175,6 +175,28 @@ export function PrintSettings({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh, mode, sound, soundName, base]);
 
+  // com a impressão ligada, segura a tela acesa: aba congelada não imprime
+  useEffect(() => {
+    if (mode === "off" || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    const hold = async () => {
+      try {
+        lock = await navigator.wakeLock.request("screen");
+      } catch {
+        // bateria fraca ou aba escondida: o navegador recusa, e tudo bem
+      }
+    };
+    void hold();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void hold();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      void lock?.release().catch(() => {});
+    };
+  }, [mode]);
+
   const option = (value: Mode, label: string, Icon: typeof Printer) => (
     <button
       type="button"
@@ -310,7 +332,10 @@ export function PrintSettings({
                 Para o atalho ficar com a logo do MenuFácil no lugar da do Chrome: baixe o ícone, clique com o botão direito no atalho, vá em
                 Propriedades, Alterar ícone, Procurar, e escolha o arquivo baixado.
               </li>
-              <li>Deixe esta tela de pedidos aberta enquanto o restaurante estiver funcionando.</li>
+              <li>
+              Deixe esta tela de pedidos aberta. Ela pode ficar atrás de outras janelas, mas minimizada o navegador segura as consultas e o pedido
+              demora mais a sair.
+            </li>
             </ol>
             <code className="overflow-x-auto rounded bg-bg px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{shortcut}</code>
             <div className="flex flex-wrap items-center gap-2">
@@ -325,7 +350,7 @@ export function PrintSettings({
         ) : (
           <p className="text-sm text-muted">
             {mode === "celular"
-              ? "Deixe esta página aberta e o app RawBT instalado, com a impressora pareada."
+              ? "Deixe esta página aberta, com o RawBT instalado e a impressora pareada. Enquanto ela estiver na tela, o celular não apaga sozinho; se você trocar de app, os pedidos que chegarem saem assim que voltar."
               : "Com o painel aberto, o pedido novo pode sair sozinho na impressora térmica."}
           </p>
         )}
