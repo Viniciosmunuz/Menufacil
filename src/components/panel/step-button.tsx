@@ -8,9 +8,10 @@ export type StatusNotice = { app: string; web: string };
 const FALLBACK_MS = 2500;
 
 /**
- * Botão do próximo passo do atendimento. Junto com a mudança de status,
- * abre o WhatsApp do cliente com o aviso já escrito ("pedido aceito", "em
- * preparo", "saiu para entrega"): o restaurante só toca em enviar.
+ * Botão do próximo passo do atendimento. Num passo só — quando o pedido
+ * sai para entrega — ele também abre o WhatsApp do cliente com o aviso já
+ * escrito, e o restaurante toca em enviar. Nos outros, só muda o status:
+ * o cliente acompanha pelo link que foi com o pedido dele.
  *
  * Primeiro tenta o WhatsApp instalado (whatsapp://), que é o que evita a
  * página do WhatsApp no navegador. Se nada abrir — o app não está

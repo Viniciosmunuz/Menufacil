@@ -18,8 +18,8 @@ import { StepButton, type StatusNotice } from "./step-button";
 // - "celular": entrega o texto ao RawBT, o app que fala com a térmica por
 //   Bluetooth ou rede.
 // O navegador não conta se o papel saiu, então cada pedido novo também
-// aparece num aviso na tela, com o botão de aceitar (que abre o WhatsApp
-// do cliente com o aviso) e o de imprimir de novo.
+// aparece num aviso na tela, com o botão de aceitar e o de imprimir de
+// novo. Aceitar só muda o status: o cliente vê pelo link dele.
 // Nada disso depende do WhatsApp: o pedido já está no sistema quando o
 // cliente confirma.
 
@@ -288,8 +288,8 @@ export function PrintSettings({
               </p>
               <p className="text-sm text-ink/90">
                 {mode === "off"
-                  ? "Confira o pedido e aceite: o WhatsApp abre com o aviso para o cliente."
-                  : "A via foi enviada para a impressora. Ao aceitar, o WhatsApp abre com o aviso para o cliente."}
+                  ? "Confira o pedido e aceite. O cliente vê a mudança no link que já foi com o pedido dele."
+                  : "A via foi enviada para a impressora. Ao aceitar, o cliente vê a mudança no link do pedido."}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <form action={acceptAction}>

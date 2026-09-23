@@ -198,7 +198,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
       )}
 
       <Card>
-        <h2 className="mb-4 text-lg font-extrabold">Andamento</h2>
+        <h2 className="text-lg font-extrabold">Andamento</h2>
+        {/* é por esta página que o cliente segue o pedido: o restaurante só
+            manda mensagem quando sai para entrega */}
+        <p className="mb-4 text-sm text-muted">
+          Esta página é onde você acompanha o seu pedido. Ela se atualiza sozinha — pode deixar aberta ou voltar pelo link
+          quando quiser.
+        </p>
         {canceled ? (
           <p className="text-danger">Este pedido foi cancelado. Se tiver dúvida, fale com o restaurante.</p>
         ) : (

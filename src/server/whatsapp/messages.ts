@@ -169,7 +169,11 @@ export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
     "",
     `*Pagamento:* ${payment}`,
     "",
-    `Acompanhar o pedido: ${trackingUrl(o.code)}`,
+    // é por este link que o cliente vê o pedido andando: ele é a única
+    // forma de acompanhar, então entra em destaque e com o que esperar
+    "*Acompanhe o seu pedido por este link:*",
+    trackingUrl(o.code),
+    "_Guarde a mensagem: é nele que você vê quando o pedido for aceito e quando sair para entrega._",
   ].join("\n");
 }
 
@@ -234,14 +238,18 @@ export function orderStatusUpdate(
 export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
 
 /**
- * Aviso do próximo passo já escrito, para o restaurante mandar ao cliente
- * quando muda o status no painel. "Entregue" e "concluído" não avisam: o
- * cliente já está com o pedido na mão.
+ * Aviso que o restaurante manda ao cliente pelo WhatsApp, junto com a
+ * mudança de status no painel.
+ *
+ * É um só, quando o pedido sai para entrega: a hora em que o cliente
+ * precisa estar por perto para receber. O resto do caminho ele vê no link
+ * de acompanhamento, que foi junto com o pedido dele — por isso esta
+ * mensagem não leva link nenhum: quem recebe já vai abrir a porta.
  */
-// Uma mensagem só: quando o restaurante aceita o pedido. Ela leva o link
-// de acompanhamento, e é por ele que o cliente vê o resto do caminho, sem
-// o restaurante ter que avisar de novo a cada passo.
-const noticeWorthy = (status: OrderStatus) => status === "CONFIRMED";
+const noticeWorthy = (status: OrderStatus) => status === "OUT_FOR_DELIVERY";
+
+const onTheWay = (o: { number: number }, r: { name: string }) =>
+  [`Pedido *#${o.number}* em *${r.name}*: saiu para entrega!`, "", "Se possível, aguarde na frente para receber. Obrigado!"].join("\n");
 
 export function nextStatusNotice(
   o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },
@@ -249,7 +257,7 @@ export function nextStatusNotice(
 ) {
   const step = nextOrderStep(o.status, o.type, o.paymentMethod);
   if (!step || !noticeWorthy(step.to) || !o.customerWhatsapp) return null;
-  const body = orderStatusUpdate(o, r, step.to).body;
+  const body = onTheWay(o, r);
   // app: abre o WhatsApp instalado (computador ou celular); web: o plano B
   return { app: waAppLink(o.customerWhatsapp, body), web: waMeLink(o.customerWhatsapp, body) };
 }
