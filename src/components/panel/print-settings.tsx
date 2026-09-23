@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, BellOff, Printer, PrinterCheck, Smartphone, Volume2 } from "lucide-react";
+import { Bell, BellOff, Download, Printer, PrinterCheck, Smartphone, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { cn } from "@/lib/cn";
 
@@ -188,11 +188,19 @@ export function PrintSettings({ base, panelUrl, orders }: { base: string; panelU
           <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
             <li>Deixe a impressora térmica como impressora padrão do Windows.</li>
             <li>Crie um atalho na área de trabalho com o comando abaixo e abra o painel por ele.</li>
+            <li>
+              Para o atalho ficar com a logo do MenuFácil no lugar da do Chrome: baixe o ícone, clique com o botão direito no atalho, vá em
+              Propriedades, Alterar ícone, Procurar, e escolha o arquivo baixado.
+            </li>
             <li>Deixe esta tela de pedidos aberta enquanto o restaurante estiver funcionando.</li>
           </ol>
           <code className="overflow-x-auto rounded bg-bg px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{shortcut}</code>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <CopyButton text={shortcut} label="Copiar o comando" copiedLabel="Comando copiado!" variant="secondary" size="sm" />
+            <a href="/menufacil.ico" download className={buttonClasses("ghost", "sm")}>
+              <Download className="size-4" aria-hidden="true" />
+              Baixar o ícone
+            </a>
           </div>
           <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
         </div>
