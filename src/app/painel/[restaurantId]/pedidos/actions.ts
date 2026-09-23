@@ -69,3 +69,18 @@ export async function setReceiptWidth(formData: FormData) {
   await audit({ actorUserId: actor.userId, restaurantId, action: "restaurant.print.width", details: { largura } });
   refresh();
 }
+
+/** a via não saiu ou saiu rasgada: destrava o pedido para o Print Fácil tirar de novo */
+export async function reprintOrder(formData: FormData) {
+  const { restaurantId, actor } = await access(formData);
+  const orderId = String(formData.get("orderId") ?? "");
+
+  const { count } = await db.order.updateMany({
+    where: { id: orderId, restaurantId },
+    data: { printedAt: null, printRuns: { increment: 1 } },
+  });
+  if (count === 0) return;
+
+  await audit({ actorUserId: actor.userId, restaurantId, action: "order.print.again", details: { orderId } });
+  refresh();
+}

@@ -399,6 +399,12 @@ model Order {
    * quando o Print Fácil imprimiu: evita a via sair duas vezes
    */
   printedAt DateTime?
+  /**
+   * quantas vezes o restaurante pediu a via de novo. O programa imprime
+   * uma vez por tentativa: e por isso que pedir de novo funciona mesmo
+   * com a via ja na lista do que ele imprimiu.
+   */
+  printRuns Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

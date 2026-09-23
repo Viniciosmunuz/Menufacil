@@ -21,7 +21,7 @@ import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
 
-import { pairPrintDevice, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
+import { pairPrintDevice, reprintOrder, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -95,6 +95,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         panelUrl={`${appUrl()}/painel`}
         restaurantId={restaurant.id}
         acceptAction={stepRestaurantOrder}
+        reprintAction={reprintOrder}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
         devices={printDevices.map((d) => ({

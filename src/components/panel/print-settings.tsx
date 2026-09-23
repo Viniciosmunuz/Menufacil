@@ -124,6 +124,7 @@ export function PrintSettings({
   restaurantId,
   orders,
   acceptAction,
+  reprintAction,
   devices,
   pairAction,
   unpairAction,
@@ -133,6 +134,8 @@ export function PrintSettings({
   restaurantId: string;
   orders: Order[];
   acceptAction: (formData: FormData) => Promise<void>;
+  /** destrava a via para o Print Fácil tirar de novo */
+  reprintAction: (formData: FormData) => Promise<void>;
   /** computadores com o Print Fácil ligados a este restaurante */
   devices: PrintDevice[];
   pairAction: (prev: PairState, formData: FormData) => Promise<PairState>;
@@ -296,12 +299,23 @@ export function PrintSettings({
                   <input type="hidden" name="to" value={order.accept?.to ?? ""} />
                   <StepButton label={order.accept?.label ?? "Aceitar pedido"} notify={order.notify} size="sm" />
                 </form>
-                {mode !== "off" && (
+                {mode === "nuvem" ? (
+                  // quem imprime é o computador do balcão: o painel só destrava
+                  // a via para ela sair de novo lá
+                  <form action={reprintAction}>
+                    <input type="hidden" name="restaurantId" value={restaurantId} />
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <SubmitButton size="sm" variant="secondary" pendingText="Mandando...">
+                      <Printer className="size-4" aria-hidden="true" />
+                      Imprimir de novo
+                    </SubmitButton>
+                  </form>
+                ) : mode !== "off" ? (
                   <Button size="sm" variant="secondary" onClick={() => sendToPrinter(order.id)}>
                     <Printer className="size-4" aria-hidden="true" />
                     Imprimir de novo
                   </Button>
-                )}
+                ) : null}
                 <Button size="sm" variant="ghost" onClick={() => remember(SEEN_KEY, [order.id], read(SEEN_KEY))}>
                   Depois
                 </Button>

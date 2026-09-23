@@ -23,6 +23,8 @@ export async function GET(request: Request) {
   return Response.json({
     pareado: true,
     papel_mm: device.restaurant?.receiptWidth ?? DEFAULT_PAPER,
-    pedidos: orders.map((o) => ({ id: o.id, numero: o.number, criado_em: o.createdAt.toISOString() })),
+    // "tentativa" sobe quando o restaurante pede a via de novo: é assim que
+    // o programa sabe que aquele pedido precisa sair outra vez
+    pedidos: orders.map((o) => ({ id: o.id, numero: o.number, criado_em: o.createdAt.toISOString(), tentativa: o.printRuns })),
   });
 }

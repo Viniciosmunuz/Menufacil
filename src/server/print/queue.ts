@@ -44,7 +44,7 @@ export function pendingOrders(restaurantId: string) {
     },
     orderBy: { createdAt: "asc" },
     take: BATCH,
-    select: { id: true, number: true, createdAt: true },
+    select: { id: true, number: true, createdAt: true, printRuns: true },
   });
 }
 
