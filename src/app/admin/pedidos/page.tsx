@@ -101,7 +101,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                   order={o}
                   subtitle={`${o.restaurant.name} · ${o.type === "DELIVERY" ? "Entrega" : "Retirada"} · ${formatDateTime(o.createdAt)}`}
                 >
-                  <OrderStepActions order={o} action={stepOrder} notifyHref={nextStatusNotice(o, o.restaurant)} />
+                  <OrderStepActions order={o} action={stepOrder} notify={nextStatusNotice(o, o.restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateOrder} deleteAction={deleteOrder} />
                     <Link href={`/painel/${o.restaurant.id}/pedidos/${o.id}`} className={buttonClasses("ghost", "sm")}>

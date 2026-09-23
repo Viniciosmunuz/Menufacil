@@ -2,7 +2,7 @@ import { ConfirmButton } from "@/components/ui/confirm-button";
 import type { OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 import { FINAL_ORDER_STATUSES, nextOrderStep } from "@/lib/order-flow";
 
-import { StepButton } from "./step-button";
+import { StepButton, type StatusNotice } from "./step-button";
 
 // Botão do próximo passo do atendimento e "Cancelar pedido". O "from" leva
 // o status que a tela mostrava: se outra pessoa mudou antes, nada acontece.
@@ -12,14 +12,14 @@ export function OrderStepActions({
   action,
   hidden,
   size = "sm",
-  notifyHref,
+  notify,
 }: {
   order: { id: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod };
   action: (formData: FormData) => Promise<void>;
   hidden?: Record<string, string>;
   size?: "sm" | "md";
   /** aviso pronto para o cliente, aberto junto com a mudança de status */
-  notifyHref?: string | null;
+  notify?: StatusNotice | null;
 }) {
   if (FINAL_ORDER_STATUSES.includes(order.status)) return null;
   const step = nextOrderStep(order.status, order.type, order.paymentMethod);
@@ -40,7 +40,7 @@ export function OrderStepActions({
       {step && (
         <form action={action}>
           {fields(step.to)}
-          <StepButton label={step.label} notifyHref={notifyHref} size={size} />
+          <StepButton label={step.label} notify={notify} size={size} />
         </form>
       )}
       <form action={action}>

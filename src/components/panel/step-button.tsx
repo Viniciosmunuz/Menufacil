@@ -2,19 +2,32 @@
 
 import { SubmitButton } from "@/components/ui/submit-button";
 
+export type StatusNotice = { app: string; web: string };
+
+/** quanto esperar para ver se o WhatsApp instalado assumiu a tela */
+const FALLBACK_MS = 2500;
+
 /**
  * Botão do próximo passo do atendimento. Junto com a mudança de status,
  * abre o WhatsApp do cliente com o aviso já escrito ("pedido aceito", "em
  * preparo", "saiu para entrega"): o restaurante só toca em enviar.
+ *
+ * Primeiro tenta o WhatsApp instalado (whatsapp://), que é o que evita a
+ * página do WhatsApp no navegador. Se nada abrir — o app não está
+ * instalado, a janela continua em foco —, aí sim abre o WhatsApp Web.
  */
-export function StepButton({ label, notifyHref, size }: { label: string; notifyHref?: string | null; size?: "sm" | "md" }) {
+export function StepButton({ label, notify, size }: { label: string; notify?: StatusNotice | null; size?: "sm" | "md" }) {
+  function openWhatsApp() {
+    if (!notify) return;
+    window.location.href = notify.app;
+    setTimeout(() => {
+      if (document.visibilityState === "visible" && document.hasFocus()) window.open(notify.web, "_blank", "noopener,noreferrer");
+    }, FALLBACK_MS);
+  }
+
   return (
-    <SubmitButton
-      size={size}
-      pendingText="Salvando..."
-      // o clique é o que o navegador deixa abrir outra aba; depois dele, não
-      onClick={() => notifyHref && window.open(notifyHref, "_blank", "noopener,noreferrer")}
-    >
+    // o clique é o que o navegador deixa abrir outra janela; depois dele, não
+    <SubmitButton size={size} pendingText="Salvando..." onClick={openWhatsApp}>
       {label}
     </SubmitButton>
   );

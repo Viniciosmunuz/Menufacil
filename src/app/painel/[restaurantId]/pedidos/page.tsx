@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ExternalLink, ReceiptText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Printer, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -6,6 +6,7 @@ import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
+import { PrintSettings } from "@/components/panel/print-settings";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -43,10 +44,17 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   const statuses = FILTERS[filter].statuses;
   const where = { restaurantId: restaurant.id, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus] = await Promise.all([
+  const [orders, total, byStatus, openOrders] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
+    // pedidos esperando atendimento: são eles que a impressora tira sozinha
+    db.order.findMany({
+      where: { restaurantId: restaurant.id, status: { in: [...OPEN_ORDER_STATUSES] } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, createdAt: true },
+    }),
   ]);
 
   const countOf = (key: FilterKey) => {
@@ -66,8 +74,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      <AutoRefresh seconds={30} />
+      <AutoRefresh seconds={15} />
       <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
+      <PrintSettings base={base} orders={openOrders.map((o) => ({ id: o.id, createdAt: o.createdAt.toISOString() }))} />
 
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
         {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
@@ -96,13 +105,19 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
             {orders.map((o) => (
               <li key={o.id}>
                 <OrderDrawer order={o} subtitle={`${o.type === "DELIVERY" ? "Entrega" : "Retirada"} · ${formatDateTime(o.createdAt)}`}>
-                  <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notifyHref={nextStatusNotice(o, restaurant)} />
+                  <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
-                    <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
-                      <ExternalLink className="size-4" aria-hidden="true" />
-                      Abrir pedido
-                    </Link>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
+                        <Printer className="size-4" aria-hidden="true" />
+                        Imprimir
+                      </a>
+                      <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        Abrir pedido
+                      </Link>
+                    </span>
                   </div>
                 </OrderDrawer>
               </li>

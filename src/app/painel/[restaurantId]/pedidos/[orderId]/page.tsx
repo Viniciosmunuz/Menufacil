@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Printer } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -59,11 +59,13 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       />
 
       <Card>
-        <SectionTitle description={final ? undefined : "Cada passo avisa o cliente pelo WhatsApp."}>Atendimento</SectionTitle>
+        <SectionTitle description={final ? undefined : "Em preparo e saiu para entrega abrem o WhatsApp com o aviso para o cliente."}>
+          Atendimento
+        </SectionTitle>
         {final ? (
           <p className="text-muted">{order.status === "CANCELED" ? "Este pedido foi cancelado." : "Pedido concluído."}</p>
         ) : (
-          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notifyHref={nextStatusNotice(order, restaurant)} />
+          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notify={nextStatusNotice(order, restaurant)} />
         )}
       </Card>
 
@@ -93,10 +95,21 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <OrderActions order={editableOrder(order)} updateAction={updateRestaurantOrder} hidden={hidden} />
-        <Link href={`/pedido/${order.code}`} target="_blank" className={buttonClasses("ghost", "sm")}>
-          <ExternalLink className="size-4" aria-hidden="true" />
-          Ver como o cliente vê
-        </Link>
+        <span className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/painel/${restaurant.id}/pedidos/${order.id}/via`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses("secondary", "sm")}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+            Imprimir via
+          </a>
+          <Link href={`/pedido/${order.code}`} target="_blank" className={buttonClasses("ghost", "sm")}>
+            <ExternalLink className="size-4" aria-hidden="true" />
+            Ver como o cliente vê
+          </Link>
+        </span>
       </div>
     </div>
   );
