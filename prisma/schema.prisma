@@ -189,6 +189,7 @@ model Restaurant {
   whatsappIntegration WhatsAppIntegration?
   messages            WhatsAppMessage[]
   auditLogs           AuditLog[]
+  printDevices        PrintDevice[]
 
   @@index([status])
   @@index([city])
@@ -391,6 +392,9 @@ model Order {
   deliveryFeeCents Int
   totalCents       Int
 
+  /** quando o Print Fácil imprimiu: evita a via sair duas vezes */
+  printedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -568,4 +572,32 @@ model AuditLog {
   restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId, createdAt])
+}
+
+// Print Fácil: o programa instalado no computador do restaurante, que
+// imprime os pedidos sozinho. Cada instalação vira um dispositivo aqui.
+// Nasce sem restaurante, mostrando um código de pareamento; o dono digita
+// esse código no painel e aí o dispositivo passa a receber os pedidos
+// daquele restaurante, e só dele. Do token fica só o hash, como nas
+// sessões: vazar a tabela não dá acesso a ninguém.
+model PrintDevice {
+  id           String  @id @default(cuid())
+  restaurantId String?
+
+  /** nome do computador, para o dono reconhecer no painel */
+  name      String
+  tokenHash String  @unique
+  /** some depois do pareamento */
+  pairingCode String? @unique
+
+  /** impressora escolhida no programa, só para mostrar no painel */
+  printerName String?
+
+  pairedAt   DateTime?
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }

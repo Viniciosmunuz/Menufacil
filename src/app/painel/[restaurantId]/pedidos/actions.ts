@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
+import { pairDevice, unpairDevice } from "@/server/print/devices";
 
 // Atendimento dos pedidos pelo painel do restaurante. Cada ação confere o
 // acesso ao restaurante e só mexe em pedido dele.
@@ -33,5 +34,24 @@ export async function stepRestaurantOrder(formData: FormData) {
     restaurantId,
   });
   // se o pedido mudou nesse meio-tempo, a tela atualizada mostra como ficou
+  refresh();
+}
+
+// Print Fácil: ligar e desligar o computador do restaurante. O programa
+// costuma entrar pelo login do dono; o código serve para quem instalou a
+// máquina antes de ter a conta em mãos.
+export type PairState = { error?: string; ok?: boolean };
+
+export async function pairPrintDevice(_prev: PairState, formData: FormData): Promise<PairState> {
+  const { restaurantId } = await access(formData);
+  const result = await pairDevice(String(formData.get("codigo") ?? ""), restaurantId);
+  if ("error" in result) return { error: result.error };
+  refresh();
+  return { ok: true };
+}
+
+export async function unpairPrintDevice(formData: FormData) {
+  const { restaurantId } = await access(formData);
+  await unpairDevice(String(formData.get("dispositivoId") ?? ""), restaurantId);
   refresh();
 }

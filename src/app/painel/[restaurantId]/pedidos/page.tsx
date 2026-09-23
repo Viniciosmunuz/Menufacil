@@ -19,8 +19,9 @@ import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { listDevices } from "@/server/print/devices";
 
-import { stepRestaurantOrder, updateRestaurantOrder } from "./actions";
+import { pairPrintDevice, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -46,7 +47,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   const statuses = FILTERS[filter].statuses;
   const where = { restaurantId: restaurant.id, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
@@ -67,6 +68,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         customerWhatsapp: true,
       },
     }),
+    listDevices(restaurant.id),
   ]);
 
   const countOf = (key: FilterKey) => {
@@ -93,6 +95,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         panelUrl={`${appUrl()}/painel`}
         restaurantId={restaurant.id}
         acceptAction={stepRestaurantOrder}
+        pairAction={pairPrintDevice}
+        unpairAction={unpairPrintDevice}
+        devices={printDevices.map((d) => ({
+          id: d.id,
+          name: d.name,
+          printerName: d.printerName,
+          pairedAt: d.pairedAt?.toISOString() ?? null,
+          lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+        }))}
         orders={openOrders.map((o) => {
           // o aviso da tela só traz o aceite; o resto do atendimento fica na lista
           const step = nextOrderStep(o.status, o.type, o.paymentMethod);

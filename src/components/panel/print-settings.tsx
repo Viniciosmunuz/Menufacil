@@ -1,12 +1,14 @@
 "use client";
 
 import { Bell, BellOff, Check, ChevronDown, Download, Printer, ReceiptText, Smartphone, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 
+import { CloudPrinterIcon } from "./cloud-printer-icon";
 import { StepButton, type StatusNotice } from "./step-button";
 
 // Impressão automática dos pedidos novos, para quem deixa o painel aberto:
@@ -21,7 +23,7 @@ import { StepButton, type StatusNotice } from "./step-button";
 // Nada disso depende do WhatsApp: o pedido já está no sistema quando o
 // cliente confirma.
 
-type Mode = "off" | "pc" | "celular";
+type Mode = "off" | "pc" | "celular" | "nuvem";
 
 type Order = {
   id: string;
@@ -111,18 +113,28 @@ function startNow() {
   write(SINCE_KEY, String(Date.now()));
 }
 
+export type PrintDevice = { id: string; name: string; printerName: string | null; pairedAt: string | null; lastSeenAt: string | null };
+export type PairState = { error?: string; ok?: boolean };
+
 export function PrintSettings({
   base,
   panelUrl,
   restaurantId,
   orders,
   acceptAction,
+  devices,
+  pairAction,
+  unpairAction,
 }: {
   base: string;
   panelUrl: string;
   restaurantId: string;
   orders: Order[];
   acceptAction: (formData: FormData) => Promise<void>;
+  /** computadores com o Print Fácil ligados a este restaurante */
+  devices: PrintDevice[];
+  pairAction: (prev: PairState, formData: FormData) => Promise<PairState>;
+  unpairAction: (formData: FormData) => Promise<void>;
 }) {
   const savedMode = useStored(MODE_KEY);
   const savedSound = useStored(SOUND_KEY);
@@ -133,7 +145,7 @@ export function PrintSettings({
   const soundBox = useRef<HTMLDivElement>(null);
   const [pickingSound, setPickingSound] = useState(false);
 
-  const mode: Mode = savedMode === "pc" || savedMode === "celular" ? savedMode : "off";
+  const mode: Mode = savedMode === "pc" || savedMode === "celular" || savedMode === "nuvem" ? savedMode : "off";
   const sound = savedSound === "1";
   const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
   const since = Number(savedSince ?? 0);
@@ -167,7 +179,7 @@ export function PrintSettings({
     if (novos.length === 0) return;
 
     if (sound) void playSound(soundName).catch(() => {});
-    if (mode !== "off") for (const order of novos) sendToPrinter(order.id);
+    if (mode === "pc" || mode === "celular") for (const order of novos) sendToPrinter(order.id);
     remember(
       PRINTED_KEY,
       novos.map((o) => o.id),
@@ -177,9 +189,9 @@ export function PrintSettings({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh, mode, sound, soundName, base]);
 
-  // com a impressão ligada, segura a tela acesa: aba congelada não imprime
+  // imprimindo pelo navegador, segura a tela acesa: aba congelada não imprime
   useEffect(() => {
-    if (mode === "off" || !("wakeLock" in navigator)) return;
+    if ((mode !== "pc" && mode !== "celular") || !("wakeLock" in navigator)) return;
     let lock: WakeLockSentinel | null = null;
     const hold = async () => {
       try {
@@ -210,7 +222,7 @@ export function PrintSettings({
   }, [pickingSound]);
 
   /** tocar de novo no que está ligado desliga: sem nenhum marcado, não imprime */
-  const option = (value: "pc" | "celular", label: string, Icon: typeof Printer) => (
+  const option = (value: "pc" | "celular" | "nuvem", label: string, Icon: (props: { className?: string }) => ReactNode) => (
     <button
       type="button"
       title={label}
@@ -294,6 +306,7 @@ export function PrintSettings({
           <p className="mr-1 text-sm font-extrabold">Imprimir:</p>
           {option("pc", "Imprimir neste computador", Printer)}
           {option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
+          {option("nuvem", "Imprimir pelo Print Fácil, no computador do restaurante", CloudPrinterIcon)}
 
           <div ref={soundBox} className="relative ml-auto flex items-center">
             <button
@@ -380,16 +393,108 @@ export function PrintSettings({
             </div>
             <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
           </div>
+        ) : mode === "nuvem" ? (
+          <PrintFacilPanel devices={devices} restaurantId={restaurantId} pairAction={pairAction} unpairAction={unpairAction} />
         ) : (
           <p className="text-sm text-muted">
             {mode === "celular"
               ? "Deixe esta página aberta, com o RawBT instalado e a impressora pareada. Enquanto ela estiver na tela, o celular não apaga sozinho; se você trocar de app, os pedidos que chegarem saem assim que voltar."
-              : "Toque na impressora ou no celular para o pedido novo sair sozinho no papel."}
+              : "Toque na impressora, no celular ou no Print Fácil para o pedido novo sair sozinho no papel."}
           </p>
         )}
 
         <div ref={frames} aria-hidden="true" />
       </div>
     </>
+  );
+}
+
+/** só o horário quando é de hoje; com o dia quando é mais velho */
+function when(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  const today = new Date().toDateString() === date.toDateString();
+  return date.toLocaleString("pt-BR", today ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+/** conectado agora: falou com o servidor há menos de dois minutos */
+const online = (lastSeenAt: string | null) => !!lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < 2 * 60 * 1000;
+
+/**
+ * Print Fácil: o programa que o restaurante instala no computador. Ele
+ * recebe o pedido pela internet e manda para a impressora, sem depender
+ * desta tela estar aberta. Aqui o dono vê os computadores ligados e liga
+ * um novo pelo código que o programa mostra.
+ */
+function PrintFacilPanel({
+  devices,
+  restaurantId,
+  pairAction,
+  unpairAction,
+}: {
+  devices: PrintDevice[];
+  restaurantId: string;
+  pairAction: (prev: PairState, formData: FormData) => Promise<PairState>;
+  unpairAction: (formData: FormData) => Promise<void>;
+}) {
+  const [state, action] = useActionState<PairState, FormData>(pairAction, {});
+
+  return (
+    <div className="flex flex-col gap-3 rounded-control border border-line bg-surface-2 p-4 text-sm">
+      <p className="font-bold">Computadores com o Print Fácil</p>
+
+      {devices.length === 0 ? (
+        <p className="text-muted">
+          Nenhum computador ligado ainda. Instale o Print Fácil no computador do restaurante: no programa, entre com o mesmo e-mail e senha deste
+          painel e ele já fica ligado aqui. Se preferir, use o código que ele mostra.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {devices.map((device) => (
+            <li key={device.id} className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line bg-surface p-3">
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 font-bold">
+                  <span className={cn("size-2 shrink-0 rounded-full", online(device.lastSeenAt) ? "animate-pulse bg-success" : "bg-faint")} />
+                  {device.name}
+                </span>
+                <span className="block text-muted">
+                  {device.printerName ? `Impressora: ${device.printerName}` : "Impressora ainda não escolhida"}
+                  {device.lastSeenAt && ` · ${online(device.lastSeenAt) ? "conectado agora" : `visto ${when(device.lastSeenAt)}`}`}
+                </span>
+              </span>
+              <form action={unpairAction}>
+                <input type="hidden" name="restaurantId" value={restaurantId} />
+                <input type="hidden" name="dispositivoId" value={device.id} />
+                <SubmitButton size="sm" variant="ghost" pendingText="Desligando...">
+                  Desligar
+                </SubmitButton>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form action={action} className="flex flex-wrap items-end gap-2">
+        <input type="hidden" name="restaurantId" value={restaurantId} />
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="font-bold">Ligar pelo código do programa</span>
+          <input
+            name="codigo"
+            placeholder="MF-8K29-XP4"
+            maxLength={12}
+            autoComplete="off"
+            className="h-11 w-full rounded-control border border-line bg-surface px-4 font-mono text-base tracking-wider text-ink uppercase placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+          />
+        </label>
+        <SubmitButton size="md" pendingText="Ligando...">
+          Conectar
+        </SubmitButton>
+      </form>
+
+      {state.error && <p className="font-bold text-danger">{state.error}</p>}
+      {state.ok && <p className="font-bold text-success">Computador ligado. Os próximos pedidos saem nele.</p>}
+
+      <p className="text-muted">Com o Print Fácil ligado, o pedido sai no papel mesmo com esta tela fechada.</p>
+    </div>
   );
 }
