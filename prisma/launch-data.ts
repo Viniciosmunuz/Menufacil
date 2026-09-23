@@ -94,7 +94,14 @@ const PIZZA_ESPECIAL =
 const MASSA = pick("Massa", ["Espaguete", "Talharim"]);
 const ACOMPANHAMENTO = pick("Acompanhamento", ["Macaxeira", "Batata"]);
 const COM_ARROZ = "com porção de arroz";
-const SABOR_SUCO = "Sabores diversos: diga qual na observação.";
+// Sabores e marcas das bebidas: o cardápio em papel só dizia "sabores
+// diversos". O restaurante ajusta a lista pelo painel quando quiser.
+const SABORES_REFRI = ["Coca-Cola", "Coca-Cola zero", "Guaraná Antarctica", "Fanta laranja", "Fanta uva", "Sprite"];
+const SABORES_SUCO = ["Laranja", "Acerola", "Cupuaçu", "Graviola", "Maracujá", "Abacaxi", "Taperebá", "Manga"];
+const SABORES_SUCO_LATA = ["Uva", "Pêssego", "Laranja", "Maracujá"];
+const CERVEJA_LATA = ["Skol", "Brahma", "Antarctica", "Itaipava"];
+const CERVEJA_LONG_NECK = ["Heineken", "Budweiser", "Corona", "Stella Artois"];
+const CERVEJA_600 = ["Skol", "Brahma", "Antarctica", "Original"];
 const PIZZA_TAMANHOS = (brotinho: number, pequena: number, grande: number): [string, number][] => [
   ["Brotinho", brotinho],
   ["Pequena (4 fatias)", pequena],
@@ -122,7 +129,8 @@ export const launchRestaurants: LaunchRestaurant[] = [
     pix: { key: "+5592994750615", type: "PHONE", holder: null },
     // v2: tamanho, sabor e meia/inteira viraram opções do produto
     // v3: pizzas meio a meio a partir da pequena
-    menuVersion: 3,
+    // v4: cada tamanho de refrigerante e de cerveja é um item, com os sabores dentro
+    menuVersion: 4,
     // v1: foto ilustrativa para cada produto que estava sem
     imagesVersion: 1,
     menu: withPhotos([
@@ -308,15 +316,20 @@ export const launchRestaurants: LaunchRestaurant[] = [
       {
         name: "Bebidas",
         products: [
-          priced(
-            "Refrigerante",
-            "Tamanho",
-            [["Mini", 2], ["Lata", 6], ["1 litro", 9], ["2 litros", 15]],
-            { description: "Diga o sabor na observação.", image: demo("comum/refrigerante") },
-          ),
-          priced("Suco", "Tamanho", [["300 ml", 8], ["Jarra", 20]], { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
-          priced("Suco com leite", "Tamanho", [["300 ml", 9], ["Jarra", 25]], { description: SABOR_SUCO, image: demo("pizzaria/suco-laranja") }),
-          item("Suco em lata", 5, { description: SABOR_SUCO }),
+          // cada tamanho é um item: o cliente entra e escolhe o sabor dentro dele
+          item("Refrigerante mini", 2, { image: demo("comum/refrigerante"), options: [pick("Sabor", SABORES_REFRI)] }),
+          item("Refrigerante lata", 6, { image: demo("comum/refrigerante"), options: [pick("Sabor", SABORES_REFRI)] }),
+          item("Refrigerante 1 litro", 9, { image: demo("comum/refrigerante"), options: [pick("Sabor", SABORES_REFRI)] }),
+          item("Refrigerante 2 litros", 15, { image: demo("comum/refrigerante"), options: [pick("Sabor", SABORES_REFRI)] }),
+          priced("Suco", "Tamanho", [["300 ml", 8], ["Jarra", 20]], {
+            image: demo("pizzaria/suco-laranja"),
+            options: [pick("Sabor", SABORES_SUCO)],
+          }),
+          priced("Suco com leite", "Tamanho", [["300 ml", 9], ["Jarra", 25]], {
+            image: demo("pizzaria/suco-laranja"),
+            options: [pick("Sabor", SABORES_SUCO)],
+          }),
+          item("Suco em lata", 5, { options: [pick("Sabor", SABORES_SUCO_LATA)] }),
           priced("Suco detox", "Tamanho", [["300 ml", 9.5], ["Jarra", 24]]),
           priced("Vitaminada", "Tamanho", [["300 ml", 9.5], ["Jarra", 25]]),
           priced("Água mineral", "Tamanho", [["350 ml", 2.5], ["500 ml", 4], ["2 litros", 7]], { image: demo("comum/agua") }),
@@ -328,7 +341,10 @@ export const launchRestaurants: LaunchRestaurant[] = [
         name: "Drinks",
         description: "Venda proibida para menores de 18 anos.",
         products: [
-          priced("Cerveja", "Tamanho", [["Lata", 6], ["Long neck", 12], ["600 ml", 19]], { image: pl("cerveja") }),
+          // cada formato é um item, com as marcas daquele formato dentro
+          item("Cerveja lata", 6, { image: pl("cerveja"), options: [pick("Marca", CERVEJA_LATA)] }),
+          item("Cerveja long neck", 12, { image: pl("cerveja"), options: [pick("Marca", CERVEJA_LONG_NECK)] }),
+          item("Cerveja 600 ml", 19, { image: pl("cerveja"), options: [pick("Marca", CERVEJA_600)] }),
           priced("Caipirinha", "Tipo", [["Tradicional", 10], ["Verde (com couve)", 12]], {
             description: "Limão, açúcar, gelo e cachaça.",
             image: pl("caipirinha"),
