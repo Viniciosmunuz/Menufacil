@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
+import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
 import { stepRestaurantOrder, updateRestaurantOrder } from "./actions";
@@ -76,7 +77,11 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     <div className="flex flex-col gap-6">
       <AutoRefresh seconds={15} />
       <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
-      <PrintSettings base={base} orders={openOrders.map((o) => ({ id: o.id, createdAt: o.createdAt.toISOString() }))} />
+      <PrintSettings
+        base={base}
+        panelUrl={`${appUrl()}/painel`}
+        orders={openOrders.map((o) => ({ id: o.id, createdAt: o.createdAt.toISOString() }))}
+      />
 
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
         {(Object.keys(FILTERS) as FilterKey[]).map((key) => (

@@ -1,14 +1,16 @@
 "use client";
 
-import { Bell, BellOff, Printer, PrinterCheck, Smartphone } from "lucide-react";
+import { Bell, BellOff, Printer, PrinterCheck, Smartphone, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { cn } from "@/lib/cn";
 
 // Impressão automática dos pedidos novos, para quem deixa o painel aberto:
 // - "pc": abre a via num quadro invisível e manda imprimir. Com o Chrome
 //   aberto em modo de impressão direta (--kiosk-printing), sai na impressora
-//   sem janela nenhuma.
+//   padrão sem janela nenhuma.
 // - "celular": entrega o texto ao RawBT, o app que fala com a térmica por
 //   Bluetooth ou rede.
 // Nada disso depende do WhatsApp: o pedido já está no sistema quando o
@@ -21,6 +23,7 @@ const SOUND_KEY = "mf_som_pedido";
 const PRINTED_KEY = "mf_pedidos_impressos";
 const SINCE_KEY = "mf_impressao_desde";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+const SOUND_FILE = "/som-pedido.wav";
 
 const read = (key: string) => {
   try {
@@ -47,26 +50,6 @@ const printedIds = (): string[] => {
   }
 };
 
-/** apito curto de pedido novo, sem precisar de arquivo de som */
-function beep() {
-  try {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const audio = new Ctor();
-    const tone = audio.createOscillator();
-    const gain = audio.createGain();
-    tone.type = "square";
-    tone.frequency.value = 880;
-    gain.gain.value = 0.15;
-    tone.connect(gain).connect(audio.destination);
-    tone.start();
-    tone.stop(audio.currentTime + 0.18);
-    tone.onended = () => void audio.close();
-  } catch {
-    // navegador sem som liberado: o aviso na tela continua valendo
-  }
-}
-
 /** o que está salvo no aparelho, sem quebrar a primeira pintura no servidor */
 const noop = () => () => {};
 
@@ -76,16 +59,30 @@ function startNow(ids: string[]) {
   write(PRINTED_KEY, JSON.stringify(ids.slice(0, 200)));
 }
 
-export function PrintSettings({ base, orders }: { base: string; orders: { id: string; createdAt: string }[] }) {
+export function PrintSettings({ base, panelUrl, orders }: { base: string; panelUrl: string; orders: { id: string; createdAt: string }[] }) {
   const savedMode = useSyncExternalStore(noop, () => read(MODE_KEY), () => null);
   const savedSound = useSyncExternalStore(noop, () => read(SOUND_KEY), () => null);
   // a escolha do momento vale na hora; o aparelho lembra dela na próxima visita
   const [chosenMode, setChosenMode] = useState<Mode | null>(null);
   const [chosenSound, setChosenSound] = useState<boolean | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const frames = useRef<HTMLDivElement>(null);
+  const player = useRef<HTMLAudioElement | null>(null);
 
   const mode: Mode = chosenMode ?? (savedMode === "pc" || savedMode === "celular" ? savedMode : "off");
   const sound = chosenSound ?? savedSound === "1";
+
+  // o navegador só deixa tocar som depois de um toque na página: o botão do
+  // som é esse toque, e o mesmo player serve para os avisos seguintes
+  function ring() {
+    const audio = (player.current ??= new Audio(SOUND_FILE));
+    audio.currentTime = 0;
+    audio.volume = 1;
+    audio
+      .play()
+      .then(() => setBlocked(false))
+      .catch(() => setBlocked(true));
+  }
 
   useEffect(() => {
     const since = Number(read(SINCE_KEY) ?? 0);
@@ -94,7 +91,7 @@ export function PrintSettings({ base, orders }: { base: string; orders: { id: st
     const novos = orders.filter((o) => !done.includes(o.id) && new Date(o.createdAt).getTime() >= since);
     if (novos.length === 0) return;
 
-    if (sound) beep();
+    if (sound) ring();
 
     if (mode !== "off") {
       for (const order of novos) {
@@ -130,7 +127,7 @@ export function PrintSettings({ base, orders }: { base: string; orders: { id: st
     const next = !sound;
     setChosenSound(next);
     write(SOUND_KEY, next ? "1" : "0");
-    if (next) beep(); // o toque no botão é o que libera o som no navegador
+    if (next) ring(); // o toque no botão é o que libera o som no navegador
   }
 
   const option = (value: Mode, label: string, Icon: typeof Printer) => (
@@ -148,33 +145,65 @@ export function PrintSettings({ base, orders }: { base: string; orders: { id: st
     </button>
   );
 
+  const shortcut = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --app=${panelUrl}`;
+
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="mr-1 text-sm font-extrabold">Imprimir pedido novo:</p>
         {option("off", "Não imprimir", PrinterCheck)}
         {option("pc", "Neste computador", Printer)}
         {option("celular", "Neste celular (RawBT)", Smartphone)}
-        <button
-          type="button"
-          onClick={toggleSound}
-          aria-pressed={sound}
-          className={cn(
-            "ml-auto inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
-            sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-pressed={sound}
+            className={cn(
+              "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+              sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+            )}
+          >
+            {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
+            {sound ? "Som ligado" : "Som desligado"}
+          </button>
+          {sound && (
+            <Button size="sm" variant="ghost" onClick={ring}>
+              <Volume2 className="size-4" aria-hidden="true" />
+              Testar som
+            </Button>
           )}
-        >
-          {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
-          {sound ? "Som ligado" : "Som desligado"}
-        </button>
+        </div>
       </div>
-      <p className="text-sm text-muted">
-        {mode === "pc"
-          ? "Deixe esta página aberta. Para sair direto na impressora, sem a janela de confirmação, abra o Chrome com a opção de impressão direta."
-          : mode === "celular"
+
+      {blocked && (
+        <p className="text-sm font-bold text-warning">
+          O navegador bloqueou o som. Toque em “Testar som” uma vez para liberar, e deixe esta aba aberta.
+        </p>
+      )}
+
+      {mode === "pc" ? (
+        <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
+          <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
+          <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
+            <li>Deixe a impressora térmica como impressora padrão do Windows.</li>
+            <li>Crie um atalho na área de trabalho com o comando abaixo e abra o painel por ele.</li>
+            <li>Deixe esta tela de pedidos aberta enquanto o restaurante estiver funcionando.</li>
+          </ol>
+          <code className="overflow-x-auto rounded bg-bg px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{shortcut}</code>
+          <div>
+            <CopyButton text={shortcut} label="Copiar o comando" copiedLabel="Comando copiado!" variant="secondary" size="sm" />
+          </div>
+          <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
+        </div>
+      ) : (
+        <p className="text-sm text-muted">
+          {mode === "celular"
             ? "Deixe esta página aberta e o app RawBT instalado, com a impressora pareada."
             : "Com o painel aberto, o pedido novo pode sair sozinho na impressora térmica."}
-      </p>
+        </p>
+      )}
+
       <div ref={frames} aria-hidden="true" />
     </div>
   );
