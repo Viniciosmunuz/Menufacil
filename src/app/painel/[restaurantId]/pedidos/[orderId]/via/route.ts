@@ -40,7 +40,12 @@ export async function GET(request: Request, { params }: RouteContext<"/painel/[r
 </head>
 <body>
 <pre>${escape(text)}</pre>
-<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 200); });</script>
+<script>
+  // o painel escuta este aviso: sem ele, entende que a impressão não foi
+  function avisar() { try { parent.postMessage({ mf: "impresso", id: ${JSON.stringify(order.id)} }, location.origin); } catch (e) {} }
+  window.addEventListener("afterprint", avisar);
+  window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 200); });
+</script>
 </body>
 </html>`;
 
