@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
+import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { FINAL_ORDER_STATUSES } from "@/lib/order-flow";
@@ -62,7 +63,7 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
         {final ? (
           <p className="text-muted">{order.status === "CANCELED" ? "Este pedido foi cancelado." : "Pedido concluído."}</p>
         ) : (
-          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" />
+          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notifyHref={nextStatusNotice(order, restaurant)} />
         )}
       </Card>
 

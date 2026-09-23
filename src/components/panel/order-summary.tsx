@@ -15,6 +15,7 @@ import type { EditableOrder } from "./order-actions";
 export const orderSummarySelect = {
   id: true,
   number: true,
+  code: true,
   customerName: true,
   customerWhatsapp: true,
   type: true,

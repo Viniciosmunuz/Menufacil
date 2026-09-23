@@ -3,6 +3,7 @@ import "server-only";
 import type { CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
+import { nextOrderStep } from "@/lib/order-flow";
 import { itemLabel } from "@/lib/options";
 import { paymentHint, paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
@@ -229,3 +230,19 @@ export function orderStatusUpdate(
 
 /** abre o app direto no celular, sem passar pela página do WhatsApp no navegador */
 export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
+
+/**
+ * Aviso do próximo passo já escrito, para o restaurante mandar ao cliente
+ * quando muda o status no painel. "Entregue" e "concluído" não avisam: o
+ * cliente já está com o pedido na mão.
+ */
+const NOTICE_STATUSES: OrderStatus[] = ["CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"];
+
+export function nextStatusNotice(
+  o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },
+  r: { name: string },
+) {
+  const step = nextOrderStep(o.status, o.type, o.paymentMethod);
+  if (!step || !NOTICE_STATUSES.includes(step.to) || !o.customerWhatsapp) return null;
+  return waMeLink(o.customerWhatsapp, orderStatusUpdate(o, r, step.to).body);
+}

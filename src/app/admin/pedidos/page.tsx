@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { ORDER_STATUSES, isOrderStatus, orderStatusLabel } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
@@ -100,7 +101,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                   order={o}
                   subtitle={`${o.restaurant.name} · ${o.type === "DELIVERY" ? "Entrega" : "Retirada"} · ${formatDateTime(o.createdAt)}`}
                 >
-                  <OrderStepActions order={o} action={stepOrder} />
+                  <OrderStepActions order={o} action={stepOrder} notifyHref={nextStatusNotice(o, o.restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateOrder} deleteAction={deleteOrder} />
                     <Link href={`/painel/${o.restaurant.id}/pedidos/${o.id}`} className={buttonClasses("ghost", "sm")}>

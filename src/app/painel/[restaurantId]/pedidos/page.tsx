@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
+import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { requireRestaurantAccess } from "@/server/auth/dal";
@@ -95,7 +96,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
             {orders.map((o) => (
               <li key={o.id}>
                 <OrderDrawer order={o} subtitle={`${o.type === "DELIVERY" ? "Entrega" : "Retirada"} · ${formatDateTime(o.createdAt)}`}>
-                  <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} />
+                  <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notifyHref={nextStatusNotice(o, restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
                     <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
