@@ -220,9 +220,10 @@ async function fillLaunchImages(restaurantId: string, launch: (typeof launchRest
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
 /** cardápio da implantação: categorias, produtos e opções */
-async function createLaunchMenu(tx: Tx, restaurantId: string, menu: (typeof launchRestaurants)[number]["menu"]) {
-  for (const [categoryOrder, category] of menu.entries()) {
-    await tx.menuCategory.create({
+type LaunchCategory = (typeof launchRestaurants)[number]["menu"][number];
+
+async function createLaunchCategory(tx: Tx, restaurantId: string, category: LaunchCategory, categoryOrder: number) {
+  await tx.menuCategory.create({
       data: {
         restaurantId,
         name: category.name,
@@ -250,7 +251,12 @@ async function createLaunchMenu(tx: Tx, restaurantId: string, menu: (typeof laun
           })),
         },
       },
-    });
+  });
+}
+
+async function createLaunchMenu(tx: Tx, restaurantId: string, menu: LaunchCategory[]) {
+  for (const [categoryOrder, category] of menu.entries()) {
+    await createLaunchCategory(tx, restaurantId, category, categoryOrder);
   }
 
   // meio a meio "a partir de": com tudo criado, o nome da opção vira o id
@@ -343,10 +349,50 @@ async function seedLaunches() {
   }
 }
 
+// Ajuste pontual de categorias. Quando o cardápio já foi mexido pelo painel,
+// a versão inteira não entra (o painel manda). Aqui a equipe troca só as
+// categorias listadas, uma vez, mantendo o lugar delas no cardápio.
+const CATEGORY_UPDATES: { slug: string; version: number; categories: string[] }[] = [
+  // v4: refrigerante e cerveja por tamanho, com os sabores dentro
+  { slug: "papaleguas", version: 4, categories: ["Bebidas", "Drinks"] },
+];
+
+async function updateLaunchCategories() {
+  for (const update of CATEGORY_UPDATES) {
+    const launch = launchRestaurants.find((l) => l.slug === update.slug);
+    const restaurant = await db.restaurant.findUnique({ where: { slug: update.slug }, select: { id: true } });
+    if (!launch || !restaurant) continue;
+
+    const mark = `launch.categorias.v${update.version}`;
+    if (await db.auditLog.findFirst({ where: { restaurantId: restaurant.id, action: mark }, select: { id: true } })) continue;
+    const wanted = launch.menu.filter((c) => update.categories.includes(c.name));
+    if (wanted.length === 0) continue;
+
+    await db.$transaction(
+      async (tx) => {
+        const current = await tx.menuCategory.findMany({
+          where: { restaurantId: restaurant.id, name: { in: update.categories } },
+          select: { id: true, name: true, sortOrder: true },
+        });
+        await tx.menuCategory.deleteMany({ where: { id: { in: current.map((c) => c.id) } } });
+        const last = await tx.menuCategory.aggregate({ where: { restaurantId: restaurant.id }, _max: { sortOrder: true } });
+        let next = (last._max.sortOrder ?? -1) + 1;
+        for (const category of wanted) {
+          await createLaunchCategory(tx, restaurant.id, category, current.find((c) => c.name === category.name)?.sortOrder ?? next++);
+        }
+        await tx.auditLog.create({ data: { restaurantId: restaurant.id, action: mark, details: { categorias: update.categories } } });
+      },
+      { timeout: 120_000 },
+    );
+    console.log(`• "${launch.name}": ${update.categories.join(" e ")} atualizadas (v${update.version}).`);
+  }
+}
+
 async function main() {
   await seedAdmin();
   await seedCategories();
   await seedLaunches();
+  await updateLaunchCategories();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 
