@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <style>
+      .t { fill: #eef2f7 }
+      .m { fill: #9aa8bb }
+      .b { fill: #ff8a1f }
+      .card { fill: #121821; stroke: #24303f; stroke-width: 2 }
+      .pill { fill: #1a2230; stroke: #24303f; stroke-width: 2 }
+      .ico { fill: none; stroke: #ff8a1f; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round }
+      .seta { fill: none; stroke: #ff8a1f; stroke-width: 3; stroke-linecap: round; marker-end: url(#ponta) }
+      .tit { font-size: 20px; font-weight: 700 }
+      .txt { font-size: 15px }
+      .peq { font-size: 13px }
+    </style>
+    <marker id="ponta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#ff8a1f" />
+    </marker>
+  </defs>
+
+  <rect width="1200" height="980" fill="#0a0e14" />
+
+  <!-- cabeçalho -->
+  <g transform="translate(48 46)">
+    <g class="ico" transform="translate(0 2) scale(0.9)">
+      <circle cx="30" cy="6" r="3" />
+      <path d="M13 20A16 16 0 0 1 46 25" />
+      <path d="M2 20h8" />
+      <path d="M0 25h7" />
+      <path d="M2 30h13" />
+      <path d="M16 30h31" />
+      <path d="M16 30v8h30v-8" />
+    </g>
+    <text class="t" x="70" y="18" font-size="27" font-weight="800">MenuFácil <tspan class="m" font-weight="600">· como o pedido chega no papel</tspan></text>
+    <text class="m txt" x="70" y="44">Três jeitos de imprimir. Todos partem do mesmo pedido, feito pelo cliente no link do restaurante.</text>
+  </g>
+
+  <!-- fluxo de cima -->
+  <g transform="translate(0 130)">
+    <g transform="translate(60 0)">
+      <rect class="pill" x="0" y="0" width="300" height="86" rx="18" />
+      <text class="t tit" x="24" y="36">Cliente</text>
+      <text class="m txt" x="24" y="62">pede pelo link do restaurante</text>
+    </g>
+    <path class="seta" d="M372 43h78" />
+    <g transform="translate(452 0)">
+      <rect class="pill" x="0" y="0" width="300" height="86" rx="18" />
+      <text class="t tit" x="24" y="36">MenuFácil</text>
+      <text class="m txt" x="24" y="62">o pedido entra no sistema</text>
+    </g>
+    <path class="seta" d="M764 43h78" />
+    <g transform="translate(844 0)">
+      <rect class="pill" x="0" y="0" width="300" height="86" rx="18" />
+      <text class="t tit" x="24" y="36">Impressora</text>
+      <text class="m txt" x="24" y="62">a via sai no balcão</text>
+    </g>
+  </g>
+
+  <!-- três caminhos -->
+  <path class="seta" d="M600 226v40" />
+  <text class="m peq" x="620" y="256">daqui para a frente, escolha um dos três caminhos</text>
+
+  <!-- 1. cabo -->
+  <g transform="translate(48 300)">
+    <rect class="card" x="0" y="0" width="352" height="560" rx="22" />
+    <g class="ico" transform="translate(28 34) scale(1.5)">
+      <path d="M6 9V3h12v6" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M6 14h12v8H6z" />
+    </g>
+    <text class="b peq" x="28" y="128" font-weight="700">JEITO 1</text>
+    <text class="t tit" x="28" y="156">Computador com cabo</text>
+    <text class="m txt" x="28" y="182">A impressora ligada no PC do balcão.</text>
+
+    <g transform="translate(28 214)">
+      <text class="m txt" y="0">1 · O painel fica aberto no Chrome</text>
+      <text class="m txt" y="30">2 · O Chrome abre em impressão direta</text>
+      <text class="m txt" y="60">3 · A via vai para a impressora padrão</text>
+    </g>
+
+    <rect class="pill" x="28" y="304" width="296" height="70" rx="14" />
+    <text class="t txt" x="46" y="330" font-weight="700">Precisa</text>
+    <text class="m peq" x="46" y="354">a tela de Pedidos aberta no computador</text>
+
+    <rect class="pill" x="28" y="390" width="296" height="70" rx="14" />
+    <text class="t txt" x="46" y="416" font-weight="700">Bom para</text>
+    <text class="m peq" x="46" y="440">quem já usa o computador no caixa</text>
+
+    <text class="m peq" x="28" y="500">O navegador não avisa se o papel</text>
+    <text class="m peq" x="28" y="522">acabou: o aviso do pedido fica na tela.</text>
+  </g>
+
+  <!-- 2. bluetooth -->
+  <g transform="translate(424 300)">
+    <rect class="card" x="0" y="0" width="352" height="560" rx="22" />
+    <g class="ico" transform="translate(28 34) scale(1.5)">
+      <rect x="6" y="2" width="12" height="20" rx="3" />
+      <path d="M11 18h2" />
+      <path d="M20 6l4 3-4 3" />
+      <path d="M20 12l4 3-4 3" />
+    </g>
+    <text class="b peq" x="28" y="128" font-weight="700">JEITO 2</text>
+    <text class="t tit" x="28" y="156">Celular com Bluetooth</text>
+    <text class="m txt" x="28" y="182">A térmica pareada no celular (Android).</text>
+
+    <g transform="translate(28 214)">
+      <text class="m txt" y="0">1 · O painel fica aberto no celular</text>
+      <text class="m txt" y="30">2 · O app RawBT recebe a via</text>
+      <text class="m txt" y="60">3 · Ele imprime pela térmica pareada</text>
+    </g>
+
+    <rect class="pill" x="28" y="304" width="296" height="70" rx="14" />
+    <text class="t txt" x="46" y="330" font-weight="700">Precisa</text>
+    <text class="m peq" x="46" y="354">o painel na tela; trocou de app, pausa</text>
+
+    <rect class="pill" x="28" y="390" width="296" height="70" rx="14" />
+    <text class="t txt" x="46" y="416" font-weight="700">Bom para</text>
+    <text class="m peq" x="46" y="440">quem atende andando, sem computador</text>
+
+    <text class="m peq" x="28" y="500">Só Android: no iPhone não existe app</text>
+    <text class="m peq" x="28" y="522">que fale com térmica genérica.</text>
+  </g>
+
+  <!-- 3. print fácil -->
+  <g transform="translate(800 300)">
+    <rect class="card" x="0" y="0" width="352" height="560" rx="22" stroke="#ff8a1f" stroke-opacity="0.55" />
+    <g class="ico" transform="translate(28 30) scale(1.5)">
+      <path d="M8.2 7.6a3.2 3.2 0 0 1 6.2-.9 2.4 2.4 0 0 1-.4 4.8H8.6a2.5 2.5 0 0 1-.4-3.9Z" />
+      <path d="M5 16.5v-1.2a1.5 1.5 0 0 1 1.5-1.5h11a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17" />
+      <path d="M8 17h8v4.2H8z" />
+    </g>
+    <text class="b peq" x="28" y="128" font-weight="700">JEITO 3 · RECOMENDADO</text>
+    <text class="t tit" x="28" y="156">Print Fácil</text>
+    <text class="m txt" x="28" y="182">O programa instalado no computador.</text>
+
+    <g transform="translate(28 214)">
+      <text class="m txt" y="0">1 · Instala e entra com a conta do painel</text>
+      <text class="m txt" y="30">2 · Recebe o pedido pela internet</text>
+      <text class="m txt" y="60">3 · Manda direto para a impressora</text>
+    </g>
+
+    <rect class="pill" x="28" y="304" width="296" height="70" rx="14" fill="#1d2a1f" stroke="#34d399" stroke-opacity="0.4" />
+    <text x="46" y="330" class="txt" fill="#34d399" font-weight="700">Não precisa de nada aberto</text>
+    <text class="m peq" x="46" y="354">nem navegador, nem a mesma rede</text>
+
+    <rect class="pill" x="28" y="390" width="296" height="70" rx="14" />
+    <text class="t txt" x="46" y="416" font-weight="700">Bom para</text>
+    <text class="m peq" x="46" y="440">o dia a dia do restaurante, sem susto</text>
+
+    <text class="m peq" x="28" y="500">Baixa no painel, em Print Fácil. Abre</text>
+    <text class="m peq" x="28" y="522">junto com o Windows e volta sozinho.</text>
+  </g>
+
+  <!-- rodapé -->
+  <text class="m txt" x="48" y="912">Em qualquer um dos três, o pedido também aparece na tela de Pedidos e o cliente recebe o aviso no WhatsApp ao ser aceito.</text>
+  <text class="m peq" x="48" y="940">A mesma via, no mesmo formato de 32 colunas, serve para bobina de 58 mm e de 80 mm.</text>
+</svg>
