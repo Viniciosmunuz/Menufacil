@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/server/auth/dal";
 import { logout } from "@/server/auth/actions";
 
-export const metadata: Metadata = { title: "Painel" };
+export const metadata: Metadata = { title: "Painel", manifest: "/painel/manifest" };
 
 // Porta de entrada do dono: com um restaurante, vai direto para ele; com
 // vários, escolhe; bloqueado ou sem restaurante, explica o que houve.

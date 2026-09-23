@@ -1,8 +1,12 @@
 import { BookOpen, LayoutDashboard, ReceiptText, Store } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+
+// salvo na tela inicial do celular, o atalho do painel abre no painel
+export const metadata: Metadata = { manifest: "/painel/manifest" };
 
 export default async function RestaurantPanelLayout({
   children,
