@@ -148,7 +148,12 @@ export function PrintSettings({
   const soundBox = useRef<HTMLDivElement>(null);
   const [pickingSound, setPickingSound] = useState(false);
 
-  const mode: Mode = savedMode === "pc" || savedMode === "celular" || savedMode === "nuvem" ? savedMode : "off";
+  const escolhido: Mode = savedMode === "pc" || savedMode === "celular" || savedMode === "nuvem" ? savedMode : "off";
+  // Com o Print Fácil ligado no balcão, ele é quem imprime: a nuvem acende
+  // sozinha e os outros modos saem da barra. Imprimir aqui também faria a
+  // mesma via sair duas vezes.
+  const printFacil = devices.some((d) => online(d.lastSeenAt));
+  const mode: Mode = printFacil ? "nuvem" : escolhido;
   const sound = savedSound === "1";
   const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
   const since = Number(savedSince ?? 0);
@@ -232,6 +237,12 @@ export function PrintSettings({
       title={label}
       aria-label={label}
       onClick={() => {
+        // com o Print Fácil ligado não há o que escolher: o toque abre a
+        // gaveta, que mostra os computadores conectados
+        if (printFacil && value === "nuvem") {
+          write(HELP_KEY, ajudaAberta ? "0" : "1");
+          return;
+        }
         write(MODE_KEY, mode === value ? "off" : value);
         startNow();
         remember(
@@ -308,8 +319,8 @@ export function PrintSettings({
       <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
         <div className="flex items-center gap-2">
           <p className="mr-1 text-sm font-extrabold">Imprimir:</p>
-          {option("pc", "Imprimir neste computador", Printer)}
-          {option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
+          {!printFacil && option("pc", "Imprimir neste computador", Printer)}
+          {!printFacil && option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
           {option("nuvem", "Imprimir pelo Print Fácil, no computador do restaurante", CloudPrinterIcon)}
           <button
             type="button"

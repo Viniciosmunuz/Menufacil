@@ -16,7 +16,12 @@ import { pairPrintDevice, setReceiptWidth, unpairPrintDevice } from "../pedidos/
 export const metadata: Metadata = { title: "Print Fácil" };
 
 const PASSOS = [
-  { icon: Download, titulo: "Baixe e instale", texto: "O arquivo é o instalador do Windows. Clique duas vezes e siga a instalação." },
+  {
+    icon: Download,
+    titulo: "Baixe e instale",
+    texto:
+      "Clique duas vezes no arquivo baixado. Se aparecer a tela azul “O Windows protegeu o seu computador”, toque em Mais informações e depois em Executar assim mesmo.",
+  },
   { icon: MonitorSmartphone, titulo: "Entre com a sua conta", texto: "No programa, use o mesmo e-mail e senha deste painel. Ele já se liga ao seu restaurante." },
   {
     icon: Printer,
