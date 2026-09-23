@@ -52,7 +52,7 @@ export function pendingOrders(restaurantId: string) {
 export async function orderTicket(restaurantId: string, orderId: string) {
   const order = await db.order.findFirst({
     where: { id: orderId, restaurantId },
-    select: { ...ticketSelect, restaurant: { select: { name: true } } },
+    select: { ...ticketSelect, restaurant: { select: { name: true, receiptWidth: true } } },
   });
   if (!order) return null;
 
@@ -63,8 +63,10 @@ export async function orderTicket(restaurantId: string, orderId: string) {
     criadoEm: order.createdAt.toISOString(),
     // texto pronto para a impressora comum; as linhas soltas servem para o
     // ESC/POS depois, sem ter que refazer a formatação
-    texto: ticketText(order, order.restaurant.name),
-    linhas: ticketLines(order, order.restaurant.name),
+    // a largura vem do painel: 80 mm por padrão, 58 mm para bobina estreita
+    papel_mm: order.restaurant.receiptWidth,
+    texto: ticketText(order, order.restaurant.name, order.restaurant.receiptWidth),
+    linhas: ticketLines(order, order.restaurant.name, order.restaurant.receiptWidth),
   };
 }
 

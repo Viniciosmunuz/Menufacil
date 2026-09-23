@@ -13,18 +13,19 @@ const escape = (text: string) => text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", 
 export async function GET(request: Request, { params }: RouteContext<"/painel/[restaurantId]/pedidos/[orderId]/via">) {
   const { restaurantId, orderId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
+  const paper = restaurant.receiptWidth;
 
   const order = await db.order.findFirst({ where: { id: orderId, restaurantId: restaurant.id }, select: orderSummarySelect });
   if (!order) return new Response("Pedido não encontrado.", { status: 404 });
 
-  const text = ticketText(order, restaurant.name);
+  const text = ticketText(order, restaurant.name, paper);
   const headers = { "cache-control": "no-store" };
 
   if (new URL(request.url).searchParams.get("formato") === "texto") {
     return new Response(text, { headers: { ...headers, "content-type": "text/plain; charset=utf-8" } });
   }
 
-  // 80 mm de papel; na bobina de 58 mm o que sobra é só margem
+  // a via sai na largura da bobina que o restaurante escolheu no painel
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -32,10 +33,10 @@ export async function GET(request: Request, { params }: RouteContext<"/painel/[r
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Pedido #${order.number}</title>
 <style>
-  @page { size: 80mm auto; margin: 3mm; }
+  @page { size: ${paper}mm auto; margin: 3mm; }
   html, body { margin: 0; padding: 0; background: #fff; color: #000; }
   pre { margin: 0; font-family: ui-monospace, "Courier New", monospace; font-size: 12px; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
-  @media screen { body { padding: 12px; } pre { max-width: 80mm; } }
+  @media screen { body { padding: 12px; } pre { max-width: ${paper}mm; } }
 </style>
 </head>
 <body>

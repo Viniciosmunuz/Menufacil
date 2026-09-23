@@ -166,8 +166,11 @@ model Restaurant {
   pixHolderName       String?
   paymentInstructions String?
   // pagamento na entrega/retirada (o Pix vale quando há chave cadastrada)
-  acceptsCard Boolean @default(true)
-  acceptsCash Boolean @default(true)
+  acceptsCard         Boolean     @default(true)
+  acceptsCash         Boolean     @default(true)
+
+  // impressão: largura da bobina da térmica, 80 mm (padrão) ou 58 mm
+  receiptWidth Int @default(80)
 
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?
@@ -263,8 +266,8 @@ model Product {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category     MenuCategory         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   orderItems   OrderItem[]
   optionGroups ProductOptionGroup[]
 
@@ -274,12 +277,12 @@ model Product {
 // Opções do produto (Tamanho, Sabor, Porção...). O preço de cada opção soma
 // ao preço do produto; minSelect 0 = opcional, 1 ou mais = obrigatório.
 model ProductOptionGroup {
-  id        String @id @default(cuid())
-  productId String
-  name      String
-  minSelect Int    @default(1)
-  maxSelect Int    @default(1)
-  sortOrder Int    @default(0)
+  id               String  @id @default(cuid())
+  productId        String
+  name             String
+  minSelect        Int     @default(1)
+  maxSelect        Int     @default(1)
+  sortOrder        Int     @default(0)
   // meio a meio (sabores de pizza): aceita 2 opções, cobrando a mais cara.
   // halfFromOptionId: opção de outro grupo (ex.: Tamanho "Pequena") a partir
   // da qual vale, na ordem do grupo; vazio = vale sempre
@@ -392,7 +395,9 @@ model Order {
   deliveryFeeCents Int
   totalCents       Int
 
-  /** quando o Print Fácil imprimiu: evita a via sair duas vezes */
+  /**
+   * quando o Print Fácil imprimiu: evita a via sair duas vezes
+   */
   printedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -453,21 +458,21 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String        @unique
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
-  amountCents Int
+  id             String        @id @default(cuid())
+  orderId        String        @unique
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  amountCents    Int
   // retrato da chave Pix exibida ao cliente
-  pixKey      String?
-  pixKeyType  PixKeyType?
+  pixKey         String?
+  pixKeyType     PixKeyType?
   // cartão: crédito ou débito; dinheiro: troco para quanto (vazio = não precisa)
   cardType       CardType?
   changeForCents Int?
-  proofSentAt DateTime?
-  confirmedAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  proofSentAt    DateTime?
+  confirmedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
@@ -584,13 +589,19 @@ model PrintDevice {
   id           String  @id @default(cuid())
   restaurantId String?
 
-  /** nome do computador, para o dono reconhecer no painel */
-  name      String
-  tokenHash String  @unique
-  /** some depois do pareamento */
+  /**
+   * nome do computador, para o dono reconhecer no painel
+   */
+  name        String
+  tokenHash   String  @unique
+  /**
+   * some depois do pareamento
+   */
   pairingCode String? @unique
 
-  /** impressora escolhida no programa, só para mostrar no painel */
+  /**
+   * impressora escolhida no programa, só para mostrar no painel
+   */
   printerName String?
 
   pairedAt   DateTime?

@@ -5,11 +5,13 @@ import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
 import { PageHeader, SectionTitle } from "@/components/panel/page-header";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
 import { buttonClasses } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Card } from "@/components/ui/card";
+import { PAPER_WIDTHS } from "@/lib/ticket";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
 
-import { pairPrintDevice, unpairPrintDevice } from "../pedidos/actions";
+import { pairPrintDevice, setReceiptWidth, unpairPrintDevice } from "../pedidos/actions";
 
 export const metadata: Metadata = { title: "Print Fácil" };
 
@@ -61,6 +63,32 @@ export default async function PrintFacilPage({ params }: PageProps<"/painel/[res
             </li>
           ))}
         </ol>
+      </Card>
+
+      <Card>
+        <SectionTitle description="A via sai no tamanho da bobina que o restaurante usa. Vale para a impressão pelo computador, pelo celular e pelo Print Fácil.">
+          Tamanho do papel
+        </SectionTitle>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PAPER_WIDTHS.map((largura) => (
+            <form key={largura} action={setReceiptWidth}>
+              <input type="hidden" name="restaurantId" value={restaurant.id} />
+              <input type="hidden" name="largura" value={largura} />
+              <SubmitButton
+                variant={restaurant.receiptWidth === largura ? "primary" : "secondary"}
+                size="md"
+                pendingText="Salvando..."
+              >
+                {largura} mm{largura === 80 ? " (padrão)" : ""}
+              </SubmitButton>
+            </form>
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-muted">
+          {restaurant.receiptWidth === 80
+            ? "Bobina larga, a mais comum em balcão: a via sai com 48 letras por linha."
+            : "Bobina estreita, das impressoras pequenas e portáteis: a via sai com 32 letras por linha."}
+        </p>
       </Card>
 
       <Card>

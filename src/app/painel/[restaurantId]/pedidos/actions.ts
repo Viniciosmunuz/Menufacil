@@ -2,6 +2,9 @@
 
 import { refresh } from "next/cache";
 
+import { db } from "@/lib/db";
+import { PAPER_WIDTHS } from "@/lib/ticket";
+import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
 import { pairDevice, unpairDevice } from "@/server/print/devices";
@@ -53,5 +56,16 @@ export async function pairPrintDevice(_prev: PairState, formData: FormData): Pro
 export async function unpairPrintDevice(formData: FormData) {
   const { restaurantId } = await access(formData);
   await unpairDevice(String(formData.get("dispositivoId") ?? ""), restaurantId);
+  refresh();
+}
+
+/** largura da bobina da térmica: vale para os três jeitos de imprimir */
+export async function setReceiptWidth(formData: FormData) {
+  const { restaurantId, actor } = await access(formData);
+  const largura = Number(formData.get("largura"));
+  if (!PAPER_WIDTHS.includes(largura as (typeof PAPER_WIDTHS)[number])) return;
+
+  await db.restaurant.update({ where: { id: restaurantId }, data: { receiptWidth: largura }, select: { id: true } });
+  await audit({ actorUserId: actor.userId, restaurantId, action: "restaurant.print.width", details: { largura } });
   refresh();
 }

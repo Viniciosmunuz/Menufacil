@@ -56,7 +56,7 @@ export async function requireAdmin(): Promise<CurrentUser> {
 
 export type RestaurantAccess = {
   user: CurrentUser;
-  restaurant: { id: string; name: string; slug: string; status: RestaurantStatus };
+  restaurant: { id: string; name: string; slug: string; status: RestaurantStatus; receiptWidth: number };
   /** true quando quem está no painel é o admin da plataforma */
   viaAdmin: boolean;
 };
@@ -68,7 +68,7 @@ export const getRestaurantAccess = cache(
 
     const restaurant = await db.restaurant.findUnique({
       where: { id: restaurantId },
-      select: { id: true, name: true, slug: true, status: true },
+      select: { id: true, name: true, slug: true, status: true, receiptWidth: true },
     });
     if (!restaurant) return null;
 
