@@ -13,10 +13,11 @@ export function nextOrderStep(status: OrderStatus, type: OrderType, method: Paym
     case "AWAITING_PAYMENT":
     case "PAYMENT_SENT":
       return { to: "CONFIRMED", label: method === "PIX" ? "Confirmar pagamento" : "Aceitar pedido" };
+    // aceito o pedido, o próximo toque é o que interessa ao cliente: saiu
+    // para entrega ou, na retirada, pronto para buscar
     case "CONFIRMED":
-      return { to: "PREPARING", label: "Começar o preparo" };
     case "PREPARING":
-      return { to: "READY", label: type === "PICKUP" ? "Pronto para retirar" : "Marcar como pronto" };
+      return type === "DELIVERY" ? { to: "OUT_FOR_DELIVERY", label: "Saiu para entrega" } : { to: "READY", label: "Pronto para retirar" };
     case "READY":
       return type === "DELIVERY" ? { to: "OUT_FOR_DELIVERY", label: "Saiu para entrega" } : { to: "COMPLETED", label: "Cliente retirou" };
     case "OUT_FOR_DELIVERY":

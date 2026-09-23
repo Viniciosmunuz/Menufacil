@@ -34,9 +34,11 @@ function steps(type: "DELIVERY" | "PICKUP", pix: boolean): { status: OrderStatus
           { status: ["CONFIRMED"] as OrderStatus[], label: "Pagamento confirmado" },
         ]
       : [{ status: ["CONFIRMED"] as OrderStatus[], label: "Pedido aceito" }]),
-    { status: ["PREPARING"], label: "Em preparo" },
-    { status: ["READY"], label: type === "PICKUP" ? "Pronto para retirar" : "Pronto" },
-    ...(type === "DELIVERY" ? [{ status: ["OUT_FOR_DELIVERY"] as OrderStatus[], label: "Saiu para entrega" }] : []),
+    // o preparo acontece entre um passo e outro: o cliente acompanha o que
+    // muda para ele, que é o pedido sair ou ficar pronto para buscar
+    type === "DELIVERY"
+      ? { status: ["PREPARING", "READY", "OUT_FOR_DELIVERY"], label: "Saiu para entrega" }
+      : { status: ["PREPARING", "READY"], label: "Pronto para retirar" },
     { status: ["COMPLETED"], label: "Concluído" },
   ];
 }
