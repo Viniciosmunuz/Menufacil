@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 
+import { CartIconLink } from "./cart-icon";
 import { CitySelect } from "./city-select";
 import { HideOnRestaurantPage } from "./hide-on-restaurant-page";
 import { MobileMenu } from "./mobile-menu";
@@ -48,6 +49,7 @@ export function SiteHeader({
         <div className="ml-auto hidden shrink-0 xl:block">
           <CitySelect cities={cities} current={city} />
         </div>
+        <CartIconLink className="ml-auto xl:ml-2" />
       </div>
       {/* na página do restaurante a busca geral sai: a capa aparece inteira */}
       <HideOnRestaurantPage>

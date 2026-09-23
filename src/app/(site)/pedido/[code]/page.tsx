@@ -18,7 +18,7 @@ import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
 import { markPaymentSent } from "./actions";
-import { ClearCartAfterOrder, CopyPixAndSendOrder, OpenWhatsAppOnce } from "./order-live";
+import { ClearCartAfterOrder, CopyPixAndSendOrder, OpenWhatsAppOnce, RememberOrder } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
 
@@ -77,6 +77,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
       {sp.novo === "1" && <ClearCartAfterOrder restaurantId={r.id} />}
+      <RememberOrder
+        code={order.code}
+        number={order.number}
+        restaurantName={r.name}
+        restaurantSlug={r.slug}
+        createdAt={order.createdAt.toISOString()}
+      />
       {!FINAL.includes(order.status) && <AutoRefresh />}
 
       <Card className="flex flex-col gap-2 text-center">

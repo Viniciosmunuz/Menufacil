@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, ShoppingCart, Utensils } from "lucide-react";
+import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, ReceiptText, Utensils } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
@@ -8,7 +8,7 @@ import { useId, useState } from "react";
 import { CategoryIcon } from "@/lib/category-icons";
 import { cn } from "@/lib/cn";
 
-import { cartCount, useCart } from "./cart-store";
+import { useCart } from "./cart-store";
 
 export type NavCategory = { slug: string; name: string; icon: string | null };
 
@@ -106,19 +106,20 @@ function CategoriesDrawer({ categories, active, onNavigate }: { categories: NavC
 export function BottomNav({ store }: { store?: { slug: string; whatsapp: string | null } | null }) {
   const pathname = usePathname();
   const cart = useCart();
-  const count = cartCount(cart);
   const menuHref = store ? `/restaurante/${store.slug}` : cart.restaurant ? `/restaurante/${cart.restaurant.slug}` : "/restaurantes";
+  // o carrinho não entra aqui: ele já está no topo e na barra "Ver carrinho"
+  const orders = { href: "/meus-pedidos", label: "Pedidos", icon: ReceiptText, active: pathname === "/meus-pedidos" || pathname.startsWith("/pedido/") };
 
   const items: { href: string; label: string; icon: typeof Home; active: boolean; badge?: number; external?: boolean }[] = store
     ? [
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
-        { href: "/carrinho", label: "Carrinho", icon: ShoppingCart, active: pathname === "/carrinho", badge: count },
+        orders,
         ...(store.whatsapp ? [{ href: `https://wa.me/${store.whatsapp}`, label: "WhatsApp", icon: MessageCircle, active: false, external: true }] : []),
       ]
     : [
         { href: "/", label: "Início", icon: Home, active: pathname === "/" },
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
-        { href: "/carrinho", label: "Carrinho", icon: ShoppingCart, active: pathname === "/carrinho", badge: count },
+        orders,
         { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },
       ];
 

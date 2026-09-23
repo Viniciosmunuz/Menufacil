@@ -4,6 +4,7 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { clearCart, useCart } from "@/components/site/cart-store";
+import { rememberOrder } from "@/components/site/orders-store";
 import { Button } from "@/components/ui/button";
 import { copyToClipboard } from "@/components/ui/copy-button";
 
@@ -13,6 +14,26 @@ export function ClearCartAfterOrder({ restaurantId }: { restaurantId: string }) 
   useEffect(() => {
     if (cart.restaurant?.id === restaurantId) clearCart();
   }, [cart.restaurant?.id, restaurantId]);
+  return null;
+}
+
+/** guarda o pedido neste aparelho, para ele aparecer em "Meus pedidos" */
+export function RememberOrder({
+  code,
+  number,
+  restaurantName,
+  restaurantSlug,
+  createdAt,
+}: {
+  code: string;
+  number: number;
+  restaurantName: string;
+  restaurantSlug: string;
+  createdAt: string;
+}) {
+  useEffect(() => {
+    rememberOrder({ code, number, restaurantName, restaurantSlug, createdAt });
+  }, [code, number, restaurantName, restaurantSlug, createdAt]);
   return null;
 }
 
