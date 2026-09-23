@@ -28,7 +28,12 @@ export const metadata: Metadata = { title: "Pedidos" };
 const PAGE_SIZE = 30;
 
 const FILTERS = {
-  andamento: { label: "Em andamento", statuses: OPEN_ORDER_STATUSES, empty: "Nenhum pedido esperando você agora." },
+  // quem termina um pedido some daqui: vale dizer para onde ele foi
+  andamento: {
+    label: "Em andamento",
+    statuses: OPEN_ORDER_STATUSES,
+    empty: "Nenhum pedido esperando você agora. Os que já foram entregues estão em Concluídos.",
+  },
   concluidos: { label: "Concluídos", statuses: ["COMPLETED"] as OrderStatus[], empty: "Nenhum pedido concluído ainda." },
   cancelados: { label: "Cancelados", statuses: ["CANCELED"] as OrderStatus[], empty: "Nenhum pedido cancelado." },
   todos: { label: "Todos", statuses: null, empty: "Os pedidos feitos pelos clientes aparecem aqui." },
