@@ -139,26 +139,28 @@ function AddBadge({ className }: { className?: string }) {
   );
 }
 
+// No celular cabem dois por linha com a foto em cima; da largura de tablet
+// para cima volta a linha larga, com a foto ao lado do texto.
 function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) => void }) {
   return (
-    <li>
+    <li className="flex">
       <button
         type="button"
         onClick={() => onOpen(p)}
         aria-label={`${p.name}, ${hasPricedOptions(p.optionGroups) ? "a partir de " : ""}${formatCents(listPrice(p))}${p.available ? "" : ", esgotado"}`}
-        className="group flex w-full items-stretch gap-3 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99]"
+        className="group flex w-full flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99] sm:flex-row sm:gap-3"
       >
-        <span className={cn("flex min-w-0 flex-1 flex-col", !p.available && "opacity-55")}>
-          <span className="flex items-start gap-1.5 leading-snug font-extrabold">
+        <span className={cn("order-2 flex min-w-0 flex-1 flex-col sm:order-1", !p.available && "opacity-55")}>
+          <span className="flex items-start gap-1.5 text-[0.95rem] leading-snug font-extrabold sm:text-base">
             {p.featured && <Star className="mt-0.5 size-4 shrink-0 fill-brand text-brand" aria-hidden="true" />}
             {p.name}
           </span>
-          {p.description && <span className="mt-1 line-clamp-2 text-[0.82rem] leading-snug text-muted">{p.description}</span>}
+          {p.description && <span className="mt-1 line-clamp-2 text-[0.78rem] leading-snug text-muted sm:text-[0.82rem]">{p.description}</span>}
           <span className="mt-auto pt-2">
             {p.available ? <Price p={p} /> : <span className="text-sm font-bold text-faint">Esgotado</span>}
           </span>
         </span>
-        <span className="relative size-[6.5rem] shrink-0 sm:size-28">
+        <span className="relative order-1 block aspect-[4/3] w-full shrink-0 sm:order-2 sm:aspect-auto sm:size-28">
           {p.imageUrl ? (
             <img
               src={p.imageUrl}
@@ -172,7 +174,7 @@ function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) =>
             </span>
           )}
           {p.available ? (
-            <AddBadge className="absolute -right-1.5 -bottom-1.5" />
+            <AddBadge className="absolute right-1 bottom-1 sm:-right-1.5 sm:-bottom-1.5" />
           ) : (
             <span className="absolute inset-0 grid place-items-center rounded-control bg-bg/55 text-xs font-extrabold text-ink">Esgotado</span>
           )}
@@ -431,7 +433,7 @@ export function RestaurantMenu({
           <section key={c.id} id={`cat-${c.id}`} data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
             <h2 className="text-xl font-extrabold">{c.name}</h2>
             {c.description && <p className="text-sm text-muted">{c.description}</p>}
-            <ul className="mt-3 grid grid-cols-1 gap-3 2xl:grid-cols-2">
+            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-1 2xl:grid-cols-2">
               {c.products.map((p) => (
                 <ProductRow key={p.id} p={p} onOpen={open} />
               ))}
