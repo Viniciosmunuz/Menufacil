@@ -48,6 +48,9 @@ export function startOfToday(now = new Date()) {
   }).formatToParts(now);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   const zoned = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
-  const offset = Math.round((zoned - now.getTime()) / 60000) * 60000;
+  // os dois lados contam em minutos cheios: comparar com os segundos de
+  // agora empurrava o começo do dia para 00:01 em metade das vezes
+  const agoraNoMinuto = Math.floor(now.getTime() / 60000) * 60000;
+  const offset = zoned - agoraNoMinuto;
   return new Date(Date.UTC(get("year"), get("month") - 1, get("day")) - offset);
 }
