@@ -7,6 +7,10 @@ import { paymentText } from "./payment";
 // que o restaurante usa: 48 colunas na de 80 mm (o padrão) e 32 na de 58
 // mm. A mesma via vai para a impressão pelo computador (a página /via),
 // para o celular (RawBT) e para o Print Fácil.
+//
+// O desenho é pensado para quem lê correndo, de pé, no balcão: blocos
+// separados por linhas, título de cada bloco em maiúsculas, valores
+// alinhados à direita e cada escolha do produto em sua própria linha.
 
 /** bobinas que as térmicas do mercado usam, em milímetros */
 export const PAPER_WIDTHS = [80, 58] as const;
@@ -36,85 +40,109 @@ export type TicketOrder = {
   items: { productName: string; optionsText: string | null; quantity: number; totalCents: number; notes: string | null }[];
 };
 
-const center = (text: string, width: number) => {
-  const room = Math.max(0, width - text.length);
-  return " ".repeat(Math.floor(room / 2)) + text;
-};
-
-/** rótulo à esquerda e valor à direita, na mesma linha */
-const row = (label: string, value: string, width: number) => {
-  const room = Math.max(1, width - label.length - value.length);
-  return label + " ".repeat(room) + value;
-};
-
-/** quebra o texto sem cortar palavra, com recuo nas linhas seguintes */
-function wrap(text: string, width: number, indent = ""): string[] {
-  const out: string[] = [];
-  let current = "";
-  for (const word of text.split(/\s+/).filter(Boolean)) {
-    const prefix = out.length === 0 ? "" : indent;
-    if (current && (prefix + current + " " + word).length > width) {
-      out.push((out.length === 0 ? "" : indent) + current);
-      current = word;
-    } else {
-      current = current ? `${current} ${word}` : word;
-    }
-  }
-  if (current) out.push((out.length === 0 ? "" : indent) + current);
-  return out;
-}
-
 const clock = (date: Date | string) =>
   new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
   const width = columnsFor(paper);
-  const divider = "-".repeat(width);
-  const meio = (texto: string) => center(texto, width);
-  const linha = (rotulo: string, valor: string) => row(rotulo, valor, width);
-  const quebra = (texto: string, indent = "") => wrap(texto, width, indent);
-  const delivery = o.type === "DELIVERY";
+  const forte = "=".repeat(width);
+  const fraco = "-".repeat(width);
+  const margem = " "; // um respiro nas bordas do papel
 
-  const lines: string[] = [
-    meio(restaurantName.toUpperCase()),
-    meio(`PEDIDO #${o.number}`),
-    meio(clock(o.createdAt)),
-    meio(delivery ? "ENTREGA" : "RETIRADA"),
-    divider,
-  ];
+  const meio = (texto: string) => {
+    const sobra = Math.max(0, width - texto.length);
+    return " ".repeat(Math.floor(sobra / 2)) + texto;
+  };
 
-  for (const i of o.items) {
-    // na bobina larga o preço cabe na mesma linha do item
-    const titulo = `${i.quantity}x ${i.productName}`;
-    const valor = formatCents(i.totalCents);
-    if (titulo.length + valor.length + 2 <= width) {
-      lines.push(linha(titulo, valor));
-    } else {
-      lines.push(...quebra(titulo, "   "), linha("", valor));
+  /** rótulo à esquerda, valor à direita, com margem nos dois lados */
+  const entre = (esquerda: string, direita: string) => {
+    const sobra = Math.max(1, width - esquerda.length - direita.length - margem.length * 2);
+    return margem + esquerda + " ".repeat(sobra) + direita + margem;
+  };
+
+  /**
+   * Quebra o texto sem cortar palavra. O recuo entra em todas as linhas e a
+   * continuação ganha um degrau a mais, para se ver onde a frase continua.
+   */
+  const texto = (conteudo: string, recuo = 0, degrau = 0) => {
+    const primeira = margem + " ".repeat(recuo);
+    const seguinte = margem + " ".repeat(recuo + degrau);
+    const saida: string[] = [];
+    let atual = "";
+    for (const palavra of conteudo.split(/\s+/).filter(Boolean)) {
+      const prefixo = saida.length === 0 ? primeira : seguinte;
+      if (atual && (prefixo + atual + " " + palavra).length > width - margem.length) {
+        saida.push(prefixo + atual);
+        atual = palavra;
+      } else {
+        atual = atual ? `${atual} ${palavra}` : palavra;
+      }
     }
-    if (i.optionsText) lines.push(...quebra(i.optionsText, "     ").map((l, n) => (n === 0 ? `   ${l}` : l)));
-    if (i.notes) lines.push(...quebra(`Obs.: ${i.notes}`, "     ").map((l, n) => (n === 0 ? `   ${l}` : l)));
+    if (atual) saida.push((saida.length === 0 ? primeira : seguinte) + atual);
+    return saida;
+  };
+
+  const titulo = (nome: string) => [fraco, `${margem}${nome}`];
+  const delivery = o.type === "DELIVERY";
+  const lines: string[] = [];
+
+  // cabeçalho: o restaurante, o número e como o cliente recebe
+  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
+  lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
+  lines.push(`${margem}${delivery ? "ENTREGA" : "RETIRADA NO LOCAL"}`);
+  lines.push(forte);
+
+  // itens: quantidade destacada, preço à direita, escolhas embaixo
+  for (const item of o.items) {
+    const quantidade = `${item.quantity}x`;
+    const nome = `${quantidade.padEnd(4)}${item.productName}`;
+    const valor = formatCents(item.totalCents);
+    // só na mesma linha quando sobram dois espaços entre o nome e o preço
+    if (nome.length + valor.length + 4 <= width) {
+      lines.push(entre(nome, valor));
+    } else {
+      lines.push(...texto(nome, 0, 4), entre("", valor));
+    }
+    // cada escolha em uma linha: "Tamanho: Grande", "Sabor: Calabresa"
+    for (const escolha of (item.optionsText ?? "").split(" · ").filter(Boolean)) {
+      lines.push(...texto(escolha, 4, 2));
+    }
+    if (item.notes) lines.push(...texto(`Obs.: ${item.notes}`, 4, 2));
   }
 
-  lines.push(divider, linha("Subtotal", formatCents(o.subtotalCents)));
-  if (delivery) lines.push(linha("Entrega", o.deliveryFeeCents > 0 ? formatCents(o.deliveryFeeCents) : "Gratis"));
-  lines.push(linha("TOTAL", formatCents(o.totalCents)), divider);
+  // contas
+  lines.push(fraco, entre("Subtotal", formatCents(o.subtotalCents)));
+  if (delivery) lines.push(entre("Entrega", o.deliveryFeeCents > 0 ? formatCents(o.deliveryFeeCents) : "Grátis"));
+  lines.push(entre("TOTAL", formatCents(o.totalCents)), forte);
 
+  // pagamento
   const troco = o.paymentMethod === "CASH" ? (o.payment?.changeForCents ?? null) : null;
-  lines.push(...quebra(paymentText({ method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: troco })));
-  // o valor do troco calculado, para quem vai separar o dinheiro
-  if (troco) lines.push(linha("Levar de troco", formatCents(troco - o.totalCents)));
-  if (o.paymentMethod === "CARD") lines.push(delivery ? "Levar a maquininha" : "Pagar no balcao");
+  lines.push(`${margem}PAGAMENTO`);
+  lines.push(...texto(paymentText({ method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: troco })));
+  if (troco) lines.push(entre("Levar de troco", formatCents(troco - o.totalCents)));
+  if (o.paymentMethod === "CARD") lines.push(...texto(delivery ? "Levar a maquininha" : "Pagar no balcão"));
+  if (o.paymentMethod === "PIX") lines.push(...texto("Conferir o comprovante no WhatsApp"));
 
-  lines.push(divider, ...quebra(`Cliente: ${o.customerName}`), formatPhone(o.customerWhatsapp));
+  // cliente
+  lines.push(...titulo("CLIENTE"));
+  lines.push(...texto(o.customerName), ...texto(formatPhone(o.customerWhatsapp)));
+
+  // para onde vai
   if (delivery) {
-    lines.push("", ...quebra(`${o.deliveryStreet ?? ""}, ${o.deliveryNumber ?? ""}`.trim()));
-    if (o.deliveryNeighborhood) lines.push(...quebra(o.deliveryNeighborhood));
-    if (o.deliveryComplement) lines.push(...quebra(`Compl.: ${o.deliveryComplement}`));
-    if (o.deliveryReference) lines.push(...quebra(`Ref.: ${o.deliveryReference}`));
+    lines.push(...titulo("ENTREGAR EM"));
+    lines.push(...texto(`${o.deliveryStreet ?? ""}, ${o.deliveryNumber ?? ""}`.trim()));
+    if (o.deliveryNeighborhood) lines.push(...texto(o.deliveryNeighborhood));
+    if (o.deliveryComplement) lines.push(...texto(o.deliveryComplement));
+    if (o.deliveryReference) lines.push(...texto(`Ref.: ${o.deliveryReference}`));
   }
-  if (o.notes) lines.push(divider, ...quebra(`Obs.: ${o.notes}`));
 
+  // o que o cliente pediu por escrito
+  if (o.notes) {
+    lines.push(...titulo("OBSERVAÇÃO DO PEDIDO"));
+    lines.push(...texto(o.notes));
+  }
+
+  lines.push(forte);
   return lines;
 }
 
