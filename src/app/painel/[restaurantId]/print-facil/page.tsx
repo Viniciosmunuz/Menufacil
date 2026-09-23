@@ -18,7 +18,12 @@ export const metadata: Metadata = { title: "Print Fácil" };
 const PASSOS = [
   { icon: Download, titulo: "Baixe e instale", texto: "O arquivo é o instalador do Windows. Clique duas vezes e siga a instalação." },
   { icon: MonitorSmartphone, titulo: "Entre com a sua conta", texto: "No programa, use o mesmo e-mail e senha deste painel. Ele já se liga ao seu restaurante." },
-  { icon: Printer, titulo: "Escolha a impressora", texto: "Selecione a impressora do balcão e toque em Imprimir teste para conferir o papel." },
+  {
+    icon: Printer,
+    titulo: "Escolha a impressora",
+    texto:
+      "Selecione a impressora do balcão e toque em Imprimir teste. Se ela for térmica, vale ligar o Modo térmica ali mesmo: a via sai com o número do pedido maior, o total em negrito e o papel cortado sozinho.",
+  },
   { icon: Wifi, titulo: "Deixe rodando", texto: "Marque para abrir junto com o Windows. Dali em diante o pedido sai sozinho, sem ninguém mexer." },
 ];
 
