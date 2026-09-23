@@ -166,7 +166,11 @@ export function PrintSettings({
 
     if (sound) void playSound(soundName).catch(() => {});
     if (mode !== "off") for (const order of novos) sendToPrinter(order.id);
-    remember(PRINTED_KEY, novos.map((o) => o.id), read(PRINTED_KEY));
+    remember(
+      PRINTED_KEY,
+      novos.map((o) => o.id),
+      read(PRINTED_KEY),
+    );
     // sendToPrinter acompanha o modo e o endereço, que já estão nas dependências
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh, mode, sound, soundName, base]);
@@ -177,8 +181,16 @@ export function PrintSettings({
       onClick={() => {
         write(MODE_KEY, value);
         startNow();
-        remember(SEEN_KEY, orders.map((o) => o.id), read(SEEN_KEY));
-        remember(PRINTED_KEY, orders.map((o) => o.id), read(PRINTED_KEY));
+        remember(
+          SEEN_KEY,
+          orders.map((o) => o.id),
+          read(SEEN_KEY),
+        );
+        remember(
+          PRINTED_KEY,
+          orders.map((o) => o.id),
+          read(PRINTED_KEY),
+        );
       }}
       aria-pressed={mode === value}
       className={cn(
@@ -194,116 +206,132 @@ export function PrintSettings({
   const shortcut = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --app=${panelUrl}`;
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-      {pending.map((order) => (
-        <div key={order.id} className="flex flex-col gap-2 rounded-control border border-brand/50 bg-brand-soft p-4">
-          <p className="flex items-center gap-2 font-extrabold text-brand">
-            <ReceiptText className="size-5 shrink-0" aria-hidden="true" />
-            Pedido #{order.number} chegou agora
-          </p>
-          <p className="text-sm text-ink/90">
-            {mode === "off"
-              ? "Confira o pedido e aceite: o WhatsApp abre com o aviso para o cliente."
-              : "A via foi enviada para a impressora. Ao aceitar, o WhatsApp abre com o aviso para o cliente."}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <form action={acceptAction}>
-              <input type="hidden" name="restaurantId" value={restaurantId} />
-              <input type="hidden" name="orderId" value={order.id} />
-              <input type="hidden" name="from" value={order.status} />
-              <input type="hidden" name="to" value={order.accept?.to ?? ""} />
-              <StepButton label={order.accept?.label ?? "Aceitar pedido"} notify={order.notify} size="sm" />
-            </form>
-            {mode !== "off" && (
-              <Button size="sm" variant="secondary" onClick={() => sendToPrinter(order.id)}>
-                <Printer className="size-4" aria-hidden="true" />
-                Imprimir de novo
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => remember(SEEN_KEY, [order.id], read(SEEN_KEY))}>
-              Depois
-            </Button>
-          </div>
-        </div>
-      ))}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="mr-1 text-sm font-extrabold">Imprimir pedido novo:</p>
-        {option("off", "Não imprimir", PrinterCheck)}
-        {option("pc", "Neste computador", Printer)}
-        {option("celular", "Neste celular (RawBT)", Smartphone)}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !sound;
-              write(SOUND_KEY, next ? "1" : "0");
-              // o toque no botão é o que libera o som no navegador
-              if (next) void playSound(soundName).catch(() => {});
-            }}
-            aria-pressed={sound}
-            className={cn(
-              "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
-              sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
-            )}
-          >
-            {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
-            {sound ? "Som ligado" : "Som desligado"}
-          </button>
-          {sound &&
-            (Object.keys(SOUNDS) as SoundName[]).map((name) => (
-              <button
-                key={name}
-                type="button"
-                title="Tocar para ouvir"
-                onClick={() => {
-                  write(CHOICE_KEY, name);
-                  void playSound(name).catch(() => {});
-                }}
-                aria-pressed={soundName === name}
-                className={cn(
-                  "inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold",
-                  soundName === name ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+    <>
+      {/* avisos sobrepostos, no canto: não empurram a tela para baixo */}
+      {pending.length > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96"
+        >
+          {pending.slice(0, 3).map((order) => (
+            <div key={order.id} className="flex flex-col gap-2 rounded-card border border-brand/60 bg-surface p-4 shadow-2xl shadow-black/50">
+              <p className="flex items-center gap-2 font-extrabold text-brand">
+                <ReceiptText className="size-5 shrink-0" aria-hidden="true" />
+                Pedido #{order.number} chegou agora
+              </p>
+              <p className="text-sm text-ink/90">
+                {mode === "off"
+                  ? "Confira o pedido e aceite: o WhatsApp abre com o aviso para o cliente."
+                  : "A via foi enviada para a impressora. Ao aceitar, o WhatsApp abre com o aviso para o cliente."}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <form action={acceptAction}>
+                  <input type="hidden" name="restaurantId" value={restaurantId} />
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <input type="hidden" name="from" value={order.status} />
+                  <input type="hidden" name="to" value={order.accept?.to ?? ""} />
+                  <StepButton label={order.accept?.label ?? "Aceitar pedido"} notify={order.notify} size="sm" />
+                </form>
+                {mode !== "off" && (
+                  <Button size="sm" variant="secondary" onClick={() => sendToPrinter(order.id)}>
+                    <Printer className="size-4" aria-hidden="true" />
+                    Imprimir de novo
+                  </Button>
                 )}
-              >
-                <Volume2 className="size-4" aria-hidden="true" />
-                {SOUNDS[name].label}
-              </button>
-            ))}
+                <Button size="sm" variant="ghost" onClick={() => remember(SEEN_KEY, [order.id], read(SEEN_KEY))}>
+                  Depois
+                </Button>
+              </div>
+            </div>
+          ))}
+          {pending.length > 3 && (
+            <p className="rounded-card border border-line bg-surface px-4 py-2 text-center text-sm font-bold text-muted shadow-xl">
+              e mais {pending.length - 3} {pending.length - 3 === 1 ? "pedido esperando" : "pedidos esperando"}
+            </p>
+          )}
         </div>
-      </div>
-
-      {mode === "pc" ? (
-        <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
-          <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
-          <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
-            <li>Deixe a impressora térmica como impressora padrão do Windows.</li>
-            <li>Crie um atalho na área de trabalho com o comando abaixo e abra o painel por ele.</li>
-            <li>
-              Para o atalho ficar com a logo do MenuFácil no lugar da do Chrome: baixe o ícone, clique com o botão direito no atalho, vá em
-              Propriedades, Alterar ícone, Procurar, e escolha o arquivo baixado.
-            </li>
-            <li>Deixe esta tela de pedidos aberta enquanto o restaurante estiver funcionando.</li>
-          </ol>
-          <code className="overflow-x-auto rounded bg-bg px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{shortcut}</code>
-          <div className="flex flex-wrap items-center gap-2">
-            <CopyButton text={shortcut} label="Copiar o comando" copiedLabel="Comando copiado!" variant="secondary" size="sm" />
-            <a href="/menufacil.ico" download className={buttonClasses("ghost", "sm")}>
-              <Download className="size-4" aria-hidden="true" />
-              Baixar o ícone
-            </a>
-          </div>
-          <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted">
-          {mode === "celular"
-            ? "Deixe esta página aberta e o app RawBT instalado, com a impressora pareada."
-            : "Com o painel aberto, o pedido novo pode sair sozinho na impressora térmica."}
-        </p>
       )}
 
-      <div ref={frames} aria-hidden="true" />
-    </div>
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="mr-1 text-sm font-extrabold">Imprimir pedido novo:</p>
+          {option("off", "Não imprimir", PrinterCheck)}
+          {option("pc", "Neste computador", Printer)}
+          {option("celular", "Neste celular (RawBT)", Smartphone)}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !sound;
+                write(SOUND_KEY, next ? "1" : "0");
+                // o toque no botão é o que libera o som no navegador
+                if (next) void playSound(soundName).catch(() => {});
+              }}
+              aria-pressed={sound}
+              className={cn(
+                "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+                sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+              )}
+            >
+              {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
+              {sound ? "Som ligado" : "Som desligado"}
+            </button>
+            {sound &&
+              (Object.keys(SOUNDS) as SoundName[]).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  title="Tocar para ouvir"
+                  onClick={() => {
+                    write(CHOICE_KEY, name);
+                    void playSound(name).catch(() => {});
+                  }}
+                  aria-pressed={soundName === name}
+                  className={cn(
+                    "inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold",
+                    soundName === name ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+                  )}
+                >
+                  <Volume2 className="size-4" aria-hidden="true" />
+                  {SOUNDS[name].label}
+                </button>
+              ))}
+          </div>
+        </div>
+
+        {mode === "pc" ? (
+          <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
+            <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
+            <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
+              <li>Deixe a impressora térmica como impressora padrão do Windows.</li>
+              <li>Crie um atalho na área de trabalho com o comando abaixo e abra o painel por ele.</li>
+              <li>
+                Para o atalho ficar com a logo do MenuFácil no lugar da do Chrome: baixe o ícone, clique com o botão direito no atalho, vá em
+                Propriedades, Alterar ícone, Procurar, e escolha o arquivo baixado.
+              </li>
+              <li>Deixe esta tela de pedidos aberta enquanto o restaurante estiver funcionando.</li>
+            </ol>
+            <code className="overflow-x-auto rounded bg-bg px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{shortcut}</code>
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyButton text={shortcut} label="Copiar o comando" copiedLabel="Comando copiado!" variant="secondary" size="sm" />
+              <a href="/menufacil.ico" download className={buttonClasses("ghost", "sm")}>
+                <Download className="size-4" aria-hidden="true" />
+                Baixar o ícone
+              </a>
+            </div>
+            <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            {mode === "celular"
+              ? "Deixe esta página aberta e o app RawBT instalado, com a impressora pareada."
+              : "Com o painel aberto, o pedido novo pode sair sozinho na impressora térmica."}
+          </p>
+        )}
+
+        <div ref={frames} aria-hidden="true" />
+      </div>
+    </>
   );
 }
