@@ -176,8 +176,11 @@ model Restaurant {
   ratingAverage Float?
   ratingCount   Int    @default(0)
 
-  // numeracao sequencial dos pedidos deste restaurante (#1, #2...)
-  orderSeq Int @default(0)
+  // numeracao das comandas: comeca em #1 a cada dia, como a comanda de
+  // papel do balcao. "orderSeqDay" guarda o dia (no fuso da plataforma) a
+  // que a contagem pertence; virou o dia, a proxima comanda volta para 1.
+  orderSeq    Int     @default(0)
+  orderSeqDay String?
 
   activatedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -417,7 +420,9 @@ model Order {
   payment      Payment?
   messages     WhatsAppMessage[]
 
-  @@unique([restaurantId, number])
+  // o numero repete de um dia para o outro (#1 todo dia), entao quem
+  // identifica o pedido e o id e o code, nunca o numero
+  @@index([restaurantId, number])
   @@index([restaurantId, status, createdAt])
   @@index([customerId])
 }

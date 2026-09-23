@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
-import { formatCents } from "@/lib/format";
+import { formatCents, todayKey } from "@/lib/format";
 import { isOpenNow } from "@/lib/opening-hours";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
@@ -216,12 +216,17 @@ export async function placeOrder(params: {
           })
         : null;
 
-    // número sequencial do restaurante: o update trava a linha até o fim da transação
-    const { orderSeq } = await tx.restaurant.update({
-      where: { id: restaurant.id },
-      data: { orderSeq: { increment: 1 } },
-      select: { orderSeq: true },
-    });
+    const today = todayKey();
+    // número da comanda: recomeça em 1 a cada dia, como a comanda de papel.
+    // Tudo numa instrução só, que trava a linha do restaurante: dois pedidos
+    // ao mesmo tempo nunca saem com o mesmo número.
+    const [{ orderSeq }] = await tx.$queryRaw<{ orderSeq: number }[]>`
+      UPDATE "Restaurant"
+      SET "orderSeq" = CASE WHEN "orderSeqDay" = ${today} THEN "orderSeq" + 1 ELSE 1 END,
+          "orderSeqDay" = ${today}
+      WHERE id = ${restaurant.id}
+      RETURNING "orderSeq"
+    `;
 
     const created = await tx.order.create({
       data: {

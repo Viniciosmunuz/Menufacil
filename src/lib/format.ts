@@ -35,6 +35,11 @@ export function formatTime(date: Date | string) {
   return new Date(date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TIME_ZONE });
 }
 
+/** o dia de hoje no fuso da plataforma, como "2026-09-23" */
+export function todayKey(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
 /** meia-noite de hoje no fuso da plataforma, como instante UTC */
 export function startOfToday(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
