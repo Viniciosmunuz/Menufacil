@@ -82,9 +82,9 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const available = (["PIX", "CARD", "CASH"] as PaymentMethod[]).filter((m) =>
     m === "PIX" ? restaurant.payments.pix : m === "CARD" ? restaurant.payments.card : restaurant.payments.cash,
   );
-  const [method, setMethod] = useState<PaymentMethod | undefined>(
-    (state.values?.paymentMethod as PaymentMethod | undefined) ?? available[0],
-  );
+  // sem forma de pagamento marcada: a escolha é do cliente, não do sistema
+  const [method, setMethod] = useState<PaymentMethod | undefined>(state.values?.paymentMethod as PaymentMethod | undefined);
+  const [missingPayment, setMissingPayment] = useState(false);
   const [cardType, setCardType] = useState<CardType | undefined>(state.values?.cardType as CardType | undefined);
   const [needsChange, setNeedsChange] = useState<"nao" | "sim" | undefined>(state.values?.needsChange as "nao" | "sim" | undefined);
   // revisão antes de criar o pedido: o formulário só segue depois do "Confirmar pedido"
@@ -162,6 +162,13 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    // sem forma de pagamento não dá para seguir: avisa e leva até a escolha
+    if (!method) {
+      event.preventDefault();
+      setMissingPayment(true);
+      document.getElementById("formas-de-pagamento")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     // primeiro toque: mostra a revisão em vez de já criar o pedido
     if (!confirmed.current) {
       event.preventDefault();
@@ -292,7 +299,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               )}
             </Card>
 
-            <Card className="flex flex-col gap-4">
+            <Card className="flex flex-col gap-4" id="formas-de-pagamento">
               <h2 className="text-lg font-extrabold">Como você vai pagar?</h2>
               {available.length === 0 ? (
                 <Alert tone="warning">Este restaurante ainda não configurou as formas de pagamento.</Alert>
@@ -315,7 +322,10 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                           name="paymentMethod"
                           value={m}
                           checked={method === m}
-                          onChange={() => setMethod(m)}
+                          onChange={() => {
+                            setMethod(m);
+                            setMissingPayment(false);
+                          }}
                           className="mt-1 size-4 accent-brand"
                         />
                         <info.Icon className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
@@ -328,7 +338,9 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                   })}
                 </div>
               )}
-              {err.paymentMethod && <p className="text-sm text-danger">{err.paymentMethod}</p>}
+              {(err.paymentMethod || missingPayment) && (
+                <p className="text-sm font-bold text-danger">{err.paymentMethod ?? "Escolha como você vai pagar."}</p>
+              )}
 
               {method === "PIX" && restaurant.pix && (
                 <div className="rounded-control border border-line bg-surface-2 p-4">
@@ -456,12 +468,12 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
             {!restaurant.open && <Alert tone="warning">O restaurante está fechado agora.</Alert>}
             {staleNotice}
             {/* o aviso também fica aqui: no celular, o topo do formulário está longe do botão */}
-            {firstError && <Alert tone="danger">{firstError}</Alert>}
+            {(firstError || missingPayment) && <Alert tone="danger">{firstError ?? "Escolha como você vai pagar."}</Alert>}
             <Alert tone="warning">
               Depois de confirmar, o WhatsApp do restaurante abre com o seu pedido escrito. <strong>Toque em enviar lá no WhatsApp</strong>: é assim que
               o pedido chega ao restaurante.
             </Alert>
-            <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || !method || stale.length > 0} className="w-full justify-between">
+            <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || stale.length > 0} className="w-full justify-between">
               <span>Fazer pedido</span>
               <span className="tabular-nums">{formatCents(total)}</span>
             </SubmitButton>

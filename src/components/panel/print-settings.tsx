@@ -1,7 +1,7 @@
 "use client";
 
-import { Bell, BellOff, Download, Printer, PrinterCheck, ReceiptText, Smartphone, Volume2 } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { Bell, BellOff, Check, ChevronDown, Download, Printer, ReceiptText, Smartphone, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -130,6 +130,8 @@ export function PrintSettings({
   const savedSeen = useStored(SEEN_KEY);
   const savedSince = useStored(SINCE_KEY);
   const frames = useRef<HTMLDivElement>(null);
+  const soundBox = useRef<HTMLDivElement>(null);
+  const [pickingSound, setPickingSound] = useState(false);
 
   const mode: Mode = savedMode === "pc" || savedMode === "celular" ? savedMode : "off";
   const sound = savedSound === "1";
@@ -197,11 +199,24 @@ export function PrintSettings({
     };
   }, [mode]);
 
-  const option = (value: Mode, label: string, Icon: typeof Printer) => (
+  // gaveta do som: some ao escolher e ao tocar em qualquer outro lugar
+  useEffect(() => {
+    if (!pickingSound) return;
+    const outside = (event: PointerEvent) => {
+      if (!soundBox.current?.contains(event.target as Node)) setPickingSound(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [pickingSound]);
+
+  /** tocar de novo no que está ligado desliga: sem nenhum marcado, não imprime */
+  const option = (value: "pc" | "celular", label: string, Icon: typeof Printer) => (
     <button
       type="button"
+      title={label}
+      aria-label={label}
       onClick={() => {
-        write(MODE_KEY, value);
+        write(MODE_KEY, mode === value ? "off" : value);
         startNow();
         remember(
           SEEN_KEY,
@@ -216,12 +231,11 @@ export function PrintSettings({
       }}
       aria-pressed={mode === value}
       className={cn(
-        "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+        "grid size-10 shrink-0 place-items-center rounded-full border",
         mode === value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
       )}
     >
-      <Icon className="size-4" aria-hidden="true" />
-      {label}
+      <Icon className="size-5" aria-hidden="true" />
     </button>
   );
 
@@ -276,14 +290,16 @@ export function PrintSettings({
       )}
 
       <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="mr-1 text-sm font-extrabold">Imprimir pedido novo:</p>
-          {option("off", "Não imprimir", PrinterCheck)}
-          {option("pc", "Neste computador", Printer)}
-          {option("celular", "Neste celular (RawBT)", Smartphone)}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
+          <p className="mr-1 text-sm font-extrabold">Imprimir:</p>
+          {option("pc", "Imprimir neste computador", Printer)}
+          {option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
+
+          <div ref={soundBox} className="relative ml-auto flex items-center">
             <button
               type="button"
+              title={sound ? "Desligar o som de pedido novo" : "Ligar o som de pedido novo"}
+              aria-label={sound ? "Desligar o som de pedido novo" : "Ligar o som de pedido novo"}
               onClick={() => {
                 const next = !sound;
                 write(SOUND_KEY, next ? "1" : "0");
@@ -292,33 +308,50 @@ export function PrintSettings({
               }}
               aria-pressed={sound}
               className={cn(
-                "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+                "grid size-10 shrink-0 place-items-center rounded-l-full border border-r-0",
                 sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
               )}
             >
-              {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
-              {sound ? "Som ligado" : "Som desligado"}
+              {sound ? <Bell className="size-5" aria-hidden="true" /> : <BellOff className="size-5" aria-hidden="true" />}
             </button>
-            {sound &&
-              (Object.keys(SOUNDS) as SoundName[]).map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  title="Tocar para ouvir"
-                  onClick={() => {
-                    write(CHOICE_KEY, name);
-                    void playSound(name).catch(() => {});
-                  }}
-                  aria-pressed={soundName === name}
-                  className={cn(
-                    "inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold",
-                    soundName === name ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
-                  )}
-                >
-                  <Volume2 className="size-4" aria-hidden="true" />
-                  {SOUNDS[name].label}
-                </button>
-              ))}
+            <button
+              type="button"
+              title="Escolher o som"
+              aria-label="Escolher o som"
+              aria-expanded={pickingSound}
+              onClick={() => setPickingSound((open) => !open)}
+              className={cn(
+                "grid h-10 w-8 shrink-0 place-items-center rounded-r-full border",
+                sound ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+              )}
+            >
+              <ChevronDown className={cn("size-4 transition-transform duration-200", pickingSound && "rotate-180")} aria-hidden="true" />
+            </button>
+
+            {pickingSound && (
+              <div className="absolute top-full right-0 z-20 mt-2 w-48 overflow-hidden rounded-control border border-line bg-surface shadow-2xl shadow-black/50">
+                {(Object.keys(SOUNDS) as SoundName[]).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => {
+                      write(CHOICE_KEY, name);
+                      if (!sound) write(SOUND_KEY, "1");
+                      void playSound(name).catch(() => {});
+                      setPickingSound(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold hover:bg-surface-2",
+                      soundName === name ? "text-brand" : "text-ink",
+                    )}
+                  >
+                    <Volume2 className="size-4 shrink-0" aria-hidden="true" />
+                    {SOUNDS[name].label}
+                    {soundName === name && <Check className="ml-auto size-4" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -351,7 +384,7 @@ export function PrintSettings({
           <p className="text-sm text-muted">
             {mode === "celular"
               ? "Deixe esta página aberta, com o RawBT instalado e a impressora pareada. Enquanto ela estiver na tela, o celular não apaga sozinho; se você trocar de app, os pedidos que chegarem saem assim que voltar."
-              : "Com o painel aberto, o pedido novo pode sair sozinho na impressora térmica."}
+              : "Toque na impressora ou no celular para o pedido novo sair sozinho no papel."}
           </p>
         )}
 
