@@ -219,7 +219,9 @@ export function orderStatusUpdate(
     `Pedido *#${o.number}* em *${r.name}*: ${label.toLowerCase()}.`,
     ...(extra[status] ? [extra[status]!] : []),
     "",
-    `Acompanhe: ${trackingUrl(o.code)}`,
+    // o link é o que o cliente usa para ver o pedido andando, sem a gente
+    // mandar mensagem a cada passo
+    `Acompanhe o seu pedido por aqui: ${trackingUrl(o.code)}`,
   ];
   return {
     body: lines.join("\n"),
@@ -236,18 +238,17 @@ export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone
  * quando muda o status no painel. "Entregue" e "concluído" não avisam: o
  * cliente já está com o pedido na mão.
  */
-// Avisar em cada passo vira mensagem demais. O cliente quer saber duas
-// coisas: que o restaurante aceitou o pedido e que ele está a caminho. Na
-// retirada, no lugar do "saiu para entrega" vale o "pronto para retirar".
-const noticeWorthy = (status: OrderStatus, type: OrderType) =>
-  status === "CONFIRMED" || status === "OUT_FOR_DELIVERY" || (status === "READY" && type === "PICKUP");
+// Uma mensagem só: quando o restaurante aceita o pedido. Ela leva o link
+// de acompanhamento, e é por ele que o cliente vê o resto do caminho, sem
+// o restaurante ter que avisar de novo a cada passo.
+const noticeWorthy = (status: OrderStatus) => status === "CONFIRMED";
 
 export function nextStatusNotice(
   o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },
   r: { name: string },
 ) {
   const step = nextOrderStep(o.status, o.type, o.paymentMethod);
-  if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
+  if (!step || !noticeWorthy(step.to) || !o.customerWhatsapp) return null;
   const body = orderStatusUpdate(o, r, step.to).body;
   // app: abre o WhatsApp instalado (computador ou celular); web: o plano B
   return { app: waAppLink(o.customerWhatsapp, body), web: waMeLink(o.customerWhatsapp, body) };
