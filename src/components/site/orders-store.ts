@@ -67,59 +67,75 @@ export function useMyOrders() {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
-// Pedidos que já foram para o WhatsApp neste aparelho. O site não vê a
-// conversa: o que ele sabe é que a pessoa abriu o WhatsApp com o pedido.
-// Serve para não oferecer "enviar" de novo e mandar o pedido duas vezes.
-const SENT_KEY = "mf_pedidos_enviados";
-const SENT_EVENT = "mf-pedidos-enviados";
+// Duas marcas por pedido, guardadas neste aparelho:
+// - "abriu": o site levou a pessoa para o WhatsApp com o pedido escrito.
+// - "enviou": a própria pessoa disse que tocou em enviar lá no WhatsApp.
+// O site não vê a conversa, então nunca dá "enviado" por conta própria. A
+// confirmação de verdade vem do restaurante, quando ele aceita o pedido.
 const NONE: string[] = [];
 
-let cachedSentRaw: string | null | undefined;
-let cachedSent: string[] = NONE;
+function codeList(storageKey: string, eventName: string) {
+  let cachedRaw: string | null | undefined;
+  let cached: string[] = NONE;
 
-function readSent(): string[] {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(SENT_KEY);
-  } catch {
-    return NONE;
+  function read(): string[] {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(storageKey);
+    } catch {
+      return NONE;
+    }
+    if (raw === cachedRaw) return cached;
+    cachedRaw = raw;
+    try {
+      const parsed = raw ? (JSON.parse(raw) as string[]) : NONE;
+      cached = Array.isArray(parsed) ? parsed : NONE;
+    } catch {
+      cached = NONE;
+    }
+    return cached;
   }
-  if (raw === cachedSentRaw) return cachedSent;
-  cachedSentRaw = raw;
-  try {
-    const parsed = raw ? (JSON.parse(raw) as string[]) : NONE;
-    cachedSent = Array.isArray(parsed) ? parsed : NONE;
-  } catch {
-    cachedSent = NONE;
+
+  function subscribe(callback: () => void) {
+    const onStorage = (e: StorageEvent) => e.key === storageKey && callback();
+    window.addEventListener(eventName, callback);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(eventName, callback);
+      window.removeEventListener("storage", onStorage);
+    };
   }
-  return cachedSent;
+
+  function mark(code: string) {
+    const current = read();
+    if (current.includes(code)) return;
+    const next = [code, ...current].slice(0, MAX_SAVED);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch {
+      cachedRaw = JSON.stringify(next);
+      cached = next;
+    }
+    window.dispatchEvent(new Event(eventName));
+  }
+
+  return { read, subscribe, mark };
 }
 
-function subscribeSent(callback: () => void) {
-  const onStorage = (e: StorageEvent) => e.key === SENT_KEY && callback();
-  window.addEventListener(SENT_EVENT, callback);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(SENT_EVENT, callback);
-    window.removeEventListener("storage", onStorage);
-  };
-}
+const opened = codeList("mf_pedidos_abertos", "mf-pedidos-abertos");
+const sent = codeList("mf_pedidos_confirmados", "mf-pedidos-confirmados");
 
-export function markOrderSent(code: string) {
-  const current = readSent();
-  if (current.includes(code)) return;
-  const next = [code, ...current].slice(0, MAX_SAVED);
-  try {
-    localStorage.setItem(SENT_KEY, JSON.stringify(next));
-  } catch {
-    cachedSentRaw = JSON.stringify(next);
-    cachedSent = next;
-  }
-  window.dispatchEvent(new Event(SENT_EVENT));
+/** o site abriu o WhatsApp com este pedido */
+export const markOrderOpened = opened.mark;
+/** a pessoa disse que enviou a mensagem */
+export const markOrderSent = sent.mark;
+
+export function useOrderOpened(code: string) {
+  return useSyncExternalStore(opened.subscribe, opened.read, () => NONE).includes(code);
 }
 
 export function useOrderSent(code: string) {
-  return useSyncExternalStore(subscribeSent, readSent, () => NONE).includes(code);
+  return useSyncExternalStore(sent.subscribe, sent.read, () => NONE).includes(code);
 }
 
 /** guarda o pedido no aparelho (o mesmo pedido de novo só sobe para o topo) */

@@ -72,7 +72,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
   const orderText = orderFromCustomer(order, r);
   const sendOrderLink = r.whatsapp ? waMeLink(r.whatsapp, orderText) : null;
   const sendOrderAppLink = r.whatsapp ? waAppLink(r.whatsapp, orderText) : null;
+  // conversa sem texto: quem já enviou o pedido não manda de novo sem querer
+  const chatLink = r.whatsapp ? `https://wa.me/${r.whatsapp}` : null;
   const justPlaced = sp.novo === "1" && !!sendOrderLink && !!sendOrderAppLink && (showPix || payOnReceive);
+  // o restaurante mexeu no pedido pelo painel: prova de que a mensagem chegou
+  const accepted = !["NEW", "AWAITING_PAYMENT", "PAYMENT_SENT"].includes(order.status);
+  // enquanto o pedido está em pé, a pessoa vê em que pé está o envio
+  const showSendCta = !canceled && !!sendOrderLink && !FINAL.includes(order.status);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
@@ -95,15 +101,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         <h1 className="text-2xl font-extrabold sm:text-3xl">
           {sp.novo === "1" ? `Pedido #${order.number} criado!` : `Pedido #${order.number}`}
         </h1>
-        {justPlaced && sendOrderLink && sendOrderAppLink && (
-          <>
-            <OpenWhatsAppOnce code={order.code} appUrl={sendOrderAppLink} webUrl={sendOrderLink} />
-            <p className="text-muted">Seu pedido foi registrado. O WhatsApp do restaurante abre com ele escrito.</p>
-            <SendOrderCta code={order.code} url={sendOrderLink} pixNote={showPix} />
-            <Link href={`/restaurante/${r.slug}`} className="text-sm font-bold text-muted hover:text-ink">
-              Voltar para o início
-            </Link>
-          </>
+        {justPlaced && sendOrderAppLink && sendOrderLink && <OpenWhatsAppOnce code={order.code} appUrl={sendOrderAppLink} webUrl={sendOrderLink} />}
+        {sp.novo === "1" && <p className="text-muted">Seu pedido foi registrado. O WhatsApp do restaurante abre com ele escrito.</p>}
+        {showSendCta && sendOrderLink && (
+          <SendOrderCta code={order.code} url={sendOrderLink} chatUrl={chatLink ?? sendOrderLink} accepted={accepted} pixNote={showPix} />
+        )}
+        {sp.novo === "1" && (
+          <Link href={`/restaurante/${r.slug}`} className="text-sm font-bold text-muted hover:text-ink">
+            Voltar para o início
+          </Link>
         )}
         <p className="text-muted">
           <Link href={`/restaurante/${r.slug}`} className="font-bold text-ink hover:text-brand">
@@ -137,11 +143,6 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
                   : "Sem troco."}
             </p>
           </div>
-          {sendOrderLink && !justPlaced && (
-            <div className="flex flex-col items-center gap-2 text-center">
-              <SendOrderCta code={order.code} url={sendOrderLink} />
-            </div>
-          )}
         </Card>
       )}
 

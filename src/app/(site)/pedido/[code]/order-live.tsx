@@ -4,10 +4,9 @@ import { Check, Copy, MessageCircle, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { clearCart, useCart } from "@/components/site/cart-store";
-import { markOrderSent, rememberOrder, useOrderSent } from "@/components/site/orders-store";
-import { Button } from "@/components/ui/button";
+import { markOrderOpened, markOrderSent, rememberOrder, useOrderOpened, useOrderSent } from "@/components/site/orders-store";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton, copyToClipboard } from "@/components/ui/copy-button";
-import { cn } from "@/lib/cn";
 
 /** esvazia o carrinho depois que o pedido deste restaurante foi feito */
 export function ClearCartAfterOrder({ restaurantId }: { restaurantId: string }) {
@@ -60,7 +59,7 @@ export function OpenWhatsAppOnce({ code, appUrl, webUrl }: { code: string; appUr
       } catch {
         // idem
       }
-      markOrderSent(code);
+      markOrderOpened(code);
       window.location.assign(phone ? appUrl : webUrl);
     }, 800);
     return () => clearTimeout(timer);
@@ -69,39 +68,104 @@ export function OpenWhatsAppOnce({ code, appUrl, webUrl }: { code: string; appUr
 }
 
 /**
- * Aviso curto do envio pelo WhatsApp. O WhatsApp abre sozinho depois do
- * pedido, então aqui não tem botão grande: só a linha do que falta fazer e,
- * depois que a pessoa abriu a conversa por aqui, o aviso de enviado (para
- * ela não mandar o mesmo pedido duas vezes). O link reabre a conversa.
+ * O que falta para o pedido chegar ao restaurante. O site não enxerga a
+ * conversa do WhatsApp, então o verde só aparece quando o restaurante
+ * aceita o pedido no painel dele. Antes disso: o aviso de enviar e, se a
+ * pessoa já voltou do WhatsApp, a pergunta se ela enviou mesmo.
  */
-export function SendOrderCta({ code, url, pixNote = false }: { code: string; url: string; pixNote?: boolean }) {
+export function SendOrderCta({
+  code,
+  url,
+  chatUrl,
+  accepted,
+  pixNote = false,
+}: {
+  code: string;
+  /** conversa com o pedido escrito, para quem ainda não enviou */
+  url: string;
+  /** conversa vazia: quem já enviou não corre o risco de mandar de novo */
+  chatUrl: string;
+  accepted: boolean;
+  pixNote?: boolean;
+}) {
+  const opened = useOrderOpened(code);
   const sent = useOrderSent(code);
+
+  const openLink = (label: string, href: string, withOrder = false) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={withOrder ? () => markOrderOpened(code) : undefined}
+      className="inline-flex items-center gap-1.5 text-sm font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+    >
+      <MessageCircle className="size-4" aria-hidden="true" />
+      {label}
+    </a>
+  );
+
+  const note = pixNote && <p className="mt-1 text-sm text-muted">Pague o Pix com a chave aqui embaixo e mande o comprovante na mesma conversa.</p>;
+
+  // o restaurante mexeu no pedido: aí sim ele chegou lá
+  if (accepted) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <p className="flex items-center justify-center gap-2 text-sm font-extrabold text-success">
+          <Check className="size-4 shrink-0" aria-hidden="true" />
+          Pedido recebido pelo restaurante
+        </p>
+        {openLink("Abrir a conversa no WhatsApp", chatUrl)}
+        {note}
+      </div>
+    );
+  }
+
+  // a pessoa disse que enviou: falta o restaurante ver
+  if (sent) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <p className="text-sm font-bold text-muted">Você enviou o pedido. Aguardando o restaurante confirmar.</p>
+        {openLink("Abrir a conversa no WhatsApp", chatUrl)}
+        {note}
+      </div>
+    );
+  }
+
+  // voltou do WhatsApp: só ela sabe se tocou em enviar
+  if (opened) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-sm font-extrabold">Você tocou em enviar lá no WhatsApp?</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => markOrderSent(code)}>
+            Sim, enviei
+          </Button>
+          <a href={url} target="_blank" rel="noopener noreferrer" className={buttonClasses("primary", "sm")}>
+            <MessageCircle className="size-4" aria-hidden="true" />
+            Ainda não, abrir o WhatsApp
+          </a>
+        </div>
+        {note}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <p className={cn("flex items-center justify-center gap-2 text-sm font-extrabold", sent ? "text-success" : "text-warning")}>
-        {sent ? <Check className="size-4 shrink-0" aria-hidden="true" /> : <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />}
-        {sent ? "Pedido enviado no WhatsApp" : "Toque em enviar lá no WhatsApp"}
+      <p className="flex items-center justify-center gap-2 text-sm font-extrabold text-warning">
+        <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
+        Toque em enviar lá no WhatsApp
       </p>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => markOrderSent(code)}
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
-      >
-        <MessageCircle className="size-4" aria-hidden="true" />
-        {sent ? "Abrir a conversa de novo" : "Abrir o WhatsApp com o pedido"}
-      </a>
-      {pixNote && <p className="mt-1 text-sm text-muted">Pague o Pix com a chave aqui embaixo e mande o comprovante na mesma conversa.</p>}
+      {openLink("Abrir o WhatsApp com o pedido", url, true)}
+      {note}
     </div>
   );
 }
 
-/** no Pix, depois de enviado o botão vira só "copiar a chave" */
+/** no Pix, depois que o WhatsApp já foi aberto o botão vira só "copiar a chave" */
 export function PixActions({ code, pixKey, whatsappUrl, className }: { code: string; pixKey: string; whatsappUrl: string; className?: string }) {
-  const sent = useOrderSent(code);
-  if (sent) return <CopyButton text={pixKey} label="Copiar chave Pix" copiedLabel="Chave copiada!" variant="primary" size="lg" className={className} />;
+  const opened = useOrderOpened(code);
+  if (opened) return <CopyButton text={pixKey} label="Copiar chave Pix" copiedLabel="Chave copiada!" variant="primary" size="lg" className={className} />;
   return <CopyPixAndSendOrder code={code} pixKey={pixKey} whatsappUrl={whatsappUrl} className={className} />;
 }
 
@@ -125,7 +189,7 @@ export function CopyPixAndSendOrder({
   async function copyAndOpen() {
     await copyToClipboard(pixKey);
     setCopied(true);
-    markOrderSent(code);
+    markOrderOpened(code);
     // um instante para a pessoa ver que copiou antes de trocar de app
     setTimeout(() => window.location.assign(whatsappUrl), 700);
   }
