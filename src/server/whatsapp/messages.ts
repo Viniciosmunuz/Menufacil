@@ -236,11 +236,11 @@ export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone
  * quando muda o status no painel. "Entregue" e "concluído" não avisam: o
  * cliente já está com o pedido na mão.
  */
-// Avisar em cada passo vira mensagem demais. O que interessa ao cliente é
-// saber que a cozinha pegou o pedido e que ele está a caminho. Na retirada,
-// no lugar do "saiu para entrega" vale o "pronto para retirar".
+// Avisar em cada passo vira mensagem demais. O cliente quer saber duas
+// coisas: que o restaurante aceitou o pedido e que ele está a caminho. Na
+// retirada, no lugar do "saiu para entrega" vale o "pronto para retirar".
 const noticeWorthy = (status: OrderStatus, type: OrderType) =>
-  status === "PREPARING" || status === "OUT_FOR_DELIVERY" || (status === "READY" && type === "PICKUP");
+  status === "CONFIRMED" || status === "OUT_FOR_DELIVERY" || (status === "READY" && type === "PICKUP");
 
 export function nextStatusNotice(
   o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },

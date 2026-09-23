@@ -59,7 +59,7 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       />
 
       <Card>
-        <SectionTitle description={final ? undefined : "Em preparo e saiu para entrega abrem o WhatsApp com o aviso para o cliente."}>
+        <SectionTitle description={final ? undefined : "Aceitar o pedido e saiu para entrega abrem o WhatsApp com o aviso para o cliente."}>
           Atendimento
         </SectionTitle>
         {final ? (
