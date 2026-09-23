@@ -1,7 +1,7 @@
 "use client";
 
-import { Bell, BellOff, Download, Printer, PrinterCheck, Smartphone, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Bell, BellOff, Download, Printer, PrinterCheck, Smartphone, TriangleAlert, Volume2 } from "lucide-react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -13,17 +13,30 @@ import { cn } from "@/lib/cn";
 //   padrão sem janela nenhuma.
 // - "celular": entrega o texto ao RawBT, o app que fala com a térmica por
 //   Bluetooth ou rede.
+// O navegador não conta se a impressora falhou, então todo pedido novo
+// também aparece na tela até o restaurante dizer que viu.
 // Nada disso depende do WhatsApp: o pedido já está no sistema quando o
 // cliente confirma.
 
 type Mode = "off" | "pc" | "celular";
+type Order = { id: string; number: number; createdAt: string };
 
 const MODE_KEY = "mf_impressao";
 const SOUND_KEY = "mf_som_pedido";
+const CHOICE_KEY = "mf_som_escolha";
 const PRINTED_KEY = "mf_pedidos_impressos";
+const SEEN_KEY = "mf_pedidos_vistos";
 const SINCE_KEY = "mf_impressao_desde";
+const EVENT = "mf-impressao";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-const SOUND_FILE = "/som-pedido.wav";
+
+const SOUNDS = {
+  sino: { label: "Sino", file: "/som-sino.wav" },
+  campainha: { label: "Campainha", file: "/som-campainha.wav" },
+  alerta: { label: "Alerta", file: "/som-alerta.wav" },
+} as const;
+type SoundName = keyof typeof SOUNDS;
+const isSound = (v: unknown): v is SoundName => typeof v === "string" && v in SOUNDS;
 
 const read = (key: string) => {
   try {
@@ -32,17 +45,36 @@ const read = (key: string) => {
     return null;
   }
 };
-const write = (key: string, value: string) => {
+
+function write(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
   } catch {
     // sem armazenamento: vale só nesta visita
   }
-};
+  window.dispatchEvent(new Event(EVENT));
+}
 
-const printedIds = (): string[] => {
+function subscribe(callback: () => void) {
+  window.addEventListener(EVENT, callback);
+  window.addEventListener("storage", callback); // outra aba do painel
+  return () => {
+    window.removeEventListener(EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+/** o que está salvo neste aparelho, sem quebrar a primeira pintura no servidor */
+function useStored(key: string) {
+  return useSyncExternalStore(
+    subscribe,
+    () => read(key),
+    () => null,
+  );
+}
+
+const idList = (raw: string | null): string[] => {
   try {
-    const raw = read(PRINTED_KEY);
     const parsed = raw ? (JSON.parse(raw) as string[]) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -50,90 +82,78 @@ const printedIds = (): string[] => {
   }
 };
 
-/** o que está salvo no aparelho, sem quebrar a primeira pintura no servidor */
-const noop = () => () => {};
+const remember = (key: string, ids: string[], raw: string | null) => write(key, JSON.stringify([...ids, ...idList(raw)].slice(0, 200)));
 
-/** vale a partir de agora: os pedidos que já estão na tela não saem na impressora */
-function startNow(ids: string[]) {
-  write(SINCE_KEY, String(Date.now()));
-  write(PRINTED_KEY, JSON.stringify(ids.slice(0, 200)));
+// um tocador só: trocar de som troca o arquivo dele
+let player: HTMLAudioElement | null = null;
+function playSound(name: SoundName) {
+  const file = SOUNDS[name].file;
+  if (!player || !player.src.endsWith(file)) player = new Audio(file);
+  player.currentTime = 0;
+  return player.play();
 }
 
-export function PrintSettings({ base, panelUrl, orders }: { base: string; panelUrl: string; orders: { id: string; createdAt: string }[] }) {
-  const savedMode = useSyncExternalStore(noop, () => read(MODE_KEY), () => null);
-  const savedSound = useSyncExternalStore(noop, () => read(SOUND_KEY), () => null);
-  // a escolha do momento vale na hora; o aparelho lembra dela na próxima visita
-  const [chosenMode, setChosenMode] = useState<Mode | null>(null);
-  const [chosenSound, setChosenSound] = useState<boolean | null>(null);
-  const [blocked, setBlocked] = useState(false);
+/** vale a partir de agora: os pedidos que já estão na tela não saem na impressora */
+function startNow() {
+  write(SINCE_KEY, String(Date.now()));
+}
+
+export function PrintSettings({ base, panelUrl, orders }: { base: string; panelUrl: string; orders: Order[] }) {
+  const savedMode = useStored(MODE_KEY);
+  const savedSound = useStored(SOUND_KEY);
+  const savedChoice = useStored(CHOICE_KEY);
+  const savedSeen = useStored(SEEN_KEY);
+  const savedSince = useStored(SINCE_KEY);
   const frames = useRef<HTMLDivElement>(null);
-  const player = useRef<HTMLAudioElement | null>(null);
 
-  const mode: Mode = chosenMode ?? (savedMode === "pc" || savedMode === "celular" ? savedMode : "off");
-  const sound = chosenSound ?? savedSound === "1";
+  const mode: Mode = savedMode === "pc" || savedMode === "celular" ? savedMode : "off";
+  const sound = savedSound === "1";
+  const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
+  const since = Number(savedSince ?? 0);
+  const fresh = orders.filter((o) => new Date(o.createdAt).getTime() >= since);
+  // chegaram enquanto o painel estava aberto e ninguém disse que viu
+  const pending = fresh.filter((o) => !idList(savedSeen).includes(o.id));
 
-  // o navegador só deixa tocar som depois de um toque na página: o botão do
-  // som é esse toque, e o mesmo player serve para os avisos seguintes
-  function ring() {
-    const audio = (player.current ??= new Audio(SOUND_FILE));
-    audio.currentTime = 0;
-    audio.volume = 1;
-    audio
-      .play()
-      .then(() => setBlocked(false))
-      .catch(() => setBlocked(true));
+  function sendToPrinter(id: string) {
+    const url = `${base}/${id}/via`;
+    if (mode === "celular") {
+      void fetch(`${url}?formato=texto`)
+        .then((r) => (r.ok ? r.text() : null))
+        .then((text) => {
+          if (text) window.location.href = `intent:${encodeURI(text)}${RAWBT}`;
+        })
+        .catch(() => {});
+      return;
+    }
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;width:0;height:0;border:0;opacity:0";
+    frame.src = url;
+    frames.current?.appendChild(frame);
+    // a própria via manda imprimir ao carregar; depois o quadro sai
+    setTimeout(() => frame.remove(), 60_000);
   }
 
   useEffect(() => {
-    const since = Number(read(SINCE_KEY) ?? 0);
-    const done = printedIds();
-    // só o que chegou depois de ligar: a fila antiga não sai toda de uma vez
-    const novos = orders.filter((o) => !done.includes(o.id) && new Date(o.createdAt).getTime() >= since);
+    const done = idList(read(PRINTED_KEY));
+    const novos = fresh.filter((o) => !done.includes(o.id));
     if (novos.length === 0) return;
 
-    if (sound) ring();
-
-    if (mode !== "off") {
-      for (const order of novos) {
-        const url = `${base}/${order.id}/via`;
-        if (mode === "pc") {
-          const frame = document.createElement("iframe");
-          frame.style.cssText = "position:fixed;width:0;height:0;border:0;opacity:0";
-          frame.src = url;
-          frames.current?.appendChild(frame);
-          // a própria via manda imprimir ao carregar; depois o quadro sai
-          setTimeout(() => frame.remove(), 60_000);
-        } else {
-          void fetch(`${url}?formato=texto`)
-            .then((r) => (r.ok ? r.text() : null))
-            .then((text) => {
-              if (text) window.location.href = `intent:${encodeURI(text)}${RAWBT}`;
-            })
-            .catch(() => {});
-        }
-      }
-    }
-
-    write(PRINTED_KEY, JSON.stringify([...novos.map((o) => o.id), ...done].slice(0, 200)));
-  }, [orders, mode, sound, base]);
-
-  function chooseMode(next: Mode) {
-    setChosenMode(next);
-    write(MODE_KEY, next);
-    startNow([...orders.map((o) => o.id), ...printedIds()]);
-  }
-
-  function toggleSound() {
-    const next = !sound;
-    setChosenSound(next);
-    write(SOUND_KEY, next ? "1" : "0");
-    if (next) ring(); // o toque no botão é o que libera o som no navegador
-  }
+    if (sound) void playSound(soundName).catch(() => {});
+    if (mode !== "off") for (const order of novos) sendToPrinter(order.id);
+    remember(PRINTED_KEY, novos.map((o) => o.id), read(PRINTED_KEY));
+    // sendToPrinter acompanha o modo e o endereço, que já estão nas dependências
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh, mode, sound, soundName, base]);
 
   const option = (value: Mode, label: string, Icon: typeof Printer) => (
     <button
       type="button"
-      onClick={() => chooseMode(value)}
+      onClick={() => {
+        write(MODE_KEY, value);
+        startNow();
+        remember(SEEN_KEY, orders.map((o) => o.id), read(SEEN_KEY));
+        remember(PRINTED_KEY, orders.map((o) => o.id), read(PRINTED_KEY));
+      }}
       aria-pressed={mode === value}
       className={cn(
         "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
@@ -149,15 +169,49 @@ export function PrintSettings({ base, panelUrl, orders }: { base: string; panelU
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+      {pending.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-control border border-warning/40 bg-warning/10 p-4">
+          <p className="flex items-center gap-2 font-extrabold text-warning">
+            <TriangleAlert className="size-5 shrink-0" aria-hidden="true" />
+            {pending.length === 1 ? `Pedido #${pending[0].number} chegou agora` : `${pending.length} pedidos novos chegaram`}
+          </p>
+          <p className="text-sm text-ink/90">
+            {mode === "off"
+              ? "A impressão automática está desligada. Use o botão Imprimir do pedido, se quiser a via no papel."
+              : "A via foi enviada para a impressora. Se o papel não saiu — impressora desligada, sem papel, sem conexão —, imprima de novo."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {mode !== "off" && (
+              <Button size="sm" onClick={() => pending.forEach((o) => sendToPrinter(o.id))}>
+                <Printer className="size-4" aria-hidden="true" />
+                Imprimir de novo
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => remember(SEEN_KEY, pending.map((o) => o.id), read(SEEN_KEY))}
+            >
+              Já vi, pode tirar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <p className="mr-1 text-sm font-extrabold">Imprimir pedido novo:</p>
         {option("off", "Não imprimir", PrinterCheck)}
         {option("pc", "Neste computador", Printer)}
         {option("celular", "Neste celular (RawBT)", Smartphone)}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={toggleSound}
+            onClick={() => {
+              const next = !sound;
+              write(SOUND_KEY, next ? "1" : "0");
+              // o toque no botão é o que libera o som no navegador
+              if (next) void playSound(soundName).catch(() => {});
+            }}
             aria-pressed={sound}
             className={cn(
               "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold",
@@ -167,20 +221,28 @@ export function PrintSettings({ base, panelUrl, orders }: { base: string; panelU
             {sound ? <Bell className="size-4" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
             {sound ? "Som ligado" : "Som desligado"}
           </button>
-          {sound && (
-            <Button size="sm" variant="ghost" onClick={ring}>
-              <Volume2 className="size-4" aria-hidden="true" />
-              Testar som
-            </Button>
-          )}
+          {sound &&
+            (Object.keys(SOUNDS) as SoundName[]).map((name) => (
+              <button
+                key={name}
+                type="button"
+                title="Tocar para ouvir"
+                onClick={() => {
+                  write(CHOICE_KEY, name);
+                  void playSound(name).catch(() => {});
+                }}
+                aria-pressed={soundName === name}
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-bold",
+                  soundName === name ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+                )}
+              >
+                <Volume2 className="size-4" aria-hidden="true" />
+                {SOUNDS[name].label}
+              </button>
+            ))}
         </div>
       </div>
-
-      {blocked && (
-        <p className="text-sm font-bold text-warning">
-          O navegador bloqueou o som. Toque em “Testar som” uma vez para liberar, e deixe esta aba aberta.
-        </p>
-      )}
 
       {mode === "pc" ? (
         <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">

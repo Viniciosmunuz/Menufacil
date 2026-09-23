@@ -54,7 +54,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       where: { restaurantId: restaurant.id, status: { in: [...OPEN_ORDER_STATUSES] } },
       orderBy: { createdAt: "desc" },
       take: 20,
-      select: { id: true, createdAt: true },
+      select: { id: true, number: true, createdAt: true },
     }),
   ]);
 
@@ -80,7 +80,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       <PrintSettings
         base={base}
         panelUrl={`${appUrl()}/painel`}
-        orders={openOrders.map((o) => ({ id: o.id, createdAt: o.createdAt.toISOString() }))}
+        orders={openOrders.map((o) => ({ id: o.id, number: o.number, createdAt: o.createdAt.toISOString() }))}
       />
 
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
