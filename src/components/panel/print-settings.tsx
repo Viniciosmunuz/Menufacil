@@ -42,6 +42,8 @@ const CHOICE_KEY = "mf_som_escolha";
 const PRINTED_KEY = "mf_pedidos_impressos";
 const SEEN_KEY = "mf_pedidos_vistos";
 const SINCE_KEY = "mf_impressao_desde";
+/** a gaveta das explicações fica fechada até alguém abrir */
+const HELP_KEY = "mf_impressao_ajuda";
 const EVENT = "mf-impressao";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
 
@@ -141,6 +143,7 @@ export function PrintSettings({
   const savedChoice = useStored(CHOICE_KEY);
   const savedSeen = useStored(SEEN_KEY);
   const savedSince = useStored(SINCE_KEY);
+  const savedHelp = useStored(HELP_KEY);
   const frames = useRef<HTMLDivElement>(null);
   const soundBox = useRef<HTMLDivElement>(null);
   const [pickingSound, setPickingSound] = useState(false);
@@ -149,6 +152,7 @@ export function PrintSettings({
   const sound = savedSound === "1";
   const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
   const since = Number(savedSince ?? 0);
+  const ajudaAberta = savedHelp === "1";
   const fresh = orders.filter((o) => new Date(o.createdAt).getTime() >= since);
   // chegaram com o painel aberto e ainda esperam o restaurante aceitar
   const seen = idList(savedSeen);
@@ -307,6 +311,16 @@ export function PrintSettings({
           {option("pc", "Imprimir neste computador", Printer)}
           {option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
           {option("nuvem", "Imprimir pelo Print Fácil, no computador do restaurante", CloudPrinterIcon)}
+          <button
+            type="button"
+            title={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
+            aria-label={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
+            aria-expanded={ajudaAberta}
+            onClick={() => write(HELP_KEY, ajudaAberta ? "0" : "1")}
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-line text-muted hover:text-ink"
+          >
+            <ChevronDown className={cn("size-4 transition-transform duration-200", ajudaAberta && "rotate-180")} aria-hidden="true" />
+          </button>
 
           <div ref={soundBox} className="relative ml-auto flex items-center">
             <button
@@ -368,7 +382,7 @@ export function PrintSettings({
           </div>
         </div>
 
-        {mode === "pc" ? (
+        {!ajudaAberta ? null : mode === "pc" ? (
           <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
             <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
             <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
@@ -426,7 +440,7 @@ const online = (lastSeenAt: string | null) => !!lastSeenAt && Date.now() - new D
  * desta tela estar aberta. Aqui o dono vê os computadores ligados e liga
  * um novo pelo código que o programa mostra.
  */
-function PrintFacilPanel({
+export function PrintFacilPanel({
   devices,
   restaurantId,
   pairAction,

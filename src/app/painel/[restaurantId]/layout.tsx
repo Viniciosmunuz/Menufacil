@@ -2,6 +2,7 @@ import { BookOpen, LayoutDashboard, ReceiptText, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
@@ -39,6 +40,7 @@ export default async function RestaurantPanelLayout({
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
+        { href: `${base}/print-facil`, label: "Print Fácil", icon: <CloudPrinterIcon /> },
       ]}
     >
       {children}
