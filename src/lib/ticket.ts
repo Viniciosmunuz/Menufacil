@@ -100,14 +100,10 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   if (delivery) lines.push(linha("Entrega", o.deliveryFeeCents > 0 ? formatCents(o.deliveryFeeCents) : "Gratis"));
   lines.push(linha("TOTAL", formatCents(o.totalCents)), divider);
 
-  lines.push(...quebra(paymentText({ method: o.paymentMethod, cardType: o.payment?.cardType })));
-  if (o.paymentMethod === "CASH") {
-    lines.push(
-      o.payment?.changeForCents
-        ? `Troco para ${formatCents(o.payment.changeForCents)} (${formatCents(o.payment.changeForCents - o.totalCents)})`
-        : "Sem troco",
-    );
-  }
+  const troco = o.paymentMethod === "CASH" ? (o.payment?.changeForCents ?? null) : null;
+  lines.push(...quebra(paymentText({ method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: troco })));
+  // o valor do troco calculado, para quem vai separar o dinheiro
+  if (troco) lines.push(linha("Levar de troco", formatCents(troco - o.totalCents)));
   if (o.paymentMethod === "CARD") lines.push(delivery ? "Levar a maquininha" : "Pagar no balcao");
 
   lines.push(divider, ...quebra(`Cliente: ${o.customerName}`), formatPhone(o.customerWhatsapp));
