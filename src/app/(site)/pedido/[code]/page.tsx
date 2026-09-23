@@ -1,4 +1,4 @@
-import { Check, CircleCheck, CircleX, MessageCircle, TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, CircleX, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,7 +18,7 @@ import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
 import { markPaymentSent } from "./actions";
-import { ClearCartAfterOrder, CopyPixAndSendOrder, OpenWhatsAppOnce, RememberOrder } from "./order-live";
+import { ClearCartAfterOrder, OpenWhatsAppOnce, PixActions, RememberOrder, SendOrderCta } from "./order-live";
 
 export const metadata: Metadata = { title: "Seu pedido", robots: { index: false, follow: false } };
 
@@ -98,28 +98,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         {justPlaced && sendOrderLink && sendOrderAppLink && (
           <>
             <OpenWhatsAppOnce code={order.code} appUrl={sendOrderAppLink} webUrl={sendOrderLink} />
-            <p className="font-bold">Seu pedido foi registrado com sucesso.</p>
-            <p className="text-muted">Agora só falta enviar o pedido para o restaurante pelo WhatsApp.</p>
-            <a
-              href={sendOrderLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-flex h-14 items-center justify-center gap-2 rounded-control bg-success px-6 text-base font-extrabold text-bg hover:bg-success/90"
-            >
-              <MessageCircle className="size-5" aria-hidden="true" />
-              Enviar pedido no WhatsApp
-            </a>
-            <div className="rounded-control border border-warning/40 bg-warning/10 p-4 text-left">
-              <p className="flex items-center gap-2 font-extrabold text-warning">
-                <TriangleAlert className="size-5 shrink-0" aria-hidden="true" />
-                Falta só tocar em enviar
-              </p>
-              <p className="mt-1 text-sm text-ink/90">
-                O WhatsApp abre com o seu pedido já escrito. Ele só chega ao restaurante quando você tocar em <strong>enviar</strong> lá dentro do
-                WhatsApp.
-              </p>
-              {showPix && <p className="mt-1 text-sm text-ink/90">Depois pague o Pix com a chave já copiada e mande o comprovante na mesma conversa.</p>}
-            </div>
+            <p className="text-muted">Seu pedido foi registrado. O WhatsApp do restaurante abre com ele escrito.</p>
+            <SendOrderCta code={order.code} url={sendOrderLink} pixNote={showPix} />
             <Link href={`/restaurante/${r.slug}`} className="text-sm font-bold text-muted hover:text-ink">
               Voltar para o início
             </Link>
@@ -158,15 +138,9 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             </p>
           </div>
           {sendOrderLink && !justPlaced && (
-            <a
-              href={sendOrderLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-13 items-center justify-center gap-2 rounded-control bg-success px-6 text-base font-extrabold text-bg hover:bg-success/90"
-            >
-              <MessageCircle className="size-5" aria-hidden="true" />
-              Enviar pedido no WhatsApp
-            </a>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <SendOrderCta code={order.code} url={sendOrderLink} />
+            </div>
           )}
         </Card>
       )}
@@ -182,7 +156,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             <p className="mt-0.5 font-mono text-lg font-bold break-all">{formatPixKey(pay.pixKeyType, pay.pixKey!)}</p>
             {r.pixHolderName && <p className="mt-1 text-sm text-muted">Nome: {r.pixHolderName}</p>}
             {sendOrderLink && !justPlaced ? (
-              <CopyPixAndSendOrder pixKey={pay.pixKey!} whatsappUrl={sendOrderLink} className="mt-4 w-full" />
+              <PixActions code={order.code} pixKey={pay.pixKey!} whatsappUrl={sendOrderLink} className="mt-4 w-full" />
             ) : (
               <CopyButton text={pay.pixKey!} label="Copiar chave Pix" copiedLabel="Chave copiada!" variant="primary" size="lg" className="mt-4 w-full" />
             )}
