@@ -56,17 +56,49 @@ export async function orderTicket(restaurantId: string, orderId: string) {
   });
   if (!order) return null;
 
+  const paper = order.restaurant.receiptWidth;
   return {
     id: order.id,
     numero: order.number,
     codigo: order.code,
     criadoEm: order.createdAt.toISOString(),
-    // texto pronto para a impressora comum; as linhas soltas servem para o
-    // ESC/POS depois, sem ter que refazer a formatação
     // a largura vem do painel: 80 mm por padrão, 58 mm para bobina estreita
-    papel_mm: order.restaurant.receiptWidth,
-    texto: ticketText(order, order.restaurant.name, order.restaurant.receiptWidth),
-    linhas: ticketLines(order, order.restaurant.name, order.restaurant.receiptWidth),
+    papel_mm: paper,
+    // texto pronto, para a impressora comum do Windows
+    texto: ticketText(order, order.restaurant.name, paper),
+    linhas: ticketLines(order, order.restaurant.name, paper),
+    // os mesmos dados em partes, para a térmica ESC/POS dar destaque ao
+    // número do pedido, ao total e ao que o cliente escreveu
+    dados: {
+      restaurante: order.restaurant.name,
+      numero: order.number,
+      criado_em: order.createdAt.toISOString(),
+      tipo: order.type,
+      cliente: { nome: order.customerName, whatsapp: order.customerWhatsapp },
+      endereco: {
+        rua: order.deliveryStreet,
+        numero: order.deliveryNumber,
+        complemento: order.deliveryComplement,
+        bairro: order.deliveryNeighborhood,
+        referencia: order.deliveryReference,
+      },
+      itens: order.items.map((i) => ({
+        quantidade: i.quantity,
+        nome: i.productName,
+        opcoes: (i.optionsText ?? "").split(" · ").filter(Boolean),
+        observacao: i.notes,
+        total_centavos: i.totalCents,
+      })),
+      subtotal_centavos: order.subtotalCents,
+      entrega_centavos: order.deliveryFeeCents,
+      total_centavos: order.totalCents,
+      pagamento: {
+        forma: order.paymentMethod,
+        cartao: order.payment?.cardType ?? null,
+        troco_para_centavos: order.payment?.changeForCents ?? null,
+      },
+      observacao: order.notes,
+    },
   };
 }
 

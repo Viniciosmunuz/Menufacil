@@ -53,7 +53,7 @@ export type AuthedDevice = {
   restaurantId: string | null;
   pairingCode: string | null;
   printerName: string | null;
-  restaurant: { id: string; name: string } | null;
+  restaurant: { id: string; name: string; receiptWidth: number } | null;
 };
 
 /** dispositivo do cabeçalho Authorization: Bearer <token> */
@@ -70,7 +70,7 @@ export async function deviceFromRequest(request: Request): Promise<AuthedDevice 
       restaurantId: true,
       pairingCode: true,
       printerName: true,
-      restaurant: { select: { id: true, name: true } },
+      restaurant: { select: { id: true, name: true, receiptWidth: true } },
     },
   });
   return device ?? null;

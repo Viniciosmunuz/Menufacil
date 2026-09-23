@@ -1,3 +1,4 @@
+import { DEFAULT_PAPER } from "@/lib/ticket";
 import { deviceFromRequest, touchDevice } from "@/server/print/devices";
 import { pendingOrders } from "@/server/print/queue";
 
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
   const orders = await pendingOrders(device.restaurantId);
   return Response.json({
     pareado: true,
+    papel_mm: device.restaurant?.receiptWidth ?? DEFAULT_PAPER,
     pedidos: orders.map((o) => ({ id: o.id, numero: o.number, criado_em: o.createdAt.toISOString() })),
   });
 }
