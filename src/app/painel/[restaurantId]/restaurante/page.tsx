@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { isOpenNow } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
-import { AddressSection, ContactSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection } from "./forms";
+import { AddressSection, ContactSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection, PizzaSection } from "./forms";
 
 export const metadata: Metadata = { title: "Meu restaurante" };
 
@@ -17,6 +17,7 @@ const sections = [
   { href: "#horarios", label: "Horários" },
   { href: "#entrega", label: "Entrega" },
   { href: "#pagamento", label: "Pix" },
+  { href: "#pizza", label: "Pizza" },
 ];
 
 export default async function MyRestaurantPage({ params }: PageProps<"/painel/[restaurantId]/restaurante">) {
@@ -28,10 +29,15 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
     include: {
       openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       categories: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { name: true } },
+      menuCategories: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, pizzaFlavors: true, _count: { select: { products: true } } },
+      },
     },
   });
 
   const hours = r.openingHours;
+  const menuCategories = r.menuCategories.map((c) => ({ id: c.id, name: c.name, pizzaFlavors: c.pizzaFlavors, products: c._count.products }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,13 +82,14 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
-          <InfoSection r={{ ...r, hours }} />
-          <ContactSection r={{ ...r, hours }} />
-          <AddressSection r={{ ...r, hours }} />
-          <HoursSection r={{ ...r, hours }} />
-          <DeliverySection r={{ ...r, hours }} />
-          <PaymentSection r={{ ...r, hours }} />
-          <PaymentMethodsSection r={{ ...r, hours }} />
+          <InfoSection r={{ ...r, hours, menuCategories }} />
+          <ContactSection r={{ ...r, hours, menuCategories }} />
+          <AddressSection r={{ ...r, hours, menuCategories }} />
+          <HoursSection r={{ ...r, hours, menuCategories }} />
+          <DeliverySection r={{ ...r, hours, menuCategories }} />
+          <PaymentSection r={{ ...r, hours, menuCategories }} />
+          <PaymentMethodsSection r={{ ...r, hours, menuCategories }} />
+          <PizzaSection r={{ ...r, hours, menuCategories }} />
         </div>
       </div>
     </div>

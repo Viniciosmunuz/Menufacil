@@ -17,6 +17,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 
 import { demoRestaurants } from "./demo-data";
+import { syncPizzaProducts } from "../src/lib/pizza-sync";
 import { launchRestaurants } from "./launch-data";
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -393,6 +394,7 @@ async function main() {
   await seedCategories();
   await seedLaunches();
   await updateLaunchCategories();
+  await setupLaunchPizza();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 
@@ -402,3 +404,71 @@ main()
     process.exit(1);
   })
   .finally(() => db.$disconnect());
+
+// Pizza por sabores: uma vez por restaurante, troca a categoria antiga de
+// pizzas pelo catálogo de sabores e liga o montador. Depois disso quem manda
+// é o painel — o seed não mexe mais.
+async function setupLaunchPizza() {
+  for (const launch of launchRestaurants) {
+    if (!launch.pizza) continue;
+    const restaurant = await db.restaurant.findUnique({ where: { slug: launch.slug }, select: { id: true } });
+    if (!restaurant) continue;
+
+    const mark = "launch.pizza.v1";
+    if (await db.auditLog.findFirst({ where: { restaurantId: restaurant.id, action: mark }, select: { id: true } })) continue;
+
+    const pizza = launch.pizza;
+    await db.$transaction(
+      async (tx) => {
+        // a categoria antiga, com "Pizza tradicional" e "Pizza especial", sai
+        await tx.menuCategory.deleteMany({ where: { restaurantId: restaurant.id, name: "Pizzas" } });
+
+        const ultima = (await tx.menuCategory.aggregate({ where: { restaurantId: restaurant.id }, _max: { sortOrder: true } }))._max.sortOrder ?? 0;
+        for (const [i, categoria] of pizza.categories.entries()) {
+          const criada = await tx.menuCategory.create({
+            data: {
+              restaurantId: restaurant.id,
+              name: categoria.name,
+              description: categoria.description,
+              sortOrder: ultima + 1 + i,
+              pizzaFlavors: true,
+            },
+            select: { id: true },
+          });
+          for (const [ordem, [nome, descricao]] of categoria.flavors.entries()) {
+            await tx.product.create({
+              data: {
+                restaurantId: restaurant.id,
+                categoryId: criada.id,
+                name: nome,
+                description: descricao,
+                // o preço do sabor vem do tamanho escolhido
+                priceCents: 0,
+                sortOrder: ordem,
+                optionGroups: {
+                  create: {
+                    name: "Tamanho",
+                    minSelect: 1,
+                    maxSelect: 1,
+                    sortOrder: 0,
+                    options: {
+                      create: pizza.sizes.map((size, s) => ({ name: size, priceCents: Math.round((categoria.prices[s] ?? 0) * 100), sortOrder: s })),
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+
+        await tx.restaurant.update({ where: { id: restaurant.id }, data: { pizzaMaxFlavors: pizza.maxFlavors } });
+      },
+      { timeout: 120_000 },
+    );
+
+    await syncPizzaProducts(db, restaurant.id, pizza.maxFlavors);
+    await db.auditLog.create({ data: { restaurantId: restaurant.id, action: mark, details: { sabores: pizza.maxFlavors } } });
+    const total = pizza.categories.reduce((sum, c) => sum + c.flavors.length, 0);
+    console.log(`• "${launch.name}": pizza por sabores (${total} sabores, até ${pizza.maxFlavors}).`);
+  }
+}

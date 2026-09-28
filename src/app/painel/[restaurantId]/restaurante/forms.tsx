@@ -13,7 +13,7 @@ import { formatPhone } from "@/lib/format";
 import { WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { PIX_KEY_TYPES, formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
-import { saveAddress, saveContact, saveDelivery, saveHours, saveInfo, savePayment, savePaymentMethods } from "./actions";
+import { saveAddress, saveContact, saveDelivery, saveHours, saveInfo, savePayment, savePaymentMethods, savePizza } from "./actions";
 
 export type RestaurantFormData = {
   id: string;
@@ -46,6 +46,9 @@ export type RestaurantFormData = {
   paymentInstructions: string | null;
   acceptsCard: boolean;
   acceptsCash: boolean;
+  pizzaMaxFlavors: number;
+  /** categorias do cardápio, para escolher quais são catálogo de sabores */
+  menuCategories: { id: string; name: string; pizzaFlavors: boolean; products: number }[];
 };
 
 /** valor do campo: o que a pessoa digitou (se voltou com erro) ou o salvo */
@@ -375,6 +378,73 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
             <Textarea id="paymentInstructions" name="paymentInstructions" maxLength={300} rows={2} defaultValue={pick(s.values, "paymentInstructions", r.paymentInstructions)} />
           </Field>
         </div>
+      )}
+    </SectionForm>
+  );
+}
+
+/**
+ * Pizza: quantos sabores cabem numa pizza e quais categorias do cardápio
+ * são o catálogo de sabores. Ao salvar, o sistema cria a "Pizza 1 sabor",
+ * a "Pizza 2 sabores" e assim por diante, até o número escolhido.
+ */
+export function PizzaSection({ r }: { r: RestaurantFormData }) {
+  return (
+    <SectionForm
+      id="pizza"
+      title="Pizza"
+      description="Para pizzaria: o cliente escolhe os sabores e paga o preço do mais caro."
+      action={savePizza}
+      restaurantId={r.id}
+    >
+      {(s) => (
+        <>
+          <Field
+            label="Máximo de sabores numa pizza"
+            htmlFor="pizzaMaxFlavors"
+            error={s.fieldErrors?.pizzaMaxFlavors}
+            hint="0 = este restaurante não trabalha com pizza."
+          >
+            <Select
+              id="pizzaMaxFlavors"
+              name="pizzaMaxFlavors"
+              defaultValue={pick(s.values, "pizzaMaxFlavors", String(r.pizzaMaxFlavors))}
+              aria-invalid={!!s.fieldErrors?.pizzaMaxFlavors}
+            >
+              <option value="0">Não trabalho com pizza</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>
+                  Até {n} {n === 1 ? "sabor" : "sabores"}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 font-bold">Categorias de sabores</legend>
+            <p className="mb-2 text-sm text-muted">
+              Marque as categorias do seu cardápio que são sabores de pizza (por exemplo, Pizzas especiais e Pizzas tradicionais). Os produtos
+              delas deixam de aparecer soltos e viram os sabores que o cliente escolhe dentro da pizza — com a descrição e o preço de cada um.
+            </p>
+            {r.menuCategories.length === 0 ? (
+              <p className="text-sm text-muted">Você ainda não tem categorias no cardápio.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {r.menuCategories.map((c) => (
+                  <Checkbox
+                    key={c.id}
+                    name="saborCategoria"
+                    value={c.id}
+                    defaultChecked={c.pizzaFlavors}
+                    label={c.name}
+                    hint={`${c.products} ${c.products === 1 ? "item" : "itens"}`}
+                  />
+                ))}
+              </div>
+            )}
+            {s.fieldErrors?.saborCategoria && <p className="text-sm text-danger">{s.fieldErrors.saborCategoria}</p>}
+          </fieldset>
+        </>
       )}
     </SectionForm>
   );

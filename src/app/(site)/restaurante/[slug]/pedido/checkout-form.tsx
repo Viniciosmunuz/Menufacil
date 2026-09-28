@@ -115,6 +115,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   // itens que saíram do cardápio, esgotaram ou mudaram de opções depois de irem para o carrinho
   const stale = cart.items.filter((i) => {
     const groups = restaurant.menu[i.productId];
+    // os sabores da pizza são conferidos no servidor, que tem o catálogo
     return !groups || selectionProblems(groups, i.optionIds ?? []).length > 0;
   });
   const staleNotice = stale.length > 0 && (
@@ -137,7 +138,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const err = state.fieldErrors ?? {};
   const v = (key: string) => state.values?.[key] ?? saved[key] ?? "";
   const items = JSON.stringify(
-    cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity, notes: i.notes, optionIds: i.optionIds ?? [] })),
+    cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity, notes: i.notes, optionIds: i.optionIds ?? [], flavorIds: i.flavorIds ?? [] })),
   );
 
   /** o que aparece na revisão: o endereço, o pagamento e a observação recém-preenchidos */

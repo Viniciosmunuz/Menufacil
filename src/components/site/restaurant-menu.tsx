@@ -22,6 +22,17 @@ import {
   type OptionData,
   type OptionGroupData,
 } from "@/lib/options";
+import {
+  cheapestFlavor,
+  flavorPrice,
+  pizzaSizes,
+  flavorSlots,
+  flavorsByCategory,
+  flavorsText,
+  pizzaPrice,
+  pizzaProblems,
+  type PizzaFlavor,
+} from "@/lib/pizza";
 
 import { addToCart, cartCount, cartSubtotal, useCart, type CartRestaurant } from "./cart-store";
 import { QuantityStepper } from "./quantity-stepper";
@@ -35,26 +46,29 @@ export type MenuProduct = {
   promoPriceCents: number | null;
   available: boolean;
   featured: boolean;
+  /** pizza montada: quantos sabores o cliente escolhe */
+  pizzaFlavors?: number | null;
   optionGroups: OptionGroupData[];
 };
 
 export type MenuCategory = { id: string; name: string; description: string | null; products: MenuProduct[] };
 
 const unitPrice = (p: MenuProduct) => p.promoPriceCents ?? p.priceCents;
-/** preço do cardápio: com opções que mudam o preço, o menor possível */
-const listPrice = (p: MenuProduct) => startingPrice(unitPrice(p), p.optionGroups);
+/** preço do cardápio: o menor possível — com opções, ou com o sabor mais barato */
+const listPrice = (p: MenuProduct, flavors: PizzaFlavor[]) =>
+  flavorSlots(p) ? cheapestFlavor(flavors) : startingPrice(unitPrice(p), p.optionGroups);
 const normalize = (text: string) =>
   text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
-function Price({ p, className }: { p: MenuProduct; className?: string }) {
-  const from = hasPricedOptions(p.optionGroups);
+function Price({ p, flavors, className }: { p: MenuProduct; flavors: PizzaFlavor[]; className?: string }) {
+  const from = hasPricedOptions(p.optionGroups) || !!flavorSlots(p);
   return (
     <span className={cn("flex flex-wrap items-baseline gap-x-2", className)}>
       {from && <span className="text-[0.8em] font-semibold text-muted">a partir de</span>}
-      <span className={cn("font-extrabold", !!p.promoPriceCents && "text-brand")}>{formatCents(listPrice(p))}</span>
+      <span className={cn("font-extrabold", !!p.promoPriceCents && "text-brand")}>{formatCents(listPrice(p, flavors))}</span>
       {!!p.promoPriceCents && !from && <s className="text-[0.8em] text-faint">{formatCents(p.priceCents)}</s>}
     </span>
   );
@@ -125,6 +139,87 @@ function OptionGroupPicker({
   );
 }
 
+/**
+ * Escolha dos sabores da pizza. Os sabores vêm das categorias que o
+ * restaurante marcou como catálogo (Pizzas especiais, Pizzas tradicionais),
+ * e cada um mostra o que tem dentro e quanto custa — é o preço do mais caro
+ * que vale para a pizza inteira.
+ */
+function FlavorPicker({
+  flavors,
+  slots,
+  chosen,
+  sizeName,
+  onToggle,
+}: {
+  flavors: PizzaFlavor[];
+  slots: number;
+  chosen: string[];
+  /** tamanho escolhido no montador; os preços mostrados são deste tamanho */
+  sizeName: string | null;
+  onToggle: (id: string) => void;
+}) {
+  const falta = slots - chosen.length;
+  // com tamanhos no cardápio, o preço do sabor depende do tamanho escolhido
+  const precisaTamanho = pizzaSizes(flavors).length > 0 && !sizeName;
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-extrabold">{slots === 1 ? "Escolha o sabor" : `Escolha ${slots} sabores`}</span>
+        <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", falta > 0 ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted")}>
+          {chosen.length} de {slots}
+        </span>
+      </div>
+      {slots > 1 && <p className="-mt-3 text-sm text-muted">Pode misturar as categorias. O preço é o do sabor mais caro — sem somar nem dividir.</p>}
+      {precisaTamanho && <p className="-mt-3 text-sm font-bold text-brand">Escolha o tamanho aí em cima para ver o preço de cada sabor.</p>}
+
+      {flavorsByCategory(flavors).map((grupo) => (
+        <fieldset key={grupo.id} className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-extrabold tracking-wide text-muted uppercase">{grupo.name}</legend>
+          {grupo.flavors.map((f) => {
+            const checked = chosen.includes(f.id);
+            const cheio = !checked && chosen.length >= slots;
+            const preco = flavorPrice(f, sizeName);
+            const indisponivel = precisaTamanho || !f.available || preco === null;
+            return (
+              <label
+                key={f.id}
+                className={cn(
+                  "flex cursor-pointer items-start gap-3 rounded-control border px-4 py-3",
+                  (indisponivel || cheio) && "cursor-not-allowed opacity-50",
+                  checked ? "border-brand bg-brand-soft" : "border-line bg-surface-2 hover:border-line-strong",
+                )}
+              >
+                <input
+                  type={slots === 1 ? "radio" : "checkbox"}
+                  name="sabor-da-pizza"
+                  checked={checked}
+                  disabled={indisponivel || cheio}
+                  onChange={() => onToggle(f.id)}
+                  className="mt-1 size-4 shrink-0 accent-brand"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-bold">
+                      {f.name}
+                      {!f.available && <span className="ml-1 text-sm font-normal text-faint">(acabou)</span>}
+                      {f.available && !precisaTamanho && preco === null && (
+                        <span className="ml-1 text-sm font-normal text-faint">(não sai neste tamanho)</span>
+                      )}
+                    </span>
+                    {preco !== null && <span className="text-sm font-bold text-muted tabular-nums">{formatCents(preco)}</span>}
+                  </span>
+                  {f.description && <span className="mt-0.5 block text-sm leading-snug text-muted">{f.description}</span>}
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
 function AddBadge({ className }: { className?: string }) {
   return (
     <span
@@ -141,13 +236,13 @@ function AddBadge({ className }: { className?: string }) {
 
 // No celular cabem dois por linha com a foto em cima; da largura de tablet
 // para cima volta a linha larga, com a foto ao lado do texto.
-function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) => void }) {
+function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlavor[]; onOpen: (p: MenuProduct) => void }) {
   return (
     <li className="flex">
       <button
         type="button"
         onClick={() => onOpen(p)}
-        aria-label={`${p.name}, ${hasPricedOptions(p.optionGroups) ? "a partir de " : ""}${formatCents(listPrice(p))}${p.available ? "" : ", esgotado"}`}
+        aria-label={`${p.name}, ${hasPricedOptions(p.optionGroups) || flavorSlots(p) ? "a partir de " : ""}${formatCents(listPrice(p, flavors))}${p.available ? "" : ", esgotado"}`}
         className="group flex w-full flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99] sm:flex-row sm:gap-3"
       >
         <span className={cn("order-2 flex min-w-0 flex-1 flex-col sm:order-1", !p.available && "opacity-55")}>
@@ -157,7 +252,7 @@ function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) =>
           </span>
           {p.description && <span className="mt-1 line-clamp-2 text-[0.78rem] leading-snug text-muted sm:text-[0.82rem]">{p.description}</span>}
           <span className="mt-auto pt-2">
-            {p.available ? <Price p={p} /> : <span className="text-sm font-bold text-faint">Esgotado</span>}
+            {p.available ? <Price p={p} flavors={flavors} /> : <span className="text-sm font-bold text-faint">Esgotado</span>}
           </span>
         </span>
         <span className="relative order-1 block aspect-[4/3] w-full shrink-0 sm:order-2 sm:aspect-auto sm:size-28">
@@ -187,11 +282,14 @@ function ProductRow({ p, onOpen }: { p: MenuProduct; onOpen: (p: MenuProduct) =>
 export function RestaurantMenu({
   restaurant,
   categories,
+  pizzaFlavors = [],
   canOrder,
   closedMessage,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
+  /** sabores de pizza do restaurante, de todas as categorias de sabor */
+  pizzaFlavors?: PizzaFlavor[];
   /** fechado ou em prévia: dá para ver, não para pedir */
   canOrder: boolean;
   closedMessage: string | null;
@@ -202,6 +300,7 @@ export function RestaurantMenu({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [flavorIds, setFlavorIds] = useState<string[]>([]);
   const [conflict, setConflict] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
@@ -260,6 +359,7 @@ export function RestaurantMenu({
     setQuantity(1);
     setNotes("");
     setSelected([]);
+    setFlavorIds([]);
     setConflict(false);
     dialogRef.current?.showModal();
   }
@@ -269,6 +369,9 @@ export function RestaurantMenu({
   }
 
   const groups = product?.optionGroups ?? [];
+  const slots = product ? flavorSlots(product) : null;
+  // o tamanho vem do primeiro grupo de opções do montador (Tamanho)
+  const sizeName = slots ? (groups[0]?.options.find((o) => selected.includes(o.id))?.name ?? null) : null;
 
   function toggleOption(group: OptionGroupData, option: OptionData) {
     setSelected((current) => {
@@ -290,8 +393,22 @@ export function RestaurantMenu({
     });
   }
 
-  const problems = product ? selectionProblems(groups, selected) : [];
-  const itemPrice = product ? unitPrice(product) + optionsPrice(groups, selected) : 0;
+  function toggleFlavor(id: string) {
+    if (!slots) return;
+    setFlavorIds((atuais) => {
+      if (atuais.includes(id)) return atuais.filter((f) => f !== id);
+      if (slots === 1) return [id];
+      return atuais.length >= slots ? atuais : [...atuais, id];
+    });
+  }
+
+  const problems = product
+    ? [...(slots ? pizzaProblems(pizzaFlavors, flavorIds, slots, sizeName) : []), ...selectionProblems(groups, selected)]
+    : [];
+  // pizza: vale o sabor mais caro; o resto das opcoes continua somando
+  const itemPrice = product
+    ? (slots ? pizzaPrice(pizzaFlavors, flavorIds, sizeName) : unitPrice(product)) + optionsPrice(groups, selected)
+    : 0;
 
   function add(replace = false) {
     if (!product || problems.length > 0) return;
@@ -305,7 +422,8 @@ export function RestaurantMenu({
         notes,
         imageUrl: product.imageUrl,
         optionIds: selected,
-        optionsText: optionsText(groups, selected),
+        flavorIds,
+        optionsText: [slots ? flavorsText(pizzaFlavors, flavorIds, slots) : null, optionsText(groups, selected)].filter(Boolean).join(" · ") || null,
       },
       { replace },
     );
@@ -412,7 +530,7 @@ export function RestaurantMenu({
                     <span className="flex flex-1 flex-col gap-1 p-3">
                       <span className="line-clamp-2 text-sm leading-snug font-extrabold">{p.name}</span>
                       <span className="mt-auto flex items-end justify-between gap-2 pt-1">
-                        <Price p={p} className="text-sm" />
+                        <Price p={p} flavors={pizzaFlavors} className="text-sm" />
                         <AddBadge className="size-8 ring-0" />
                       </span>
                     </span>
@@ -435,7 +553,7 @@ export function RestaurantMenu({
             {c.description && <p className="text-sm text-muted">{c.description}</p>}
             <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-1 2xl:grid-cols-2">
               {c.products.map((p) => (
-                <ProductRow key={p.id} p={p} onOpen={open} />
+                <ProductRow key={p.id} p={p} flavors={pizzaFlavors} onOpen={open} />
               ))}
             </ul>
           </section>
@@ -511,10 +629,13 @@ export function RestaurantMenu({
                 <div>
                   <h3 className="text-2xl leading-tight font-extrabold">{product.name}</h3>
                   {product.description && <p className="mt-1.5 leading-relaxed text-muted">{product.description}</p>}
-                  <Price p={product} className="mt-3 text-xl" />
+                  <Price p={product} flavors={pizzaFlavors} className="mt-3 text-xl" />
                 </div>
                 {product.available &&
                   groups.map((g) => <OptionGroupPicker key={g.id} group={g} groups={groups} selected={selected} onToggle={toggleOption} />)}
+                {product.available && slots && (
+                  <FlavorPicker flavors={pizzaFlavors} slots={slots} chosen={flavorIds} sizeName={sizeName} onToggle={toggleFlavor} />
+                )}
                 {canOrder && product.available && (
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-bold">Alguma observação?</span>

@@ -21,6 +21,7 @@ import {
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
 import { activationChecklist } from "@/server/restaurants/checklist";
+import { setFlavorCategories, syncPizzaProducts } from "@/server/restaurants/pizza";
 import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
 
 // "Meu restaurante": cada bloco da tela salva separado. Todas as ações
@@ -312,4 +313,32 @@ export async function requestReview(formData: FormData) {
   });
   if (count) await panelAudit(acc, "restaurant.status", { from: "DRAFT", to: "PENDING_REVIEW" });
   refresh();
+}
+
+// ---- Pizza --------------------------------------------------------------
+
+const MAX_SABORES = 8;
+
+/**
+ * Liga a pizza no restaurante: até quantos sabores cabem numa pizza e quais
+ * categorias do cardápio são o catálogo de sabores. O resto o sistema faz:
+ * cria a "Pizza de 1 sabor", a de 2, e assim por diante.
+ */
+export async function savePizza(_prev: SectionState, formData: FormData): Promise<SectionState> {
+  const acc = await access(formData);
+  const max = Number(formData.get("pizzaMaxFlavors") ?? 0);
+  if (!Number.isInteger(max) || max < 0 || max > MAX_SABORES) {
+    return { fieldErrors: { pizzaMaxFlavors: `Escolha de 0 a ${MAX_SABORES} sabores.` } };
+  }
+
+  const categorias = formData.getAll("saborCategoria").map(String).filter(Boolean);
+  if (max > 0 && categorias.length === 0) {
+    return { fieldErrors: { saborCategoria: "Marque pelo menos uma categoria de sabores." } };
+  }
+
+  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { pizzaMaxFlavors: max } });
+  await setFlavorCategories(acc.restaurant.id, max > 0 ? categorias : []);
+  await syncPizzaProducts(acc.restaurant.id, max);
+  await panelAudit(acc, "restaurant.pizza", { sabores: max, categorias: categorias.length });
+  return saved();
 }

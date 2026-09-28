@@ -45,6 +45,8 @@ export type LaunchRestaurant = {
   pix: { key: string; type: "PHONE" | "EMAIL" | "CPF" | "CNPJ" | "RANDOM"; holder: string | null };
   menuVersion: number;
   imagesVersion: number;
+  /** pizza por sabores: o cliente escolhe o tamanho e monta */
+  pizza?: LaunchPizza;
   menu: { name: string; description?: string; products: LaunchProduct[] }[];
 };
 
@@ -108,6 +110,58 @@ const PIZZA_TAMANHOS = (brotinho: number, pequena: number, grande: number): [str
   ["Grande (8 fatias)", grande],
 ];
 
+// ---------------------------------------------------------------------------
+// Pizza por sabores
+//
+// O cliente escolhe o tamanho e monta a pizza com 1 ou 2 sabores. Cada sabor
+// é um produto com preço por tamanho; a pizza custa o do sabor mais caro.
+// Quem liga isso é o painel (Meu restaurante → Pizza); aqui fica o cardápio
+// inicial do Papaléguas, que a equipe montou a partir do cardápio de papel.
+
+export type LaunchPizza = {
+  maxFlavors: number;
+  sizes: string[];
+  categories: { name: string; description?: string; prices: number[]; flavors: [string, string][] }[];
+};
+
+export const PAPALEGUAS_PIZZA: LaunchPizza = {
+  maxFlavors: 2,
+  sizes: ["Brotinho", "Pequena (4 fatias)", "Grande (8 fatias)"],
+  categories: [
+    {
+      name: "Pizzas tradicionais",
+      description: "Todas com mussarela.",
+      prices: [22, 32, 52],
+      flavors: [
+        ["Portuguesa", "Presunto, calabresa, cebola, tomate, pimentão, ovo, azeitona e ervilha."],
+        ["Calabresa", "Calabresa e cebola."],
+        ["Atum", "Atum, cebola e azeitona."],
+        ["Presunto", "Presunto, tomate e azeitona."],
+        ["Milho", "Milho verde."],
+        ["Vegetariana", "Azeitona, cogumelo, ervilha, milho verde e palmito."],
+        ["Cupuaçu", "Geleia de cupuaçu."],
+        ["Margarita", "Tomate e manjericão."],
+        ["Romeu e Julieta", "Goiabada."],
+        ["Mussarela", "Mussarela e orégano."],
+      ],
+    },
+    {
+      name: "Pizzas especiais",
+      description: "Todas com mussarela.",
+      prices: [24, 35, 56],
+      flavors: [
+        ["À moda da casa", "Filé, cogumelo, cebola, queijo e azeitona."],
+        ["3 queijos", "Provolone, requeijão e mussarela."],
+        ["Carne de sol com catupiry", "Carne de sol, cogumelo, requeijão, cebola e azeitona."],
+        ["Frango com catupiry", "Molho de frango e requeijão."],
+        ["Palmito", "Palmito e azeitona."],
+        ["Bacon", "Bacon, tomate e cebola."],
+        ["Camarão", "Molho de camarão."],
+      ],
+    },
+  ],
+};
+
 export const launchRestaurants: LaunchRestaurant[] = [
   {
     slug: "papaleguas",
@@ -131,6 +185,7 @@ export const launchRestaurants: LaunchRestaurant[] = [
     // v3: pizzas meio a meio a partir da pequena
     // v4: cada tamanho de refrigerante e de cerveja é um item, com os sabores dentro
     menuVersion: 4,
+    pizza: PAPALEGUAS_PIZZA,
     // v1: foto ilustrativa para cada produto que estava sem
     imagesVersion: 1,
     menu: withPhotos([

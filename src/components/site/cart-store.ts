@@ -18,6 +18,8 @@ export type CartItem = {
   imageUrl: string | null;
   /** carrinhos salvos antes das opções não têm estes campos */
   optionIds?: string[];
+  /** sabores da pizza, na ordem em que o cliente escolheu */
+  flavorIds?: string[];
   optionsText?: string | null;
 };
 
@@ -98,11 +100,13 @@ export function addToCart(
   const base = cart.restaurant?.id === restaurant.id ? cart.items : [];
   const notes = item.notes.trim().slice(0, 140);
   const optionIds = [...(item.optionIds ?? [])].sort();
-  const key = `${item.productId}:${optionIds.join(",")}:${notes.toLowerCase()}`;
+  const flavorIds = item.flavorIds ?? [];
+  // a mesma pizza com outros sabores é outra linha do carrinho
+  const key = `${item.productId}:${optionIds.join(",")}:${[...flavorIds].sort().join(",")}:${notes.toLowerCase()}`;
   const existing = base.find((i) => i.key === key);
   const items = existing
     ? base.map((i) => (i.key === key ? { ...i, quantity: Math.min(MAX_QUANTITY, i.quantity + item.quantity) } : i))
-    : [...base, { ...item, notes, optionIds, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
+    : [...base, { ...item, notes, optionIds, flavorIds, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
   write({ restaurant, items });
   return "ok";
 }

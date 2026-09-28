@@ -176,6 +176,11 @@ model Restaurant {
   ratingAverage Float?
   ratingCount   Int    @default(0)
 
+  // Pizza: ate quantos sabores cabem numa pizza deste restaurante. 0 = nao
+  // trabalha com pizza. Com 2, o cardapio ganha a pizza de 1 sabor e a de 2
+  // sabores; com 4, vai ate a de 4 sabores.
+  pizzaMaxFlavors Int @default(0)
+
   // numeracao das comandas: comeca em #1 a cada dia, como a comanda de
   // papel do balcao. "orderSeqDay" guarda o dia (no fuso da plataforma) a
   // que a contagem pertence; virou o dia, a proxima comanda volta para 1.
@@ -245,6 +250,10 @@ model MenuCategory {
   description  String?
   sortOrder    Int      @default(0)
   active       Boolean  @default(true)
+  // catalogo de sabores de pizza (Especiais, Tradicionais): os produtos daqui
+  // nao aparecem soltos no cardapio, sao os sabores que o cliente escolhe
+  // dentro da pizza
+  pizzaFlavors Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -266,6 +275,9 @@ model Product {
   available       Boolean  @default(true)
   featured        Boolean  @default(false)
   sortOrder       Int      @default(0)
+  // pizza montada: quantos sabores o cliente escolhe (1, 2, 3...). O preco e
+  // o do sabor mais caro escolhido, nunca a soma nem a media.
+  pizzaFlavors    Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

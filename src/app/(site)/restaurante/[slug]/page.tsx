@@ -60,7 +60,24 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
     .join(" · ");
   const time = deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax);
   const today = localClock().weekday;
-  const categories = r.menuCategories.filter((c) => c.products.length > 0);
+  // as categorias de sabores de pizza não aparecem soltas: elas são o
+  // catálogo que o cliente escolhe dentro da pizza montada
+  const categories = r.menuCategories.filter((c) => c.products.length > 0 && !c.pizzaFlavors);
+  const pizzaFlavors = r.menuCategories
+    .filter((c) => c.pizzaFlavors)
+    .flatMap((c) =>
+      c.products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        priceCents: p.promoPriceCents ?? p.priceCents,
+        available: p.available,
+        // o primeiro grupo de opções do sabor é a tabela de tamanhos
+        sizes: (p.optionGroups[0]?.options ?? []).map((o) => ({ name: o.name, priceCents: o.priceCents, available: o.available })),
+        categoryId: c.id,
+        categoryName: c.name,
+      })),
+    );
   const canOrder = open && !isPreview;
   const closedMessage = isPreview
     ? "Prévia: o restaurante ainda não está no ar."
@@ -188,6 +205,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               <RestaurantMenu
                 restaurant={{ id: r.id, slug: r.slug, name: r.name }}
                 categories={categories}
+                pizzaFlavors={pizzaFlavors}
                 canOrder={canOrder}
                 closedMessage={closedMessage}
               />

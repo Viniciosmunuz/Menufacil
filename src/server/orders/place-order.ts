@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
 import { isOpenNow } from "@/lib/opening-hours";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
+import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
 import { queueNewOrderMessages } from "@/server/whatsapp/queue";
 
@@ -41,6 +42,7 @@ const itemsSchema = z
         .max(MAX_QTY, `Quantidade acima do permitido (máximo ${MAX_QTY} de cada).`),
       notes: z.string().trim().max(140, "Observação muito longa.").optional().default(""),
       optionIds: z.array(z.string().max(40), { error: "Opção inválida no carrinho." }).max(30).optional().default([]),
+      flavorIds: z.array(z.string().max(40), { error: "Sabor inválido no carrinho." }).max(10).optional().default([]),
     }),
     { error: "Carrinho inválido." },
   )
@@ -134,6 +136,7 @@ export async function placeOrder(params: {
       priceCents: true,
       promoPriceCents: true,
       available: true,
+      pizzaFlavors: true,
       category: { select: { active: true } },
       optionGroups: {
         orderBy: { sortOrder: "asc" },
@@ -150,6 +153,42 @@ export async function placeOrder(params: {
     },
   });
   const byId = new Map(products.map((p) => [p.id, p]));
+
+  // sabores de pizza: só busca o catálogo se alguma linha for pizza montada
+  const temPizza = items.some((i) => flavorSlots(byId.get(i.productId) ?? {}));
+  const flavors: PizzaFlavor[] = temPizza
+    ? (
+        await db.product.findMany({
+          where: { restaurantId: restaurant.id, category: { pizzaFlavors: true, active: true } },
+          orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            priceCents: true,
+            promoPriceCents: true,
+            available: true,
+            category: { select: { id: true, name: true } },
+            // o primeiro grupo de opções do sabor é a tabela de tamanhos
+            optionGroups: {
+              orderBy: { sortOrder: "asc" },
+              take: 1,
+              select: { options: { orderBy: { sortOrder: "asc" }, select: { name: true, priceCents: true, available: true } } },
+            },
+          },
+        })
+      ).map((f) => ({
+        id: f.id,
+        name: f.name,
+        description: f.description,
+        priceCents: f.promoPriceCents ?? f.priceCents,
+        available: f.available,
+        sizes: (f.optionGroups[0]?.options ?? []).map((o) => ({ name: o.name, priceCents: o.priceCents, available: o.available })),
+        categoryId: f.category.id,
+        categoryName: f.category.name,
+      }))
+    : [];
+
   const lines = items.map((item) => {
     const product = byId.get(item.productId);
     if (!product || !product.category.active) {
@@ -161,11 +200,27 @@ export async function placeOrder(params: {
     if (problems.length) {
       throw new OrderError(`"${product.name}" mudou no cardápio (${problems[0]}). Tire do carrinho e escolha de novo.`);
     }
-    const unit = (product.promoPriceCents ?? product.priceCents) + optionsPrice(product.optionGroups, item.optionIds);
+
+    // pizza montada: os sabores também são conferidos aqui, e o preço é o do
+    // mais caro entre eles — nunca a soma nem a média
+    const slots = flavorSlots(product);
+    // o tamanho vem do primeiro grupo de opções do montador
+    const sizeName = slots ? (product.optionGroups[0]?.options.find((o) => item.optionIds.includes(o.id))?.name ?? null) : null;
+    if (slots) {
+      const pizzaRuins = pizzaProblems(flavors, item.flavorIds, slots, sizeName);
+      if (pizzaRuins.length) throw new OrderError(`"${product.name}": ${pizzaRuins[0]}`);
+    } else if (item.flavorIds.length) {
+      throw new OrderError(`"${product.name}" não é uma pizza de sabores. Tire do carrinho e escolha de novo.`);
+    }
+
+    const base = slots ? pizzaPrice(flavors, item.flavorIds, sizeName) : (product.promoPriceCents ?? product.priceCents);
+    const unit = base + optionsPrice(product.optionGroups, item.optionIds);
+    const escolhas = [slots ? flavorsText(flavors, item.flavorIds, slots) : null, optionsText(product.optionGroups, item.optionIds)].filter(Boolean);
+
     return {
       productId: product.id,
       productName: product.name,
-      optionsText: optionsText(product.optionGroups, item.optionIds),
+      optionsText: escolhas.length ? escolhas.join(" · ") : null,
       unitPriceCents: unit,
       quantity: item.quantity,
       notes: item.notes || null,

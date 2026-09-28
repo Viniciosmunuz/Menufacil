@@ -144,6 +144,7 @@ export async function getPublicRestaurant(slug: string, preview: boolean) {
           id: true,
           name: true,
           description: true,
+          pizzaFlavors: true,
           products: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
@@ -155,6 +156,7 @@ export async function getPublicRestaurant(slug: string, preview: boolean) {
               promoPriceCents: true,
               available: true,
               featured: true,
+              pizzaFlavors: true,
               optionGroups: {
                 orderBy: { sortOrder: "asc" },
                 select: {
