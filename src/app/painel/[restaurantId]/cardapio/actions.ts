@@ -123,7 +123,7 @@ const productSchema = z
   .transform((v, ctx) => {
     const priceCents = parseMoneyToCents(v.price);
     const promoPriceCents = parseMoneyToCents(v.promoPrice);
-    if (priceCents === null || Number.isNaN(priceCents) || priceCents <= 0 || priceCents > 100_000_00) {
+    if (priceCents === null || Number.isNaN(priceCents) || priceCents < 0 || priceCents > 100_000_00) {
       ctx.addIssue({ code: "custom", path: ["price"], message: "Preço inválido. Exemplo: 25,90" });
     }
     if (promoPriceCents !== null) {
@@ -243,16 +243,31 @@ export async function saveProduct(_prev: MenuFormState, formData: FormData): Pro
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values };
   const p = parsed.data;
 
-  const category = await db.menuCategory.findFirst({ where: { id: p.categoryId, restaurantId }, select: { id: true } });
+  const category = await db.menuCategory.findFirst({
+    where: { id: p.categoryId, restaurantId },
+    select: { id: true, pizzaFlavors: true },
+  });
   if (!category) return { fieldErrors: { categoryId: "Escolha uma categoria deste cardápio." }, values };
 
   const options = parseOptionGroups(formData.get("optionGroups"));
   if ("error" in options) return { fieldErrors: { optionGroups: options.error }, values };
 
   const current = p.id
-    ? await db.product.findFirst({ where: { id: p.id, restaurantId }, select: { id: true, imageUrl: true, categoryId: true } })
+    ? await db.product.findFirst({
+        where: { id: p.id, restaurantId },
+        select: { id: true, imageUrl: true, categoryId: true, pizzaFlavors: true },
+      })
     : null;
   if (p.id && !current) return { error: "Produto não encontrado." };
+
+  // Pizza não tem preço próprio: o do sabor está em cada tamanho, e o da
+  // pizza montada é o do sabor mais caro que o cliente escolher. Nesses
+  // dois casos o campo fica em zero de propósito — exigir um valor aqui
+  // impedia até de trocar a foto.
+  const priceFromFlavors = category.pizzaFlavors || current?.pizzaFlavors != null;
+  if (!priceFromFlavors && p.priceCents <= 0) {
+    return { fieldErrors: { price: "Preço inválido. Exemplo: 25,90" }, values };
+  }
 
   let imageUrl = p.removeImage ? null : (current?.imageUrl ?? null);
   const image = formData.get("image");

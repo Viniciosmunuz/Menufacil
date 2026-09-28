@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useActionState } from "react";
+import { Fragment, useActionState, useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
 import { SectionTitle } from "@/components/panel/page-header";
@@ -36,6 +36,8 @@ export type ProductFormData = {
   imageUrl: string | null;
   priceCents: number | null;
   promoPriceCents: number | null;
+  /** pizza montada: quantos sabores o cliente escolhe (o preço vem deles) */
+  pizzaFlavors?: number | null;
   available: boolean;
   featured: boolean;
   optionGroups: EditableGroup[];
@@ -48,7 +50,7 @@ export function ProductForm({
 }: {
   restaurantId: string;
   product: ProductFormData;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; pizzaFlavors?: boolean }[];
 }) {
   const [state, action] = useActionState<MenuFormState, FormData>(saveProduct, {});
   const [deleteState, deleteAction] = useActionState<MenuFormState, FormData>(deleteProduct, {});
@@ -56,6 +58,14 @@ export function ProductForm({
   const err = state.fieldErrors ?? {};
   const pick = (key: string, saved: string) => (v && key in v ? v[key] : saved);
   const backHref = `/painel/${restaurantId}/cardapio#categoria-${product.categoryId}`;
+
+  // Pizza não tem preço próprio: o sabor cobra por tamanho e a pizza montada
+  // vale o do sabor mais caro. O campo fica em zero, e exigir um valor aqui
+  // travava até a troca da foto.
+  const [categoryId, setCategoryId] = useState(pick("categoryId", product.categoryId));
+  const sabor = categories.find((c) => c.id === categoryId)?.pizzaFlavors === true;
+  const montada = product.pizzaFlavors != null;
+  const precoDoSabor = sabor || montada;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -72,7 +82,14 @@ export function ProductForm({
             <Input id="name" name="name" required maxLength={80} defaultValue={pick("name", product.name)} placeholder="Ex.: Pizza Calabresa" aria-invalid={!!err.name} />
           </Field>
           <Field label="Categoria" htmlFor="categoryId" error={err.categoryId}>
-            <Select id="categoryId" name="categoryId" required defaultValue={pick("categoryId", product.categoryId)} aria-invalid={!!err.categoryId}>
+            <Select
+              id="categoryId"
+              name="categoryId"
+              required
+              defaultValue={pick("categoryId", product.categoryId)}
+              onChange={(e) => setCategoryId(e.target.value)}
+              aria-invalid={!!err.categoryId}
+            >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -84,9 +101,25 @@ export function ProductForm({
             <Textarea id="description" name="description" maxLength={400} rows={3} defaultValue={pick("description", product.description ?? "")} placeholder="Ex.: Molho de tomate, muçarela, calabresa e cebola. 8 fatias." />
           </Field>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Field label="Preço" htmlFor="price" error={err.price} hint="Com opções de preço (tamanho, porção), é o menor valor.">
-
-              <MoneyInput id="price" name="price" required defaultValue={pick("price", centsToInput(product.priceCents))} aria-invalid={!!err.price} />
+            <Field
+              label="Preço"
+              htmlFor="price"
+              error={err.price}
+              hint={
+                montada
+                  ? "Deixe em zero: a pizza vale o preço do sabor mais caro que o cliente escolher."
+                  : sabor
+                    ? "Deixe em zero: o preço deste sabor está em cada tamanho, ali embaixo."
+                    : "Com opções de preço (tamanho, porção), é o menor valor."
+              }
+            >
+              <MoneyInput
+                id="price"
+                name="price"
+                required={!precoDoSabor}
+                defaultValue={pick("price", centsToInput(product.priceCents))}
+                aria-invalid={!!err.price}
+              />
             </Field>
             <Field
               label="Preço promocional"
