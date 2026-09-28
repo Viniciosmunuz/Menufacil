@@ -7,6 +7,7 @@ import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
 import { PrintSettings } from "@/components/panel/print-settings";
+import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -21,7 +22,7 @@ import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
 
-import { pairPrintDevice, reprintOrder, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
+import { markPrinted, pairPrintDevice, reprintOrder, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -93,7 +94,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      <AutoRefresh seconds={15} background />
+      <OrdersLive restaurantId={restaurant.id} />
+      {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
+      <AutoRefresh seconds={45} background />
       <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
       <PrintSettings
         base={base}
@@ -101,6 +104,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         restaurantId={restaurant.id}
         acceptAction={stepRestaurantOrder}
         reprintAction={reprintOrder}
+        markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
         devices={printDevices.map((d) => ({

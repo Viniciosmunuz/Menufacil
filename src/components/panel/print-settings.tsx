@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 
 import { CloudPrinterIcon } from "./cloud-printer-icon";
+import { DesktopPrinterSettings, carregarDoApp, useDesktopApp } from "./desktop-printer";
 import { StepButton, type StatusNotice } from "./step-button";
 
 // Impressão automática dos pedidos novos, para quem deixa o painel aberto:
@@ -103,11 +104,48 @@ const remember = (key: string, ids: string[], raw: string | null) => write(key, 
 
 // um tocador só: trocar de som troca o arquivo dele
 let player: HTMLAudioElement | null = null;
+
+/**
+ * Bipe de emergência, feito na hora pelo próprio navegador.
+ *
+ * O arquivo de som falha em mais situação do que parece: aparelho no
+ * silencioso, arquivo que não carregou, navegador que ainda não deixou
+ * tocar. Quando isso acontece, três apitos curtos avisam do mesmo jeito —
+ * é melhor um som feio do que pedido passando batido no balcão.
+ */
+function bipeDeEmergencia() {
+  try {
+    const Contexto = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Contexto) return;
+    const ctx = new Contexto();
+    const agora = ctx.currentTime;
+    for (const [i, quando] of [0, 0.22, 0.44].entries()) {
+      const osc = ctx.createOscillator();
+      const vol = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = i === 2 ? 1320 : 880;
+      vol.gain.setValueAtTime(0.0001, agora + quando);
+      vol.gain.exponentialRampToValueAtTime(0.35, agora + quando + 0.02);
+      vol.gain.exponentialRampToValueAtTime(0.0001, agora + quando + 0.18);
+      osc.connect(vol).connect(ctx.destination);
+      osc.start(agora + quando);
+      osc.stop(agora + quando + 0.2);
+    }
+    setTimeout(() => void ctx.close().catch(() => {}), 1200);
+  } catch {
+    // sem áudio neste aparelho: resta o aviso na tela
+  }
+}
+
 function playSound(name: SoundName) {
   const file = SOUNDS[name].file;
   if (!player || !player.src.endsWith(file)) player = new Audio(file);
   player.currentTime = 0;
-  return player.play();
+  player.volume = 1;
+  return player.play().catch((erro) => {
+    bipeDeEmergencia();
+    throw erro;
+  });
 }
 
 /** vale a partir de agora: os pedidos que já estão na tela não saem na impressora */
@@ -125,6 +163,7 @@ export function PrintSettings({
   orders,
   acceptAction,
   reprintAction,
+  markPrintedAction,
   devices,
   pairAction,
   unpairAction,
@@ -134,8 +173,10 @@ export function PrintSettings({
   restaurantId: string;
   orders: Order[];
   acceptAction: (formData: FormData) => Promise<void>;
-  /** destrava a via para o Print Fácil tirar de novo */
+  /** destrava a via para o computador do balcão tirar de novo */
   reprintAction: (formData: FormData) => Promise<void>;
+  /** o aplicativo imprimiu: o servidor guarda que a via saiu */
+  markPrintedAction: (formData: FormData) => Promise<void>;
   /** computadores com o Print Fácil ligados a este restaurante */
   devices: PrintDevice[];
   pairAction: (prev: PairState, formData: FormData) => Promise<PairState>;
@@ -150,13 +191,17 @@ export function PrintSettings({
   const frames = useRef<HTMLDivElement>(null);
   const soundBox = useRef<HTMLDivElement>(null);
   const [pickingSound, setPickingSound] = useState(false);
+  // o navegador barrou o som: o aparelho precisa de um toque para liberar
+  const [somBloqueado, setSomBloqueado] = useState(false);
+  // dentro do aplicativo do computador, quem imprime é ele
+  const { app, estado: estadoApp, impressoras: impressorasApp, padrao: padraoApp } = useDesktopApp();
 
   const escolhido: Mode = savedMode === "pc" || savedMode === "celular" || savedMode === "nuvem" ? savedMode : "off";
   // Com o Print Fácil ligado no balcão, ele é quem imprime: a nuvem acende
   // sozinha e os outros modos saem da barra. Imprimir aqui também faria a
   // mesma via sair duas vezes.
   const printFacil = devices.some((d) => online(d.lastSeenAt));
-  const mode: Mode = printFacil ? "nuvem" : escolhido;
+  const mode: Mode = app || printFacil ? "nuvem" : escolhido;
   const sound = savedSound === "1";
   const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
   const since = Number(savedSince ?? 0);
@@ -166,7 +211,33 @@ export function PrintSettings({
   const seen = idList(savedSeen);
   const pending = fresh.filter((o) => o.accept && !seen.includes(o.id));
 
-  function sendToPrinter(id: string) {
+  /**
+   * No aplicativo do computador a via vai direto para a impressora
+   * escolhida: sem janela de confirmação, sem ninguém clicar. Depois o
+   * servidor guarda que ela saiu, para não sair duas vezes.
+   */
+  async function printInApp(id: string, numero?: number) {
+    if (!app) return;
+    try {
+      const via = await fetch(`${base}/${id}/via?formato=json`).then((r) => (r.ok ? r.json() : null));
+      if (!via?.texto) return;
+      const saida = await app.imprimir({ texto: via.texto, dados: via.dados, papel: via.papel_mm, numero: via.numero ?? numero });
+      if (saida?.ok) {
+        const dados = new FormData();
+        dados.set("restaurantId", restaurantId);
+        dados.set("orderId", id);
+        void markPrintedAction(dados);
+      }
+    } catch {
+      // sem internet agora: a via sai quando a tela voltar a atualizar
+    }
+  }
+
+  function sendToPrinter(id: string, numero?: number) {
+    if (app) {
+      void printInApp(id, numero);
+      return;
+    }
     const url = `${base}/${id}/via`;
     if (mode === "celular") {
       void fetch(`${url}?formato=texto`)
@@ -190,8 +261,8 @@ export function PrintSettings({
     const novos = fresh.filter((o) => !done.includes(o.id));
     if (novos.length === 0) return;
 
-    if (sound) void playSound(soundName).catch(() => {});
-    if (mode === "pc" || mode === "celular") for (const order of novos) sendToPrinter(order.id);
+    if (sound) void playSound(soundName).then(() => setSomBloqueado(false)).catch(() => setSomBloqueado(true));
+    if (app || mode === "pc" || mode === "celular") for (const order of novos) sendToPrinter(order.id, order.number);
     remember(
       PRINTED_KEY,
       novos.map((o) => o.id),
@@ -199,7 +270,7 @@ export function PrintSettings({
     );
     // sendToPrinter acompanha o modo e o endereço, que já estão nas dependências
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fresh, mode, sound, soundName, base]);
+  }, [fresh, mode, sound, soundName, base, app]);
 
   // imprimindo pelo navegador, segura a tela acesa: aba congelada não imprime
   useEffect(() => {
@@ -341,7 +412,10 @@ export function PrintSettings({
             title={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
             aria-label={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
             aria-expanded={ajudaAberta}
-            onClick={() => write(HELP_KEY, ajudaAberta ? "0" : "1")}
+            onClick={() => {
+              if (!ajudaAberta) void carregarDoApp();
+              write(HELP_KEY, ajudaAberta ? "0" : "1");
+            }}
             className="grid size-10 shrink-0 place-items-center rounded-full border border-line text-muted hover:text-ink"
           >
             <ChevronDown className={cn("size-4 transition-transform duration-200", ajudaAberta && "rotate-180")} aria-hidden="true" />
@@ -356,7 +430,7 @@ export function PrintSettings({
                 const next = !sound;
                 write(SOUND_KEY, next ? "1" : "0");
                 // o toque no botão é o que libera o som no navegador
-                if (next) void playSound(soundName).catch(() => {});
+                if (next) void playSound(soundName).then(() => setSomBloqueado(false)).catch(() => setSomBloqueado(true));
               }}
               aria-pressed={sound}
               className={cn(
@@ -407,6 +481,13 @@ export function PrintSettings({
           </div>
         </div>
 
+        {somBloqueado && sound && (
+          <p className="text-sm font-bold text-warning">
+            Este aparelho não deixou o som tocar sozinho. Toque no sininho uma vez para liberar — depois disso ele avisa todo
+            pedido novo.
+          </p>
+        )}
+
         {!ajudaAberta ? null : mode === "pc" ? (
           <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
             <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
@@ -432,6 +513,9 @@ export function PrintSettings({
             </div>
             <p className="text-muted">Sem esse atalho, o Chrome abre a janela de confirmação a cada pedido, como acontece em qualquer site.</p>
           </div>
+        ) : mode === "nuvem" && app ? (
+          // o painel está rodando dentro do aplicativo: os ajustes são daqui
+          <DesktopPrinterSettings app={app} estado={estadoApp} impressoras={impressorasApp} padrao={padraoApp} />
         ) : mode === "nuvem" ? (
           <PrintFacilPanel devices={devices} restaurantId={restaurantId} pairAction={pairAction} unpairAction={unpairAction} />
         ) : (

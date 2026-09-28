@@ -40,7 +40,7 @@ export default async function RestaurantPanelLayout({
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
-        { href: `${base}/print-facil`, label: "Print Fácil", icon: <CloudPrinterIcon /> },
+        { href: `${base}/print-facil`, label: "Computador", icon: <CloudPrinterIcon /> },
       ]}
     >
       {children}

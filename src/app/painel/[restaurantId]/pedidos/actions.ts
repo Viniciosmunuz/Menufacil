@@ -84,3 +84,10 @@ export async function reprintOrder(formData: FormData) {
   await audit({ actorUserId: actor.userId, restaurantId, action: "order.print.again", details: { orderId } });
   refresh();
 }
+
+/** o aplicativo do computador imprimiu: marca a via como saída */
+export async function markPrinted(formData: FormData) {
+  const { restaurantId } = await access(formData);
+  const orderId = String(formData.get("orderId") ?? "");
+  await db.order.updateMany({ where: { id: orderId, restaurantId, printedAt: null }, data: { printedAt: new Date() } });
+}

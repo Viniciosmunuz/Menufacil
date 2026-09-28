@@ -13,7 +13,7 @@ import { listDevices } from "@/server/print/devices";
 
 import { pairPrintDevice, setReceiptWidth, unpairPrintDevice } from "../pedidos/actions";
 
-export const metadata: Metadata = { title: "Print Fácil" };
+export const metadata: Metadata = { title: "Aplicativo do computador" };
 
 const PASSOS = [
   {
@@ -22,36 +22,48 @@ const PASSOS = [
     texto:
       "Clique duas vezes no arquivo baixado. Se aparecer a tela azul “O Windows protegeu o seu computador”, toque em Mais informações e depois em Executar assim mesmo.",
   },
-  { icon: MonitorSmartphone, titulo: "Entre com a sua conta", texto: "No programa, use o mesmo e-mail e senha deste painel. Ele já se liga ao seu restaurante." },
+  {
+    icon: MonitorSmartphone,
+    titulo: "Entre com a sua conta",
+    texto: "O aplicativo abre o mesmo painel do site. Use o mesmo e-mail e senha — e você cai na sua tela de sempre.",
+  },
   {
     icon: Printer,
     titulo: "Escolha a impressora",
     texto:
-      "Selecione a impressora do balcão e toque em Imprimir teste. Se ela for térmica, vale ligar o Modo térmica ali mesmo: a via sai com o número do pedido maior, o total em negrito e o papel cortado sozinho.",
+      "Na tela de Pedidos, toque na setinha ao lado dos ícones de impressão: ali você escolhe a impressora, faz um teste e liga o modo térmica.",
   },
-  { icon: Wifi, titulo: "Deixe rodando", texto: "Marque para abrir junto com o Windows. Dali em diante o pedido sai sozinho, sem ninguém mexer." },
+  {
+    icon: Wifi,
+    titulo: "Deixe aberto no balcão",
+    texto: "Marque para abrir junto com o Windows e para o computador não dormir. O pedido passa a sair sozinho, sem ninguém clicar.",
+  },
 ];
 
-// A página que o dono abre pelo menu do painel: baixa o programa, vê os
-// computadores ligados e liga um novo.
-export default async function PrintFacilPage({ params }: PageProps<"/painel/[restaurantId]/print-facil">) {
+// A página que o dono abre pelo menu do painel: baixa o aplicativo do
+// computador e ajusta o tamanho do papel.
+export default async function AplicativoPage({ params }: PageProps<"/painel/[restaurantId]/print-facil">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
   const devices = await listDevices(restaurant.id);
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Print Fácil" description="O programa que imprime os pedidos sozinho no computador do restaurante." />
+      <PageHeader
+        title="Menu Fácil no computador"
+        description="O mesmo painel que você usa aqui, instalado no computador do balcão — com a impressão automática por dentro."
+      />
 
       <Card className="flex flex-col items-start gap-4 border-brand/50 sm:flex-row sm:items-center">
-        <CloudPrinterIcon className="size-14 shrink-0 text-brand" />
+        <CloudPrinterIcon className="size-14 shrink-0 text-brand" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-extrabold">Baixe para o computador do restaurante</h2>
           <p className="text-sm text-muted">
-            Windows · instalador de 98 MB. O pedido chega pela internet, então o computador não precisa estar na mesma rede do celular.
+            Windows · instalador de 98 MB. O aplicativo abre o painel com o seu login e manda o pedido novo direto para a
+            impressora, sem janela de confirmação.
           </p>
         </div>
-        <a href="/print-facil-setup.exe" download className={buttonClasses("primary", "lg")}>
+        <a href="/menufacil-setup.exe" download className={buttonClasses("primary", "lg")}>
           <Download className="size-5" aria-hidden="true" />
           Baixar para Windows
         </a>
@@ -76,7 +88,7 @@ export default async function PrintFacilPage({ params }: PageProps<"/painel/[res
       </Card>
 
       <Card>
-        <SectionTitle description="A via sai no tamanho da bobina que o restaurante usa. Vale para a impressão pelo computador, pelo celular e pelo Print Fácil.">
+        <SectionTitle description="A via sai no tamanho da bobina que o restaurante usa. Vale para a impressão pelo computador, pelo celular e pelo aplicativo.">
           Tamanho do papel
         </SectionTitle>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -101,18 +113,27 @@ export default async function PrintFacilPage({ params }: PageProps<"/painel/[res
         </p>
       </Card>
 
-      <Card>
-        <SectionTitle description="Cada computador com o Print Fácil instalado aparece aqui.">Computadores ligados</SectionTitle>
-        <div className="mt-3">
-          <PrintFacilPanel devices={devices.map((d) => ({
-            id: d.id,
-            name: d.name,
-            printerName: d.printerName,
-            pairedAt: d.pairedAt?.toISOString() ?? null,
-            lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
-          }))} restaurantId={restaurant.id} pairAction={pairPrintDevice} unpairAction={unpairPrintDevice} />
-        </div>
-      </Card>
+      {devices.length > 0 && (
+        <Card>
+          <SectionTitle description="Computadores que usavam o programa antigo de impressão. Depois que todos estiverem com o aplicativo novo, dá para desligar estes aqui.">
+            Instalações antigas
+          </SectionTitle>
+          <div className="mt-3">
+            <PrintFacilPanel
+              devices={devices.map((d) => ({
+                id: d.id,
+                name: d.name,
+                printerName: d.printerName,
+                pairedAt: d.pairedAt?.toISOString() ?? null,
+                lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+              }))}
+              restaurantId={restaurant.id}
+              pairAction={pairPrintDevice}
+              unpairAction={unpairPrintDevice}
+            />
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

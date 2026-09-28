@@ -2,6 +2,7 @@ import { orderSummarySelect } from "@/components/panel/order-summary";
 import { db } from "@/lib/db";
 import { ticketText } from "@/lib/ticket";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { orderTicket } from "@/server/print/queue";
 
 // Via do pedido para a impressora térmica. Rota (e não página) porque a via
 // tem a folha toda para ela, sem a casca do painel.
@@ -21,8 +22,17 @@ export async function GET(request: Request, { params }: RouteContext<"/painel/[r
   const text = ticketText(order, restaurant.name, paper);
   const headers = { "cache-control": "no-store" };
 
-  if (new URL(request.url).searchParams.get("formato") === "texto") {
+  const formato = new URL(request.url).searchParams.get("formato");
+
+  if (formato === "texto") {
     return new Response(text, { headers: { ...headers, "content-type": "text/plain; charset=utf-8" } });
+  }
+
+  // o aplicativo do computador imprime por conta própria: leva o texto
+  // pronto e também os dados soltos, para a térmica destacar o que importa
+  if (formato === "json") {
+    const via = await orderTicket(restaurant.id, order.id);
+    return Response.json(via ?? { erro: "pedido não encontrado" }, { headers });
   }
 
   // a via sai na largura da bobina que o restaurante escolheu no painel

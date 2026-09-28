@@ -1,4 +1,4 @@
-/** nuvem em cima de uma impressora: o Print Fácil, que recebe o pedido pela internet */
+/** nuvem em cima de uma impressora: a impressão pelo aplicativo do computador */
 export function CloudPrinterIcon({ className }: { className?: string }) {
   return (
     <svg
