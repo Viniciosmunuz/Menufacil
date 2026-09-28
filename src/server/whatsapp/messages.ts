@@ -241,23 +241,28 @@ export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone
  * Aviso que o restaurante manda ao cliente pelo WhatsApp, junto com a
  * mudança de status no painel.
  *
- * É um só, quando o pedido sai para entrega: a hora em que o cliente
- * precisa estar por perto para receber. O resto do caminho ele vê no link
- * de acompanhamento, que foi junto com o pedido dele — por isso esta
- * mensagem não leva link nenhum: quem recebe já vai abrir a porta.
+ * É um por pedido, na hora em que o cliente precisa se mexer: na entrega,
+ * quando a moto sai; na retirada, quando a comida fica pronta no balcão. O
+ * resto do caminho ele vê no link de acompanhamento, que foi junto com o
+ * pedido dele — por isso estas mensagens não levam link nenhum: quem
+ * recebe já vai abrir a porta ou vir buscar.
  */
-const noticeWorthy = (status: OrderStatus) => status === "OUT_FOR_DELIVERY";
+const noticeWorthy = (status: OrderStatus, type: OrderType) =>
+  type === "DELIVERY" ? status === "OUT_FOR_DELIVERY" : status === "READY";
 
 const onTheWay = (o: { number: number }, r: { name: string }) =>
   [`Pedido *#${o.number}* em *${r.name}*: saiu para entrega!`, "", "Se possível, aguarde na frente para receber. Obrigado!"].join("\n");
+
+const readyForPickup = (o: { number: number }, r: { name: string }) =>
+  [`Pedido *#${o.number}* em *${r.name}*: está pronto!`, "", "Pode vir buscar aqui no balcão. Obrigado!"].join("\n");
 
 export function nextStatusNotice(
   o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },
   r: { name: string },
 ) {
   const step = nextOrderStep(o.status, o.type, o.paymentMethod);
-  if (!step || !noticeWorthy(step.to) || !o.customerWhatsapp) return null;
-  const body = onTheWay(o, r);
+  if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
+  const body = o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);
   // app: abre o WhatsApp instalado (computador ou celular); web: o plano B
   return { app: waAppLink(o.customerWhatsapp, body), web: waMeLink(o.customerWhatsapp, body) };
 }
