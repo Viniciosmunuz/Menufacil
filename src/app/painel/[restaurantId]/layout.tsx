@@ -40,7 +40,10 @@ export default async function RestaurantPanelLayout({
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
-        { href: `${base}/print-facil`, label: "Computador", icon: <CloudPrinterIcon /> },
+        // o admin da plataforma pode ter desligado o recurso para este restaurante
+        ...(restaurant.printEnabled
+          ? [{ href: `${base}/menu-facil-pc`, label: "Menu Fácil PC", icon: <CloudPrinterIcon /> }]
+          : []),
       ]}
     >
       {children}

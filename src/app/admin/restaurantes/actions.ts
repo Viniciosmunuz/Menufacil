@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { FEATURES, type FeatureKey } from "@/lib/features";
 import { STATUS_TRANSITIONS, isStatusTransition } from "@/lib/restaurant-status";
 import {
   checkbox,
@@ -140,6 +141,36 @@ export async function createRestaurant(_prev: AdminFormState, formData: FormData
     return { ok: true, credentials: result.credentials, restaurantId: result.restaurantId };
   }
   redirect(`/admin/restaurantes/${result.restaurantId}${result.ownerLinked ? "?dono=existente" : ""}`);
+}
+
+// ---- Recursos liberados ------------------------------------------------
+
+/**
+ * Liga e desliga recurso a recurso no restaurante. Esconder o botão no
+ * painel não basta: quem confere é o servidor, em cada tela do recurso.
+ */
+export async function setRestaurantFeatures(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const marcados = new Set(formData.getAll("recurso").filter((v): v is string => typeof v === "string"));
+
+  const before = await db.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: Object.fromEntries(FEATURES.map((f) => [f.key, true])) as Record<FeatureKey, true>,
+  });
+  if (!before) return { error: "Restaurante não encontrado." };
+
+  const data = Object.fromEntries(FEATURES.map((f) => [f.key, marcados.has(f.key)])) as Record<FeatureKey, boolean>;
+  await db.restaurant.update({ where: { id: restaurantId }, data, select: { id: true } });
+
+  const changes = Object.fromEntries(
+    FEATURES.filter((f) => before[f.key] !== data[f.key]).map((f) => [f.key, data[f.key] ? "ligado" : "desligado"]),
+  );
+  if (Object.keys(changes).length === 0) return { ok: true, message: "Nada mudou." };
+
+  await audit({ actorUserId: admin.id, restaurantId, action: "restaurant.features", details: { changes } });
+  refresh();
+  return { ok: true, message: "Recursos salvos." };
 }
 
 // ---- Dados básicos -----------------------------------------------------

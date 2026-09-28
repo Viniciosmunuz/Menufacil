@@ -16,6 +16,7 @@ import { requireAdmin } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
 
 import { BasicsForm } from "./basics-form";
+import { FeaturesPanel } from "./features-panel";
 import { OwnersPanel } from "./owners-panel";
 import { StatusPanel } from "./status-panel";
 
@@ -125,6 +126,15 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               ...user,
               lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
             }))}
+          />
+
+          <FeaturesPanel
+            restaurantId={restaurant.id}
+            features={{
+              printEnabled: restaurant.printEnabled,
+              fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
+              chatEnabled: restaurant.chatEnabled,
+            }}
           />
 
           <Card>

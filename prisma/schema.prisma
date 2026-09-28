@@ -172,6 +172,15 @@ model Restaurant {
   // impressão: largura da bobina da térmica, 80 mm (padrão) ou 58 mm
   receiptWidth Int @default(80)
 
+  // Recursos liberados pelo admin da plataforma, um a um. O que ja esta no
+  // ar nasce ligado, para nenhum restaurante mudar de comportamento; o que
+  // ainda esta sendo construido nasce desligado. O painel esconde o que
+  // esta desligado e o servidor confere de novo, porque esconder o botao
+  // nao impede ninguem de digitar o endereco na mao.
+  printEnabled        Boolean @default(true)
+  fullDeliveryEnabled Boolean @default(false)
+  chatEnabled         Boolean @default(false)
+
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?
   ratingCount   Int    @default(0)
