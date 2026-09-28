@@ -1,3 +1,4 @@
+import { FEATURES } from "./features";
 import { isOrderStatus, isRestaurantStatus, orderStatusLabel, restaurantStatusLabel } from "./labels";
 
 // Texto legível para cada linha do histórico (AuditLog).
@@ -18,6 +19,7 @@ const actionLabel: Record<string, string> = {
   "restaurant.delivery": "Entrega e retirada alteradas",
   "restaurant.payment": "Pix alterado",
   "restaurant.payment_methods": "Cartão e dinheiro alterados",
+  "restaurant.features": "Recursos liberados alterados",
   "menu.category_create": "Categoria do cardápio criada",
   "menu.category_update": "Categoria do cardápio alterada",
   "menu.category_delete": "Categoria do cardápio excluída",
@@ -37,6 +39,8 @@ const openModeLabel: Record<string, string> = {
   OPEN: "aberto manualmente",
   CLOSED: "fechado manualmente",
 };
+
+const featureLabel: Record<string, string> = Object.fromEntries(FEATURES.map((f) => [f.key, f.label]));
 
 const fieldLabel: Record<string, string> = {
   name: "nome",
@@ -60,6 +64,10 @@ export function describeAudit(action: string, details: unknown): { title: string
 
   if (action === "restaurant.status" && d && isRestaurantStatus(d.from) && isRestaurantStatus(d.to)) {
     return { title, detail: `${restaurantStatusLabel[d.from]} → ${restaurantStatusLabel[d.to]}` };
+  }
+  if (action === "restaurant.features" && d?.changes && typeof d.changes === "object") {
+    const mudou = Object.entries(d.changes as Record<string, string>).map(([k, v]) => `${featureLabel[k] ?? k}: ${v}`);
+    return { title, detail: mudou.join(" · ") };
   }
   if (action === "restaurant.update" && d?.changes && typeof d.changes === "object") {
     const fields = Object.keys(d.changes).map((k) => fieldLabel[k] ?? k);
