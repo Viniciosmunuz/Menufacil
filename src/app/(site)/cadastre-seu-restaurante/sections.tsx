@@ -1,4 +1,5 @@
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -40,20 +41,48 @@ function Titulo({ children, sub }: { children: ReactNode; sub?: string }) {
 
 export function Topo() {
   return (
-    <section className="relative isolate overflow-hidden rounded-card border border-brand/40 bg-[linear-gradient(155deg,rgb(255_138_31/0.2),rgb(255_138_31/0.02)_58%)] px-5 py-7 sm:px-10 sm:py-12">
-      <div className="max-w-xl">
-        <LogoIcon className="h-8 sm:h-10" />
-        <p className="mt-4 inline-block rounded-full border border-brand/50 bg-brand-soft px-3 py-1 text-[0.7rem] font-extrabold tracking-wide text-brand uppercase sm:text-xs">
+    <section className="relative isolate overflow-hidden rounded-card border border-brand/45 px-5 py-8 shadow-[0_0_70px_-25px_rgb(255_138_31/0.6)] sm:px-10 sm:py-14">
+      {/* a mesa posta, ao fundo: é de comida que a página fala */}
+      <Image
+        src="/demo/burger/capa.webp"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 1024px) 64rem, 100vw"
+        className="-z-40 object-cover object-[72%_50%]"
+      />
+      {/* o calor laranja de trás do celular */}
+      <div
+        aria-hidden="true"
+        className="absolute top-1/2 right-0 -z-30 h-64 w-52 -translate-y-1/2 rounded-full bg-brand/40 blur-[70px] sm:h-80 sm:w-72"
+      />
+      {/* o celular do cliente, inclinado como se estivesse na mão */}
+      <div aria-hidden="true" className="pointer-events-none absolute top-1/2 -right-28 -z-20 -translate-y-1/2 sm:-right-10 lg:right-2">
+        <div className="w-[13.5rem] [transform:perspective(1000px)_rotateY(-20deg)_rotateZ(7deg)] lg:[transform:perspective(1100px)_rotateY(-18deg)_rotateZ(6deg)_scale(1.18)]">
+          <TelaDoCardapio />
+        </div>
+      </div>
+      {/* escurece da esquerda para a direita: o texto precisa se ler sempre */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-bg/35 bg-[linear-gradient(100deg,#0a0e14_0%,#0a0e14_44%,rgb(10_14_20/0.86)_63%,rgb(10_14_20/0.3)_100%)] sm:bg-bg/0"
+      />
+
+      <div className="relative max-w-xl lg:max-w-[33rem]">
+        <LogoIcon className="h-8 drop-shadow-[0_0_14px_rgb(255_138_31/0.5)] sm:h-10" />
+        <p className="mt-3.5 inline-block rounded-full border border-brand/70 px-3.5 py-1 text-[0.68rem] font-extrabold tracking-[0.09em] text-brand uppercase sm:text-xs">
           Para donos de restaurante
         </p>
-        <h1 className="mt-3 text-[1.7rem] leading-[1.12] font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
+        <h1 className="mt-3 text-[1.72rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-4xl lg:text-[2.6rem]">
           Receba pedidos direto do cliente, <span className="text-brand">sem pagar comissão</span>
         </h1>
-        <p className="mt-3 text-base leading-snug text-ink/85 sm:text-lg">
+        <p className="mt-3 max-w-md text-base leading-snug text-pretty text-ink/85 sm:text-lg">
           Seu cardápio com link próprio, aviso de pedido novo e impressão automática no balcão. A gente monta tudo com você.
         </p>
-        <BotaoDoForm className="mt-5 w-full sm:w-auto">Quero meu cardápio digital</BotaoDoForm>
-        <p className="mt-2.5 text-xs font-bold text-muted sm:text-sm">{PLANO.resumo}</p>
+        <BotaoDoForm className="mt-6 w-full shadow-[0_10px_34px_-8px_rgb(255_138_31/0.75)] sm:w-auto">
+          <ArrowRight className="size-5" aria-hidden="true" />
+          Quero meu cardápio digital
+        </BotaoDoForm>
       </div>
     </section>
   );

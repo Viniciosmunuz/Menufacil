@@ -40,8 +40,6 @@ export const PLANO = {
   nome: "Plano Essencial",
   preco: "R$ 120",
   periodo: "/mês",
-  /** linha curta que aparece embaixo do botão do topo */
-  resumo: "Plano Essencial · R$ 120/mês · suporte incluso",
   itens: [
     "Cardápio digital com link próprio",
     "Painel de pedidos com aviso sonoro",
