@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import type { Prisma } from "@/generated/prisma/client";
-import { formatCents, formatPhone } from "@/lib/format";
+import { formatCents, formatPhone, formatWhen } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone, paymentStatusLabel } from "@/lib/labels";
 import { paymentHint, paymentText } from "@/lib/payment";
 
@@ -126,19 +126,41 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
   );
 }
 
-/** linha da lista que abre como gaveta, com o resumo e as ações dentro */
-export function OrderDrawer({ order: o, subtitle, children }: { order: OrderSummaryData; subtitle: string; children: ReactNode }) {
+/**
+ * Linha da lista, que abre como gaveta com o resumo e as ações dentro.
+ *
+ * O que o balcão precisa ler de relance é sempre o mesmo: qual pedido, de
+ * quem, em que pé está e quanto deu. Por isso o número e o nome ficam na
+ * primeira linha, grandes, e o estado, o tipo e a hora na segunda, menores.
+ * No computador tudo isso cabe numa linha só.
+ *
+ * A data só aparece quando o pedido não é de hoje, e o bairro entra quando
+ * é entrega: numa lista de nomes parecidos, é o que diz para onde vai.
+ */
+export function OrderDrawer({ order: o, prefix, children }: { order: OrderSummaryData; prefix?: string; children: ReactNode }) {
+  const delivery = o.type === "DELIVERY";
+  const meta = [prefix, delivery ? "Entrega" : "Retirada", delivery ? o.deliveryNeighborhood : null, formatWhen(o.createdAt)]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <details className="drawer group rounded-card border border-line bg-surface open:border-line-strong">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 rounded-card px-4 py-3 hover:bg-surface-2/60 sm:px-5 [&::-webkit-details-marker]:hidden">
-        <span className="w-16 font-extrabold tabular-nums">#{o.number}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold">{o.customerName}</span>
-          <span className="block truncate text-sm text-muted">{subtitle}</span>
+      <summary className="flex cursor-pointer list-none items-start gap-3 rounded-card px-4 py-3.5 hover:bg-surface-2/60 sm:items-center sm:gap-4 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="mt-0.5 shrink-0 font-extrabold tabular-nums text-muted sm:mt-0 sm:w-14">#{o.number}</span>
+
+        <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+          <span className="min-w-0 truncate font-bold sm:flex-1">{o.customerName}</span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
+            <Badge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</Badge>
+            <span className="truncate text-sm text-muted">{meta}</span>
+          </span>
         </span>
-        <Badge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</Badge>
-        <span className="w-24 text-right font-extrabold tabular-nums">{formatCents(o.totalCents)}</span>
-        <ChevronDown className="size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
+
+        <span className="mt-0.5 shrink-0 font-extrabold tabular-nums sm:mt-0">{formatCents(o.totalCents)}</span>
+        <ChevronDown
+          className="mt-0.5 size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180 sm:mt-0"
+          aria-hidden="true"
+        />
       </summary>
       <div className="flex flex-col gap-5 border-t border-line px-4 py-4 sm:px-5">
         <OrderSummary order={o} />

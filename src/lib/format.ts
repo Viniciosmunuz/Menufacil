@@ -59,3 +59,18 @@ export function startOfToday(now = new Date()) {
   const offset = zoned - agoraNoMinuto;
   return new Date(Date.UTC(get("year"), get("month") - 1, get("day")) - offset);
 }
+
+/**
+ * "14:05" quando é de hoje, "21/09 14:05" quando é de outro dia.
+ *
+ * Na lista de pedidos do balcão, quase tudo é de hoje: repetir a data em
+ * cada linha só rouba espaço de coisa que importa mais, como o nome do
+ * cliente. A data volta a aparecer assim que o pedido não é mais de hoje.
+ */
+export function formatWhen(date: Date | string) {
+  const d = new Date(date);
+  const hora = formatTime(d);
+  if (todayKey(d) === todayKey()) return hora;
+  const dia = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TIME_ZONE });
+  return `${dia} ${hora}`;
+}

@@ -16,7 +16,6 @@ import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
-import { formatDateTime } from "@/lib/format";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
@@ -175,7 +174,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
           <ul className="flex flex-col gap-2">
             {orders.map((o) => (
               <li key={o.id}>
-                <OrderDrawer order={o} subtitle={`${o.type === "DELIVERY" ? "Entrega" : "Retirada"} · ${formatDateTime(o.createdAt)}`}>
+                <OrderDrawer order={o}>
                   <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
