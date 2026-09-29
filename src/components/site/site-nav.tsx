@@ -106,6 +106,10 @@ function CategoriesDrawer({ categories, active, onNavigate }: { categories: NavC
 export function BottomNav({ store }: { store?: { slug: string; whatsapp: string | null } | null }) {
   const pathname = usePathname();
   const cart = useCart();
+  // A página de venda é uma chegada de fora, do Instagram, e fala com o dono
+  // do restaurante, não com quem vai pedir comida. Ali a barra só tiraria a
+  // atenção do botão de contato.
+  const venda = pathname === "/cadastre-seu-restaurante";
   const menuHref = store ? `/restaurante/${store.slug}` : cart.restaurant ? `/restaurante/${cart.restaurant.slug}` : "/restaurantes";
   // o carrinho não entra aqui: ele já está no topo e na barra "Ver carrinho"
   const orders = { href: "/meus-pedidos", label: "Pedidos", icon: ReceiptText, active: pathname === "/meus-pedidos" || pathname.startsWith("/pedido/") };
@@ -122,6 +126,8 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
         orders,
         { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },
       ];
+
+  if (venda) return null;
 
   return (
     <nav

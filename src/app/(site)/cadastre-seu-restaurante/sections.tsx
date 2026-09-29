@@ -79,7 +79,7 @@ export function Topo() {
         <p className="mt-3 max-w-md text-base leading-snug text-pretty text-ink/85 sm:text-lg">
           Seu cardápio com link próprio, aviso de pedido novo e impressão automática no balcão. A gente monta tudo com você.
         </p>
-        <BotaoDoForm className="mt-6 w-full shadow-[0_10px_34px_-8px_rgb(255_138_31/0.75)] sm:w-auto">
+        <BotaoDoForm className="mt-6 w-full sm:w-auto">
           <ArrowRight className="size-5" aria-hidden="true" />
           Quero meu cardápio digital
         </BotaoDoForm>
