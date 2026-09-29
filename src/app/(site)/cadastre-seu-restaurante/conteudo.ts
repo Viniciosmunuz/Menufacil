@@ -15,10 +15,27 @@ export const NOME_DO_APP = "Menu Fácil para PC";
 // TODO: trocar por /restaurante/demonstracao quando o restaurante de demonstração existir
 export const DEMO_URL = "/restaurante/papaleguas";
 
-/** WhatsApp da equipe MenuFácil: só números, com 55 e o DDD. Vazio = o botão não aparece. */
-// TODO: preencher, ex.: "5592999990000"
-export const WHATSAPP = "";
+/**
+ * WhatsApp da equipe MenuFácil. Aceita duas formas:
+ *
+ *  - **só os números**, com 55 e o DDD ("5592999990000"): é a melhor. A
+ *    conversa abre já com a mensagem escrita e funciona também no computador.
+ *  - **um link pronto** (o do QR code): só abre no celular de quem já tem o
+ *    WhatsApp instalado, e sem a mensagem pronta.
+ *
+ * Vazio = o botão não aparece na página.
+ */
+// TODO: trocar pelo número ("5592999990000") para a mensagem já vir escrita
+export const WHATSAPP = "https://wa.me/qr/CFKI7EKZUH7EK1";
 export const WHATSAPP_MSG = "Olá! Quero saber mais sobre o MenuFácil para o meu restaurante.";
+
+/** endereço do botão "Prefiro falar no WhatsApp"; null quando não há contato */
+export function linkDoWhatsapp() {
+  const contato = WHATSAPP.trim();
+  if (!contato) return null;
+  if (contato.startsWith("http")) return contato;
+  return `https://wa.me/${contato.replace(/\D/g, "")}?text=${encodeURIComponent(WHATSAPP_MSG)}`;
+}
 
 export const PLANO = {
   nome: "Plano Essencial",

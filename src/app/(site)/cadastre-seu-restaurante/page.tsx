@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 import { buttonClasses } from "@/components/ui/button";
 
-import { WHATSAPP, WHATSAPP_MSG } from "./conteudo";
+import { linkDoWhatsapp } from "./conteudo";
 import { LeadForm } from "./lead-form";
 import { ANCORA, Beneficios, ComoComecar, Duvidas, Plano, Topo, VejaFuncionando } from "./sections";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default function LeadPage() {
-  const whatsapp = WHATSAPP && `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(WHATSAPP_MSG)}`;
+  const whatsapp = linkDoWhatsapp();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 sm:gap-16">
