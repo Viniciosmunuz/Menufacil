@@ -1,10 +1,11 @@
-import { Inbox, MapPin, Phone } from "lucide-react";
+import { Inbox, MapPin, Phone, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
@@ -12,7 +13,7 @@ import { db } from "@/lib/db";
 import { formatDateTime, formatPhone } from "@/lib/format";
 import { requireAdmin } from "@/server/auth/dal";
 
-import { setLeadHandled } from "./actions";
+import { excluirContato, limparAtendidos, setLeadHandled } from "./actions";
 
 export const metadata: Metadata = { title: "Contatos" };
 
@@ -41,7 +42,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps<"/admin
     <div className="flex flex-col gap-6">
       <PageHeader title="Contatos" description="Restaurantes que pediram para entrar na plataforma pelo site." />
 
-      <nav className="flex gap-2" aria-label="Filtrar contatos">
+      <nav className="flex flex-wrap items-center gap-2" aria-label="Filtrar contatos">
         {tabs.map((t) => (
           <Link
             key={t.href}
@@ -56,6 +57,16 @@ export default async function AdminLeadsPage({ searchParams }: PageProps<"/admin
             <span className="tabular-nums opacity-70">{t.count}</span>
           </Link>
         ))}
+
+        {/* limpar a lista de uma vez: útil quando ela cresce, e some quando vazia */}
+        {showHandled && handledCount > 0 && (
+          <form action={limparAtendidos} className="ml-auto">
+            <ConfirmButton confirmText={handledCount === 1 ? "Sim, excluir" : `Sim, excluir os ${handledCount}`} variant="outline" size="sm">
+              <Trash2 className="size-4" aria-hidden="true" />
+              Limpar atendidos
+            </ConfirmButton>
+          </form>
+        )}
       </nav>
 
       {leads.length === 0 ? (
@@ -99,6 +110,14 @@ export default async function AdminLeadsPage({ searchParams }: PageProps<"/admin
                   <SubmitButton variant="secondary" size="sm" pendingText="Aguarde...">
                     {lead.handled ? "Reabrir" : "Marcar como atendido"}
                   </SubmitButton>
+                </form>
+                {/* sem volta: por isso o botão pede confirmação antes de mandar */}
+                <form action={excluirContato}>
+                  <input type="hidden" name="id" value={lead.id} />
+                  <ConfirmButton confirmText="Sim, excluir" variant="outline" size="sm">
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Excluir
+                  </ConfirmButton>
                 </form>
               </div>
             </li>

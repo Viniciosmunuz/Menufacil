@@ -33,6 +33,8 @@ const actionLabel: Record<string, string> = {
   "launch.content": "Restaurante implantado pela equipe (cardápio inicial)",
   "order.update": "Pedido alterado",
   "order.delete": "Pedido excluído",
+  "lead.delete": "Contato excluído",
+  "lead.delete_handled": "Contatos atendidos limpos",
   "totem.mercado_pago": "Conta do Mercado Pago do totem alterada",
   "totem.maquininha": "Maquininha do totem alterada",
   "totem.webhook": "Chave de notificação do totem alterada",
