@@ -57,3 +57,7 @@ next-env.d.ts
 
 # material recebido dos restaurantes (cardápio em PDF etc.), só para consulta local
 /implantacao/
+
+# Instaladores: pesam ~100 MB e o git guarda cada versao para sempre.
+# Distribuicao fica fora do repositorio (ver docs/totem-maquininha.md).
+public/totem/*.exe

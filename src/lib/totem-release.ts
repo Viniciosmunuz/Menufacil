@@ -8,7 +8,7 @@
 // de baixar -- é assim que uma versão em construção não chega ao balcão.
 
 export const TOTEM_APP_VERSION = "0.1.0";
-export const TOTEM_APP_DISPONIVEL = true;
+export const TOTEM_APP_DISPONIVEL = false;
 
 /** instalador da versão atual */
 export const TOTEM_SETUP_PATH = `/totem/MenuFacilTotem-Setup-${TOTEM_APP_VERSION}.exe`;
