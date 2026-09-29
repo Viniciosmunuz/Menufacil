@@ -41,7 +41,7 @@ function Titulo({ children, sub }: { children: ReactNode; sub?: string }) {
 
 export function Topo() {
   return (
-    <section className="relative isolate overflow-hidden rounded-card border border-brand/45 px-5 py-8 shadow-[0_0_70px_-25px_rgb(255_138_31/0.6)] sm:px-10 sm:py-14">
+    <section className="relative isolate overflow-hidden rounded-card border border-line px-5 py-8 sm:px-10 sm:py-14">
       {/* a mesa posta, ao fundo: é de comida que a página fala */}
       <Image
         src="/demo/burger/capa.webp"
