@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win nsis",
+    "dist:linux": "electron-builder --linux AppImage"
   },
   "main": "src/main.js",
   "build": {
@@ -31,6 +32,13 @@
         "nsis"
       ],
       "artifactName": "MenuFacilTotem-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility",
+      "artifactName": "MenuFacilTotem-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

@@ -5,7 +5,7 @@ import { app, BrowserWindow, ipcMain, powerSaveBlocker } from "electron";
 
 import { esquecerPareamento, gravarConfig, lerConfig } from "./config.js";
 import { imprimirTeste, imprimirVia } from "./imprimir.js";
-import { listarImpressoras } from "./windows.js";
+import { listarImpressoras } from "./impressoras.js";
 
 // Menu Fácil Totem: o balcão de autoatendimento.
 //

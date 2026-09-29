@@ -66,11 +66,26 @@ O totem pergunta o tempo todo como está o pagamento, em vez de esperar um aviso
 É de propósito: assim ele funciona mesmo em restaurante que não cadastrou o
 webhook no Mercado Pago. O webhook, quando existe, só adianta o trabalho.
 
-## Impressão
+## Roda no Windows e no Linux
 
-Os arquivos `escpos.js`, `raw.js` e `windows.js` vieram do Print Fácil, que já
-imprime em térmica USB no Windows há meses. São cópias de propósito: os dois
-aplicativos podem evoluir sem quebrar um ao outro.
+A única parte presa ao sistema é a impressão, e ela tem os dois caminhos:
+
+- **Windows** (`raw.js`, `windows.js`): fala com a fila de impressão pelo
+  winspool, via PowerShell. É o caminho já testado -- veio do Print Fácil, que
+  imprime em térmica USB há meses.
+- **Linux** (`linux.js`): fala com o CUPS pelo `lp`, com `-o raw` para o ESC/POS
+  chegar intacto. Sai até mais simples que no Windows.
+
+Quem escolhe é o `impressoras.js`, pelo `process.platform`. O resto do programa
+não sabe a diferença.
+
+```bash
+npm run dist        # Windows: instalador .exe
+npm run dist:linux  # Linux: AppImage
+```
+
+No Linux, a térmica USB costuma aparecer sozinha no CUPS. Quando não aparece, é
+instalá-la uma vez em http://localhost:631.
 
 ## O que ainda falta
 

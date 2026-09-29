@@ -7,6 +7,8 @@ import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { isOpenNow } from "@/lib/opening-hours";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 
+import { TotemOcioso } from "./ocioso";
+
 // A tela do totem: o mesmo cardápio que o cliente abre pelo link do
 // restaurante, com os mesmos componentes.
 //
@@ -50,6 +52,9 @@ export default async function TotemMenuPage({ params }: PageProps<"/totem/[slug]
 
   return (
     <div className="flex min-h-dvh flex-col">
+      {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui */}
+      <TotemOcioso href={`/totem/${r.slug}`} />
+
       {/* capa e nome, como na página do link -- só sem os botões de voltar,
           compartilhar e favoritar, que no balcão não levam a lugar nenhum */}
       <section>

@@ -1,14 +1,14 @@
 import { testeEscPos, viaEscPos } from "./escpos.js";
-import { imprimirBytes } from "./raw.js";
-import { imprimirTexto } from "./windows.js";
+import { imprimirBytes, imprimirTexto } from "./impressoras.js";
 
 // Os dois caminhos até o papel, no totem:
 //
 // - térmica (ESC/POS): os bytes vão crus para a impressora, o que dá
 //   negrito, letra dobrada e corte automático. É o caminho normal aqui,
 //   porque o totem sempre vem com térmica USB do lado.
-// - comum: o texto vai pelo driver do Windows. É a rede de segurança —
-//   melhor uma via simples do que cliente parado no balcão sem comanda.
+// - comum: o texto vai pelo caminho normal do sistema (driver do Windows
+//   ou CUPS no Linux). É a rede de segurança -- melhor uma via simples do
+//   que cliente parado no balcão sem comanda.
 //
 // A mesma comanda continua saindo na impressora da cozinha, pela aba
 // Pedidos do painel: o pedido do totem é um pedido como os outros.
