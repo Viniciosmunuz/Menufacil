@@ -68,6 +68,11 @@ aplicativos podem evoluir sem quebrar um ao outro.
 
 ## O que ainda falta
 
+A lista completa -- inclusive o que precisa ser feito na conta do Mercado Pago e
+na maquininha -- está em [`docs/totem-maquininha.md`](../docs/totem-maquininha.md).
+
+Do lado deste aplicativo:
+
 - Ícone e identidade visual (`assets/`).
 - Atualização automática (o Print Fácil usa `electron-updater`).
 - Pizza montada por sabores: hoje o produto de pizza não aparece no totem.
