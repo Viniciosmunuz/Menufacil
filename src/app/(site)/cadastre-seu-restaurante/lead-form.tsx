@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleCheck } from "lucide-react";
-import { Fragment, useActionState } from "react";
+import { Fragment, useActionState, type ReactNode } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,20 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 import { createLead, type LeadState } from "./actions";
 
-export function LeadForm() {
+// O mesmo formulário serve à página de venda e à página de contato; o que
+// muda é só o texto do botão e o da confirmação.
+export function LeadForm({
+  submitLabel = "Quero cadastrar meu restaurante",
+  successTitle = "Recebemos seu contato!",
+  successText = "A equipe MenuFácil vai chamar você no WhatsApp para montar o seu cardápio.",
+  footer,
+}: {
+  submitLabel?: string;
+  successTitle?: string;
+  successText?: string;
+  /** botão extra abaixo do enviar (ex.: falar no WhatsApp) */
+  footer?: ReactNode;
+}) {
   const [state, action] = useActionState<LeadState, FormData>(createLead, {});
   const err = state.fieldErrors ?? {};
   const v = state.values ?? {};
@@ -19,22 +32,21 @@ export function LeadForm() {
     return (
       <Card className="flex flex-col items-center gap-3 py-10 text-center">
         <CircleCheck className="size-12 text-success" aria-hidden="true" />
-        <p className="text-xl font-extrabold">Recebemos seu contato!</p>
-        <p className="max-w-sm text-muted">A equipe MenuFácil vai chamar você no WhatsApp para montar o seu cardápio.</p>
+        <p className="text-xl font-extrabold">{successTitle}</p>
+        <p className="max-w-sm text-muted">{successText}</p>
       </Card>
     );
   }
 
   return (
     <Card>
-      <form action={action} className="relative flex flex-col gap-5">
+      <form action={action} className="flex flex-col gap-5">
         {state.error && <Alert tone="danger">{state.error}</Alert>}
-        {/* armadilha para robôs: pessoas não veem este campo */}
-        <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
-          <label>
-            Site
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
-          </label>
+        {/* armadilha para robôs: o atributo hidden tira o campo da tela mesmo
+            se o CSS ainda não tiver carregado, e o robô continua caindo nele */}
+        <div hidden aria-hidden="true">
+          <label htmlFor="website">Site</label>
+          <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
         </div>
         <Fragment key={JSON.stringify(state.values ?? null)}>
           <Field label="Seu nome" htmlFor="contactName" error={err.contactName}>
@@ -64,8 +76,9 @@ export function LeadForm() {
           </Field>
         </Fragment>
         <SubmitButton size="lg" pendingText="Enviando...">
-          Quero cadastrar meu restaurante
+          {submitLabel}
         </SubmitButton>
+        {footer}
       </form>
     </Card>
   );
