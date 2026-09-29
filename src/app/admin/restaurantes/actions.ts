@@ -24,6 +24,7 @@ import { requireAdmin } from "@/server/auth/dal";
 import { MIN_PASSWORD_LENGTH } from "@/server/auth/password";
 import { linkOwner, prepareTemporaryPassword, resetOwnerPassword, type NewCredentials } from "@/server/owners";
 import { activationChecklist } from "@/server/restaurants/checklist";
+import { excluirRestaurante } from "@/server/restaurants/delete";
 import { availableSlug, isSlugTaken } from "@/server/restaurants/slug";
 
 // Ações do admin sobre os restaurantes. Server actions são endpoints
@@ -358,4 +359,23 @@ export async function removeOwner(_prev: AdminFormState, formData: FormData): Pr
 
   refresh();
   return { ok: true };
+}
+
+// ---- Excluir de vez ----------------------------------------------------
+
+// Desativar e bloquear tiram do site guardando tudo. Isto apaga mesmo, e
+// não tem volta: por isso o caminho é comprido de propósito — o
+// restaurante precisa estar fora do ar e o admin precisa digitar o nome
+// dele. O servidor confere as duas coisas de novo aqui, porque esconder o
+// botão não impede ninguém de chamar a ação na mão.
+export async function deleteRestaurant(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const resultado = await excluirRestaurante({
+    restaurantId: String(formData.get("restaurantId") ?? ""),
+    nomeDigitado: String(formData.get("confirmacao") ?? ""),
+    actorUserId: admin.id,
+  });
+  if (!resultado.ok) return { error: resultado.error };
+
+  redirect(`/admin/restaurantes?excluido=${encodeURIComponent(resultado.name)}`);
 }

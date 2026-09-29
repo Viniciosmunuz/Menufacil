@@ -14,8 +14,10 @@ import { formatDateTime } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
+import { resumoDaExclusao } from "@/server/restaurants/delete";
 
 import { BasicsForm } from "./basics-form";
+import { DeletePanel } from "./delete-panel";
 import { FeaturesPanel } from "./features-panel";
 import { OwnersPanel } from "./owners-panel";
 import { StatusPanel } from "./status-panel";
@@ -49,7 +51,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
   });
   if (!restaurant) notFound();
 
-  const [checklist, categories, logs] = await Promise.all([
+  const [checklist, categories, logs, resumoExclusao] = await Promise.all([
     activationChecklist(id),
     db.platformCategory.findMany({
       where: { OR: [{ active: true }, { restaurants: { some: { id } } }] },
@@ -62,6 +64,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
       take: 15,
       include: { actor: { select: { name: true, role: true } } },
     }),
+    resumoDaExclusao(id),
   ]);
 
   return (
@@ -117,6 +120,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
             }}
             categories={categories}
           />
+          {resumoExclusao && <DeletePanel resumo={resumoExclusao} />}
         </div>
 
         <div className="flex flex-col gap-6">

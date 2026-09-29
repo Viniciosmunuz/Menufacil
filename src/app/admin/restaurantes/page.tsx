@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/panel/page-header";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -20,6 +21,8 @@ export default async function AdminRestaurantsPage({ searchParams }: PageProps<"
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
   const status = isRestaurantStatus(sp.status) ? sp.status : null;
+  // volta da exclusão: o nome vem na URL só para o aviso desta tela
+  const excluido = typeof sp.excluido === "string" ? sp.excluido.slice(0, 80) : null;
 
   const where: Prisma.RestaurantWhereInput = {
     ...(status ? { status } : {}),
@@ -82,6 +85,8 @@ export default async function AdminRestaurantsPage({ searchParams }: PageProps<"
           </Link>
         }
       />
+
+      {excluido && <Alert tone="success">{excluido} foi excluído. O histórico do que ele foi fica registrado.</Alert>}
 
       <form className="relative" role="search">
         {status && <input type="hidden" name="status" value={status} />}

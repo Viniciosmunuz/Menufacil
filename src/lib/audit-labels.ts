@@ -20,6 +20,7 @@ const actionLabel: Record<string, string> = {
   "restaurant.payment": "Pix alterado",
   "restaurant.payment_methods": "Cartão e dinheiro alterados",
   "restaurant.features": "Recursos liberados alterados",
+  "restaurant.delete": "Restaurante excluído",
   "menu.category_create": "Categoria do cardápio criada",
   "menu.category_update": "Categoria do cardápio alterada",
   "menu.category_delete": "Categoria do cardápio excluída",
@@ -64,6 +65,12 @@ export function describeAudit(action: string, details: unknown): { title: string
 
   if (action === "restaurant.status" && d && isRestaurantStatus(d.from) && isRestaurantStatus(d.to)) {
     return { title, detail: `${restaurantStatusLabel[d.from]} → ${restaurantStatusLabel[d.to]}` };
+  }
+  if (action === "restaurant.delete" && typeof d?.name === "string") {
+    const levou = [typeof d.pedidos === "number" ? `${d.pedidos} pedidos` : null, typeof d.produtos === "number" ? `${d.produtos} produtos` : null]
+      .filter(Boolean)
+      .join(" e ");
+    return { title, detail: levou ? `${d.name} · levou junto ${levou}` : String(d.name) };
   }
   if (action === "restaurant.features" && d?.changes && typeof d.changes === "object") {
     const mudou = Object.entries(d.changes as Record<string, string>).map(([k, v]) => `${featureLabel[k] ?? k}: ${v}`);
