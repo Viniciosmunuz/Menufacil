@@ -74,3 +74,13 @@ export function formatWhen(date: Date | string) {
   const dia = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TIME_ZONE });
   return `${dia} ${hora}`;
 }
+
+/** meia-noite de N dias atrás, no fuso da plataforma (0 = hoje) */
+export function startOfDaysAgo(days: number, now = new Date()) {
+  return new Date(startOfToday(now).getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+/** "seg", "ter"... para o eixo do gráfico da semana */
+export function weekdayShort(date: Date) {
+  return date.toLocaleDateString("pt-BR", { weekday: "short", timeZone: TIME_ZONE }).replace(".", "");
+}

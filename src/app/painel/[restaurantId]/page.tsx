@@ -1,37 +1,52 @@
-import { CheckCircle2, Clock, ReceiptText, Wallet } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock, PackageX, ReceiptText, TrendingUp, Wallet } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { StatCard } from "@/components/panel/stat-card";
+import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { formatCents, startOfToday } from "@/lib/format";
+import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
+import { hojeContraOntem, semanaDePedidos, variacao } from "@/server/stats";
 
 import { OpenNowCard } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
 export const metadata: Metadata = { title: "Início" };
 
+/** "Bom dia" de verdade: a hora é a de Manaus, não a do servidor em UTC */
+function saudacao() {
+  const hora = Number(new Date().toLocaleString("pt-BR", { hour: "2-digit", hourCycle: "h23", timeZone: TIME_ZONE }));
+  if (hora < 12) return "Bom dia!";
+  return hora < 18 ? "Boa tarde!" : "Boa noite!";
+}
+
 export default async function RestaurantDashboardPage({ params }: PageProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
   const { restaurant, viaAdmin } = await requireRestaurantAccess(restaurantId);
 
-  const today = startOfToday();
-  const todayWhere = { restaurantId: restaurant.id, createdAt: { gte: today } };
+  const escopo = { restaurantId: restaurant.id };
+  const hoje = startOfToday();
+  const todayWhere = { ...escopo, createdAt: { gte: hoje } };
 
-  const [ordersToday, inProgress, completedToday, soldToday, topProducts, checklist, details] = await Promise.all([
-    db.order.count({ where: { ...todayWhere, status: { not: "CANCELED" } } }),
-    db.order.count({ where: { restaurantId: restaurant.id, status: { in: OPEN_ORDER_STATUSES } } }),
+  const [dia, semana, inProgress, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
+    hojeContraOntem(escopo),
+    semanaDePedidos(escopo),
+    db.order.count({ where: { ...escopo, status: { in: OPEN_ORDER_STATUSES } } }),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
-    db.order.aggregate({ _sum: { totalCents: true }, where: { ...todayWhere, status: { not: "CANCELED" } } }),
+    // o esquecimento mais comum do balcão: marcar esgotado e nunca religar
+    db.product.count({ where: { ...escopo, available: false } }),
+    // os campeões do mês, não de sempre: é o mês que diz o que comprar amanhã
     db.orderItem.groupBy({
       by: ["productName"],
-      where: { order: { restaurantId: restaurant.id, status: { not: "CANCELED" } } },
-      _sum: { quantity: true },
+      where: { order: { ...escopo, status: { not: "CANCELED" }, createdAt: { gte: startOfDaysAgo(30) } } },
+      _sum: { quantity: true, totalCents: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
     }),
@@ -42,11 +57,14 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
     }),
   ]);
 
+  const base = `/painel/${restaurant.id}`;
+  const ticket = dia.hoje > 0 ? Math.round(dia.centavosHoje / dia.hoje) : 0;
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold">Olá! Aqui está o seu dia.</h1>
+          <h1 className="text-3xl font-extrabold">{saudacao()}</h1>
           <p className="mt-1 text-muted">{restaurant.name}</p>
         </div>
         <Badge tone={restaurantStatusTone[restaurant.status]}>{restaurantStatusLabel[restaurant.status]}</Badge>
@@ -69,29 +87,84 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Pedidos hoje" value={ordersToday} icon={<ReceiptText />} />
-        <StatCard label="Em andamento" value={inProgress} icon={<Clock />} />
-        <StatCard label="Concluídos hoje" value={completedToday} icon={<CheckCircle2 />} />
-        <StatCard label="Vendido hoje" value={formatCents(soldToday._sum.totalCents ?? 0)} icon={<Wallet />} />
+        <StatCard
+          label="Pedidos hoje"
+          value={dia.hoje}
+          icon={<ReceiptText />}
+          href={`${base}/pedidos?ver=todos`}
+          variacao={variacao(dia.hoje, dia.ontem)}
+          hint={`Ontem, até agora: ${dia.ontem}`}
+        />
+        <StatCard label="Esperando você" value={inProgress} icon={<Clock />} href={`${base}/pedidos`} hint="Pedidos em andamento" />
+        <StatCard label="Concluídos hoje" value={completedToday} icon={<CheckCircle2 />} href={`${base}/pedidos?ver=concluidos`} />
+        <StatCard
+          label="Vendido hoje"
+          value={formatCents(dia.centavosHoje)}
+          icon={<Wallet />}
+          variacao={variacao(dia.centavosHoje, dia.centavosOntem)}
+          hint={ticket > 0 ? `Ticket médio: ${formatCents(ticket)}` : `Ontem: ${formatCents(dia.centavosOntem)}`}
+        />
       </div>
 
+      <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
+
+      {esgotados > 0 && (
+        <Card className="flex flex-wrap items-center gap-4 border-warning/40">
+          <span className="grid size-11 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
+            <PackageX className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-extrabold">
+              {esgotados} produto{esgotados === 1 ? "" : "s"} esgotado{esgotados === 1 ? "" : "s"}
+            </p>
+            <p className="text-sm text-muted">
+              {esgotados === 1 ? "Ele não aparece" : "Eles não aparecem"} para o cliente. Chegou mercadoria? É só religar no cardápio.
+            </p>
+          </div>
+          <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
+            Ver cardápio
+          </Link>
+        </Card>
+      )}
+
       <Card>
-        <h2 className="text-lg font-extrabold">Mais pedidos</h2>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-extrabold">Mais pedidos no mês</h2>
+            <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
+          </div>
+          <TrendingUp className="size-5 text-faint" aria-hidden="true" />
+        </div>
         {topProducts.length === 0 ? (
-          <p className="mt-2 text-muted">Os produtos mais pedidos aparecem aqui assim que chegarem os primeiros pedidos.</p>
+          <p className="mt-3 text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
         ) : (
           <ol className="mt-4 flex flex-col divide-y divide-line">
             {topProducts.map((p, i) => (
-              <li key={p.productName} className="flex items-center justify-between gap-4 py-3">
-                <span className="flex items-center gap-3 font-semibold">
-                  <span className="grid size-7 place-items-center rounded-full bg-surface-3 text-sm text-muted">{i + 1}</span>
-                  {p.productName}
+              <li key={p.productName} className="flex items-center justify-between gap-3 py-3">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={
+                      i === 0
+                        ? "grid size-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink"
+                        : "grid size-7 shrink-0 place-items-center rounded-full bg-surface-3 text-sm text-muted"
+                    }
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 truncate font-semibold">{p.productName}</span>
                 </span>
-                <span className="text-muted tabular-nums">{p._sum.quantity ?? 0} vendidos</span>
+                <span className="shrink-0 text-right text-sm">
+                  <span className="block font-extrabold tabular-nums">{p._sum.quantity ?? 0}x</span>
+                  <span className="block text-muted tabular-nums">{formatCents(p._sum.totalCents ?? 0)}</span>
+                </span>
               </li>
             ))}
           </ol>
         )}
+        <Link href={`${base}/cardapio`} className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand hover:underline">
+          Ver o cardápio
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </Link>
       </Card>
     </div>
   );
