@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, Check, ChevronDown, ChevronRight, Download, Printer, ReceiptText, Smartphone, Volume2 } from "lucide-react";
+import { Bell, BellOff, Check, ChevronDown, Download, Printer, ReceiptText, Smartphone, Volume2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -45,8 +45,8 @@ const SEEN_KEY = "mf_pedidos_vistos";
 const SINCE_KEY = "mf_impressao_desde";
 /** a gaveta das explicações fica fechada até alguém abrir */
 const HELP_KEY = "mf_impressao_ajuda";
-/** as formas de imprimir ficam recolhidas atrás de um ícone só */
-const GAVETA_KEY = "mf_impressao_gaveta";
+/** todos os ajustes ficam recolhidos: a tela de pedidos é que precisa do espaço */
+const AJUSTES_KEY = "mf_ajustes_abertos";
 const EVENT = "mf-impressao";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
 
@@ -193,7 +193,7 @@ export function PrintSettings({
   const savedSeen = useStored(SEEN_KEY);
   const savedSince = useStored(SINCE_KEY);
   const savedHelp = useStored(HELP_KEY);
-  const savedGaveta = useStored(GAVETA_KEY);
+  const savedAjustes = useStored(AJUSTES_KEY);
   const frames = useRef<HTMLDivElement>(null);
   const soundBox = useRef<HTMLDivElement>(null);
   const [pickingSound, setPickingSound] = useState(false);
@@ -212,10 +212,13 @@ export function PrintSettings({
   const soundName: SoundName = isSound(savedChoice) ? savedChoice : "sino";
   const since = Number(savedSince ?? 0);
   const ajudaAberta = savedHelp === "1";
-  // a barra nasce recolhida: no dia a dia ninguém troca a forma de imprimir,
-  // e o painel tem coisa demais para deixar três botões ocupando a linha
-  const gavetaAberta = savedGaveta === "1";
+  // nasce recolhido: no dia a dia ninguém troca a forma de imprimir nem o som
+  const ajustesAbertos = savedAjustes === "1";
   const IconeDoModo = mode === "celular" ? Smartphone : mode === "nuvem" ? CloudPrinterIcon : Printer;
+  // curto de propósito: na faixa fechada os dois rótulos dividem a largura
+  // de um celular estreito, e cortado no meio não diz nada a ninguém
+  const resumoDoModo =
+    mode === "pc" ? "Neste computador" : mode === "celular" ? "Neste celular" : mode === "nuvem" ? "Menu Fácil PC" : "Sem impressão";
   const fresh = orders.filter((o) => new Date(o.createdAt).getTime() >= since);
   // chegaram com o painel aberto e ainda esperam o restaurante aceitar
   const seen = idList(savedSeen);
@@ -411,60 +414,60 @@ export function PrintSettings({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-        {/* aberta, a fileira ganha três botões: no celular estreito o rótulo
-            sai de cena e as folgas encolhem, para tudo caber numa linha só */}
-        <div className={cn("flex flex-wrap items-center gap-2", gavetaAberta && "max-sm:gap-1.5")}>
-          <p className={cn("mr-1 text-sm font-extrabold", gavetaAberta && "max-sm:hidden")}>Imprimir:</p>
-          {gavetaAberta ? (
-            <>
-              {!printFacil && option("pc", "Imprimir neste computador", Printer)}
-              {!printFacil && option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
-              {option("nuvem", "Imprimir pelo Print Fácil, no computador do restaurante", CloudPrinterIcon)}
-              <button
-                type="button"
-                title={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
-                aria-label={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
-                aria-expanded={ajudaAberta}
-                onClick={() => {
-                  if (!ajudaAberta) void carregarDoApp();
-                  write(HELP_KEY, ajudaAberta ? "0" : "1");
-                }}
-                className="grid size-10 shrink-0 place-items-center rounded-full border border-line text-muted hover:text-ink"
-              >
-                <ChevronDown className={cn("size-4 transition-transform duration-200", ajudaAberta && "rotate-180")} aria-hidden="true" />
-              </button>
-            </>
+      <div className="rounded-card border border-line bg-surface">
+        {/* Faixa fina: no dia a dia ninguém mexe nestes ajustes, e a tela de
+            pedidos é que precisa do espaço. Fechada, ela só diz o que está
+            ligado agora; a seta abre o resto quando for preciso mudar. */}
+        <button
+          type="button"
+          aria-expanded={ajustesAbertos}
+          onClick={() => {
+            // fechando tudo, as explicações vão junto: sem os botões à vista,
+            // elas ficariam falando de coisa que não está na tela
+            if (ajustesAbertos && ajudaAberta) write(HELP_KEY, "0");
+            write(AJUSTES_KEY, ajustesAbertos ? "0" : "1");
+          }}
+          className="flex w-full items-center gap-2 rounded-card px-4 py-2.5 text-left text-sm hover:bg-surface-2/60"
+        >
+          <IconeDoModo className={cn("size-4 shrink-0", mode === "off" ? "text-faint" : "text-brand")} aria-hidden="true" />
+          <span className="truncate text-muted">{resumoDoModo}</span>
+          <span className="text-line-strong" aria-hidden="true">
+            ·
+          </span>
+          {sound ? (
+            <Bell className="size-4 shrink-0 text-brand" aria-hidden="true" />
           ) : (
-            // recolhida: um ícone só, mostrando de onde o papel está saindo hoje
-            <button
-              type="button"
-              title="Ver as formas de imprimir"
-              aria-label="Ver as formas de imprimir"
-              aria-expanded={false}
-              onClick={() => write(GAVETA_KEY, "1")}
-              className={cn(
-                "grid size-10 shrink-0 place-items-center rounded-full border",
-                mode === "off" ? "border-line text-muted hover:text-ink" : "border-brand bg-brand-soft text-brand",
-              )}
-            >
-              <IconeDoModo className="size-5" aria-hidden="true" />
-            </button>
+            <BellOff className="size-4 shrink-0 text-faint" aria-hidden="true" />
           )}
+          <span className="truncate text-muted">{sound ? "Som ligado" : "Som desligado"}</span>
+          <span className="sr-only">{ajustesAbertos ? "Esconder os ajustes" : "Ver os ajustes de impressão e aviso"}</span>
+          <ChevronDown
+            className={cn("ml-auto size-5 shrink-0 text-muted transition-transform duration-200", ajustesAbertos && "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+
+        {!ajustesAbertos ? null : (
+          <div className="flex flex-col gap-3 border-t border-line p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* no celular estreito o rótulo sai: sem ele, os quatro botões e o
+              sino cabem numa linha só, e a faixa de cima já disse do que se trata */}
+          <p className="mr-1 hidden text-sm font-extrabold sm:block">Imprimir:</p>
+          {!printFacil && option("pc", "Imprimir neste computador", Printer)}
+          {!printFacil && option("celular", "Imprimir neste celular (RawBT)", Smartphone)}
+          {option("nuvem", "Imprimir pelo Print Fácil, no computador do restaurante", CloudPrinterIcon)}
           <button
             type="button"
-            title={gavetaAberta ? "Fechar as formas de imprimir" : "Escolher onde imprimir"}
-            aria-label={gavetaAberta ? "Fechar as formas de imprimir" : "Escolher onde imprimir"}
-            aria-expanded={gavetaAberta}
+            title={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
+            aria-label={ajudaAberta ? "Esconder as explicações" : "Ver as explicações"}
+            aria-expanded={ajudaAberta}
             onClick={() => {
-              // fechando a gaveta, as explicações vão junto: sem os botões à
-              // vista, elas ficariam falando de coisa que não está na tela
-              if (gavetaAberta && ajudaAberta) write(HELP_KEY, "0");
-              write(GAVETA_KEY, gavetaAberta ? "0" : "1");
+              if (!ajudaAberta) void carregarDoApp();
+              write(HELP_KEY, ajudaAberta ? "0" : "1");
             }}
             className="grid size-10 shrink-0 place-items-center rounded-full border border-line text-muted hover:text-ink"
           >
-            <ChevronRight className={cn("size-4 transition-transform duration-200", gavetaAberta && "rotate-180")} aria-hidden="true" />
+            <ChevronDown className={cn("size-4 transition-transform duration-200", ajudaAberta && "rotate-180")} aria-hidden="true" />
           </button>
 
           <div ref={soundBox} className="relative ml-auto flex items-center">
@@ -536,7 +539,7 @@ export function PrintSettings({
           </p>
         )}
 
-        {!gavetaAberta || !ajudaAberta ? null : mode === "pc" ? (
+        {!ajudaAberta ? null : mode === "pc" ? (
           <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-4 text-sm">
             <p className="font-bold">Para o papel sair sozinho, sem a janela de impressão:</p>
             <ol className="flex list-inside list-decimal flex-col gap-1 text-muted">
@@ -574,7 +577,9 @@ export function PrintSettings({
           </p>
         )}
 
-        <div ref={frames} aria-hidden="true" />
+            <div ref={frames} aria-hidden="true" />
+          </div>
+        )}
       </div>
     </>
   );
