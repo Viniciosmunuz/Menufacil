@@ -766,8 +766,15 @@ model TotemDevice {
   @@index([restaurantId])
 }
 
+// Como o cliente paga no totem. Dinheiro nao entra aqui: no balcao sem
+// atendente nao ha quem receba nem quem de troco.
+enum TotemPaymentMethod {
+  CARD // cartao na maquininha Point do restaurante
+  PIX // QR na tela do totem, pago pelo aplicativo do banco
+}
+
 enum TotemPaymentStatus {
-  PENDING // intencao na maquininha, esperando o cliente
+  PENDING // esperando o cliente pagar
   APPROVED
   REJECTED
   CANCELED
@@ -781,15 +788,18 @@ model TotemPayment {
   restaurantId String
   deviceId     String?
 
+  method      TotemPaymentMethod @default(CARD)
   /**
-   * id da intencao de pagamento na API Point do Mercado Pago
+   * id da intencao de pagamento na API Point do Mercado Pago. So no
+   * cartao: o Pix nao passa pela maquininha, nasce direto como pagamento.
    */
-  intentId    String             @unique
+  intentId    String?            @unique
   /// external_reference mandado ao Mercado Pago: e por ele que o webhook
   /// acha esta linha quando o aviso chega
   reference   String?
   /**
-   * id do pagamento no Mercado Pago, quando a maquininha aprova
+   * id do pagamento no Mercado Pago. No cartao, chega quando a maquininha
+   * aprova; no Pix, ja nasce com ele.
    */
   mpPaymentId String?
   /// pedido gravado depois que a maquininha aprovou; vazio ate la
@@ -818,4 +828,5 @@ model TotemPayment {
   @@index([restaurantId, createdAt])
   @@index([status])
   @@index([reference])
+  @@index([mpPaymentId])
 }

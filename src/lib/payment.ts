@@ -1,4 +1,4 @@
-import type { CardType, OrderType, PaymentMethod } from "@/generated/prisma/enums";
+import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 
 import { formatCents } from "./format";
 
@@ -25,7 +25,9 @@ export function paymentText(p: PaymentChoice) {
 }
 
 /** o que o restaurante precisa saber para receber (maquininha, troco) */
-export function paymentHint(p: PaymentChoice, type: OrderType, totalCents: number) {
+export function paymentHint(p: PaymentChoice, type: OrderType, totalCents: number, origin?: OrderOrigin | null) {
+  // o pedido do totem chega pago: mandar cobrar no balcão faria cobrar duas vezes
+  if (origin === "TOTEM") return p.method === "PIX" ? "Pago por Pix no totem." : "Pago no cartão, na maquininha do totem.";
   if (p.method === "CARD") return type === "DELIVERY" ? "Levar a maquininha na entrega." : "Pagamento no balcão, na retirada.";
   if (p.method === "CASH") {
     if (!p.changeForCents) return type === "DELIVERY" ? "Pago em dinheiro na entrega, sem troco." : "Pago em dinheiro na retirada, sem troco.";

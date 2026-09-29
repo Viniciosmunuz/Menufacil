@@ -119,3 +119,75 @@ export function situacao(state: string | null | undefined): "esperando" | "aprov
   if (s === "ERROR" || s === "REJECTED") return "recusado";
   return "esperando";
 }
+
+// ---- Pix -----------------------------------------------------------------
+//
+// O Pix não passa pela maquininha: ele nasce como pagamento na conta do
+// restaurante e o Mercado Pago devolve o QR, que o totem mostra na tela.
+// O cliente lê com o aplicativo do banco e pronto.
+//
+// Precisa de um e-mail do pagador, que o Mercado Pago exige. No balcão
+// ninguém digita e-mail, então vai um genérico do próprio totem -- ele não
+// serve para cobrar nada de ninguém, só para a cobrança existir.
+
+export type PixCriado = {
+  id: number | string;
+  status: string;
+  point_of_interaction?: {
+    transaction_data?: {
+      /** o "copia e cola" */
+      qr_code?: string;
+      /** a imagem do QR, em base64 */
+      qr_code_base64?: string;
+      ticket_url?: string;
+    };
+  };
+};
+
+/** quanto tempo o QR fica de pé antes de o cliente ter de começar de novo */
+const MINUTOS_DO_PIX = 10;
+
+export function criarPix(params: {
+  accessToken: string;
+  amountCents: number;
+  descricao: string;
+  referencia: string;
+  email?: string;
+}): Promise<RespostaDoPonto<PixCriado>> {
+  const expira = new Date(Date.now() + MINUTOS_DO_PIX * 60 * 1000);
+
+  return chamar<PixCriado>("/v1/payments", {
+    accessToken: params.accessToken,
+    metodo: "POST",
+    idempotencia: params.referencia,
+    corpo: {
+      transaction_amount: Number((params.amountCents / 100).toFixed(2)),
+      description: params.descricao.slice(0, 80),
+      payment_method_id: "pix",
+      external_reference: params.referencia,
+      date_of_expiration: expira.toISOString(),
+      payer: { email: params.email ?? "totem@menufacil.app" },
+    },
+  });
+}
+
+/** o cliente desistiu do Pix antes de pagar */
+export function cancelarPagamento(accessToken: string, paymentId: string) {
+  return chamar<{ id: number; status: string }>(`/v1/payments/${encodeURIComponent(paymentId)}`, {
+    accessToken,
+    metodo: "PUT",
+    corpo: { status: "cancelled" },
+  });
+}
+
+/**
+ * Situação de um pagamento (Pix), traduzida igual à da maquininha. O que
+ * não for claramente aprovado continua como "esperando" -- nunca aprovado.
+ */
+export function situacaoDoPagamento(status: string | null | undefined): "esperando" | "aprovado" | "recusado" | "cancelado" {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "approved") return "aprovado";
+  if (s === "cancelled" || s === "refunded" || s === "charged_back") return "cancelado";
+  if (s === "rejected") return "recusado";
+  return "esperando";
+}

@@ -50,7 +50,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Totem de autoatendimento"
-        description="A tela de toque do balcão: o cliente monta o pedido, paga na sua maquininha e a comanda sai na hora."
+        description="A tela de toque do balcão: o cliente monta o pedido, paga no cartão ou por Pix, e a comanda sai na hora."
       />
 
       {!guardaSegredo && (
@@ -79,7 +79,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
       </Card>
 
       <Card>
-        <SectionTitle description="O pagamento cai direto na sua conta: o MenuFácil só manda a cobrança para a sua maquininha.">
+        <SectionTitle description="No totem o cliente paga no cartão ou por Pix — dinheiro não entra. Os dois caem direto na sua conta do Mercado Pago; o MenuFácil não fica com nada no meio.">
           <span className="flex items-center gap-2">
             <KeyRound className="size-5 text-faint" aria-hidden="true" />
             Sua conta do Mercado Pago
@@ -112,14 +112,18 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           )}
         </div>
 
-        {config.pronto ? (
+        {/* no totem o cliente paga no cartão ou por Pix -- dinheiro não existe lá */}
+        {!config.prontoPix ? (
+          <Alert tone="info" className="mt-6">
+            Falta o Access Token para o totem conseguir cobrar. Sem ele, nem cartão nem Pix funcionam.
+          </Alert>
+        ) : config.prontoCartao ? (
           <Alert tone="success" className="mt-6">
-            Token e maquininha cadastrados. O totem já consegue cobrar.
+            Tudo cadastrado. No totem o cliente paga no cartão (na maquininha) ou por Pix (QR na tela).
           </Alert>
         ) : (
-          <Alert tone="info" className="mt-6">
-            Falta{!config.tokenResumo && !config.deviceId ? "m o token e o número da maquininha" : !config.tokenResumo ? " o token" : " o número da maquininha"}{" "}
-            para o totem conseguir cobrar.
+          <Alert tone="warning" className="mt-6">
+            O Pix já funciona. Falta o número da maquininha para o cliente também poder pagar no cartão.
           </Alert>
         )}
       </Card>

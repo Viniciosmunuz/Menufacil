@@ -11,6 +11,7 @@ const TELAS = [
   "tela-cardapio",
   "tela-item",
   "tela-carrinho",
+  "tela-pix",
   "tela-pagamento",
   "tela-pronto",
   "tela-ajustes",
@@ -30,6 +31,8 @@ const estado = {
   carrinho: [],
   item: null,
   pagamentoId: null,
+  /** "cartao" ou "pix": muda onde o recado aparece e o que ele diz */
+  forma: null,
   relogioDoPagamento: null,
   ocioso: null,
 };
@@ -292,6 +295,7 @@ function atualizarBarra() {
 
 $("botao-carrinho").addEventListener("click", () => {
   desenharCarrinho();
+  $("erro-carrinho").textContent = "";
   mostrar("tela-carrinho");
 });
 
@@ -343,12 +347,15 @@ function desenharCarrinho() {
 
 // ---- pagamento ----------------------------------------------------------
 
-$("carrinho-pagar").addEventListener("click", async () => {
-  const botao = $("carrinho-pagar");
-  botao.disabled = true;
+// Duas formas, e só essas duas. Dinheiro não existe no totem: não há quem
+// receba nem quem dê troco num balcão sem atendente.
+async function pagar(forma) {
+  const botoes = [$("pagar-cartao"), $("pagar-pix")];
+  for (const b of botoes) b.disabled = true;
   $("erro-carrinho").textContent = "";
 
   const resposta = await window.totem.cobrar({
+    forma,
     nome: $("nome-cliente").value.trim(),
     observacao: null,
     itens: estado.carrinho.map((i) => ({
@@ -358,7 +365,7 @@ $("carrinho-pagar").addEventListener("click", async () => {
       notes: i.notes || null,
     })),
   });
-  botao.disabled = false;
+  for (const b of botoes) b.disabled = false;
 
   if (resposta.erro) {
     $("erro-carrinho").textContent = resposta.erro;
@@ -366,11 +373,31 @@ $("carrinho-pagar").addEventListener("click", async () => {
   }
 
   estado.pagamentoId = resposta.pagamento_id;
-  $("valor-a-pagar").textContent = dinheiro(resposta.total_centavos);
-  $("erro-pagamento").textContent = "";
-  mostrar("tela-pagamento");
+  estado.forma = forma;
+
+  if (forma === "pix") {
+    $("valor-do-pix").textContent = dinheiro(resposta.total_centavos);
+    $("erro-pix").textContent = "";
+    // a imagem vem pronta do Mercado Pago; sem ela, resta o copia e cola
+    const imagem = resposta.pix?.imagem_base64;
+    $("qr-do-pix").src = imagem ? `data:image/png;base64,${imagem}` : "";
+    $("qr-do-pix").hidden = !imagem;
+    if (!imagem) $("erro-pix").textContent = "Não consegui mostrar o código. Chame o atendente.";
+    mostrar("tela-pix");
+  } else {
+    $("valor-a-pagar").textContent = dinheiro(resposta.total_centavos);
+    $("erro-pagamento").textContent = "";
+    mostrar("tela-pagamento");
+  }
+
   acompanharPagamento(Date.now());
-});
+}
+
+$("pagar-cartao").addEventListener("click", () => pagar("cartao"));
+$("pagar-pix").addEventListener("click", () => pagar("pix"));
+
+/** onde o recado aparece depende da forma que o cliente escolheu */
+const ondeAvisar = () => (estado.forma === "pix" ? $("erro-pix") : $("erro-pagamento"));
 
 function acompanharPagamento(comecouEm) {
   clearTimeout(estado.relogioDoPagamento);
@@ -378,26 +405,32 @@ function acompanharPagamento(comecouEm) {
     if (!estado.pagamentoId) return;
 
     const resposta = await window.totem.conferirPagamento(estado.pagamentoId);
+    const aviso = ondeAvisar();
 
     if (resposta.situacao === "aprovado") {
       await finalizar(resposta.pedido);
       return;
     }
     if (resposta.situacao === "cancelado" || resposta.situacao === "recusado") {
-      $("erro-pagamento").textContent =
-        resposta.situacao === "cancelado" ? "Pagamento cancelado." : "O pagamento não foi aprovado. Tente outro cartão.";
+      aviso.textContent =
+        resposta.situacao === "cancelado"
+          ? "Pagamento cancelado."
+          : estado.forma === "pix"
+            ? "O Pix não foi aprovado. Tente de novo."
+            : "O pagamento não foi aprovado. Tente outro cartão.";
       estado.pagamentoId = null;
       setTimeout(() => mostrar("tela-carrinho"), 2500);
       return;
     }
     if (resposta.situacao === "pago_sem_pedido") {
-      $("erro-pagamento").textContent = "O pagamento passou, mas o pedido não entrou. Chame o atendente.";
+      aviso.textContent = "O pagamento passou, mas o pedido não entrou. Chame o atendente.";
       estado.pagamentoId = null;
       return;
     }
 
     if (Date.now() - comecouEm > LIMITE_DO_PAGAMENTO_MS) {
-      $("erro-pagamento").textContent = "A maquininha não respondeu. Chame o atendente.";
+      aviso.textContent =
+        estado.forma === "pix" ? "O código venceu. Comece o pedido de novo." : "A maquininha não respondeu. Chame o atendente.";
       estado.pagamentoId = null;
       return;
     }
@@ -405,19 +438,22 @@ function acompanharPagamento(comecouEm) {
   }, PASSO_DO_PAGAMENTO_MS);
 }
 
-$("pagamento-cancelar").addEventListener("click", async () => {
+async function desistirDoPagamento() {
   if (!estado.pagamentoId) return;
   clearTimeout(estado.relogioDoPagamento);
   const resposta = await window.totem.cancelarPagamento(estado.pagamentoId);
   if (resposta.erro) {
     // já pagou enquanto o dedo ia no botão: volta a acompanhar
-    $("erro-pagamento").textContent = resposta.erro;
+    ondeAvisar().textContent = resposta.erro;
     acompanharPagamento(Date.now());
     return;
   }
   estado.pagamentoId = null;
   mostrar("tela-carrinho");
-});
+}
+
+$("pagamento-cancelar").addEventListener("click", desistirDoPagamento);
+$("pix-cancelar").addEventListener("click", desistirDoPagamento);
 
 async function finalizar(via) {
   estado.pagamentoId = null;

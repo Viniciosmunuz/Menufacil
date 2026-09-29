@@ -97,14 +97,26 @@
         <input id="nome-cliente" type="text" maxlength="40" autocomplete="off" />
 
         <p id="erro-carrinho" class="erro" role="alert"></p>
+        <p class="ajuda">Como você quer pagar? No totem não recebemos dinheiro.</p>
         <div class="acoes">
-          <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
-          <button id="carrinho-pagar" class="principal">Pagar na maquininha</button>
+          <button id="pagar-cartao" class="principal">Cartão na maquininha</button>
+          <button id="pagar-pix" class="principal">Pix</button>
         </div>
+        <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
       </div>
     </section>
 
-    <!-- 6. pagamento -->
+    <!-- 6a. Pix: o QR na própria tela do totem -->
+    <section id="tela-pix" class="tela centro" hidden>
+      <h2>Pague com Pix</h2>
+      <p class="chamada" id="valor-do-pix"></p>
+      <img id="qr-do-pix" class="qr" alt="QR Code do Pix" />
+      <p class="ajuda">Abra o aplicativo do seu banco, escolha Pix e aponte a câmera para o código.</p>
+      <p id="erro-pix" class="erro" role="alert"></p>
+      <button id="pix-cancelar" class="secundario">Cancelar pedido</button>
+    </section>
+
+    <!-- 6b. cartão: a maquininha conduz -->
     <section id="tela-pagamento" class="tela centro" hidden>
       <h2>Pague na maquininha</h2>
       <p class="chamada" id="valor-a-pagar"></p>

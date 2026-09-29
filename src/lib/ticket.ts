@@ -129,7 +129,10 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   if (o.paymentMethod === "CARD") {
     lines.push(...texto(o.origin === "TOTEM" ? "Pago na maquininha do totem" : delivery ? "Levar a maquininha" : "Pagar no balcão"));
   }
-  if (o.paymentMethod === "PIX") lines.push(...texto("Conferir o comprovante no WhatsApp"));
+  // o Pix do totem já caiu na conta: não há comprovante para ninguém conferir
+  if (o.paymentMethod === "PIX") {
+    lines.push(...texto(o.origin === "TOTEM" ? "Pago por Pix no totem" : "Conferir o comprovante no WhatsApp"));
+  }
 
   // cliente
   lines.push(...titulo("CLIENTE"));

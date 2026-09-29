@@ -83,7 +83,7 @@ export function MaquininhaForm({ restaurantId, deviceId }: { restaurantId: strin
       <Field
         label="Número da maquininha (device ID)"
         htmlFor="deviceId"
-        hint="Na maquininha Point: Configurações → Informações do equipamento. Também aparece na lista de dispositivos da sua conta."
+        hint="Na maquininha Point: Configurações → Informações do equipamento. Só é preciso para o pagamento no cartão — o Pix funciona sem ela."
       >
         <Input
           id="deviceId"

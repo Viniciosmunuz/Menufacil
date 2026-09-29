@@ -185,7 +185,8 @@ export function viaEscPos(dados, papel = 80) {
     // no totem o cartão já passou: dizer "pagar no balcão" faria cobrar de novo
     via.linha(dados.origem === "TOTEM" ? "Pago na maquininha do totem" : entrega ? "Levar a maquininha" : "Pagar no balcão");
   }
-  if (forma === "PIX") via.linha("Conferir o comprovante no WhatsApp");
+  // o Pix do totem já caiu na conta: não há comprovante para conferir
+  if (forma === "PIX") via.linha(dados.origem === "TOTEM" ? "Pago por Pix no totem" : "Conferir o comprovante no WhatsApp");
 
   // cliente
   via.separador(largura).negrito(true).linha("CLIENTE").negrito(false);

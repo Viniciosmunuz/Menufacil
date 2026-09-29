@@ -11,13 +11,15 @@ do MenuFácil.
    inspetor ficam bloqueados, e a janela recupera o foco sozinha.
 2. Na primeira vez, pede o **mesmo e-mail e senha do painel**. Entrou, já abre
    no cardápio do restaurante daquela conta — sem escolher nada.
-3. O cliente monta o pedido, digita o nome e toca em pagar. A cobrança vai para
-   a **maquininha Point do próprio restaurante** (a conta do Mercado Pago dele,
-   cadastrada no painel → Totem).
-4. Aprovado o cartão, o pedido é gravado no MenuFácil como pedido normal,
+3. O cliente monta o pedido, digita o nome e escolhe como pagar: **cartão** na
+   maquininha Point ou **Pix** com o QR na própria tela. Dinheiro não existe no
+   totem — num balcão sem atendente não há quem receba nem quem dê troco.
+4. Os dois caem direto na conta do Mercado Pago do próprio restaurante,
+   cadastrada no painel → Totem. O MenuFácil não fica com nada no meio.
+5. Aprovado o pagamento, o pedido é gravado no MenuFácil como pedido normal,
    marcado como **Totem**. A comanda sai na impressora térmica ligada ao totem —
    e continua saindo também na impressora do balcão, pela aba Pedidos do painel.
-5. Para fechar o totem, cinco toques no canto superior esquerdo abrem os ajustes;
+6. Para fechar o totem, cinco toques no canto superior esquerdo abrem os ajustes;
    ali o dono digita a **senha do painel**, que é conferida no servidor.
 
 ## Rodar durante o desenvolvimento
@@ -46,15 +48,17 @@ O arquivo sai em `dist/`. Para publicar: copie o instalador para
 Tudo em `/api/totem/`, com o token do aparelho no cabeçalho `Authorization`.
 O token fica em `%APPDATA%/menufacil-totem/totem.json` e nunca chega à tela.
 
-| Endereço | Para quê |
-| --- | --- |
-| `POST /api/totem/login` | entrar com e-mail e senha do painel |
-| `POST /api/totem/parear` | ligar por código, quando não se tem a senha |
-| `GET /api/totem/cardapio` | o cardápio, já sem o que esgotou |
-| `POST /api/totem/pagamento` | manda a cobrança para a maquininha |
-| `GET /api/totem/pagamento?id=` | como está o pagamento; quando aprova, devolve a via |
-| `DELETE /api/totem/pagamento?id=` | o cliente desistiu |
-| `POST /api/totem/desbloquear` | confere a senha para sair do modo quiosque |
+- `POST /api/totem/login` — entrar com e-mail e senha do painel
+- `POST /api/totem/parear` — ligar por código, quando não se tem a senha
+- `GET /api/totem/cardapio` — o cardápio, já sem o que esgotou
+- `POST /api/totem/pagamento` — começa a cobrança (`forma: "cartao"` ou `"pix"`)
+- `GET /api/totem/pagamento?id=` — como está; quando aprova, devolve a via pronta
+- `DELETE /api/totem/pagamento?id=` — o cliente desistiu
+- `POST /api/totem/desbloquear` — confere a senha para sair do modo quiosque
+
+O totem pergunta o tempo todo como está o pagamento, em vez de esperar um aviso.
+É de propósito: assim ele funciona mesmo em restaurante que não cadastrou o
+webhook no Mercado Pago. O webhook, quando existe, só adianta o trabalho.
 
 ## Impressão
 
@@ -67,3 +71,6 @@ aplicativos podem evoluir sem quebrar um ao outro.
 - Ícone e identidade visual (`assets/`).
 - Atualização automática (o Print Fácil usa `electron-updater`).
 - Pizza montada por sabores: hoje o produto de pizza não aparece no totem.
+- Ctrl+Alt+Del e a tecla Windows: nenhum aplicativo consegue bloquear isso. Para
+  travar de verdade, o Windows precisa estar configurado com conta sem
+  privilégio e shell restrito.

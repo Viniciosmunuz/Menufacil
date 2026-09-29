@@ -388,3 +388,13 @@ details summary {
   font-size: 15px;
   cursor: pointer;
 }
+
+/* Pix: o QR precisa ser grande o bastante para a camera do celular pegar
+   de primeira, mesmo na tela de 7 polegadas */
+.qr {
+  width: min(260px, 52vh);
+  height: auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+}

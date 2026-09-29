@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
   const linha = await db.totemPayment.findFirst({
     where: { reference: referencia, restaurantId },
-    select: { id: true, status: true, orderId: true, cart: true },
+    select: { id: true, method: true, status: true, orderId: true, cart: true },
   });
   if (!linha || linha.orderId) return Response.json({ ok: true });
 
@@ -107,6 +107,7 @@ export async function POST(request: Request) {
       nome: carrinho.nome ?? "",
       itens: carrinho.itens ?? [],
       observacao: carrinho.observacao ?? null,
+      forma: linha.method,
     });
     await db.totemPayment.update({ where: { id: linha.id }, data: { orderId: pedido.id }, select: { id: true } });
   } catch (erro) {

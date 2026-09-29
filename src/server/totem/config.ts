@@ -17,8 +17,10 @@ export type TotemConfigView = {
   deviceId: string | null;
   temWebhook: boolean;
   atualizadoEm: Date | null;
-  /** tudo que a maquininha precisa já está salvo */
-  pronto: boolean;
+  /** dá para cobrar no cartão (token + maquininha) */
+  prontoCartao: boolean;
+  /** dá para cobrar por Pix (só o token; o QR nasce na conta do restaurante) */
+  prontoPix: boolean;
 };
 
 export async function verConfig(restaurantId: string): Promise<TotemConfigView> {
@@ -32,7 +34,8 @@ export async function verConfig(restaurantId: string): Promise<TotemConfigView> 
     deviceId: config?.mpDeviceId ?? null,
     temWebhook: Boolean(config?.mpWebhookKey),
     atualizadoEm: config?.updatedAt ?? null,
-    pronto: Boolean(config?.mpAccessToken && config?.mpDeviceId),
+    prontoCartao: Boolean(config?.mpAccessToken && config?.mpDeviceId),
+    prontoPix: Boolean(config?.mpAccessToken),
   };
 }
 
@@ -90,7 +93,7 @@ export async function esquecerConta(restaurantId: string) {
   });
 }
 
-export type CredenciaisDoTotem = { accessToken: string; deviceId: string; webhookKey: string | null };
+export type CredenciaisDoTotem = { accessToken: string; deviceId: string | null; webhookKey: string | null };
 
 /**
  * Credenciais em texto puro, para falar com o Mercado Pago. Só o servidor
@@ -101,7 +104,8 @@ export async function credenciais(restaurantId: string): Promise<CredenciaisDoTo
     where: { restaurantId },
     select: { mpAccessToken: true, mpDeviceId: true, mpWebhookKey: true },
   });
-  if (!config?.mpAccessToken || !config.mpDeviceId) return null;
+  // o Pix só precisa do token; a maquininha só entra no cartão
+  if (!config?.mpAccessToken) return null;
 
   try {
     return {

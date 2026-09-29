@@ -141,14 +141,17 @@ function clienteDoBalcao(restaurantId: string, nomeDoRestaurante: string) {
 }
 
 /**
- * Grava o pedido já pago na maquininha. Entra como CONFIRMED porque o
- * dinheiro já entrou: para a cozinha, é pedido para fazer agora.
+ * Grava o pedido já pago (cartão na maquininha ou Pix pelo QR). Entra
+ * como CONFIRMED porque o dinheiro já entrou: para a cozinha, é pedido
+ * para fazer agora.
  */
 export async function criarPedidoDoTotem(params: {
   restaurantId: string;
   nome: string;
   itens: ItemDoTotem[];
   observacao?: string | null;
+  /** como foi pago: cartão na maquininha ou Pix pelo QR da tela */
+  forma: "CARD" | "PIX";
 }) {
   const restaurante = await db.restaurant.findUnique({
     where: { id: params.restaurantId },
@@ -189,16 +192,23 @@ export async function criarPedidoDoTotem(params: {
         customerWhatsapp: "",
         type: "PICKUP",
         origin: "TOTEM",
-        paymentMethod: "CARD",
-        // já passou o cartão na maquininha: para a cozinha, é para fazer
+        paymentMethod: params.forma,
+        // o dinheiro já entrou (cartão ou Pix): para a cozinha, é para fazer
         status: "CONFIRMED",
         notes: (params.observacao ?? "").trim().slice(0, 300) || null,
         subtotalCents: conta.subtotalCents,
         deliveryFeeCents: 0,
         totalCents: conta.totalCents,
         items: { create: conta.linhas },
-        statusEvents: { create: { status: "CONFIRMED", note: "Pedido feito no totem e pago na maquininha" } },
-        payment: { create: { method: "CARD", status: "CONFIRMED", amountCents: conta.totalCents, confirmedAt: new Date() } },
+        statusEvents: {
+          create: {
+            status: "CONFIRMED",
+            note: params.forma === "PIX" ? "Pedido feito no totem e pago por Pix" : "Pedido feito no totem e pago na maquininha",
+          },
+        },
+        payment: {
+          create: { method: params.forma, status: "CONFIRMED", amountCents: conta.totalCents, confirmedAt: new Date() },
+        },
       },
       select: { id: true, number: true, code: true, totalCents: true, createdAt: true },
     });

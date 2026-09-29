@@ -4,14 +4,28 @@ import { db } from "@/lib/db";
 import { orderTicket } from "@/server/print/queue";
 import { credenciais } from "@/server/totem/config";
 import { tocarTotem, totemDaRequisicao } from "@/server/totem/dispositivos";
-import { cancelarIntencao, criarIntencao, situacao, verIntencao } from "@/server/totem/mercado-pago";
+import {
+  cancelarIntencao,
+  cancelarPagamento,
+  criarIntencao,
+  criarPix,
+  situacao,
+  situacaoDoPagamento,
+  verIntencao,
+  verPagamento,
+} from "@/server/totem/mercado-pago";
 import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } from "@/server/totem/pedido";
 
-// A passada de cartão no totem, em três chamadas:
+// O pagamento no totem, em três chamadas:
 //
-// POST   manda a cobrança para a maquininha e devolve um id para acompanhar
+// POST   começa a cobrança e devolve um id para acompanhar
 // GET    pergunta em que pé está; quando aprova, grava o pedido e devolve a via
-// DELETE o cliente desistiu: tira a cobrança da tela da maquininha
+// DELETE o cliente desistiu
+//
+// Duas formas, e só essas duas: **cartão** vai para a maquininha Point do
+// restaurante, e **Pix** nasce como cobrança na conta dele e volta com um
+// QR que o totem mostra na tela. Dinheiro não existe aqui -- num balcão
+// sem atendente não há quem receba nem quem dê troco.
 //
 // Quem grava o pedido é o GET, e não o webhook: assim o totem funciona
 // mesmo em restaurante que não cadastrou o webhook no Mercado Pago, e
@@ -24,19 +38,16 @@ import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } fr
 
 export const dynamic = "force-dynamic";
 
-/** dinheiro que a maquininha aceita numa passada */
+/** dinheiro que o totem aceita numa cobrança */
 const MAX_CENTAVOS = 500_000_00;
 
-async function viaDoPedido(restaurantId: string, orderId: string) {
-  const via = await orderTicket(restaurantId, orderId);
-  return via ?? null;
-}
+const viaDoPedido = async (restaurantId: string, orderId: string) => (await orderTicket(restaurantId, orderId)) ?? null;
 
 export async function POST(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 
-  let corpo: { nome?: unknown; itens?: unknown; observacao?: unknown };
+  let corpo: { nome?: unknown; itens?: unknown; observacao?: unknown; forma?: unknown };
   try {
     corpo = (await request.json()) as typeof corpo;
   } catch {
@@ -46,6 +57,7 @@ export async function POST(request: Request) {
   const nome = typeof corpo.nome === "string" ? corpo.nome : "";
   const observacao = typeof corpo.observacao === "string" ? corpo.observacao : null;
   const itens = (Array.isArray(corpo.itens) ? corpo.itens : []) as ItemDoTotem[];
+  const pedidoPix = String(corpo.forma ?? "cartao").toLowerCase() === "pix";
 
   const conta = await conferirCarrinho(totem.restaurantId, itens).catch((erro: unknown) => {
     if (erro instanceof TotemError) return erro;
@@ -56,34 +68,70 @@ export async function POST(request: Request) {
 
   const contas = await credenciais(totem.restaurantId);
   if (!contas) {
-    return Response.json({ erro: "A maquininha ainda não está configurada no painel deste restaurante." }, { status: 409 });
+    return Response.json({ erro: "O pagamento ainda não está configurado no painel deste restaurante." }, { status: 409 });
   }
 
   const referencia = randomUUID();
+  const descricao = `${totem.restaurant.name} - totem`;
+  const comum = {
+    restaurantId: totem.restaurantId,
+    deviceId: totem.id,
+    reference: referencia,
+    amountCents: conta.totalCents,
+    // o carrinho fica guardado para o pedido sair igual ao que o cliente viu
+    cart: { nome, observacao, itens: itens as unknown as object[] },
+  };
+
+  if (pedidoPix) {
+    const resposta = await criarPix({
+      accessToken: contas.accessToken,
+      amountCents: conta.totalCents,
+      descricao,
+      referencia,
+    });
+    if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 502 });
+
+    const qr = resposta.dados.point_of_interaction?.transaction_data;
+    if (!qr?.qr_code) {
+      // conta sem Pix habilitado devolve o pagamento sem QR: não adianta
+      // mostrar uma tela vazia para o cliente
+      return Response.json({ erro: "A conta deste restaurante ainda não recebe Pix. Pague no cartão." }, { status: 409 });
+    }
+
+    const pagamento = await db.totemPayment.create({
+      data: { ...comum, method: "PIX", mpPaymentId: String(resposta.dados.id) },
+      select: { id: true },
+    });
+
+    await tocarTotem(totem.id);
+    return Response.json({
+      pagamento_id: pagamento.id,
+      forma: "pix",
+      total_centavos: conta.totalCents,
+      pix: { copia_e_cola: qr.qr_code, imagem_base64: qr.qr_code_base64 ?? null },
+    });
+  }
+
+  if (!contas.deviceId) {
+    return Response.json({ erro: "A maquininha ainda não está configurada no painel deste restaurante." }, { status: 409 });
+  }
+
   const resposta = await criarIntencao({
     accessToken: contas.accessToken,
     deviceId: contas.deviceId,
     amountCents: conta.totalCents,
-    descricao: `${totem.restaurant.name} - totem`,
+    descricao,
     referencia,
   });
   if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 502 });
 
   const pagamento = await db.totemPayment.create({
-    data: {
-      restaurantId: totem.restaurantId,
-      deviceId: totem.id,
-      intentId: String(resposta.dados.id),
-      reference: referencia,
-      amountCents: conta.totalCents,
-      // o carrinho fica guardado para o pedido sair igual ao que o cliente viu
-      cart: { nome, observacao, itens: itens as unknown as object[] },
-    },
+    data: { ...comum, method: "CARD", intentId: String(resposta.dados.id) },
     select: { id: true },
   });
 
   await tocarTotem(totem.id);
-  return Response.json({ pagamento_id: pagamento.id, total_centavos: conta.totalCents });
+  return Response.json({ pagamento_id: pagamento.id, forma: "cartao", total_centavos: conta.totalCents });
 }
 
 export async function GET(request: Request) {
@@ -93,35 +141,48 @@ export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   const pagamento = await db.totemPayment.findFirst({
     where: { id, restaurantId: totem.restaurantId },
-    select: { id: true, intentId: true, status: true, amountCents: true, orderId: true, cart: true },
+    select: { id: true, method: true, intentId: true, mpPaymentId: true, status: true, orderId: true, cart: true },
   });
   if (!pagamento) return Response.json({ erro: "pagamento não encontrado" }, { status: 404 });
 
   // já gravado: devolve o pedido de novo, sem falar com o Mercado Pago
   if (pagamento.orderId) {
-    const via = await viaDoPedido(totem.restaurantId, pagamento.orderId);
-    return Response.json({ situacao: "aprovado", pedido: via });
+    return Response.json({ situacao: "aprovado", pedido: await viaDoPedido(totem.restaurantId, pagamento.orderId) });
   }
   if (pagamento.status === "CANCELED" || pagamento.status === "REJECTED" || pagamento.status === "EXPIRED") {
     return Response.json({ situacao: pagamento.status === "CANCELED" ? "cancelado" : "recusado" });
   }
 
   const contas = await credenciais(totem.restaurantId);
-  if (!contas) return Response.json({ erro: "A maquininha não está configurada." }, { status: 409 });
+  if (!contas) return Response.json({ erro: "O pagamento não está configurado." }, { status: 409 });
 
-  const resposta = await verIntencao(contas.accessToken, pagamento.intentId);
-  if (!resposta.ok) {
+  // Pix pergunta pelo pagamento; cartão pergunta pela intenção na maquininha
+  let estado: "esperando" | "aprovado" | "recusado" | "cancelado";
+  let evento: object;
+  let idNoMercadoPago: string | null = pagamento.mpPaymentId;
+
+  if (pagamento.method === "PIX") {
+    if (!pagamento.mpPaymentId) return Response.json({ situacao: "esperando" });
+    const resposta = await verPagamento(contas.accessToken, pagamento.mpPaymentId);
+    if (!resposta.ok) return Response.json({ situacao: "esperando", aviso: resposta.erro });
+    estado = situacaoDoPagamento(resposta.dados.status);
+    evento = resposta.dados;
+  } else {
+    if (!pagamento.intentId) return Response.json({ situacao: "esperando" });
+    const resposta = await verIntencao(contas.accessToken, pagamento.intentId);
     // não deu para perguntar agora: o totem tenta de novo daqui a pouco
-    return Response.json({ situacao: "esperando", aviso: resposta.erro });
+    if (!resposta.ok) return Response.json({ situacao: "esperando", aviso: resposta.erro });
+    estado = situacao(resposta.dados.state);
+    evento = resposta.dados;
+    if (resposta.dados.payment?.id) idNoMercadoPago = String(resposta.dados.payment.id);
   }
 
-  const estado = situacao(resposta.dados.state);
   if (estado === "esperando") return Response.json({ situacao: "esperando" });
 
   if (estado !== "aprovado") {
     await db.totemPayment.updateMany({
       where: { id: pagamento.id, status: "PENDING" },
-      data: { status: estado === "cancelado" ? "CANCELED" : "REJECTED", lastEvent: resposta.dados as object },
+      data: { status: estado === "cancelado" ? "CANCELED" : "REJECTED", lastEvent: evento },
     });
     return Response.json({ situacao: estado });
   }
@@ -129,12 +190,7 @@ export async function GET(request: Request) {
   // Aprovado. Vira a linha primeiro: só quem conseguir virar grava o pedido.
   const { count } = await db.totemPayment.updateMany({
     where: { id: pagamento.id, status: "PENDING" },
-    data: {
-      status: "APPROVED",
-      paidAt: new Date(),
-      mpPaymentId: resposta.dados.payment?.id ? String(resposta.dados.payment.id) : null,
-      lastEvent: resposta.dados as object,
-    },
+    data: { status: "APPROVED", paidAt: new Date(), mpPaymentId: idNoMercadoPago, lastEvent: evento },
   });
   if (count === 0) {
     // outra chamada chegou antes: ou o pedido já está lá, ou está saindo agora
@@ -150,13 +206,14 @@ export async function GET(request: Request) {
       nome: carrinho.nome ?? "",
       itens: carrinho.itens ?? [],
       observacao: carrinho.observacao ?? null,
+      forma: pagamento.method,
     });
     await db.totemPayment.update({ where: { id: pagamento.id }, data: { orderId: pedido.id }, select: { id: true } });
     await tocarTotem(totem.id);
     return Response.json({ situacao: "aprovado", pedido: await viaDoPedido(totem.restaurantId, pedido.id) });
   } catch (erro) {
-    // Cartão passou e o pedido não entrou (produto esgotou entre uma coisa e
-    // outra, banco fora do ar). O dinheiro é real: fica registrado para o
+    // O dinheiro entrou e o pedido não (produto esgotou entre uma coisa e
+    // outra, banco fora do ar). É dinheiro real: fica registrado para o
     // restaurante devolver, e a tela manda chamar o atendente.
     const motivo = erro instanceof TotemError ? erro.message : "falha ao gravar o pedido";
     await db.totemPayment.update({
@@ -175,15 +232,19 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   const pagamento = await db.totemPayment.findFirst({
     where: { id, restaurantId: totem.restaurantId },
-    select: { id: true, intentId: true, status: true },
+    select: { id: true, method: true, intentId: true, mpPaymentId: true, status: true },
   });
   if (!pagamento) return Response.json({ erro: "pagamento não encontrado" }, { status: 404 });
   if (pagamento.status !== "PENDING") return Response.json({ erro: "Esse pagamento já foi fechado." }, { status: 409 });
 
   const contas = await credenciais(totem.restaurantId);
-  if (!contas) return Response.json({ erro: "A maquininha não está configurada." }, { status: 409 });
+  if (!contas) return Response.json({ erro: "O pagamento não está configurado." }, { status: 409 });
 
-  const resposta = await cancelarIntencao(contas.accessToken, contas.deviceId, pagamento.intentId);
+  const resposta =
+    pagamento.method === "PIX"
+      ? await cancelarPagamento(contas.accessToken, pagamento.mpPaymentId ?? "")
+      : await cancelarIntencao(contas.accessToken, contas.deviceId ?? "", pagamento.intentId ?? "");
+
   // o Mercado Pago recusa cancelar o que já foi pago: nesse caso o GET resolve
   if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 409 });
 
