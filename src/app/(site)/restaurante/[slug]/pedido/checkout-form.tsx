@@ -230,12 +230,11 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
       <form ref={formRef} action={action} onSubmit={onSubmit} className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <input type="hidden" name="slug" value={restaurant.slug} />
         <input type="hidden" name="items" value={items} />
-        {/* armadilha para robôs: pessoas não veem este campo */}
-        <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
-          <label>
-            Site
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
-          </label>
+        {/* armadilha para robôs: o atributo hidden tira o campo da tela mesmo
+            se o CSS ainda não tiver carregado, e o robô continua caindo nele */}
+        <div hidden aria-hidden="true">
+          <label htmlFor="website">Site</label>
+          <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
         </div>
 
         <div className="flex min-w-0 flex-col gap-5">
@@ -470,9 +469,15 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
             {staleNotice}
             {/* o aviso também fica aqui: no celular, o topo do formulário está longe do botão */}
             {(firstError || missingPayment) && <Alert tone="danger">{firstError ?? "Escolha como você vai pagar."}</Alert>}
-            <Alert tone="warning">
-              Depois de confirmar, o WhatsApp do restaurante abre com o seu pedido escrito. <strong>Toque em enviar lá no WhatsApp</strong>: é assim que
-              o pedido chega ao restaurante.
+            {/* O pedido é gravado no sistema quando o cliente confirma, e daí
+                aparece no painel e na impressora do restaurante. O WhatsApp
+                abre depois, por conveniência. O texto antigo dizia que o
+                pedido só chegava se a pessoa tocasse em enviar lá — num aviso
+                amarelo, logo acima do botão: quem lê isso e não entende de
+                celular desiste ou acha que o pedido não foi. */}
+            <Alert tone="info">
+              Ao confirmar, <strong>seu pedido já vai para o restaurante</strong>. Em seguida o WhatsApp abre com ele escrito, caso você queira falar
+              com eles.
             </Alert>
             <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || stale.length > 0} className="w-full justify-between">
               <span>Fazer pedido</span>

@@ -104,7 +104,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           {sp.novo === "1" ? `Pedido #${order.number} criado!` : `Pedido #${order.number}`}
         </h1>
         {justPlaced && sendOrderAppLink && sendOrderLink && <OpenWhatsAppOnce code={order.code} appUrl={sendOrderAppLink} webUrl={sendOrderLink} />}
-        {sp.novo === "1" && <p className="text-muted">Seu pedido foi registrado. O WhatsApp do restaurante abre com ele escrito.</p>}
+        {sp.novo === "1" && (
+          <p className="text-muted">
+            O restaurante já recebeu. Acompanhe por esta página — ela se atualiza sozinha a cada passo.
+          </p>
+        )}
         {showSendCta && sendOrderLink && (
           <SendOrderCta code={order.code} url={sendOrderLink} chatUrl={chatLink ?? sendOrderLink} accepted={accepted} pixNote={showPix} />
         )}
