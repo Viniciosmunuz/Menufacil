@@ -133,8 +133,8 @@ export function PushAvisos({
   if (estado === "bloqueado") {
     return (
       <p className="rounded-control border border-line bg-surface-2 px-4 py-3 text-sm text-muted">
-        Este aparelho está com as notificações bloqueadas para o MenuFácil. Para receber aviso de pedido novo, libere nos ajustes do
-        navegador (o cadeado ao lado do endereço) e volte aqui.
+        Este aparelho bloqueou as notificações do MenuFácil. Para receber aviso de pedido novo, libere no cadeado ao lado do endereço e
+        volte aqui.
       </p>
     );
   }
