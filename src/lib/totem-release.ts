@@ -1,14 +1,22 @@
-// Versão do aplicativo do totem publicada no site.
+// Onde está o instalador do aplicativo do totem.
 //
-// Mesma ideia do Menu Fácil para PC (src/lib/app-release.ts): o instalador
-// fica em public/totem e publicar uma versão é copiar o arquivo para lá e
-// mudar o número aqui.
+// Ao contrário do Menu Fácil para PC, este instalador **não mora dentro do
+// site**. O arquivo tem quase 100 MB, e com os dois juntos em public/ a
+// Vercel passou a recusar o deploy inteiro. O do totem fica no Blob (o
+// mesmo lugar das fotos do sistema) e aqui guardamos só o endereço.
 //
-// Com DISPONIVEL em false, o painel mostra "em preparo" no lugar do botão
-// de baixar -- é assim que uma versão em construção não chega ao balcão.
+// Para publicar uma versão nova:
+//  1. `cd totem-app && npm run dist`
+//  2. subir `dist/MenuFacilTotem-Setup-<versão>.exe` para o Blob do projeto
+//     (Vercel → Storage → menufacil-blob → Browse data → Upload)
+//  3. colar o endereço em TOTEM_SETUP_URL e mudar TOTEM_APP_VERSION aqui.
+//
+// Sem endereço, o painel mostra "em preparo" em vez de um botão que levaria
+// a lugar nenhum.
 
 export const TOTEM_APP_VERSION = "0.1.0";
-export const TOTEM_APP_DISPONIVEL = false;
 
-/** instalador da versão atual */
-export const TOTEM_SETUP_PATH = `/totem/MenuFacilTotem-Setup-${TOTEM_APP_VERSION}.exe`;
+/** endereço público do instalador; vazio enquanto não estiver publicado */
+export const TOTEM_SETUP_URL = "";
+
+export const TOTEM_APP_DISPONIVEL = TOTEM_SETUP_URL.length > 0;

@@ -12,7 +12,7 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
 import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
-import { TOTEM_APP_DISPONIVEL, TOTEM_APP_VERSION, TOTEM_SETUP_PATH } from "@/lib/totem-release";
+import { TOTEM_APP_DISPONIVEL, TOTEM_APP_VERSION, TOTEM_SETUP_URL } from "@/lib/totem-release";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { verConfig } from "@/server/totem/config";
 import { listarTotens } from "@/server/totem/dispositivos";
@@ -207,7 +207,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           </p>
         </div>
         {TOTEM_APP_DISPONIVEL ? (
-          <a href={TOTEM_SETUP_PATH} download className={buttonClasses("primary")}>
+          <a href={TOTEM_SETUP_URL} download className={buttonClasses("primary")}>
             <Download className="size-4" aria-hidden="true" />
             Baixar (versão {TOTEM_APP_VERSION})
           </a>
