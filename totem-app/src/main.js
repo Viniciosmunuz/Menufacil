@@ -230,12 +230,32 @@ ipcMain.handle("totem:imprimirTeste", async () => {
 });
 
 // ---- sair do modo quiosque ---------------------------------------------
+//
+// Destravar e fechar são dois passos separados de propósito. Quem digitou a
+// senha quase sempre quer mexer na impressora, não fechar o totem; se a
+// senha fechasse na hora, o dono teria de abrir tudo de novo para trocar a
+// bobina. Destravado, o balcão fica aberto até alguém fechar ou voltar ao
+// atendimento.
 
 ipcMain.handle("totem:destravar", async (_evento, senha) => {
+  // quem confere a senha é o servidor: senha guardada dentro de um programa
+  // instalado no balcão não é senha
   const resposta = await chamar("/api/totem/desbloquear", { metodo: "POST", corpo: { senha } });
   if (!resposta.ok) return { erro: resposta.dados.erro ?? "Senha incorreta." };
 
   podeFechar = true;
+  return { ok: true };
+});
+
+/** voltou ao atendimento: a trava volta a valer na hora */
+ipcMain.handle("totem:travar", () => {
+  podeFechar = false;
+  return { ok: true };
+});
+
+ipcMain.handle("totem:fechar", () => {
+  // sem a senha antes, este pedido não vale nada
+  if (!podeFechar) return { erro: "Digite a senha do painel para fechar o totem." };
   // um respiro para a tela mostrar o "até logo" antes de sumir
   setTimeout(() => app.exit(0), 400);
   return { ok: true };

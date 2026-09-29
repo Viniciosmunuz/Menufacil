@@ -64,8 +64,6 @@ export type RestaurantAccess = {
     receiptWidth: number;
     // recursos liberados pelo admin: o painel usa para esconder e barrar
     printEnabled: boolean;
-    fullDeliveryEnabled: boolean;
-    chatEnabled: boolean;
     totemEnabled: boolean;
   };
   /** true quando quem está no painel é o admin da plataforma */
@@ -86,8 +84,6 @@ export const getRestaurantAccess = cache(
         status: true,
         receiptWidth: true,
         printEnabled: true,
-        fullDeliveryEnabled: true,
-        chatEnabled: true,
         totemEnabled: true,
       },
     });

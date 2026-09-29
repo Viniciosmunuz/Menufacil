@@ -47,7 +47,14 @@ const openModeLabel: Record<string, string> = {
   CLOSED: "fechado manualmente",
 };
 
-const featureLabel: Record<string, string> = Object.fromEntries(FEATURES.map((f) => [f.key, f.label]));
+// Recursos que saíram da lista continuam no histórico dos restaurantes que
+// chegaram a tê-los ligados: sem o rótulo, a linha antiga viraria um nome de
+// coluna na tela do admin.
+const featureLabel: Record<string, string> = {
+  fullDeliveryEnabled: "Pedido completo / 100% Delivery",
+  chatEnabled: "Chat do pedido",
+  ...Object.fromEntries(FEATURES.map((f) => [f.key, f.label])),
+};
 
 const fieldLabel: Record<string, string> = {
   name: "nome",

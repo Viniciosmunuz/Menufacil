@@ -14,6 +14,7 @@ const TELAS = [
   "tela-pix",
   "tela-pagamento",
   "tela-pronto",
+  "tela-senha",
   "tela-ajustes",
 ];
 
@@ -41,6 +42,11 @@ const dinheiro = (centavos) => `R$ ${(centavos / 100).toFixed(2).replace(".", ",
 
 function mostrar(id) {
   for (const tela of TELAS) $(tela).hidden = tela !== id;
+  // O campo que acabou de sumir não pode continuar com o foco: o teclado
+  // ainda escreveria nele, e o atalho da tecla M (que se cala quando alguém
+  // está escrevendo) pararia de funcionar para sempre.
+  const ativo = document.activeElement;
+  if (ativo && ativo !== document.body && !$(id).contains(ativo)) ativo.blur();
   reiniciarOcioso(id);
 }
 
@@ -161,26 +167,81 @@ function desenharCategorias() {
   desenharProdutos();
 }
 
+/** o símbolo do MenuFácil, para o produto que ainda não tem foto */
+const MARCA = `<svg viewBox="44 50 676 540" fill="none" aria-hidden="true">
+  <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="452" cy="100" r="31" stroke-width="30" />
+    <path d="M231 300A233 233 0 0 1 685 375" stroke-width="40" />
+    <path d="M283 310A181 181 0 0 1 460 194" stroke-width="22" />
+    <path d="M123 300H231" stroke-width="38" />
+    <path d="M69 375H172" stroke-width="38" />
+    <path d="M239 375H693" stroke-width="38" />
+    <path d="M114 440H337" stroke-width="38" />
+    <path d="M240 440V545" stroke-width="40" />
+    <path d="M630 532L655 428" stroke-width="36" />
+  </g>
+  <path fill="currentColor" fill-rule="evenodd" d="M220 505H630L619 552Q612 585 578 585H252Q220 585 220 553ZM410 540H462A11 11 0 0 1 462 562H410A11 11 0 0 1 410 540Z" />
+</svg>`;
+
+const ESTRELA = `<svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+// O cartão é o mesmo do cardápio que o cliente abre pelo link: foto à
+// direita, nome e descrição à esquerda, preço em laranja e o "+" no canto
+// da foto. A diferença é o que acontece ao tocar -- aqui abre o montador do
+// totem, não o carrinho do site.
 function desenharProdutos() {
   const alvo = $("produtos");
   alvo.innerHTML = "";
   const categoria = estado.categorias.find((c) => c.id === estado.categoriaAtual);
+
   for (const produto of categoria?.produtos ?? []) {
     const botao = document.createElement("button");
     botao.className = "produto";
+
+    const texto = document.createElement("span");
+    texto.className = "texto";
+
     const nome = document.createElement("span");
     nome.className = "nome";
-    nome.textContent = produto.nome;
-    const preco = document.createElement("span");
-    preco.className = "preco";
-    preco.textContent = dinheiro(produto.preco_centavos);
-    botao.append(nome, preco);
+    if (produto.destaque) nome.innerHTML = ESTRELA;
+    nome.appendChild(document.createTextNode(produto.nome));
+    texto.appendChild(nome);
+
     if (produto.descricao) {
       const desc = document.createElement("span");
       desc.className = "desc";
       desc.textContent = produto.descricao;
-      botao.appendChild(desc);
+      texto.appendChild(desc);
     }
+
+    const preco = document.createElement("span");
+    preco.className = "preco";
+    preco.textContent = dinheiro(produto.preco_centavos);
+    texto.appendChild(preco);
+
+    const foto = document.createElement("span");
+    foto.className = "foto";
+    if (produto.foto) {
+      const img = document.createElement("img");
+      img.src = produto.foto;
+      img.alt = "";
+      // foto que não carrega (internet caiu) vira a marca, não um ícone quebrado
+      img.addEventListener("error", () => {
+        foto.innerHTML = `<span class="sem-foto">${MARCA}</span><span class="mais">+</span>`;
+      });
+      foto.appendChild(img);
+    } else {
+      const vazio = document.createElement("span");
+      vazio.className = "sem-foto";
+      vazio.innerHTML = MARCA;
+      foto.appendChild(vazio);
+    }
+    const mais = document.createElement("span");
+    mais.className = "mais";
+    mais.textContent = "+";
+    foto.appendChild(mais);
+
+    botao.append(texto, foto);
     botao.addEventListener("click", () => abrirItem(produto));
     alvo.appendChild(botao);
   }
@@ -197,6 +258,9 @@ $("voltar-inicio").addEventListener("click", () => {
 
 function abrirItem(produto) {
   estado.item = { produto, quantidade: 1 };
+  const foto = $("item-foto");
+  foto.hidden = !produto.foto;
+  if (produto.foto) foto.src = produto.foto;
   $("item-nome").textContent = produto.nome;
   $("item-descricao").textContent = produto.descricao ?? "";
   $("item-obs").value = "";
@@ -474,17 +538,57 @@ async function finalizar(via) {
 
 $("pronto-voltar").addEventListener("click", () => mostrar("tela-cardapio"));
 
-// ---- canto secreto e ajustes -------------------------------------------
+// ---- destravar o totem --------------------------------------------------
+//
+// Sair daqui pede a senha do painel, e quem confere é o servidor. São dois
+// caminhos para a mesma tela, porque o totem pode estar com teclado ou sem:
+// o pontinho escondido no canto de cima, e a tecla M.
 
-let toques = [];
-$("canto").addEventListener("click", async () => {
-  const agora = Date.now();
-  toques = [...toques.filter((t) => agora - t < 3000), agora];
-  if (toques.length < 5) return;
-  toques = [];
+function pedirSenha() {
+  // no meio de um pagamento, não: o cliente está com o dinheiro na mão
+  if (estado.pagamentoId) return;
+  $("senha-admin").value = "";
+  $("erro-senha").textContent = "";
+  mostrar("tela-senha");
+  $("senha-admin").focus();
+}
 
-  const impressoras = await window.totem.impressoras();
-  const info = await window.totem.estado();
+$("canto").addEventListener("click", pedirSenha);
+
+document.addEventListener("keydown", (evento) => {
+  if (evento.key !== "m" && evento.key !== "M") return;
+  // a pessoa pode estar escrevendo o nome dela ou uma observação
+  const escrevendo = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+  if (escrevendo) return;
+  pedirSenha();
+});
+
+$("senha-voltar").addEventListener("click", () => mostrar(estado.restaurante ? "tela-inicio" : "tela-entrar"));
+
+$("senha-admin").addEventListener("keydown", (evento) => {
+  if (evento.key === "Enter") $("senha-confirmar").click();
+});
+
+$("senha-confirmar").addEventListener("click", async () => {
+  const botao = $("senha-confirmar");
+  botao.disabled = true;
+  $("erro-senha").textContent = "";
+
+  const resposta = await window.totem.destravar($("senha-admin").value);
+  botao.disabled = false;
+  $("senha-admin").value = "";
+
+  if (resposta.erro) {
+    $("erro-senha").textContent = resposta.erro;
+    return;
+  }
+  await abrirAjustes();
+});
+
+// ---- ajustes (só depois da senha) --------------------------------------
+
+async function abrirAjustes() {
+  const [impressoras, info] = await Promise.all([window.totem.impressoras(), window.totem.estado()]);
   $("impressora").innerHTML = [
     '<option value="">Impressora padrão do Windows</option>',
     ...impressoras.map((i) => `<option value="${i.nome}"${i.nome === info.impressora ? " selected" : ""}>${i.nome}</option>`),
@@ -492,7 +596,7 @@ $("canto").addEventListener("click", async () => {
   $("ajustes-info").textContent = `Versão ${info.versao} · ${info.restaurante?.nome ?? "sem restaurante"}`;
   $("recado-ajustes").textContent = "";
   mostrar("tela-ajustes");
-});
+}
 
 $("impressora").addEventListener("change", async (evento) => {
   await window.totem.escolherImpressora(evento.target.value);
@@ -505,15 +609,14 @@ $("botao-testar").addEventListener("click", async () => {
 });
 
 $("botao-sair").addEventListener("click", async () => {
-  const resposta = await window.totem.destravar($("senha-saida").value);
-  $("senha-saida").value = "";
-  if (resposta.erro) {
-    $("recado-ajustes").textContent = resposta.erro;
-    return;
-  }
-  $("recado-ajustes").textContent = "Fechando...";
+  const resposta = await window.totem.fechar();
+  $("recado-ajustes").textContent = resposta.erro ?? "Fechando...";
 });
 
-$("ajustes-voltar").addEventListener("click", () => mostrar(estado.restaurante ? "tela-inicio" : "tela-entrar"));
+$("ajustes-voltar").addEventListener("click", async () => {
+  // a trava volta a valer antes de a tela do cliente aparecer
+  await window.totem.travar();
+  mostrar(estado.restaurante ? "tela-inicio" : "tela-entrar");
+});
 
 comecar();

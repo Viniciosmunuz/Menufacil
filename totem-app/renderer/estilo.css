@@ -34,17 +34,37 @@ body {
   cursor: none; /* o totem é tocado, não clicado */
 }
 
-/* canto secreto: invisível, mas grande o bastante para o dedo achar */
+/* Botãozinho do canto: a área de toque é grande (o dedo acha sem ver), mas
+   o que aparece é um pontinho apagado. O cliente não repara; quem instalou
+   sabe onde está. */
 #canto {
   position: fixed;
   top: 0;
   left: 0;
-  width: 64px;
-  height: 64px;
-  opacity: 0;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
   border: 0;
   background: transparent;
   z-index: 100;
+  display: grid;
+  place-items: center;
+}
+
+#canto span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.22;
+}
+
+/* O "hidden" do HTML perde para o "display: flex" de .tela: sem esta linha,
+   todas as telas do totem aparecem empilhadas uma por cima da outra. */
+[hidden] {
+  display: none !important;
 }
 
 .tela {
@@ -61,6 +81,16 @@ body {
   justify-content: center;
   text-align: center;
   gap: 12px;
+}
+
+/* a tela do Pix é a mais cheia de todas: título, valor, QR, explicação e
+   o botão de desistir. Na altura de 480px, tudo aperta um pouco. */
+#tela-pix {
+  gap: 6px;
+}
+
+#tela-pix h2 {
+  margin: 0;
 }
 
 h1 {
@@ -202,9 +232,13 @@ button:disabled {
   border-color: var(--brand);
 }
 
+/* O cartão do produto é o mesmo do cardápio que o cliente abre pelo link:
+   foto à direita, nome e descrição à esquerda, preço em laranja embaixo e o
+   "+" pousado no canto da foto. Quem já pediu pelo WhatsApp reconhece a
+   tela na hora. */
 .produtos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 10px;
   flex: 1;
   align-content: start;
@@ -218,26 +252,106 @@ button:disabled {
   padding: 12px;
   text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
   margin: 0;
-  min-height: 96px;
+  min-height: 0;
+}
+
+.produto .texto {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
 }
 
 .produto .nome {
-  font-size: 17px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 16px;
   font-weight: 800;
+  line-height: 1.25;
 }
 
-.produto .preco {
+.produto .estrela {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  fill: var(--brand);
   color: var(--brand);
-  font-weight: 800;
 }
 
 .produto .desc {
+  margin-top: 4px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
+  line-height: 1.3;
+  /* duas linhas e o resto some, como no cardápio do link */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.produto .preco {
+  margin-top: auto;
+  padding-top: 8px;
+  color: var(--brand);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.produto .foto {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+}
+
+.produto .foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* sem foto, entra a marca apagada -- igual ao cardápio do link */
+.produto .sem-foto {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.produto .sem-foto svg {
+  height: 30px;
+  width: auto;
+  color: var(--brand);
+  opacity: 0.4;
+}
+
+.produto .mais {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid var(--bg);
 }
 
 /* barra do carrinho */
@@ -259,7 +373,15 @@ button:disabled {
   margin: 0;
 }
 
-/* item */
+/* item: a foto abre a tela, como na janelinha do cardápio do link */
+.foto-item {
+  width: 100%;
+  height: 108px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
 .grupo {
   border-top: 1px solid var(--line);
   padding-top: 10px;
@@ -311,6 +433,74 @@ button:disabled {
 
 .acoes button {
   flex: 1;
+}
+
+/* Na tela de 7 polegadas nem o produto nem o carrinho cabem inteiros. O
+   botão que fecha a escolha fica preso embaixo: ninguém precisa rolar para
+   achar o que continua o pedido. */
+#tela-item .caixa {
+  padding-bottom: 88px;
+}
+
+#tela-carrinho .caixa {
+  padding-bottom: 120px;
+}
+
+#tela-item .acoes,
+#tela-carrinho .acoes {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+#tela-item .acoes button,
+#tela-carrinho .acoes button {
+  margin: 0;
+}
+
+/* no carrinho o aviso do dinheiro fica em cima dos dois botões */
+#tela-carrinho .acoes {
+  flex-direction: column;
+  gap: 6px;
+}
+
+#tela-carrinho .acoes .ajuda {
+  margin: 0;
+  text-align: center;
+}
+
+#tela-carrinho .acoes .botoes {
+  display: flex;
+  gap: 10px;
+}
+
+#tela-carrinho .acoes .botoes button {
+  flex: 1;
+}
+
+/* título do carrinho com a volta ao lado, para o botão de pagar ficar
+   sozinho embaixo */
+.titulo-com-volta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titulo-com-volta h2 {
+  margin: 0;
+}
+
+.titulo-com-volta button {
+  margin: 0;
+  min-height: 44px;
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
 /* carrinho */
@@ -392,7 +582,7 @@ details summary {
 /* Pix: o QR precisa ser grande o bastante para a camera do celular pegar
    de primeira, mesmo na tela de 7 polegadas */
 .qr {
-  width: min(260px, 52vh);
+  width: min(208px, 42vh);
   height: auto;
   background: #fff;
   border-radius: 12px;

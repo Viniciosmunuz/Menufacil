@@ -24,4 +24,6 @@ contextBridge.exposeInMainWorld("totem", {
   imprimirTeste: () => ipcRenderer.invoke("totem:imprimirTeste"),
 
   destravar: (senha) => ipcRenderer.invoke("totem:destravar", senha),
+  travar: () => ipcRenderer.invoke("totem:travar"),
+  fechar: () => ipcRenderer.invoke("totem:fechar"),
 });

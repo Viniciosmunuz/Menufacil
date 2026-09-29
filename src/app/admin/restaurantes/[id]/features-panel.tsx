@@ -30,9 +30,7 @@ export function FeaturesPanel({ restaurantId, features }: { restaurantId: string
           <input type="checkbox" checked disabled className="mt-0.5 size-5 shrink-0 accent-brand" aria-label="Pedido pelo WhatsApp" />
           <span className="flex flex-col">
             <span className="font-bold">Pedido pelo WhatsApp</span>
-            <span className="text-sm text-muted">
-              É como todo restaurante recebe pedido hoje. Vai poder ser desligado quando o 100% Delivery estiver pronto.
-            </span>
+            <span className="text-sm text-muted">É como todo restaurante recebe pedido hoje.</span>
           </span>
         </div>
 

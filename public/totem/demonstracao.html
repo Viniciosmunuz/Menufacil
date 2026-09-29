@@ -1,0 +1,1522 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Menu Fácil Totem · demonstração</title>
+    <style>
+/* Tela do totem: 7 polegadas, 800x480, dedo em vez de mouse.
+   As mesmas cores do MenuFácil (fundo escuro, laranja da marca). */
+
+:root {
+  --bg: #0a0e14;
+  --surface: #131922;
+  --surface-2: #1b232e;
+  --line: #2a3441;
+  --ink: #f2f5f9;
+  --muted: #9aa7b8;
+  --brand: #ff8a1f;
+  --brand-ink: #1a0f02;
+  --danger: #ff5c5c;
+  --success: #37d399;
+  --raio: 14px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, "Segoe UI", sans-serif;
+  font-size: 18px;
+  overflow: hidden;
+  cursor: none; /* o totem é tocado, não clicado */
+}
+
+/* Botãozinho do canto: a área de toque é grande (o dedo acha sem ver), mas
+   o que aparece é um pontinho apagado. O cliente não repara; quem instalou
+   sabe onde está. */
+#canto {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+}
+
+#canto span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.22;
+}
+
+/* O "hidden" do HTML perde para o "display: flex" de .tela: sem esta linha,
+   todas as telas do totem aparecem empilhadas uma por cima da outra. */
+[hidden] {
+  display: none !important;
+}
+
+.tela {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: auto;
+}
+
+.tela.centro {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+
+/* a tela do Pix é a mais cheia de todas: título, valor, QR, explicação e
+   o botão de desistir. Na altura de 480px, tudo aperta um pouco. */
+#tela-pix {
+  gap: 6px;
+}
+
+#tela-pix h2 {
+  margin: 0;
+}
+
+h1 {
+  font-size: 30px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+
+.chamada {
+  font-size: 22px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.senha {
+  font-size: 96px;
+  font-weight: 800;
+  color: var(--brand);
+  margin: 0;
+  line-height: 1;
+}
+
+.ajuda {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 4px 0;
+}
+
+.erro {
+  color: var(--danger);
+  font-weight: 700;
+  min-height: 22px;
+  margin: 6px 0;
+}
+
+.caixa {
+  width: min(520px, 100%);
+  margin: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.caixa.larga {
+  width: min(720px, 100%);
+}
+
+label {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+input,
+select {
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 0 14px;
+  font-size: 18px;
+  width: 100%;
+}
+
+button {
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 0 20px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+button.principal {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+button.secundario {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+button.perigo {
+  background: var(--danger);
+  color: #fff;
+}
+
+button.grande {
+  min-height: 76px;
+  font-size: 24px;
+  padding: 0 40px;
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+/* cardápio */
+.topo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.categorias {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.categorias button {
+  margin: 0;
+  min-height: 48px;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.categorias button[aria-current="true"] {
+  background: var(--brand);
+  color: var(--brand-ink);
+  border-color: var(--brand);
+}
+
+/* O cartão do produto é o mesmo do cardápio que o cliente abre pelo link:
+   foto à direita, nome e descrição à esquerda, preço em laranja embaixo e o
+   "+" pousado no canto da foto. Quem já pediu pelo WhatsApp reconhece a
+   tela na hora. */
+.produtos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+  flex: 1;
+  align-content: start;
+  padding-bottom: 80px;
+}
+
+.produto {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--raio);
+  padding: 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0;
+  min-height: 0;
+}
+
+.produto .texto {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.produto .nome {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.produto .estrela {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  fill: var(--brand);
+  color: var(--brand);
+}
+
+.produto .desc {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  /* duas linhas e o resto some, como no cardápio do link */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.produto .preco {
+  margin-top: auto;
+  padding-top: 8px;
+  color: var(--brand);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.produto .foto {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+}
+
+.produto .foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* sem foto, entra a marca apagada -- igual ao cardápio do link */
+.produto .sem-foto {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.produto .sem-foto svg {
+  height: 30px;
+  width: auto;
+  color: var(--brand);
+  opacity: 0.4;
+}
+
+.produto .mais {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid var(--bg);
+}
+
+/* barra do carrinho */
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.barra button {
+  margin: 0;
+}
+
+/* item: a foto abre a tela, como na janelinha do cardápio do link */
+.foto-item {
+  width: 100%;
+  height: 108px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+.grupo {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.grupo h3 {
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 6px;
+  background: var(--surface-2);
+}
+
+.opcao input {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--brand);
+}
+
+.quantidade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-size: 26px;
+  font-weight: 800;
+  margin-top: 12px;
+}
+
+.quantidade button {
+  width: 64px;
+  margin: 0;
+}
+
+.acoes {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.acoes button {
+  flex: 1;
+}
+
+/* Na tela de 7 polegadas nem o produto nem o carrinho cabem inteiros. O
+   botão que fecha a escolha fica preso embaixo: ninguém precisa rolar para
+   achar o que continua o pedido. */
+#tela-item .caixa {
+  padding-bottom: 88px;
+}
+
+#tela-carrinho .caixa {
+  padding-bottom: 120px;
+}
+
+#tela-item .acoes,
+#tela-carrinho .acoes {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+#tela-item .acoes button,
+#tela-carrinho .acoes button {
+  margin: 0;
+}
+
+/* no carrinho o aviso do dinheiro fica em cima dos dois botões */
+#tela-carrinho .acoes {
+  flex-direction: column;
+  gap: 6px;
+}
+
+#tela-carrinho .acoes .ajuda {
+  margin: 0;
+  text-align: center;
+}
+
+#tela-carrinho .acoes .botoes {
+  display: flex;
+  gap: 10px;
+}
+
+#tela-carrinho .acoes .botoes button {
+  flex: 1;
+}
+
+/* título do carrinho com a volta ao lado, para o botão de pagar ficar
+   sozinho embaixo */
+.titulo-com-volta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titulo-com-volta h2 {
+  margin: 0;
+}
+
+.titulo-com-volta button {
+  margin: 0;
+  min-height: 44px;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* carrinho */
+.lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 46vh;
+  overflow: auto;
+}
+
+.lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.lista .escolhas {
+  display: block;
+  color: var(--brand);
+  font-size: 14px;
+}
+
+.lista .obs {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lista button {
+  min-height: 40px;
+  margin: 0;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.total {
+  font-size: 22px;
+  text-align: right;
+  margin: 10px 0 0;
+}
+
+/* espera do pagamento */
+.pulsando {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 6px solid var(--line);
+  border-top-color: var(--brand);
+  animation: girar 1s linear infinite;
+  margin: 10px auto;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 16px 0 4px;
+  width: 100%;
+}
+
+details summary {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* Pix: o QR precisa ser grande o bastante para a camera do celular pegar
+   de primeira, mesmo na tela de 7 polegadas */
+.qr {
+  width: min(208px, 42vh);
+  height: auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+</style>
+  </head>
+  <body>
+    <!-- Botãozinho escondido no canto: o cliente não repara, quem instalou
+         acha de olhos fechados. Um toque (ou a tecla M) pede a senha. -->
+    <button id="canto" aria-label="Ajustes do totem"><span></span></button>
+
+    <!-- 1. entrar -->
+    <section id="tela-entrar" class="tela" hidden>
+      <div class="caixa">
+        <h1>Menu Fácil Totem</h1>
+        <p class="ajuda">Entre com o mesmo e-mail e senha do seu painel.</p>
+
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="off" inputmode="email" />
+
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" autocomplete="off" />
+
+        <div id="escolha-restaurante" hidden>
+          <label for="restaurante">Restaurante</label>
+          <select id="restaurante"></select>
+        </div>
+
+        <button id="botao-entrar" class="principal">Entrar</button>
+        <p id="erro-entrar" class="erro" role="alert"></p>
+
+        <details>
+          <summary>Não tem a senha à mão?</summary>
+          <p class="ajuda">Peça ao dono o código que aparece no painel dele, na seção Totem.</p>
+          <label for="codigo">Código do totem</label>
+          <input id="codigo" type="text" autocomplete="off" placeholder="TT-0000-000" />
+          <button id="botao-parear" class="secundario">Ligar por código</button>
+
+          <label for="servidor">Endereço do servidor</label>
+          <input id="servidor" type="text" autocomplete="off" />
+          <button id="botao-servidor" class="secundario">Salvar endereço</button>
+        </details>
+      </div>
+    </section>
+
+    <!-- 2. descanso -->
+    <section id="tela-inicio" class="tela centro" hidden>
+      <h1 id="nome-do-restaurante"></h1>
+      <p class="chamada">Toque na tela para fazer o seu pedido</p>
+      <button id="botao-comecar" class="principal grande">Começar</button>
+      <p id="aviso-fechado" class="erro" hidden>O restaurante está fechado agora.</p>
+    </section>
+
+    <!-- 3. cardápio -->
+    <section id="tela-cardapio" class="tela" hidden>
+      <header class="topo">
+        <button id="voltar-inicio" class="secundario">Início</button>
+        <nav id="categorias" class="categorias"></nav>
+      </header>
+      <div id="produtos" class="produtos"></div>
+      <footer id="barra-carrinho" class="barra" hidden>
+        <span id="resumo-carrinho"></span>
+        <button id="botao-carrinho" class="principal">Ver pedido</button>
+      </footer>
+    </section>
+
+    <!-- 4. item -->
+    <section id="tela-item" class="tela" hidden>
+      <div class="caixa larga">
+        <img id="item-foto" class="foto-item" alt="" hidden />
+        <h2 id="item-nome"></h2>
+        <p id="item-descricao" class="ajuda"></p>
+        <div id="item-grupos"></div>
+        <label for="item-obs">Alguma observação?</label>
+        <input id="item-obs" type="text" maxlength="140" placeholder="Ex.: sem cebola" />
+        <div class="quantidade">
+          <button id="menos" class="secundario">−</button>
+          <span id="item-qtd">1</span>
+          <button id="mais" class="secundario">+</button>
+        </div>
+        <p id="erro-item" class="erro" role="alert"></p>
+        <div class="acoes">
+          <button id="item-cancelar" class="secundario">Voltar</button>
+          <button id="item-adicionar" class="principal">Adicionar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. carrinho -->
+    <section id="tela-carrinho" class="tela" hidden>
+      <div class="caixa larga">
+        <div class="titulo-com-volta">
+          <h2>Seu pedido</h2>
+          <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
+        </div>
+        <ul id="lista-carrinho" class="lista"></ul>
+        <p class="total">Total: <strong id="total-carrinho"></strong></p>
+
+        <label for="nome-cliente">Seu nome (para chamarmos quando ficar pronto)</label>
+        <input id="nome-cliente" type="text" maxlength="40" autocomplete="off" />
+
+        <p id="erro-carrinho" class="erro" role="alert"></p>
+        <div class="acoes">
+          <p class="ajuda">Como você quer pagar? No totem não recebemos dinheiro.</p>
+          <div class="botoes">
+            <button id="pagar-cartao" class="principal">Cartão na maquininha</button>
+            <button id="pagar-pix" class="principal">Pix</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6a. Pix: o QR na própria tela do totem -->
+    <section id="tela-pix" class="tela centro" hidden>
+      <h2>Pague com Pix</h2>
+      <p class="chamada" id="valor-do-pix"></p>
+      <img id="qr-do-pix" class="qr" alt="QR Code do Pix" />
+      <p class="ajuda">Abra o aplicativo do seu banco, escolha Pix e aponte a câmera para o código.</p>
+      <p id="erro-pix" class="erro" role="alert"></p>
+      <button id="pix-cancelar" class="secundario">Cancelar pedido</button>
+    </section>
+
+    <!-- 6b. cartão: a maquininha conduz -->
+    <section id="tela-pagamento" class="tela centro" hidden>
+      <h2>Pague na maquininha</h2>
+      <p class="chamada" id="valor-a-pagar"></p>
+      <p class="ajuda">Siga as instruções na maquininha ao lado da tela.</p>
+      <div class="pulsando"></div>
+      <p id="erro-pagamento" class="erro" role="alert"></p>
+      <button id="pagamento-cancelar" class="secundario">Cancelar pedido</button>
+    </section>
+
+    <!-- 7. pronto -->
+    <section id="tela-pronto" class="tela centro" hidden>
+      <p class="chamada">Pedido confirmado!</p>
+      <p class="senha" id="numero-do-pedido"></p>
+      <p class="ajuda">Guarde a sua senha e acompanhe no painel. A comanda está saindo.</p>
+      <button id="pronto-voltar" class="principal grande">Fazer outro pedido</button>
+    </section>
+
+    <!-- 8. a senha, antes de qualquer ajuste -->
+    <section id="tela-senha" class="tela" hidden>
+      <div class="caixa">
+        <h2>Área do restaurante</h2>
+        <p class="ajuda">Digite a senha do painel para destravar o totem.</p>
+
+        <label for="senha-admin">Senha</label>
+        <input id="senha-admin" type="password" autocomplete="off" />
+
+        <p id="erro-senha" class="erro" role="alert"></p>
+        <div class="acoes">
+          <button id="senha-voltar" class="secundario">Voltar</button>
+          <button id="senha-confirmar" class="principal">Destravar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. ajustes: só se chega aqui depois da senha -->
+    <section id="tela-ajustes" class="tela" hidden>
+      <div class="caixa">
+        <h2>Ajustes do totem</h2>
+        <p class="ajuda" id="ajustes-info"></p>
+
+        <label for="impressora">Impressora da comanda</label>
+        <select id="impressora"></select>
+        <button id="botao-testar" class="secundario">Imprimir via de teste</button>
+
+        <hr />
+        <button id="botao-sair" class="perigo">Fechar o totem</button>
+
+        <p id="recado-ajustes" class="erro" role="alert"></p>
+        <button id="ajustes-voltar" class="secundario">Voltar ao atendimento</button>
+      </div>
+    </section>
+
+    <script>
+
+function qrFalso() {
+  const lado = 21;
+  const tela = document.createElement("canvas");
+  tela.width = tela.height = lado * 8;
+  const ctx = tela.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, tela.width, tela.height);
+  ctx.fillStyle = "#000";
+  let semente = 7;
+  const sorte = () => ((semente = (semente * 1103515245 + 12345) % 2147483648) / 2147483648);
+  for (let y = 0; y < lado; y++) {
+    for (let x = 0; x < lado; x++) if (sorte() > 0.5) ctx.fillRect(x * 8, y * 8, 8, 8);
+  }
+  for (const [cx, cy] of [[0, 0], [lado - 7, 0], [0, lado - 7]]) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(cx * 8, cy * 8, 7 * 8, 7 * 8);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(cx * 8, cy * 8, 7 * 8, 8);
+    ctx.fillRect(cx * 8, (cy + 6) * 8, 7 * 8, 8);
+    ctx.fillRect(cx * 8, cy * 8, 8, 7 * 8);
+    ctx.fillRect((cx + 6) * 8, cy * 8, 8, 7 * 8);
+    ctx.fillRect((cx + 2) * 8, (cy + 2) * 8, 3 * 8, 3 * 8);
+  }
+  return tela.toDataURL("image/png").split(",")[1];
+}
+
+// as fotos vêm do site, como no totem de verdade
+const FOTO = (arquivo) => location.origin + "/implantacao/papaleguas/" + arquivo;
+
+const CATEGORIAS = [
+  { id: "c1", nome: "Grelhados", produtos: [
+    { id: "p1", nome: "Contra filé", descricao: "Arroz branco, batata frita e salada.", foto: FOTO("file-de-carne.webp"), destaque: true, preco_centavos: 3400, grupos: [
+      { id: "g1", nome: "Ponto da carne", minimo: 1, maximo: 1, opcoes: [
+        { id: "o1", nome: "Ao ponto", preco_centavos: 0 },
+        { id: "o2", nome: "Bem passada", preco_centavos: 0 },
+        { id: "o3", nome: "Mal passada", preco_centavos: 0 },
+      ] },
+      { id: "g2", nome: "Adicionais", minimo: 0, maximo: 3, opcoes: [
+        { id: "o4", nome: "Ovo", preco_centavos: 300 },
+        { id: "o5", nome: "Bacon", preco_centavos: 600 },
+        { id: "o6", nome: "Queijo", preco_centavos: 400 },
+      ] },
+    ] },
+    { id: "p2", nome: "Filé de frango", descricao: "Arroz, feijão e fritas.", foto: FOTO("file-de-frango.webp"), destaque: false, preco_centavos: 2900, grupos: [] },
+    { id: "p3", nome: "Picanha na chapa", descricao: "Serve duas pessoas.", foto: FOTO("picanha.webp"), destaque: true, preco_centavos: 7900, grupos: [] },
+    { id: "p4", nome: "Frango a passarinho", descricao: "Com mandioca frita e vinagrete.", foto: FOTO("frango-passarinho.webp"), destaque: false, preco_centavos: 4500, grupos: [] },
+  ] },
+  { id: "c2", nome: "Lanches", produtos: [
+    { id: "p5", nome: "Bauru", descricao: "Pão, queijo derretido, presunto e tomate.", foto: FOTO("bauru.webp"), destaque: false, preco_centavos: 1800, grupos: [] },
+    { id: "p6", nome: "Misto quente", descricao: "O de sempre, bem prensado.", foto: FOTO("misto.webp"), destaque: false, preco_centavos: 1400, grupos: [] },
+    { id: "p11", nome: "Sanduíche natural", descricao: "Frango desfiado e salada.", foto: FOTO("sanduiche-natural.webp"), destaque: false, preco_centavos: 1600, grupos: [] },
+  ] },
+  { id: "c3", nome: "Porções", produtos: [
+    { id: "p7", nome: "Calabresa acebolada", descricao: "Serve duas pessoas.", foto: FOTO("calabresa.webp"), destaque: false, preco_centavos: 2800, grupos: [] },
+    { id: "p8", nome: "Filé de pirarucu", descricao: "Com arroz e farofa.", foto: FOTO("file-de-pirarucu.webp"), destaque: true, preco_centavos: 5200, grupos: [] },
+  ] },
+  { id: "c4", nome: "Bebidas", produtos: [
+    { id: "p9", nome: "Suco de lata", descricao: null, foto: FOTO("suco-lata.webp"), destaque: false, preco_centavos: 700, grupos: [] },
+    { id: "p10", nome: "Suco detox", descricao: "Copo de 400 ml", foto: FOTO("suco-detox.webp"), destaque: false, preco_centavos: 1000, grupos: [] },
+    { id: "p12", nome: "Água tônica", descricao: null, foto: FOTO("agua-tonica.webp"), destaque: false, preco_centavos: 600, grupos: [] },
+  ] },
+];
+
+// na demonstração o pagamento aprova sozinho depois de uns segundos
+let aprovaEm = 0;
+
+window.totem = {
+  estado: async () => ({
+    servidor: "https://menufacildelivery.com.br",
+    restaurante: { id: "r1", nome: "Papaléguas", slug: "papaleguas" },
+    impressora: "Tomate MTI-773",
+    pareado: true,
+    versao: "demonstração",
+  }),
+  servidor: async () => ({ ok: true }),
+  entrar: async () => ({ ok: true, restaurante: { nome: "Papaléguas" } }),
+  parear: async () => ({ ok: true, restaurante: { nome: "Papaléguas" } }),
+  cardapio: async () => ({
+    restaurante: { id: "r1", nome: "Papaléguas", logo: null, aberto: true, pedido_minimo_centavos: 0, papel_mm: 80 },
+    categorias: CATEGORIAS,
+  }),
+  cobrar: async ({ forma, itens }) => {
+    aprovaEm = Date.now() + 12000;
+    const total = itens.reduce((s, i) => s + i.quantity * 1000, 0) || 4300;
+    return {
+      pagamento_id: "demo",
+      forma,
+      total_centavos: total,
+      pix: forma === "pix" ? { copia_e_cola: "00020126...", imagem_base64: qrFalso() } : undefined,
+    };
+  },
+  conferirPagamento: async () => {
+    if (Date.now() < aprovaEm) return { situacao: "esperando" };
+    return { situacao: "aprovado", pedido: { numero: 42 } };
+  },
+  cancelarPagamento: async () => ({ ok: true }),
+  impressoras: async () => [{ nome: "Tomate MTI-773", padrao: true }, { nome: "Microsoft Print to PDF", padrao: false }],
+  escolherImpressora: async () => ({ ok: true }),
+  imprimir: async () => ({ ok: true, impressora: "Tomate MTI-773" }),
+  imprimirTeste: async () => ({ ok: true, impressora: "Tomate MTI-773" }),
+  destravar: async (senha) => (senha ? { ok: true } : { erro: "Digite a senha do painel." }),
+  travar: async () => ({ ok: true }),
+  fechar: async () => ({ ok: true }),
+};
+
+</script>
+<script>
+// A tela do totem.
+//
+// Ela não fala com o servidor nem com a impressora: pede tudo pela ponte
+// window.totem (ver src/preload.cjs). O preço mostrado aqui é só para o
+// cliente ver — quem soma de verdade é o servidor, na hora de cobrar.
+
+const $ = (id) => document.getElementById(id);
+const TELAS = [
+  "tela-entrar",
+  "tela-inicio",
+  "tela-cardapio",
+  "tela-item",
+  "tela-carrinho",
+  "tela-pix",
+  "tela-pagamento",
+  "tela-pronto",
+  "tela-senha",
+  "tela-ajustes",
+];
+
+/** volta sozinho para a tela de descanso quando ninguém mexe */
+const OCIOSO_MS = 90_000;
+/** de quanto em quanto tempo perguntamos à maquininha */
+const PASSO_DO_PAGAMENTO_MS = 2000;
+/** desiste de esperar o cartão depois disto */
+const LIMITE_DO_PAGAMENTO_MS = 5 * 60 * 1000;
+
+const estado = {
+  restaurante: null,
+  categorias: [],
+  categoriaAtual: null,
+  carrinho: [],
+  item: null,
+  pagamentoId: null,
+  /** "cartao" ou "pix": muda onde o recado aparece e o que ele diz */
+  forma: null,
+  relogioDoPagamento: null,
+  ocioso: null,
+};
+
+const dinheiro = (centavos) => `R$ ${(centavos / 100).toFixed(2).replace(".", ",")}`;
+
+function mostrar(id) {
+  for (const tela of TELAS) $(tela).hidden = tela !== id;
+  // O campo que acabou de sumir não pode continuar com o foco: o teclado
+  // ainda escreveria nele, e o atalho da tecla M (que se cala quando alguém
+  // está escrevendo) pararia de funcionar para sempre.
+  const ativo = document.activeElement;
+  if (ativo && ativo !== document.body && !$(id).contains(ativo)) ativo.blur();
+  reiniciarOcioso(id);
+}
+
+// ---- volta para o descanso sozinho -------------------------------------
+
+function reiniciarOcioso(telaAtual) {
+  clearTimeout(estado.ocioso);
+  // nas telas em que o cliente não está decidindo nada, não faz sentido
+  const espera = ["tela-cardapio", "tela-item", "tela-carrinho"].includes(telaAtual);
+  if (!espera) return;
+  estado.ocioso = setTimeout(() => {
+    estado.carrinho = [];
+    mostrar("tela-inicio");
+  }, OCIOSO_MS);
+}
+
+document.addEventListener("pointerdown", () => {
+  const aberta = TELAS.find((t) => !$(t).hidden);
+  if (aberta) reiniciarOcioso(aberta);
+});
+
+// ---- entrar -------------------------------------------------------------
+
+async function comecar() {
+  const info = await window.totem.estado();
+  $("servidor").value = info.servidor;
+  $("ajustes-info").textContent = `Versão ${info.versao} · ${info.restaurante?.nome ?? "sem restaurante"} · impressora: ${info.impressora ?? "não escolhida"}`;
+
+  if (!info.pareado) {
+    mostrar("tela-entrar");
+    return;
+  }
+  estado.restaurante = info.restaurante;
+  await carregarCardapio();
+}
+
+$("botao-entrar").addEventListener("click", async () => {
+  const botao = $("botao-entrar");
+  botao.disabled = true;
+  $("erro-entrar").textContent = "";
+
+  const escolhido = $("escolha-restaurante").hidden ? null : $("restaurante").value;
+  const resposta = await window.totem.entrar({
+    email: $("email").value.trim(),
+    senha: $("senha").value,
+    restauranteId: escolhido,
+  });
+  botao.disabled = false;
+
+  if (resposta.escolha) {
+    $("escolha-restaurante").hidden = false;
+    $("restaurante").innerHTML = resposta.escolha.map((r) => `<option value="${r.id}">${r.nome}</option>`).join("");
+    $("erro-entrar").textContent = "Escolha o restaurante e entre de novo.";
+    return;
+  }
+  if (resposta.erro) {
+    $("erro-entrar").textContent = resposta.erro;
+    return;
+  }
+
+  $("senha").value = "";
+  estado.restaurante = resposta.restaurante;
+  await carregarCardapio();
+});
+
+$("botao-parear").addEventListener("click", async () => {
+  $("erro-entrar").textContent = "";
+  const resposta = await window.totem.parear($("codigo").value.trim());
+  if (resposta.erro) {
+    $("erro-entrar").textContent = resposta.erro;
+    return;
+  }
+  estado.restaurante = resposta.restaurante;
+  await carregarCardapio();
+});
+
+$("botao-servidor").addEventListener("click", async () => {
+  const resposta = await window.totem.servidor($("servidor").value);
+  $("erro-entrar").textContent = resposta.erro ?? "Endereço salvo.";
+});
+
+// ---- cardápio -----------------------------------------------------------
+
+async function carregarCardapio() {
+  const dados = await window.totem.cardapio();
+  if (dados.erro) {
+    $("erro-entrar").textContent = dados.erro;
+    mostrar("tela-entrar");
+    return;
+  }
+
+  estado.restaurante = dados.restaurante;
+  estado.categorias = dados.categorias;
+  estado.categoriaAtual = dados.categorias[0]?.id ?? null;
+
+  $("nome-do-restaurante").textContent = dados.restaurante.nome;
+  $("aviso-fechado").hidden = dados.restaurante.aberto;
+  $("botao-comecar").disabled = !dados.restaurante.aberto;
+
+  desenharCategorias();
+  mostrar("tela-inicio");
+}
+
+function desenharCategorias() {
+  const nav = $("categorias");
+  nav.innerHTML = "";
+  for (const categoria of estado.categorias) {
+    const botao = document.createElement("button");
+    botao.textContent = categoria.nome;
+    botao.setAttribute("aria-current", String(categoria.id === estado.categoriaAtual));
+    botao.addEventListener("click", () => {
+      estado.categoriaAtual = categoria.id;
+      desenharCategorias();
+      desenharProdutos();
+    });
+    nav.appendChild(botao);
+  }
+  desenharProdutos();
+}
+
+/** o símbolo do MenuFácil, para o produto que ainda não tem foto */
+const MARCA = `<svg viewBox="44 50 676 540" fill="none" aria-hidden="true">
+  <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="452" cy="100" r="31" stroke-width="30" />
+    <path d="M231 300A233 233 0 0 1 685 375" stroke-width="40" />
+    <path d="M283 310A181 181 0 0 1 460 194" stroke-width="22" />
+    <path d="M123 300H231" stroke-width="38" />
+    <path d="M69 375H172" stroke-width="38" />
+    <path d="M239 375H693" stroke-width="38" />
+    <path d="M114 440H337" stroke-width="38" />
+    <path d="M240 440V545" stroke-width="40" />
+    <path d="M630 532L655 428" stroke-width="36" />
+  </g>
+  <path fill="currentColor" fill-rule="evenodd" d="M220 505H630L619 552Q612 585 578 585H252Q220 585 220 553ZM410 540H462A11 11 0 0 1 462 562H410A11 11 0 0 1 410 540Z" />
+</svg>`;
+
+const ESTRELA = `<svg class="estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+
+// O cartão é o mesmo do cardápio que o cliente abre pelo link: foto à
+// direita, nome e descrição à esquerda, preço em laranja e o "+" no canto
+// da foto. A diferença é o que acontece ao tocar -- aqui abre o montador do
+// totem, não o carrinho do site.
+function desenharProdutos() {
+  const alvo = $("produtos");
+  alvo.innerHTML = "";
+  const categoria = estado.categorias.find((c) => c.id === estado.categoriaAtual);
+
+  for (const produto of categoria?.produtos ?? []) {
+    const botao = document.createElement("button");
+    botao.className = "produto";
+
+    const texto = document.createElement("span");
+    texto.className = "texto";
+
+    const nome = document.createElement("span");
+    nome.className = "nome";
+    if (produto.destaque) nome.innerHTML = ESTRELA;
+    nome.appendChild(document.createTextNode(produto.nome));
+    texto.appendChild(nome);
+
+    if (produto.descricao) {
+      const desc = document.createElement("span");
+      desc.className = "desc";
+      desc.textContent = produto.descricao;
+      texto.appendChild(desc);
+    }
+
+    const preco = document.createElement("span");
+    preco.className = "preco";
+    preco.textContent = dinheiro(produto.preco_centavos);
+    texto.appendChild(preco);
+
+    const foto = document.createElement("span");
+    foto.className = "foto";
+    if (produto.foto) {
+      const img = document.createElement("img");
+      img.src = produto.foto;
+      img.alt = "";
+      // foto que não carrega (internet caiu) vira a marca, não um ícone quebrado
+      img.addEventListener("error", () => {
+        foto.innerHTML = `<span class="sem-foto">${MARCA}</span><span class="mais">+</span>`;
+      });
+      foto.appendChild(img);
+    } else {
+      const vazio = document.createElement("span");
+      vazio.className = "sem-foto";
+      vazio.innerHTML = MARCA;
+      foto.appendChild(vazio);
+    }
+    const mais = document.createElement("span");
+    mais.className = "mais";
+    mais.textContent = "+";
+    foto.appendChild(mais);
+
+    botao.append(texto, foto);
+    botao.addEventListener("click", () => abrirItem(produto));
+    alvo.appendChild(botao);
+  }
+}
+
+$("botao-comecar").addEventListener("click", () => mostrar("tela-cardapio"));
+$("voltar-inicio").addEventListener("click", () => {
+  estado.carrinho = [];
+  atualizarBarra();
+  mostrar("tela-inicio");
+});
+
+// ---- item ---------------------------------------------------------------
+
+function abrirItem(produto) {
+  estado.item = { produto, quantidade: 1 };
+  const foto = $("item-foto");
+  foto.hidden = !produto.foto;
+  if (produto.foto) foto.src = produto.foto;
+  $("item-nome").textContent = produto.nome;
+  $("item-descricao").textContent = produto.descricao ?? "";
+  $("item-obs").value = "";
+  $("item-qtd").textContent = "1";
+  $("erro-item").textContent = "";
+
+  const alvo = $("item-grupos");
+  alvo.innerHTML = "";
+  for (const grupo of produto.grupos) {
+    const bloco = document.createElement("div");
+    bloco.className = "grupo";
+    const titulo = document.createElement("h3");
+    const obrigatorio = grupo.minimo > 0 ? " (obrigatório)" : "";
+    titulo.textContent = `${grupo.nome}${obrigatorio}`;
+    bloco.appendChild(titulo);
+
+    const unico = grupo.maximo === 1;
+    for (const opcao of grupo.opcoes) {
+      const linha = document.createElement("label");
+      linha.className = "opcao";
+      const campo = document.createElement("input");
+      campo.type = unico ? "radio" : "checkbox";
+      campo.name = `grupo-${grupo.id}`;
+      campo.value = opcao.id;
+      campo.dataset.grupo = grupo.id;
+      const texto = document.createElement("span");
+      texto.textContent = opcao.preco_centavos > 0 ? `${opcao.nome} · +${dinheiro(opcao.preco_centavos)}` : opcao.nome;
+      linha.append(campo, texto);
+      bloco.appendChild(linha);
+    }
+    alvo.appendChild(bloco);
+  }
+
+  mostrar("tela-item");
+}
+
+$("mais").addEventListener("click", () => {
+  estado.item.quantidade = Math.min(20, estado.item.quantidade + 1);
+  $("item-qtd").textContent = String(estado.item.quantidade);
+});
+
+$("menos").addEventListener("click", () => {
+  estado.item.quantidade = Math.max(1, estado.item.quantidade - 1);
+  $("item-qtd").textContent = String(estado.item.quantidade);
+});
+
+$("item-cancelar").addEventListener("click", () => mostrar("tela-cardapio"));
+
+$("item-adicionar").addEventListener("click", () => {
+  const { produto, quantidade } = estado.item;
+  const marcadas = [...$("item-grupos").querySelectorAll("input:checked")];
+  const optionIds = marcadas.map((c) => c.value);
+
+  // o mínimo de cada grupo é conferido de novo no servidor; aqui é só para
+  // o cliente não chegar na maquininha e voltar
+  for (const grupo of produto.grupos) {
+    const nesteGrupo = marcadas.filter((c) => c.dataset.grupo === grupo.id).length;
+    if (nesteGrupo < grupo.minimo) {
+      $("erro-item").textContent = `Escolha ${grupo.minimo} em "${grupo.nome}".`;
+      return;
+    }
+    if (grupo.maximo > 0 && nesteGrupo > grupo.maximo) {
+      $("erro-item").textContent = `Em "${grupo.nome}" dá para escolher no máximo ${grupo.maximo}.`;
+      return;
+    }
+  }
+
+  const escolhidas = produto.grupos
+    .flatMap((g) => g.opcoes)
+    .filter((o) => optionIds.includes(o.id));
+  const unitario = produto.preco_centavos + escolhidas.reduce((soma, o) => soma + o.preco_centavos, 0);
+
+  estado.carrinho.push({
+    productId: produto.id,
+    nome: produto.nome,
+    quantity: quantidade,
+    optionIds,
+    escolhas: escolhidas.map((o) => o.nome).join(" · "),
+    notes: $("item-obs").value.trim(),
+    totalCents: unitario * quantidade,
+  });
+
+  atualizarBarra();
+  mostrar("tela-cardapio");
+});
+
+// ---- carrinho -----------------------------------------------------------
+
+const totalDoCarrinho = () => estado.carrinho.reduce((soma, i) => soma + i.totalCents, 0);
+
+function atualizarBarra() {
+  const itens = estado.carrinho.reduce((soma, i) => soma + i.quantity, 0);
+  $("barra-carrinho").hidden = itens === 0;
+  $("resumo-carrinho").textContent = `${itens} ${itens === 1 ? "item" : "itens"} · ${dinheiro(totalDoCarrinho())}`;
+}
+
+$("botao-carrinho").addEventListener("click", () => {
+  desenharCarrinho();
+  $("erro-carrinho").textContent = "";
+  mostrar("tela-carrinho");
+});
+
+$("carrinho-voltar").addEventListener("click", () => mostrar("tela-cardapio"));
+
+function desenharCarrinho() {
+  const lista = $("lista-carrinho");
+  lista.innerHTML = "";
+  estado.carrinho.forEach((item, indice) => {
+    const linha = document.createElement("li");
+    const texto = document.createElement("span");
+    texto.innerHTML = "";
+    const titulo = document.createElement("strong");
+    titulo.textContent = `${item.quantity}x ${item.nome}`;
+    texto.appendChild(titulo);
+    if (item.escolhas) {
+      const e = document.createElement("span");
+      e.className = "escolhas";
+      e.textContent = item.escolhas;
+      texto.appendChild(e);
+    }
+    if (item.notes) {
+      const o = document.createElement("span");
+      o.className = "obs";
+      o.textContent = `Obs.: ${item.notes}`;
+      texto.appendChild(o);
+    }
+
+    const direita = document.createElement("span");
+    direita.textContent = dinheiro(item.totalCents);
+
+    const tirar = document.createElement("button");
+    tirar.textContent = "Tirar";
+    tirar.addEventListener("click", () => {
+      estado.carrinho.splice(indice, 1);
+      atualizarBarra();
+      if (estado.carrinho.length === 0) {
+        mostrar("tela-cardapio");
+        return;
+      }
+      desenharCarrinho();
+    });
+
+    linha.append(texto, direita, tirar);
+    lista.appendChild(linha);
+  });
+  $("total-carrinho").textContent = dinheiro(totalDoCarrinho());
+}
+
+// ---- pagamento ----------------------------------------------------------
+
+// Duas formas, e só essas duas. Dinheiro não existe no totem: não há quem
+// receba nem quem dê troco num balcão sem atendente.
+async function pagar(forma) {
+  const botoes = [$("pagar-cartao"), $("pagar-pix")];
+  for (const b of botoes) b.disabled = true;
+  $("erro-carrinho").textContent = "";
+
+  const resposta = await window.totem.cobrar({
+    forma,
+    nome: $("nome-cliente").value.trim(),
+    observacao: null,
+    itens: estado.carrinho.map((i) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      optionIds: i.optionIds,
+      notes: i.notes || null,
+    })),
+  });
+  for (const b of botoes) b.disabled = false;
+
+  if (resposta.erro) {
+    $("erro-carrinho").textContent = resposta.erro;
+    return;
+  }
+
+  estado.pagamentoId = resposta.pagamento_id;
+  estado.forma = forma;
+
+  if (forma === "pix") {
+    $("valor-do-pix").textContent = dinheiro(resposta.total_centavos);
+    $("erro-pix").textContent = "";
+    // a imagem vem pronta do Mercado Pago; sem ela, resta o copia e cola
+    const imagem = resposta.pix?.imagem_base64;
+    $("qr-do-pix").src = imagem ? `data:image/png;base64,${imagem}` : "";
+    $("qr-do-pix").hidden = !imagem;
+    if (!imagem) $("erro-pix").textContent = "Não consegui mostrar o código. Chame o atendente.";
+    mostrar("tela-pix");
+  } else {
+    $("valor-a-pagar").textContent = dinheiro(resposta.total_centavos);
+    $("erro-pagamento").textContent = "";
+    mostrar("tela-pagamento");
+  }
+
+  acompanharPagamento(Date.now());
+}
+
+$("pagar-cartao").addEventListener("click", () => pagar("cartao"));
+$("pagar-pix").addEventListener("click", () => pagar("pix"));
+
+/** onde o recado aparece depende da forma que o cliente escolheu */
+const ondeAvisar = () => (estado.forma === "pix" ? $("erro-pix") : $("erro-pagamento"));
+
+function acompanharPagamento(comecouEm) {
+  clearTimeout(estado.relogioDoPagamento);
+  estado.relogioDoPagamento = setTimeout(async () => {
+    if (!estado.pagamentoId) return;
+
+    const resposta = await window.totem.conferirPagamento(estado.pagamentoId);
+    const aviso = ondeAvisar();
+
+    if (resposta.situacao === "aprovado") {
+      await finalizar(resposta.pedido);
+      return;
+    }
+    if (resposta.situacao === "cancelado" || resposta.situacao === "recusado") {
+      aviso.textContent =
+        resposta.situacao === "cancelado"
+          ? "Pagamento cancelado."
+          : estado.forma === "pix"
+            ? "O Pix não foi aprovado. Tente de novo."
+            : "O pagamento não foi aprovado. Tente outro cartão.";
+      estado.pagamentoId = null;
+      setTimeout(() => mostrar("tela-carrinho"), 2500);
+      return;
+    }
+    if (resposta.situacao === "pago_sem_pedido") {
+      aviso.textContent = "O pagamento passou, mas o pedido não entrou. Chame o atendente.";
+      estado.pagamentoId = null;
+      return;
+    }
+
+    if (Date.now() - comecouEm > LIMITE_DO_PAGAMENTO_MS) {
+      aviso.textContent =
+        estado.forma === "pix" ? "O código venceu. Comece o pedido de novo." : "A maquininha não respondeu. Chame o atendente.";
+      estado.pagamentoId = null;
+      return;
+    }
+    acompanharPagamento(comecouEm);
+  }, PASSO_DO_PAGAMENTO_MS);
+}
+
+async function desistirDoPagamento() {
+  if (!estado.pagamentoId) return;
+  clearTimeout(estado.relogioDoPagamento);
+  const resposta = await window.totem.cancelarPagamento(estado.pagamentoId);
+  if (resposta.erro) {
+    // já pagou enquanto o dedo ia no botão: volta a acompanhar
+    ondeAvisar().textContent = resposta.erro;
+    acompanharPagamento(Date.now());
+    return;
+  }
+  estado.pagamentoId = null;
+  mostrar("tela-carrinho");
+}
+
+$("pagamento-cancelar").addEventListener("click", desistirDoPagamento);
+$("pix-cancelar").addEventListener("click", desistirDoPagamento);
+
+async function finalizar(via) {
+  estado.pagamentoId = null;
+  estado.carrinho = [];
+  atualizarBarra();
+
+  $("numero-do-pedido").textContent = via?.numero != null ? `#${via.numero}` : "";
+  mostrar("tela-pronto");
+
+  // a comanda sai na impressora do totem; a da cozinha continua saindo
+  // pela aba Pedidos do painel, sem este aplicativo precisar fazer nada
+  if (via) await window.totem.imprimir(via);
+
+  setTimeout(() => {
+    if (!$("tela-pronto").hidden) mostrar("tela-inicio");
+  }, 20_000);
+}
+
+$("pronto-voltar").addEventListener("click", () => mostrar("tela-cardapio"));
+
+// ---- destravar o totem --------------------------------------------------
+//
+// Sair daqui pede a senha do painel, e quem confere é o servidor. São dois
+// caminhos para a mesma tela, porque o totem pode estar com teclado ou sem:
+// o pontinho escondido no canto de cima, e a tecla M.
+
+function pedirSenha() {
+  // no meio de um pagamento, não: o cliente está com o dinheiro na mão
+  if (estado.pagamentoId) return;
+  $("senha-admin").value = "";
+  $("erro-senha").textContent = "";
+  mostrar("tela-senha");
+  $("senha-admin").focus();
+}
+
+$("canto").addEventListener("click", pedirSenha);
+
+document.addEventListener("keydown", (evento) => {
+  if (evento.key !== "m" && evento.key !== "M") return;
+  // a pessoa pode estar escrevendo o nome dela ou uma observação
+  const escrevendo = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+  if (escrevendo) return;
+  pedirSenha();
+});
+
+$("senha-voltar").addEventListener("click", () => mostrar(estado.restaurante ? "tela-inicio" : "tela-entrar"));
+
+$("senha-admin").addEventListener("keydown", (evento) => {
+  if (evento.key === "Enter") $("senha-confirmar").click();
+});
+
+$("senha-confirmar").addEventListener("click", async () => {
+  const botao = $("senha-confirmar");
+  botao.disabled = true;
+  $("erro-senha").textContent = "";
+
+  const resposta = await window.totem.destravar($("senha-admin").value);
+  botao.disabled = false;
+  $("senha-admin").value = "";
+
+  if (resposta.erro) {
+    $("erro-senha").textContent = resposta.erro;
+    return;
+  }
+  await abrirAjustes();
+});
+
+// ---- ajustes (só depois da senha) --------------------------------------
+
+async function abrirAjustes() {
+  const [impressoras, info] = await Promise.all([window.totem.impressoras(), window.totem.estado()]);
+  $("impressora").innerHTML = [
+    '<option value="">Impressora padrão do Windows</option>',
+    ...impressoras.map((i) => `<option value="${i.nome}"${i.nome === info.impressora ? " selected" : ""}>${i.nome}</option>`),
+  ].join("");
+  $("ajustes-info").textContent = `Versão ${info.versao} · ${info.restaurante?.nome ?? "sem restaurante"}`;
+  $("recado-ajustes").textContent = "";
+  mostrar("tela-ajustes");
+}
+
+$("impressora").addEventListener("change", async (evento) => {
+  await window.totem.escolherImpressora(evento.target.value);
+  $("recado-ajustes").textContent = "Impressora salva.";
+});
+
+$("botao-testar").addEventListener("click", async () => {
+  const resposta = await window.totem.imprimirTeste();
+  $("recado-ajustes").textContent = resposta.erro ?? `Via de teste enviada para ${resposta.impressora ?? "a impressora padrão"}.`;
+});
+
+$("botao-sair").addEventListener("click", async () => {
+  const resposta = await window.totem.fechar();
+  $("recado-ajustes").textContent = resposta.erro ?? "Fechando...";
+});
+
+$("ajustes-voltar").addEventListener("click", async () => {
+  // a trava volta a valer antes de a tela do cliente aparecer
+  await window.totem.travar();
+  mostrar(estado.restaurante ? "tela-inicio" : "tela-entrar");
+});
+
+comecar();
+
+</script>
+  
+<div id="aviso-demo">Demonstração · nada aqui cobra ou imprime de verdade</div>
+<style>
+  #aviso-demo {
+    position: fixed;
+    right: 8px;
+    top: 8px;
+    z-index: 200;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgb(26 32 44 / 0.9);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    pointer-events: none;
+  }
+  /* no navegador o cursor precisa existir */
+  html, body { cursor: auto; }
+</style>
+</body>
+</html>

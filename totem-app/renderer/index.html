@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="estilo.css" />
   </head>
   <body>
-    <!-- canto secreto: cinco toques seguidos abrem os ajustes -->
-    <button id="canto" aria-label="Ajustes"></button>
+    <!-- Botãozinho escondido no canto: o cliente não repara, quem instalou
+         acha de olhos fechados. Um toque (ou a tecla M) pede a senha. -->
+    <button id="canto" aria-label="Ajustes do totem"><span></span></button>
 
     <!-- 1. entrar -->
     <section id="tela-entrar" class="tela" hidden>
@@ -68,6 +69,7 @@
     <!-- 4. item -->
     <section id="tela-item" class="tela" hidden>
       <div class="caixa larga">
+        <img id="item-foto" class="foto-item" alt="" hidden />
         <h2 id="item-nome"></h2>
         <p id="item-descricao" class="ajuda"></p>
         <div id="item-grupos"></div>
@@ -89,7 +91,10 @@
     <!-- 5. carrinho -->
     <section id="tela-carrinho" class="tela" hidden>
       <div class="caixa larga">
-        <h2>Seu pedido</h2>
+        <div class="titulo-com-volta">
+          <h2>Seu pedido</h2>
+          <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
+        </div>
         <ul id="lista-carrinho" class="lista"></ul>
         <p class="total">Total: <strong id="total-carrinho"></strong></p>
 
@@ -97,12 +102,13 @@
         <input id="nome-cliente" type="text" maxlength="40" autocomplete="off" />
 
         <p id="erro-carrinho" class="erro" role="alert"></p>
-        <p class="ajuda">Como você quer pagar? No totem não recebemos dinheiro.</p>
         <div class="acoes">
-          <button id="pagar-cartao" class="principal">Cartão na maquininha</button>
-          <button id="pagar-pix" class="principal">Pix</button>
+          <p class="ajuda">Como você quer pagar? No totem não recebemos dinheiro.</p>
+          <div class="botoes">
+            <button id="pagar-cartao" class="principal">Cartão na maquininha</button>
+            <button id="pagar-pix" class="principal">Pix</button>
+          </div>
         </div>
-        <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
       </div>
     </section>
 
@@ -134,7 +140,24 @@
       <button id="pronto-voltar" class="principal grande">Fazer outro pedido</button>
     </section>
 
-    <!-- 8. ajustes (canto secreto) -->
+    <!-- 8. a senha, antes de qualquer ajuste -->
+    <section id="tela-senha" class="tela" hidden>
+      <div class="caixa">
+        <h2>Área do restaurante</h2>
+        <p class="ajuda">Digite a senha do painel para destravar o totem.</p>
+
+        <label for="senha-admin">Senha</label>
+        <input id="senha-admin" type="password" autocomplete="off" />
+
+        <p id="erro-senha" class="erro" role="alert"></p>
+        <div class="acoes">
+          <button id="senha-voltar" class="secundario">Voltar</button>
+          <button id="senha-confirmar" class="principal">Destravar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. ajustes: só se chega aqui depois da senha -->
     <section id="tela-ajustes" class="tela" hidden>
       <div class="caixa">
         <h2>Ajustes do totem</h2>
@@ -145,8 +168,6 @@
         <button id="botao-testar" class="secundario">Imprimir via de teste</button>
 
         <hr />
-        <label for="senha-saida">Senha do painel para fechar o totem</label>
-        <input id="senha-saida" type="password" autocomplete="off" />
         <button id="botao-sair" class="perigo">Fechar o totem</button>
 
         <p id="recado-ajustes" class="erro" role="alert"></p>

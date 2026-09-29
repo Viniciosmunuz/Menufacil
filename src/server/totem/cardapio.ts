@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { appUrl } from "@/lib/site";
 
 // O cardápio do jeito que o totem precisa: só o que dá para pedir ali.
 //
@@ -18,6 +19,8 @@ export type ProdutoDoTotem = {
   descricao: string | null;
   foto: string | null;
   preco_centavos: number;
+  /** o produto em destaque ganha estrela, igual ao cardápio do link */
+  destaque: boolean;
   grupos: {
     id: string;
     nome: string;
@@ -28,6 +31,15 @@ export type ProdutoDoTotem = {
 };
 
 export type CategoriaDoTotem = { id: string; nome: string; produtos: ProdutoDoTotem[] };
+
+/**
+ * A foto sai com o endereço inteiro: no totem a tela é um arquivo local, e
+ * um caminho começando em "/" apontaria para dentro do próprio aplicativo.
+ */
+function comEndereco(caminho: string | null) {
+  if (!caminho) return null;
+  return caminho.startsWith("/") ? `${appUrl()}${caminho}` : caminho;
+}
 
 export async function cardapioDoTotem(restaurantId: string): Promise<CategoriaDoTotem[]> {
   const categorias = await db.menuCategory.findMany({
@@ -46,6 +58,7 @@ export async function cardapioDoTotem(restaurantId: string): Promise<CategoriaDo
           name: true,
           description: true,
           imageUrl: true,
+          featured: true,
           priceCents: true,
           promoPriceCents: true,
           optionGroups: {
@@ -75,8 +88,9 @@ export async function cardapioDoTotem(restaurantId: string): Promise<CategoriaDo
         id: p.id,
         nome: p.name,
         descricao: p.description,
-        foto: p.imageUrl,
+        foto: comEndereco(p.imageUrl),
         preco_centavos: p.promoPriceCents ?? p.priceCents,
+        destaque: p.featured,
         grupos: p.optionGroups.map((g) => ({
           id: g.id,
           nome: g.name,

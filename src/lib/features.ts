@@ -5,7 +5,7 @@
 // marcado como tal, para ninguém achar que ligar a chave já faz alguma
 // coisa. Quem confere de verdade é o servidor, não a tela.
 
-export type FeatureKey = "printEnabled" | "fullDeliveryEnabled" | "chatEnabled" | "totemEnabled";
+export type FeatureKey = "printEnabled" | "totemEnabled";
 
 export type Feature = {
   key: FeatureKey;
@@ -20,18 +20,6 @@ export const FEATURES: Feature[] = [
     key: "printEnabled",
     label: "Menu Fácil para PC",
     hint: "O painel instalado no computador do balcão, com impressão automática da comanda.",
-  },
-  {
-    key: "fullDeliveryEnabled",
-    label: "Pedido completo / 100% Delivery",
-    hint: "Pagamento pelo Mercado Pago dentro do Menu Fácil, sem passar pelo WhatsApp.",
-    soon: true,
-  },
-  {
-    key: "chatEnabled",
-    label: "Chat do pedido",
-    hint: "Conversa entre cliente e restaurante dentro da página do pedido.",
-    soon: true,
   },
   {
     key: "totemEnabled",
