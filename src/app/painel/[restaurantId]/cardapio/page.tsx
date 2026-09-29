@@ -1,4 +1,4 @@
-import { BookOpen, ChevronDown, ChevronUp, ImageOff, Pencil, Plus, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, ImageOff, Pencil, Plus, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -86,14 +86,14 @@ function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p:
             {hidden}
             <input type="hidden" name="direction" value="up" />
             <Button type="submit" variant="ghost" size="sm" disabled={first} aria-label={`Subir ${p.name}`}>
-              <ChevronUp className="size-5" aria-hidden="true" />
+              <ArrowUp className="size-4" aria-hidden="true" />
             </Button>
           </form>
           <form action={moveProduct}>
             {hidden}
             <input type="hidden" name="direction" value="down" />
             <Button type="submit" variant="ghost" size="sm" disabled={last} aria-label={`Descer ${p.name}`}>
-              <ChevronDown className="size-5" aria-hidden="true" />
+              <ArrowDown className="size-4" aria-hidden="true" />
             </Button>
           </form>
         </div>
