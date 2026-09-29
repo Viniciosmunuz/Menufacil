@@ -17,7 +17,7 @@ const tentativas = new Map<string, { contagem: number; ate: number }>();
 const MAX_TENTATIVAS = 5;
 const JANELA_MS = 5 * 60 * 1000;
 
-export async function POST(request: Request) {
+export async function desbloquear(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 

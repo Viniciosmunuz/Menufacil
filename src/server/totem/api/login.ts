@@ -32,7 +32,7 @@ function contarTentativa(email: string) {
   else registro.contagem += 1;
 }
 
-export async function POST(request: Request) {
+export async function login(request: Request) {
   let corpo: { email?: unknown; senha?: unknown; nome?: unknown; versao?: unknown; restaurante_id?: unknown };
   try {
     corpo = (await request.json()) as typeof corpo;

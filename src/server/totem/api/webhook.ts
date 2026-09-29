@@ -19,7 +19,6 @@ import { criarPedidoDoTotem, TotemError, type ItemDoTotem } from "@/server/totem
 // sozinho como está o pagamento (ver /api/totem/pagamento). Se o webhook
 // não estiver configurado, o balcão funciona igual.
 
-export const dynamic = "force-dynamic";
 
 /**
  * Assinatura do Mercado Pago: o cabeçalho traz "ts=...,v1=...", e o que é
@@ -46,7 +45,7 @@ function assinaturaConfere(request: Request, chave: string, dataId: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(request: Request) {
+export async function webhook(request: Request) {
   const url = new URL(request.url);
   const restaurantId = url.searchParams.get("r") ?? "";
   // data.id vem na query em alguns formatos e no corpo em outros

@@ -36,14 +36,13 @@ import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } fr
 // pagamento é virada de PENDING para APPROVED numa instrução só. Quem
 // conseguir virar grava; quem chegar depois lê o pedido já gravado.
 
-export const dynamic = "force-dynamic";
 
 /** dinheiro que o totem aceita numa cobrança */
 const MAX_CENTAVOS = 500_000_00;
 
 const viaDoPedido = async (restaurantId: string, orderId: string) => (await orderTicket(restaurantId, orderId)) ?? null;
 
-export async function POST(request: Request) {
+export async function cobrar(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 
@@ -135,7 +134,7 @@ export async function POST(request: Request) {
   return Response.json({ pagamento_id: pagamento.id, forma: "cartao", total_centavos: conta.totalCents });
 }
 
-export async function GET(request: Request) {
+export async function conferir(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 
@@ -232,7 +231,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function cancelar(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 

@@ -10,7 +10,7 @@ import { parearPorCodigo } from "@/server/totem/dispositivos";
 // manda o código aqui e recebe o token do aparelho. O código só serve uma
 // vez.
 
-export async function POST(request: Request) {
+export async function parear(request: Request) {
   let corpo: { codigo?: unknown; nome?: unknown; versao?: unknown };
   try {
     corpo = (await request.json()) as typeof corpo;
