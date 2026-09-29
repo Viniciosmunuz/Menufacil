@@ -66,6 +66,7 @@ export type RestaurantAccess = {
     printEnabled: boolean;
     fullDeliveryEnabled: boolean;
     chatEnabled: boolean;
+    totemEnabled: boolean;
   };
   /** true quando quem está no painel é o admin da plataforma */
   viaAdmin: boolean;
@@ -87,6 +88,7 @@ export const getRestaurantAccess = cache(
         printEnabled: true,
         fullDeliveryEnabled: true,
         chatEnabled: true,
+        totemEnabled: true,
       },
     });
     if (!restaurant) return null;

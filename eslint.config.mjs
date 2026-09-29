@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Aplicativo do totem: projeto Electron próprio, com o Node dele.
+    // Não faz parte do site e não entra no build da Vercel.
+    "totem-app/**",
   ]),
 ]);
 

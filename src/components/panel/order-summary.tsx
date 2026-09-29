@@ -18,6 +18,7 @@ export const orderSummarySelect = {
   code: true,
   customerName: true,
   customerWhatsapp: true,
+  origin: true,
   type: true,
   status: true,
   notes: true,
@@ -96,11 +97,16 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
         <div>
           <dt className="font-bold text-muted">Cliente</dt>
           <dd className="font-bold">{o.customerName}</dd>
-          <dd>
-            <a href={`https://wa.me/${o.customerWhatsapp}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-              {formatPhone(o.customerWhatsapp)}
-            </a>
-          </dd>
+          {o.customerWhatsapp ? (
+            <dd>
+              <a href={`https://wa.me/${o.customerWhatsapp}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+                {formatPhone(o.customerWhatsapp)}
+              </a>
+            </dd>
+          ) : (
+            /* pedido do totem: ninguém digita telefone no balcão */
+            <dd className="text-muted">Pedido feito no totem</dd>
+          )}
         </div>
         <div>
           <dt className="font-bold text-muted">{delivery ? "Entrega em" : "Retirada"}</dt>
@@ -152,6 +158,8 @@ export function OrderDrawer({ order: o, prefix, children }: { order: OrderSummar
           <span className="min-w-0 truncate font-bold sm:flex-1">{o.customerName}</span>
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
             <Badge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</Badge>
+            {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
+            {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
             <span className="truncate text-sm text-muted">{meta}</span>
           </span>
         </span>

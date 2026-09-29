@@ -181,6 +181,8 @@ model Restaurant {
   printEnabled        Boolean @default(true)
   fullDeliveryEnabled Boolean @default(false)
   chatEnabled         Boolean @default(false)
+  // totem de autoatendimento: modulo isolado, nasce desligado para todo mundo
+  totemEnabled        Boolean @default(false)
 
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?
@@ -212,6 +214,9 @@ model Restaurant {
   auditLogs           AuditLog[]
   printDevices        PrintDevice[]
   pushDevices         PushDevice[]
+  totemConfig         TotemConfig?
+  totemDevices        TotemDevice[]
+  totemPayments       TotemPayment[]
 
   @@index([status])
   @@index([city])
@@ -372,6 +377,13 @@ enum OrderType {
   PICKUP
 }
 
+// De onde o pedido veio. O que ja existia continua sendo WHATSAPP: e o
+// fluxo do cardapio pelo link, que termina na conversa do WhatsApp.
+enum OrderOrigin {
+  WHATSAPP
+  TOTEM // balcao, pago na maquininha do proprio totem
+}
+
 enum PaymentMethod {
   PIX
   CARD // na entrega (maquininha) ou no balcão, na retirada
@@ -413,6 +425,7 @@ model Order {
   deliveryReference    String?
 
   type          OrderType
+  origin        OrderOrigin   @default(WHATSAPP)
   paymentMethod PaymentMethod
   status        OrderStatus   @default(NEW)
   notes         String?
@@ -679,4 +692,130 @@ model PushDevice {
   user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId])
+}
+
+// ============================================================
+// Totem de autoatendimento
+// ============================================================
+// Modulo a parte: nada aqui e lido pelo fluxo de pedido do WhatsApp nem
+// pelo Menu Facil para PC. O totem so existe para o restaurante com
+// Restaurant.totemEnabled ligado pelo admin da plataforma.
+//
+// O dinheiro passa pela conta do proprio restaurante: cada um cadastra o
+// Access Token e a maquininha Point dele. A plataforma nao intermedia
+// pagamento nenhum.
+
+model TotemConfig {
+  id           String @id @default(cuid())
+  restaurantId String @unique
+
+  /**
+   * Access Token do Mercado Pago do restaurante, criptografado com
+   * AES-256-GCM (chave em TOTEM_TOKEN_KEY). Nunca volta para o navegador.
+   */
+  mpAccessToken String?
+  /**
+   * final do token em texto puro, so para o dono reconhecer qual esta salvo
+   */
+  mpTokenHint   String?
+  /**
+   * device_id da maquininha Point, como aparece na API do Mercado Pago
+   */
+  mpDeviceId    String?
+  /**
+   * segredo da assinatura das notificacoes, copiado do painel do Mercado
+   * Pago. Criptografado do mesmo jeito que o token.
+   */
+  mpWebhookKey  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+// Cada totem instalado. Mesma ideia do PrintDevice: o aparelho guarda um
+// token e aqui fica so o hash dele.
+model TotemDevice {
+  id           String  @id @default(cuid())
+  restaurantId String?
+
+  /**
+   * nome do aparelho, para o dono reconhecer no painel ("Balcao 1")
+   */
+  name        String
+  tokenHash   String  @unique
+  /**
+   * some depois do pareamento
+   */
+  pairingCode String? @unique
+
+  /**
+   * impressora termica escolhida no totem, so para mostrar no painel
+   */
+  printerName String?
+  appVersion  String?
+
+  pairedAt   DateTime?
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  restaurant Restaurant?    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  payments   TotemPayment[]
+
+  @@index([restaurantId])
+}
+
+enum TotemPaymentStatus {
+  PENDING // intencao na maquininha, esperando o cliente
+  APPROVED
+  REJECTED
+  CANCELED
+  EXPIRED
+}
+
+// Uma passada de cartao no totem. Guardada aqui, e nao em Payment, porque
+// Payment pertence ao pedido feito pelo WhatsApp e nao pode mudar de forma.
+model TotemPayment {
+  id           String  @id @default(cuid())
+  restaurantId String
+  deviceId     String?
+
+  /**
+   * id da intencao de pagamento na API Point do Mercado Pago
+   */
+  intentId    String             @unique
+  /// external_reference mandado ao Mercado Pago: e por ele que o webhook
+  /// acha esta linha quando o aviso chega
+  reference   String?
+  /**
+   * id do pagamento no Mercado Pago, quando a maquininha aprova
+   */
+  mpPaymentId String?
+  /// pedido gravado depois que a maquininha aprovou; vazio ate la
+  orderId     String?
+  status      TotemPaymentStatus @default(PENDING)
+  amountCents Int
+
+  /**
+   * o que o cliente escolheu, do jeito que o totem mandou: e com isso que
+   * a via sai depois que o pagamento aprova
+   */
+  cart      Json?
+  /**
+   * ultimo aviso recebido do Mercado Pago, para conferir quando der errado
+   */
+  lastEvent Json?
+
+  paidAt    DateTime?
+  printedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  device     TotemDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, createdAt])
+  @@index([status])
+  @@index([reference])
 }

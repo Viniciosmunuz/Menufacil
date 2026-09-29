@@ -33,6 +33,12 @@ const actionLabel: Record<string, string> = {
   "launch.content": "Restaurante implantado pela equipe (cardápio inicial)",
   "order.update": "Pedido alterado",
   "order.delete": "Pedido excluído",
+  "totem.mercado_pago": "Conta do Mercado Pago do totem alterada",
+  "totem.maquininha": "Maquininha do totem alterada",
+  "totem.webhook": "Chave de notificação do totem alterada",
+  "totem.desconectado": "Conta do Mercado Pago do totem removida",
+  "totem.codigo": "Código de um novo totem gerado",
+  "totem.removido": "Totem desligado do restaurante",
 };
 
 const openModeLabel: Record<string, string> = {

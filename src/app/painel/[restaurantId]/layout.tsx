@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, ReceiptText, Store } from "lucide-react";
+import { BookOpen, LayoutDashboard, MonitorCheck, ReceiptText, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -44,6 +44,8 @@ export default async function RestaurantPanelLayout({
         ...(restaurant.printEnabled
           ? [{ href: `${base}/menu-facil-pc`, label: "Menu Fácil PC", icon: <CloudPrinterIcon /> }]
           : []),
+        // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
+        ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck /> }] : []),
       ]}
     >
       {children}

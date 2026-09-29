@@ -138,6 +138,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               printEnabled: restaurant.printEnabled,
               fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
               chatEnabled: restaurant.chatEnabled,
+              totemEnabled: restaurant.totemEnabled,
             }}
           />
 

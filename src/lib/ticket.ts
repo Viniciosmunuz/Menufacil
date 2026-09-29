@@ -1,4 +1,4 @@
-import type { CardType, OrderType, PaymentMethod } from "@/generated/prisma/enums";
+import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 
 import { formatCents, formatPhone } from "./format";
 import { paymentText } from "./payment";
@@ -24,6 +24,8 @@ export type TicketOrder = {
   number: number;
   createdAt: Date | string;
   type: OrderType;
+  /** de onde veio; sem isto, a via sai como sempre saiu (pedido pelo link) */
+  origin?: OrderOrigin | null;
   customerName: string;
   customerWhatsapp: string;
   deliveryStreet: string | null;
@@ -90,6 +92,9 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   lines.push(forte, meio(restaurantName.toUpperCase()), forte);
   lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
   lines.push(`${margem}${delivery ? "ENTREGA" : "RETIRADA NO LOCAL"}`);
+  // quem está no balcão precisa ver de longe que ninguém anotou este:
+  // saiu do totem, já pago, e o cliente está esperando ali mesmo
+  if (o.origin === "TOTEM") lines.push(`${margem}TOTEM - AUTOATENDIMENTO (JA PAGO)`);
   lines.push(forte);
 
   // itens: quantidade destacada, preço à direita, escolhas embaixo
@@ -120,12 +125,17 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   lines.push(`${margem}PAGAMENTO`);
   lines.push(...texto(paymentText({ method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: troco })));
   if (troco) lines.push(entre("Levar de troco", formatCents(troco - o.totalCents)));
-  if (o.paymentMethod === "CARD") lines.push(...texto(delivery ? "Levar a maquininha" : "Pagar no balcão"));
+  // no totem o cartão já passou: dizer "pagar no balcão" faria o balcão cobrar de novo
+  if (o.paymentMethod === "CARD") {
+    lines.push(...texto(o.origin === "TOTEM" ? "Pago na maquininha do totem" : delivery ? "Levar a maquininha" : "Pagar no balcão"));
+  }
   if (o.paymentMethod === "PIX") lines.push(...texto("Conferir o comprovante no WhatsApp"));
 
   // cliente
   lines.push(...titulo("CLIENTE"));
-  lines.push(...texto(o.customerName), ...texto(formatPhone(o.customerWhatsapp)));
+  lines.push(...texto(o.customerName));
+  // o pedido do totem não tem telefone: ninguém digita WhatsApp no balcão
+  if (o.customerWhatsapp) lines.push(...texto(formatPhone(o.customerWhatsapp)));
 
   // para onde vai
   if (delivery) {

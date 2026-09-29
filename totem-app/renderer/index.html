@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'" />
+    <title>Menu Fácil Totem</title>
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <!-- canto secreto: cinco toques seguidos abrem os ajustes -->
+    <button id="canto" aria-label="Ajustes"></button>
+
+    <!-- 1. entrar -->
+    <section id="tela-entrar" class="tela" hidden>
+      <div class="caixa">
+        <h1>Menu Fácil Totem</h1>
+        <p class="ajuda">Entre com o mesmo e-mail e senha do seu painel.</p>
+
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="off" inputmode="email" />
+
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" autocomplete="off" />
+
+        <div id="escolha-restaurante" hidden>
+          <label for="restaurante">Restaurante</label>
+          <select id="restaurante"></select>
+        </div>
+
+        <button id="botao-entrar" class="principal">Entrar</button>
+        <p id="erro-entrar" class="erro" role="alert"></p>
+
+        <details>
+          <summary>Não tem a senha à mão?</summary>
+          <p class="ajuda">Peça ao dono o código que aparece no painel dele, na seção Totem.</p>
+          <label for="codigo">Código do totem</label>
+          <input id="codigo" type="text" autocomplete="off" placeholder="TT-0000-000" />
+          <button id="botao-parear" class="secundario">Ligar por código</button>
+
+          <label for="servidor">Endereço do servidor</label>
+          <input id="servidor" type="text" autocomplete="off" />
+          <button id="botao-servidor" class="secundario">Salvar endereço</button>
+        </details>
+      </div>
+    </section>
+
+    <!-- 2. descanso -->
+    <section id="tela-inicio" class="tela centro" hidden>
+      <h1 id="nome-do-restaurante"></h1>
+      <p class="chamada">Toque na tela para fazer o seu pedido</p>
+      <button id="botao-comecar" class="principal grande">Começar</button>
+      <p id="aviso-fechado" class="erro" hidden>O restaurante está fechado agora.</p>
+    </section>
+
+    <!-- 3. cardápio -->
+    <section id="tela-cardapio" class="tela" hidden>
+      <header class="topo">
+        <button id="voltar-inicio" class="secundario">Início</button>
+        <nav id="categorias" class="categorias"></nav>
+      </header>
+      <div id="produtos" class="produtos"></div>
+      <footer id="barra-carrinho" class="barra" hidden>
+        <span id="resumo-carrinho"></span>
+        <button id="botao-carrinho" class="principal">Ver pedido</button>
+      </footer>
+    </section>
+
+    <!-- 4. item -->
+    <section id="tela-item" class="tela" hidden>
+      <div class="caixa larga">
+        <h2 id="item-nome"></h2>
+        <p id="item-descricao" class="ajuda"></p>
+        <div id="item-grupos"></div>
+        <label for="item-obs">Alguma observação?</label>
+        <input id="item-obs" type="text" maxlength="140" placeholder="Ex.: sem cebola" />
+        <div class="quantidade">
+          <button id="menos" class="secundario">−</button>
+          <span id="item-qtd">1</span>
+          <button id="mais" class="secundario">+</button>
+        </div>
+        <p id="erro-item" class="erro" role="alert"></p>
+        <div class="acoes">
+          <button id="item-cancelar" class="secundario">Voltar</button>
+          <button id="item-adicionar" class="principal">Adicionar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. carrinho -->
+    <section id="tela-carrinho" class="tela" hidden>
+      <div class="caixa larga">
+        <h2>Seu pedido</h2>
+        <ul id="lista-carrinho" class="lista"></ul>
+        <p class="total">Total: <strong id="total-carrinho"></strong></p>
+
+        <label for="nome-cliente">Seu nome (para chamarmos quando ficar pronto)</label>
+        <input id="nome-cliente" type="text" maxlength="40" autocomplete="off" />
+
+        <p id="erro-carrinho" class="erro" role="alert"></p>
+        <div class="acoes">
+          <button id="carrinho-voltar" class="secundario">Continuar escolhendo</button>
+          <button id="carrinho-pagar" class="principal">Pagar na maquininha</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. pagamento -->
+    <section id="tela-pagamento" class="tela centro" hidden>
+      <h2>Pague na maquininha</h2>
+      <p class="chamada" id="valor-a-pagar"></p>
+      <p class="ajuda">Siga as instruções na maquininha ao lado da tela.</p>
+      <div class="pulsando"></div>
+      <p id="erro-pagamento" class="erro" role="alert"></p>
+      <button id="pagamento-cancelar" class="secundario">Cancelar pedido</button>
+    </section>
+
+    <!-- 7. pronto -->
+    <section id="tela-pronto" class="tela centro" hidden>
+      <p class="chamada">Pedido confirmado!</p>
+      <p class="senha" id="numero-do-pedido"></p>
+      <p class="ajuda">Guarde a sua senha e acompanhe no painel. A comanda está saindo.</p>
+      <button id="pronto-voltar" class="principal grande">Fazer outro pedido</button>
+    </section>
+
+    <!-- 8. ajustes (canto secreto) -->
+    <section id="tela-ajustes" class="tela" hidden>
+      <div class="caixa">
+        <h2>Ajustes do totem</h2>
+        <p class="ajuda" id="ajustes-info"></p>
+
+        <label for="impressora">Impressora da comanda</label>
+        <select id="impressora"></select>
+        <button id="botao-testar" class="secundario">Imprimir via de teste</button>
+
+        <hr />
+        <label for="senha-saida">Senha do painel para fechar o totem</label>
+        <input id="senha-saida" type="password" autocomplete="off" />
+        <button id="botao-sair" class="perigo">Fechar o totem</button>
+
+        <p id="recado-ajustes" class="erro" role="alert"></p>
+        <button id="ajustes-voltar" class="secundario">Voltar ao atendimento</button>
+      </div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>

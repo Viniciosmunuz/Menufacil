@@ -1,0 +1,52 @@
+{
+  "name": "menufacil-totem",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Menu Fácil Totem: autoatendimento no balcão, com maquininha Point e impressão térmica.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "main": "src/main.js",
+  "build": {
+    "appId": "app.menufacil.totem",
+    "productName": "Menu Facil Totem",
+    "copyright": "MenuFácil",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "MenuFacilTotem-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Menu Facil Totem"
+    },
+    "compression": "maximum",
+    "electronLanguages": [
+      "pt-BR"
+    ]
+  },
+  "author": "MenuFácil",
+  "devDependencies": {
+    "electron": "^44.4.4",
+    "electron-builder": "^26.15.3"
+  }
+}
