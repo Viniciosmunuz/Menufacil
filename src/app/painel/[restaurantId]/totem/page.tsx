@@ -60,6 +60,24 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
         </Alert>
       )}
 
+      <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <MonitorCheck className="size-12 shrink-0 text-brand" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-extrabold">A tela do totem</h2>
+          <p className="text-sm text-muted">
+            É o seu cardápio, o mesmo que você manda pelo WhatsApp — só que o fim do pedido pergunta se é para comer aqui
+            ou levar, e cobra no cartão ou no Pix. Abra para ver como o cliente vê.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link href={`/totem/${restaurant.slug}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
+            <ExternalLink className="size-4" aria-hidden="true" />
+            Ver a tela
+          </Link>
+          <CopyLinkButton url={`${servidor}/totem/${restaurant.slug}`} />
+        </div>
+      </Card>
+
       <Card className="flex flex-col items-start gap-4 border-brand/50 sm:flex-row sm:items-center">
         <Tv className="size-12 shrink-0 text-brand" aria-hidden="true" />
         <div className="min-w-0 flex-1">

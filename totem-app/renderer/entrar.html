@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'" />
+    <title>Menu Fácil Totem</title>
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <!-- A única tela que mora dentro do aplicativo. Depois que o totem
+         entra, quem manda na tela é o cardápio do site. -->
+    <section class="tela">
+      <div class="caixa">
+        <h1>Menu Fácil Totem</h1>
+        <p class="ajuda">Entre com o mesmo e-mail e senha do painel do restaurante.</p>
+
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="off" inputmode="email" />
+
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" autocomplete="off" />
+
+        <div id="escolha-restaurante" hidden>
+          <label for="restaurante">Restaurante</label>
+          <select id="restaurante"></select>
+        </div>
+
+        <button id="botao-entrar" class="principal">Entrar</button>
+        <p id="recado" class="erro" role="alert"></p>
+
+        <details>
+          <summary>Não tem a senha à mão?</summary>
+          <p class="ajuda">Peça ao dono o código que aparece no painel dele, na seção Totem.</p>
+          <label for="codigo">Código do totem</label>
+          <input id="codigo" type="text" autocomplete="off" placeholder="TT-0000-000" />
+          <button id="botao-parear" class="secundario">Ligar por código</button>
+
+          <label for="servidor">Endereço do servidor</label>
+          <input id="servidor" type="text" autocomplete="off" />
+          <button id="botao-servidor" class="secundario">Salvar endereço</button>
+        </details>
+      </div>
+    </section>
+
+    <script src="entrar.js"></script>
+  </body>
+</html>

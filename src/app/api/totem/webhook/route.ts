@@ -100,7 +100,12 @@ export async function POST(request: Request) {
   });
   if (count === 0) return Response.json({ ok: true });
 
-  const carrinho = (linha.cart ?? {}) as { nome?: string; observacao?: string | null; itens?: ItemDoTotem[] };
+  const carrinho = (linha.cart ?? {}) as {
+    nome?: string;
+    observacao?: string | null;
+    comerAqui?: boolean;
+    itens?: ItemDoTotem[];
+  };
   try {
     const pedido = await criarPedidoDoTotem({
       restaurantId,
@@ -108,6 +113,7 @@ export async function POST(request: Request) {
       itens: carrinho.itens ?? [],
       observacao: carrinho.observacao ?? null,
       forma: linha.method,
+      comerAqui: carrinho.comerAqui === true,
     });
     await db.totemPayment.update({ where: { id: linha.id }, data: { orderId: pedido.id }, select: { id: true } });
   } catch (erro) {

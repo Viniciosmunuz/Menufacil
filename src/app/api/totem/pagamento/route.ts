@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
 
-  let corpo: { nome?: unknown; itens?: unknown; observacao?: unknown; forma?: unknown };
+  let corpo: { nome?: unknown; itens?: unknown; observacao?: unknown; forma?: unknown; comer_aqui?: unknown };
   try {
     corpo = (await request.json()) as typeof corpo;
   } catch {
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   const observacao = typeof corpo.observacao === "string" ? corpo.observacao : null;
   const itens = (Array.isArray(corpo.itens) ? corpo.itens : []) as ItemDoTotem[];
   const pedidoPix = String(corpo.forma ?? "cartao").toLowerCase() === "pix";
+  const comerAqui = corpo.comer_aqui === true;
 
   const conta = await conferirCarrinho(totem.restaurantId, itens).catch((erro: unknown) => {
     if (erro instanceof TotemError) return erro;
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     reference: referencia,
     amountCents: conta.totalCents,
     // o carrinho fica guardado para o pedido sair igual ao que o cliente viu
-    cart: { nome, observacao, itens: itens as unknown as object[] },
+    cart: { nome, observacao, comerAqui, itens: itens as unknown as object[] },
   };
 
   if (pedidoPix) {
@@ -199,7 +200,12 @@ export async function GET(request: Request) {
     return Response.json({ situacao: "aprovado", pedido: await viaDoPedido(totem.restaurantId, atual.orderId) });
   }
 
-  const carrinho = (pagamento.cart ?? {}) as { nome?: string; observacao?: string | null; itens?: ItemDoTotem[] };
+  const carrinho = (pagamento.cart ?? {}) as {
+    nome?: string;
+    observacao?: string | null;
+    comerAqui?: boolean;
+    itens?: ItemDoTotem[];
+  };
   try {
     const pedido = await criarPedidoDoTotem({
       restaurantId: totem.restaurantId,
@@ -207,6 +213,7 @@ export async function GET(request: Request) {
       itens: carrinho.itens ?? [],
       observacao: carrinho.observacao ?? null,
       forma: pagamento.method,
+      comerAqui: carrinho.comerAqui === true,
     });
     await db.totemPayment.update({ where: { id: pagamento.id }, data: { orderId: pedido.id }, select: { id: true } });
     await tocarTotem(totem.id);

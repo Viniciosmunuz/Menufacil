@@ -19,6 +19,7 @@ export const orderSummarySelect = {
   customerName: true,
   customerWhatsapp: true,
   origin: true,
+  dineIn: true,
   type: true,
   status: true,
   notes: true,
@@ -109,8 +110,16 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
           )}
         </div>
         <div>
-          <dt className="font-bold text-muted">{delivery ? "Entrega em" : "Retirada"}</dt>
-          <dd>{delivery ? `${o.deliveryStreet}, ${o.deliveryNumber} - ${o.deliveryNeighborhood}` : "No restaurante"}</dd>
+          <dt className="font-bold text-muted">{delivery ? "Entrega em" : o.origin === "TOTEM" ? "No totem" : "Retirada"}</dt>
+          <dd>
+            {delivery
+              ? `${o.deliveryStreet}, ${o.deliveryNumber} - ${o.deliveryNeighborhood}`
+              : o.origin === "TOTEM"
+                ? o.dineIn
+                  ? "Comer no local"
+                  : "Para viagem"
+                : "No restaurante"}
+          </dd>
           {o.deliveryComplement && <dd className="text-muted">{o.deliveryComplement}</dd>}
           {o.deliveryReference && <dd className="text-muted">Ref.: {o.deliveryReference}</dd>}
         </div>
@@ -145,7 +154,10 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
  */
 export function OrderDrawer({ order: o, prefix, children }: { order: OrderSummaryData; prefix?: string; children: ReactNode }) {
   const delivery = o.type === "DELIVERY";
-  const meta = [prefix, delivery ? "Entrega" : "Retirada", delivery ? o.deliveryNeighborhood : null, formatWhen(o.createdAt)]
+  // no totem, "retirada" não diz nada: o que o balcão precisa saber é se a
+  // pessoa vai comer ali ou levar
+  const comoSai = delivery ? "Entrega" : o.origin === "TOTEM" ? (o.dineIn ? "Comer no local" : "Para viagem") : "Retirada";
+  const meta = [prefix, comoSai, delivery ? o.deliveryNeighborhood : null, formatWhen(o.createdAt)]
     .filter(Boolean)
     .join(" · ");
 

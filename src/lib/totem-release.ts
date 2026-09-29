@@ -4,12 +4,11 @@
 // fica em public/totem e publicar uma versão é copiar o arquivo para lá e
 // mudar o número aqui.
 //
-// TODO: enquanto DISPONIVEL for false, o painel mostra "em preparo" no
-// lugar do botão de baixar. Virar para true no dia em que o primeiro
-// instalador for gerado a partir da pasta totem-app/.
+// Com DISPONIVEL em false, o painel mostra "em preparo" no lugar do botão
+// de baixar -- é assim que uma versão em construção não chega ao balcão.
 
 export const TOTEM_APP_VERSION = "0.1.0";
-export const TOTEM_APP_DISPONIVEL = false;
+export const TOTEM_APP_DISPONIVEL = true;
 
 /** instalador da versão atual */
 export const TOTEM_SETUP_PATH = `/totem/MenuFacilTotem-Setup-${TOTEM_APP_VERSION}.exe`;

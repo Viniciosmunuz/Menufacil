@@ -26,6 +26,8 @@ export type TicketOrder = {
   type: OrderType;
   /** de onde veio; sem isto, a via sai como sempre saiu (pedido pelo link) */
   origin?: OrderOrigin | null;
+  /** totem: comer no local (true) ou levar (false) */
+  dineIn?: boolean | null;
   customerName: string;
   customerWhatsapp: string;
   deliveryStreet: string | null;
@@ -91,10 +93,11 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   // cabeçalho: o restaurante, o número e como o cliente recebe
   lines.push(forte, meio(restaurantName.toUpperCase()), forte);
   lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
-  lines.push(`${margem}${delivery ? "ENTREGA" : "RETIRADA NO LOCAL"}`);
+  const noTotem = o.origin === "TOTEM";
+  lines.push(`${margem}${delivery ? "ENTREGA" : noTotem ? (o.dineIn ? "COMER NO LOCAL" : "PARA VIAGEM") : "RETIRADA NO LOCAL"}`);
   // quem está no balcão precisa ver de longe que ninguém anotou este:
   // saiu do totem, já pago, e o cliente está esperando ali mesmo
-  if (o.origin === "TOTEM") lines.push(`${margem}TOTEM - AUTOATENDIMENTO (JA PAGO)`);
+  if (noTotem) lines.push(`${margem}TOTEM - AUTOATENDIMENTO (JA PAGO)`);
   lines.push(forte);
 
   // itens: quantidade destacada, preço à direita, escolhas embaixo

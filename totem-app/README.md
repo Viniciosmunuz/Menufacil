@@ -7,20 +7,26 @@ do MenuFácil.
 
 ## O que ele faz
 
+**Este aplicativo não tem cardápio próprio.** Ele abre, travado em tela cheia,
+a página `/totem/<slug>` do MenuFácil -- o mesmo `<RestaurantMenu />` que o
+cliente vê pelo link do restaurante. O desenho é idêntico porque é a mesma
+página: mexer no cardápio muda os dois de uma vez.
+
 1. Abre travado em tela cheia (modo quiosque). Alt+F4, Ctrl+W, F5, F11 e o
    inspetor ficam bloqueados, e a janela recupera o foco sozinha.
 2. Na primeira vez, pede o **mesmo e-mail e senha do painel**. Entrou, já abre
-   no cardápio do restaurante daquela conta — sem escolher nada.
-3. O cliente monta o pedido, digita o nome e escolhe como pagar: **cartão** na
-   maquininha Point ou **Pix** com o QR na própria tela. Dinheiro não existe no
-   totem — num balcão sem atendente não há quem receba nem quem dê troco.
+   no cardápio do restaurante daquela conta -- sem escolher nada.
+3. O cliente monta o pedido igual ao do link. No fim, em vez de endereço de
+   entrega, o balcão pergunta **comer aqui ou levar** e **cartão ou Pix**.
+   Dinheiro não existe no totem: não há quem receba nem quem dê troco.
 4. Os dois caem direto na conta do Mercado Pago do próprio restaurante,
    cadastrada no painel → Totem. O MenuFácil não fica com nada no meio.
-5. Aprovado o pagamento, o pedido é gravado no MenuFácil como pedido normal,
-   marcado como **Totem**. A comanda sai na impressora térmica ligada ao totem —
-   e continua saindo também na impressora do balcão, pela aba Pedidos do painel.
-6. Para fechar o totem, cinco toques no canto superior esquerdo abrem os ajustes;
-   ali o dono digita a **senha do painel**, que é conferida no servidor.
+5. Aprovado o pagamento, o pedido é gravado como pedido normal, marcado como
+   **Totem**. A comanda sai na impressora térmica ligada ao totem -- e continua
+   saindo também na impressora do balcão, pela aba Pedidos do painel.
+6. Para sair, um toque no pontinho apagado do canto de cima (ou a tecla **M**)
+   pede a **senha do painel**, conferida no servidor. Destravado, aparecem os
+   ajustes de impressora e o botão de fechar.
 
 ## Rodar durante o desenvolvimento
 

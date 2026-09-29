@@ -18,6 +18,8 @@ export function CartPanel({
   closed = false,
   className,
   storeSlug,
+  checkoutHref,
+  rodape,
 }: {
   /** na página de um restaurante: só mostra se o carrinho é dele */
   restaurantId?: string;
@@ -26,6 +28,10 @@ export function CartPanel({
   className?: string;
   /** cliente que entrou pelo link do restaurante: o carrinho vazio leva ao cardápio dele */
   storeSlug?: string;
+  /** para onde vai o "Finalizar pedido" (o totem fecha o pedido em outra tela) */
+  checkoutHref?: string;
+  /** no balcão não há entrega para calcular no passo seguinte */
+  rodape?: string;
 }) {
   const cart = useCart();
   const mine = !restaurantId || cart.restaurant?.id === restaurantId;
@@ -91,14 +97,17 @@ export function CartPanel({
           <p className="rounded-control bg-surface-2 px-3 py-2 text-sm text-muted">O restaurante está fechado agora. O pedido fica guardado aqui.</p>
         ) : (
           <Link
-            href={`/restaurante/${cart.restaurant.slug}/pedido`}
+            href={checkoutHref ?? `/restaurante/${cart.restaurant.slug}/pedido`}
             aria-disabled={missing > 0}
             className={buttonClasses("primary", "lg", cn("w-full", missing > 0 && "pointer-events-none opacity-50"))}
           >
             Finalizar pedido
           </Link>
         )}
-        <p className="text-center text-xs text-faint">{cartCount(cart)} {cartCount(cart) === 1 ? "item" : "itens"} · entrega calculada no próximo passo</p>
+        <p className="text-center text-xs text-faint">
+          {cartCount(cart)} {cartCount(cart) === 1 ? "item" : "itens"}
+          {rodape ?? " · entrega calculada no próximo passo"}
+        </p>
       </div>
     </div>
   );

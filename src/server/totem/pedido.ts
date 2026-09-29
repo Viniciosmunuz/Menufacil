@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
+import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
 
 // O pedido feito no totem.
 //
@@ -22,7 +23,14 @@ import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 
 export class TotemError extends Error {}
 
-export type ItemDoTotem = { productId: string; quantity: number; notes?: string | null; optionIds?: string[] };
+export type ItemDoTotem = {
+  productId: string;
+  quantity: number;
+  notes?: string | null;
+  optionIds?: string[];
+  /** sabores da pizza montada, na ordem em que o cliente escolheu */
+  flavorIds?: string[];
+};
 
 const MAX_LINHAS = 40;
 const MAX_QTD = 50;
@@ -92,25 +100,72 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
   });
   const porId = new Map(produtos.map((p) => [p.id, p]));
 
+  // O totem mostra o cardápio inteiro, o mesmo do link -- pizza montada
+  // inclusive. O catálogo de sabores só é buscado quando alguma linha é
+  // pizza, como na criação do pedido do site.
+  const temPizza = itens.some((i) => flavorSlots(porId.get(i.productId) ?? {}));
+  const sabores: PizzaFlavor[] = temPizza
+    ? (
+        await db.product.findMany({
+          where: { restaurantId, category: { pizzaFlavors: true, active: true } },
+          orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            priceCents: true,
+            promoPriceCents: true,
+            available: true,
+            category: { select: { id: true, name: true } },
+            optionGroups: {
+              orderBy: { sortOrder: "asc" },
+              take: 1,
+              select: { options: { orderBy: { sortOrder: "asc" }, select: { name: true, priceCents: true, available: true } } },
+            },
+          },
+        })
+      ).map((f) => ({
+        id: f.id,
+        name: f.name,
+        description: f.description,
+        priceCents: f.promoPriceCents ?? f.priceCents,
+        available: f.available,
+        sizes: (f.optionGroups[0]?.options ?? []).map((o) => ({ name: o.name, priceCents: o.priceCents, available: o.available })),
+        categoryId: f.category.id,
+        categoryName: f.category.name,
+      }))
+    : [];
+
   const linhas = itens.map((item) => {
     const produto = porId.get(item.productId);
     if (!produto || !produto.category.active) throw new TotemError("Um item saiu do cardápio. Comece o pedido de novo.");
     if (!produto.available) throw new TotemError(`"${produto.name}" acabou. Escolha outro item.`);
-    // A pizza montada por sabores tem tela própria no cardápio do link. No
-    // totem ela ainda não existe, e adivinhar o preço aqui sairia errado.
-    if (produto.pizzaFlavors) throw new TotemError(`"${produto.name}" só pode ser pedido no balcão. Chame o atendente.`);
 
     const problemas = selectionProblems(produto.optionGroups, item.optionIds ?? []);
     if (problemas.length) throw new TotemError(`"${produto.name}" mudou no cardápio (${problemas[0]}). Escolha de novo.`);
 
-    const base = produto.promoPriceCents ?? produto.priceCents;
+    // pizza montada: os sabores são conferidos aqui, e o preço é o do mais
+    // caro entre eles -- nunca a soma nem a média
+    const vagas = flavorSlots(produto);
+    const tamanho = vagas ? (produto.optionGroups[0]?.options.find((o) => (item.optionIds ?? []).includes(o.id))?.name ?? null) : null;
+    if (vagas) {
+      const ruins = pizzaProblems(sabores, item.flavorIds ?? [], vagas, tamanho);
+      if (ruins.length) throw new TotemError(`"${produto.name}": ${ruins[0]}`);
+    } else if ((item.flavorIds ?? []).length) {
+      throw new TotemError(`"${produto.name}" não é uma pizza de sabores. Comece o pedido de novo.`);
+    }
+
+    const base = vagas ? pizzaPrice(sabores, item.flavorIds ?? [], tamanho) : (produto.promoPriceCents ?? produto.priceCents);
     const unitario = base + optionsPrice(produto.optionGroups, item.optionIds ?? []);
-    const escolhas = optionsText(produto.optionGroups, item.optionIds ?? []);
+    const escolhas = [
+      vagas ? flavorsText(sabores, item.flavorIds ?? [], vagas) : null,
+      optionsText(produto.optionGroups, item.optionIds ?? []),
+    ].filter(Boolean);
 
     return {
       productId: produto.id,
       productName: produto.name,
-      optionsText: escolhas || null,
+      optionsText: escolhas.length ? escolhas.join(" · ") : null,
       unitPriceCents: unitario,
       quantity: item.quantity,
       notes: (item.notes ?? "").trim().slice(0, 140) || null,
@@ -152,6 +207,8 @@ export async function criarPedidoDoTotem(params: {
   observacao?: string | null;
   /** como foi pago: cartão na maquininha ou Pix pelo QR da tela */
   forma: "CARD" | "PIX";
+  /** comer no local (true) ou levar (false) */
+  comerAqui: boolean;
 }) {
   const restaurante = await db.restaurant.findUnique({
     where: { id: params.restaurantId },
@@ -192,6 +249,7 @@ export async function criarPedidoDoTotem(params: {
         customerWhatsapp: "",
         type: "PICKUP",
         origin: "TOTEM",
+        dineIn: params.comerAqui,
         paymentMethod: params.forma,
         // o dinheiro já entrou (cartão ou Pix): para a cozinha, é para fazer
         status: "CONFIRMED",
@@ -203,7 +261,7 @@ export async function criarPedidoDoTotem(params: {
         statusEvents: {
           create: {
             status: "CONFIRMED",
-            note: params.forma === "PIX" ? "Pedido feito no totem e pago por Pix" : "Pedido feito no totem e pago na maquininha",
+            note: `Pedido feito no totem (${params.comerAqui ? "comer aqui" : "para viagem"}) e pago ${params.forma === "PIX" ? "por Pix" : "na maquininha"}`,
           },
         },
         payment: {

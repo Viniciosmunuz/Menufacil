@@ -426,6 +426,9 @@ model Order {
 
   type          OrderType
   origin        OrderOrigin   @default(WHATSAPP)
+  /// Totem: comer no local (true) ou levar (false). Vazio em todo pedido que
+  /// nao veio do totem -- no delivery quem responde isso e o "type".
+  dineIn        Boolean?
   paymentMethod PaymentMethod
   status        OrderStatus   @default(NEW)
   notes         String?

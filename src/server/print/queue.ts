@@ -18,6 +18,7 @@ const ticketSelect = {
   code: true,
   createdAt: true,
   type: true,
+  dineIn: true,
   origin: true,
   customerName: true,
   customerWhatsapp: true,
@@ -76,6 +77,7 @@ export async function orderTicket(restaurantId: string, orderId: string) {
       criado_em: order.createdAt.toISOString(),
       tipo: order.type,
       origem: order.origin,
+      comer_aqui: order.dineIn,
       cliente: { nome: order.customerName, whatsapp: order.customerWhatsapp },
       endereco: {
         rua: order.deliveryStreet,

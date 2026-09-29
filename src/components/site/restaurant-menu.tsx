@@ -285,6 +285,8 @@ export function RestaurantMenu({
   pizzaFlavors = [],
   canOrder,
   closedMessage,
+  carrinhoHref = "/carrinho",
+  barraDoCarrinho = "bottom-[calc(4rem+env(safe-area-inset-bottom))]",
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -293,6 +295,18 @@ export function RestaurantMenu({
   /** fechado ou em prévia: dá para ver, não para pedir */
   canOrder: boolean;
   closedMessage: string | null;
+  /**
+   * Para onde a barra do carrinho leva. O padrão é a página /carrinho do
+   * site; no totem é a tela de fechar o pedido do balcão. O cardápio em si
+   * é o mesmo nos dois -- é essa a ideia.
+   */
+  carrinhoHref?: string;
+  /**
+   * Onde a barra do carrinho fica no celular. O padrão deixa espaço para a
+   * barra de navegação do site; no totem, que não tem essa barra, ela desce
+   * até embaixo.
+   */
+  barraDoCarrinho?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -580,9 +594,9 @@ export function RestaurantMenu({
 
       {/* barra do carrinho no celular (a coluna da direita faz esse papel no computador) */}
       {mineInCart && mineInCart.items.length > 0 && (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 px-4 pb-3 lg:hidden">
+        <div className={cn("fixed inset-x-0 z-30 px-4 pb-3 lg:hidden", barraDoCarrinho)}>
           <Link
-            href="/carrinho"
+            href={carrinhoHref}
             className="mx-auto flex h-14 max-w-lg items-center justify-between gap-3 rounded-2xl bg-brand px-5 font-extrabold text-brand-ink shadow-xl shadow-black/50 transition active:scale-[0.98]"
           >
             <span className="flex items-center gap-2.5">
