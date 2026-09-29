@@ -37,6 +37,7 @@ export function StatusPanel({
   const [state, action] = useActionState<AdminFormState, FormData>(changeRestaurantStatus, {});
   const transitions = availableTransitions(status);
   const showChecklist = status !== "ACTIVE" && status !== "BLOCKED";
+  const faltando = checklist.filter((i) => i.required && !i.ok);
 
   return (
     <Card>
@@ -70,9 +71,10 @@ export function StatusPanel({
             ))}
           </ul>
           {!ready && (
-            <p className="mt-3 text-sm text-muted">
-              Complete os itens em amarelo em <strong>Gerenciar restaurante</strong>.
-            </p>
+            <Alert tone="warning" className="mt-3">
+              Para publicar, falta <strong>{faltando.map((i) => i.label.toLowerCase()).join(", ")}</strong>. Ajuste em{" "}
+              <strong>Gerenciar restaurante</strong> e volte aqui.
+            </Alert>
           )}
         </div>
       )}
@@ -95,14 +97,11 @@ export function StatusPanel({
                 {label}
               </ConfirmButton>
             ) : (
-              <SubmitButton
-                key={t}
-                name="transition"
-                value={t}
-                variant={rule.tone}
-                pendingText="Aguarde..."
-                disabled={rule.needsChecklist && !ready}
-              >
+              // O botão nunca fica desligado: desligado ele não explica nada, e
+              // quem desativou um restaurante fica sem entender por que não
+              // consegue ligar de volta. Deixa clicar — o servidor confere de
+              // novo e responde dizendo exatamente o que falta.
+              <SubmitButton key={t} name="transition" value={t} variant={rule.tone} pendingText="Aguarde...">
                 {label}
               </SubmitButton>
             );

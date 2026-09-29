@@ -53,5 +53,9 @@ export async function activationChecklist(restaurantId: string) {
     { key: "logo", label: "Logo", ok: !!restaurant.logoUrl, required: false },
   ];
 
-  return { items, ready: items.every((i) => i.ok || !i.required) };
+  // O que falta, pelo nome. Um botão desligado sem dizer por quê é um beco
+  // sem saída: quem desativou um restaurante fica sem entender por que não
+  // consegue ligar de volta.
+  const faltando = items.filter((i) => i.required && !i.ok).map((i) => i.label);
+  return { items, ready: faltando.length === 0, faltando };
 }

@@ -246,8 +246,13 @@ export async function changeRestaurantStatus(_prev: AdminFormState, formData: Fo
   });
   if (!restaurant) return { error: "Restaurante não encontrado." };
 
-  if (rule.needsChecklist && !(await activationChecklist(restaurantId)).ready) {
-    return { error: "Complete os itens obrigatórios da lista antes de publicar." };
+  if (rule.needsChecklist) {
+    const lista = await activationChecklist(restaurantId);
+    if (!lista.ready) {
+      // dizer o que falta, pelo nome: senão o admin fica olhando um botão
+      // desligado sem saber o que fazer
+      return { error: `Para publicar, falta: ${lista.faltando.join(", ")}.` };
+    }
   }
 
   // a condição de status no where evita duas mudanças ao mesmo tempo
