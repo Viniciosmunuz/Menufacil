@@ -79,13 +79,21 @@ por esta lista de novo**.
 
 ## 4. O que ainda falta programar
 
+> Atualizado em 29/09/2026: o totem deixou de ter cardápio próprio. Ele abre a
+> página `/totem/<slug>` do MenuFácil, que é o mesmo cardápio do link do
+> restaurante -- fotos, esgotado, preço e pizza saem do banco na hora. Não há
+> um segundo cardápio para manter.
+
+
 ### Precisa, antes de ligar num restaurante
 
-- [ ] **Gerar o instalador do totem** (`cd totem-app && npm run dist`), copiar
-      para `public/totem/` e virar `TOTEM_APP_DISPONIVEL` para `true` em
-      `src/lib/totem-release.ts`.
-- [ ] **Testar o aplicativo no Pipo X8 Pro de verdade.** Tela de 7" é apertada;
-      o desenho foi feito para 800x480 mas nunca rodou no aparelho.
+- [x] ~~Gerar o instalador do totem.~~ Feito: `public/totem/MenuFacilTotem-Setup-0.1.0.exe`.
+- [ ] **Ligar o recurso Totem para o restaurante** no admin. Sem isso,
+      `/totem/<slug>` responde 404 de propósito.
+- [ ] **Testar o aplicativo no Pipo X8 Pro de verdade.** O instalador foi gerado
+      e o build passou, mas nunca rodou numa máquina: modo quiosque, impressora
+      térmica e maquininha só se provam no hardware. **Windows** é o sistema
+      escolhido (o código do Linux existe, mas não é o caminho).
 - [ ] **Travar o Windows.** O modo quiosque do aplicativo bloqueia Alt+F4,
       Ctrl+W, F5, F11 e o inspetor, e recupera o foco sozinho. Mas
       **Ctrl+Alt+Del e a tecla Windows nenhum aplicativo consegue bloquear** —
@@ -124,9 +132,11 @@ por esta lista de novo**.
 - [ ] **Histórico dos pagamentos do totem.** A tabela `TotemPayment` guarda tudo
       (valor, forma, situação, o que o Mercado Pago respondeu), mas nada disso
       aparece no painel.
-- [ ] **Pizza montada por sabores** não aparece no totem. O produto é escondido
-      do cardápio dele de propósito — montar pizza numa tela de 7" é uma tela
-      inteira à parte.
+- [ ] **O instalador vai para dentro do git**, como já acontecia com o Menu
+      Fácil para PC. São 98 MB por versão, e o git guarda cada uma para sempre:
+      o repositório já está em 306 MB, e a Vercel clona ele a cada deploy. Antes
+      da próxima versão vale mover os instaladores para o Vercel Blob (o projeto
+      já tem token) ou para Releases do GitHub.
 - [ ] **Atualização automática do aplicativo.** O Print Fácil usa
       `electron-updater`; o totem ainda não tem. Hoje, atualizar é reinstalar.
 
