@@ -25,8 +25,7 @@ export const DEMO_URL = "/restaurante/papaleguas";
  *
  * Vazio = o botão não aparece na página.
  */
-// TODO: trocar pelo número ("5592999990000") para a mensagem já vir escrita
-export const WHATSAPP = "https://wa.me/qr/CFKI7EKZUH7EK1";
+export const WHATSAPP = "5592999130838"; // (92) 99913-0838
 export const WHATSAPP_MSG = "Olá! Quero saber mais sobre o MenuFácil para o meu restaurante.";
 
 /** endereço do botão "Prefiro falar no WhatsApp"; null quando não há contato */
