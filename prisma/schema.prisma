@@ -46,6 +46,7 @@ model User {
   tokens        VerificationToken[]
   auditLogs     AuditLog[]
   statusChanges OrderStatusEvent[]
+  pushDevices   PushDevice[]
 
   @@index([role])
 }
@@ -210,6 +211,7 @@ model Restaurant {
   messages            WhatsAppMessage[]
   auditLogs           AuditLog[]
   printDevices        PrintDevice[]
+  pushDevices         PushDevice[]
 
   @@index([status])
   @@index([city])
@@ -641,6 +643,40 @@ model PrintDevice {
   createdAt  DateTime  @default(now())
 
   restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+// Celular (ou computador) que pediu para ser avisado quando entrar pedido
+// novo. Quem guarda o aviso de verdade é o navegador: aqui fica so o
+// endereco que o Google/Apple nos deu para entregar a mensagem, mais as
+// duas chaves que embaralham o conteudo. Nada disso identifica a pessoa.
+model PushDevice {
+  id           String  @id @default(cuid())
+  restaurantId String
+  userId       String?
+
+  /**
+   * endereco do servico de push; e ele que identifica o aparelho
+   */
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  /**
+   * "Android · Chrome", so para o dono reconhecer na lista
+   */
+  label String?
+
+  createdAt DateTime  @default(now())
+  lastOkAt  DateTime?
+  /**
+   * entregas seguidas que falharam; passando do limite, o aparelho sai
+   */
+  failures  Int       @default(0)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId])
 }

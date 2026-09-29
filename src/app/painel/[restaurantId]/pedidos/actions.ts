@@ -8,6 +8,7 @@ import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
 import { pairDevice, unpairDevice } from "@/server/print/devices";
+import { avisarTeste, esquecerAparelho, guardarAparelho } from "@/server/push/avisos";
 
 // Atendimento dos pedidos pelo painel do restaurante. Cada ação confere o
 // acesso ao restaurante e só mexe em pedido dele.
@@ -90,4 +91,37 @@ export async function markPrinted(formData: FormData) {
   const { restaurantId } = await access(formData);
   const orderId = String(formData.get("orderId") ?? "");
   await db.order.updateMany({ where: { id: orderId, restaurantId, printedAt: null }, data: { printedAt: new Date() } });
+}
+
+// Avisos de pedido novo no celular. O navegador se cadastra no serviço de
+// push e manda para cá o endereço dele; o servidor só guarda, sempre
+// conferindo que quem pediu tem acesso a este restaurante.
+export async function ligarAvisos(entrada: {
+  restaurantId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  label?: string;
+}) {
+  const { user, restaurant } = await requireRestaurantAccess(entrada.restaurantId);
+  await guardarAparelho({
+    restaurantId: restaurant.id,
+    userId: user.id,
+    endpoint: entrada.endpoint,
+    p256dh: entrada.p256dh,
+    auth: entrada.auth,
+    label: entrada.label?.slice(0, 60) ?? null,
+  });
+}
+
+export async function desligarAvisos(entrada: { restaurantId: string; endpoint: string }) {
+  const { restaurant } = await requireRestaurantAccess(entrada.restaurantId);
+  await esquecerAparelho(entrada.endpoint, restaurant.id);
+}
+
+/** manda um aviso de mentira pelo mesmo caminho de um pedido de verdade */
+export async function testarAvisos(restaurantId: string) {
+  const { restaurant } = await requireRestaurantAccess(restaurantId);
+  const enviados = await avisarTeste(restaurant.id);
+  return { enviados };
 }

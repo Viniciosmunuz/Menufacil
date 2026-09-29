@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { fieldErrors, formObject, type FieldErrors } from "@/lib/validation";
 import { OrderError, checkoutSchema, parseItems, placeOrder } from "@/server/orders/place-order";
+import { agendarAvisoDePedido } from "@/server/push/agendar";
 import { scheduleWhatsAppDelivery } from "@/server/whatsapp/service";
 
 export type CheckoutState = {
@@ -29,6 +30,8 @@ export async function submitOrder(_prev: CheckoutState, formData: FormData): Pro
     const items = parseItems(formData.get("items"));
     const order = await placeOrder({ slug: String(formData.get("slug") ?? ""), input: parsed.data, items });
     scheduleWhatsAppDelivery(order.id);
+    // apita no celular do restaurante mesmo com o painel fechado
+    agendarAvisoDePedido(order);
     code = order.code;
   } catch (error) {
     if (error instanceof OrderError) {

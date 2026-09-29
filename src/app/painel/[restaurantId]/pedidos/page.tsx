@@ -7,6 +7,7 @@ import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
 import { PrintSettings } from "@/components/panel/print-settings";
+import { PushAvisos } from "@/components/panel/push-avisos";
 import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
@@ -21,8 +22,19 @@ import { nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
+import { chavePublicaDePush } from "@/server/push/avisos";
 
-import { markPrinted, pairPrintDevice, reprintOrder, stepRestaurantOrder, unpairPrintDevice, updateRestaurantOrder } from "./actions";
+import {
+  desligarAvisos,
+  ligarAvisos,
+  markPrinted,
+  pairPrintDevice,
+  reprintOrder,
+  stepRestaurantOrder,
+  testarAvisos,
+  unpairPrintDevice,
+  updateRestaurantOrder,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -107,6 +119,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
+        avisos={
+          <PushAvisos
+            restaurantId={restaurant.id}
+            chavePublica={chavePublicaDePush()}
+            ligarAction={ligarAvisos}
+            desligarAction={desligarAvisos}
+            testarAction={testarAvisos}
+          />
+        }
         devices={printDevices.map((d) => ({
           id: d.id,
           name: d.name,

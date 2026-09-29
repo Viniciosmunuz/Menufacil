@@ -167,11 +167,14 @@ export function PrintSettings({
   devices,
   pairAction,
   unpairAction,
+  avisos,
 }: {
   base: string;
   panelUrl: string;
   restaurantId: string;
   orders: Order[];
+  /** bloco dos avisos no celular; some sozinho onde o aparelho não aceita */
+  avisos?: ReactNode;
   acceptAction: (formData: FormData) => Promise<void>;
   /** destrava a via para o computador do balcão tirar de novo */
   reprintAction: (formData: FormData) => Promise<void>;
@@ -480,6 +483,8 @@ export function PrintSettings({
             )}
           </div>
         </div>
+
+        {avisos}
 
         {somBloqueado && sound && (
           <p className="text-sm font-bold text-warning">
