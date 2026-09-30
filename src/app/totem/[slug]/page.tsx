@@ -50,8 +50,11 @@ export default async function TotemMenuPage({ params }: PageProps<"/totem/[slug]
       })),
     );
 
+  // A largura fica travada: o totem de verdade tem 7 polegadas, e sem limite
+  // o mesmo cardápio num monitor grande estica a ponto de a pessoa ter que
+  // varrer a tela com os olhos para achar o preço.
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
       {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui */}
       <TotemOcioso href={`/totem/${r.slug}`} />
 
@@ -99,6 +102,9 @@ export default async function TotemMenuPage({ params }: PageProps<"/totem/[slug]
             carrinhoHref={`/totem/${r.slug}/pedido`}
             // no totem não existe barra de navegação embaixo
             barraDoCarrinho="bottom-3"
+            // e não existe coluna do carrinho à direita: a barra tem que ficar
+            // mesmo em monitor grande, senão não há como chegar ao pedido
+            barraSempreVisivel
           />
         )}
       </div>

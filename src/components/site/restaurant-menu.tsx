@@ -287,6 +287,7 @@ export function RestaurantMenu({
   closedMessage,
   carrinhoHref = "/carrinho",
   barraDoCarrinho = "bottom-[calc(4rem+env(safe-area-inset-bottom))]",
+  barraSempreVisivel = false,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -307,6 +308,13 @@ export function RestaurantMenu({
    * até embaixo.
    */
   barraDoCarrinho?: string;
+  /**
+   * Mantém a barra do carrinho visível também em tela grande. No site ela
+   * some a partir de "lg" porque o carrinho vira coluna da direita; no
+   * totem essa coluna não existe, e num monitor grande o cliente ficava sem
+   * nenhum jeito de chegar ao pedido.
+   */
+  barraSempreVisivel?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -594,7 +602,7 @@ export function RestaurantMenu({
 
       {/* barra do carrinho no celular (a coluna da direita faz esse papel no computador) */}
       {mineInCart && mineInCart.items.length > 0 && (
-        <div className={cn("fixed inset-x-0 z-30 px-4 pb-3 lg:hidden", barraDoCarrinho)}>
+        <div className={cn("fixed inset-x-0 z-30 px-4 pb-3", !barraSempreVisivel && "lg:hidden", barraDoCarrinho)}>
           <Link
             href={carrinhoHref}
             className="mx-auto flex h-14 max-w-lg items-center justify-between gap-3 rounded-2xl bg-brand px-5 font-extrabold text-brand-ink shadow-xl shadow-black/50 transition active:scale-[0.98]"
