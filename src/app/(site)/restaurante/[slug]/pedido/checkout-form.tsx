@@ -469,16 +469,23 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
             {staleNotice}
             {/* o aviso também fica aqui: no celular, o topo do formulário está longe do botão */}
             {(firstError || missingPayment) && <Alert tone="danger">{firstError ?? "Escolha como você vai pagar."}</Alert>}
-            {/* O pedido é gravado no sistema quando o cliente confirma, e daí
-                aparece no painel e na impressora do restaurante. O WhatsApp
-                abre depois, por conveniência. O texto antigo dizia que o
-                pedido só chegava se a pessoa tocasse em enviar lá — num aviso
-                amarelo, logo acima do botão: quem lê isso e não entende de
-                celular desiste ou acha que o pedido não foi. */}
-            <Alert tone="info">
-              Ao confirmar, <strong>seu pedido já vai para o restaurante</strong>. Em seguida o WhatsApp abre com ele escrito, caso você queira falar
-              com eles.
-            </Alert>
+            {/* Duas coisas verdadeiras e fáceis de confundir, por isso em duas
+                linhas curtas em vez de uma caixa colorida:
+
+                1. o pedido é gravado no sistema assim que o cliente confirma,
+                   e daí já aparece no painel e na impressora do restaurante;
+                2. o WhatsApp abre em seguida com o pedido escrito, e ainda
+                   falta o cliente tocar em enviar ali.
+
+                O texto mais antigo dizia só a 2, como se o pedido dependesse
+                do envio — assustava. A versão seguinte disse só a 1, e o
+                cliente fechava o WhatsApp sem mandar nada. Agora diz as duas,
+                na ordem em que acontecem. */}
+            <p className="text-sm leading-snug text-muted">
+              Ao confirmar, <strong className="font-bold text-ink">seu pedido já entra no restaurante</strong>. Em seguida o
+              WhatsApp abre com o pedido escrito: <strong className="font-bold text-ink">toque em enviar</strong> para falar com
+              eles e acompanhar.
+            </p>
             <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || stale.length > 0} className="w-full justify-between">
               <span>Fazer pedido</span>
               <span className="tabular-nums">{formatCents(total)}</span>
