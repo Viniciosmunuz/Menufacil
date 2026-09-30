@@ -31,12 +31,14 @@
       "target": [
         "nsis"
       ],
+      "icon": "assets/menufacil.ico",
       "artifactName": "MenuFacilTotem-Setup-${version}.${ext}"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
+      "icon": "assets/menufacil-512.png",
       "category": "Utility",
       "artifactName": "MenuFacilTotem-${version}.${ext}"
     },

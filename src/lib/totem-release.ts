@@ -17,6 +17,6 @@
 export const TOTEM_APP_VERSION = "0.1.0";
 
 /** endereço público do instalador; vazio enquanto não estiver publicado */
-export const TOTEM_SETUP_URL = "";
+export const TOTEM_SETUP_URL = "https://4ztpzq9cgqucptab.public.blob.vercel-storage.com/MenuFacilTotem-Setup-0.1.0.exe";
 
 export const TOTEM_APP_DISPONIVEL = TOTEM_SETUP_URL.length > 0;
