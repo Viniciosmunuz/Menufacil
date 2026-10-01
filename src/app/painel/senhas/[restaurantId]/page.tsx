@@ -103,19 +103,16 @@ function DaVez({ senha }: { senha: SenhaNaTela | null }) {
   const digitos = senha ? String(senha.number).padStart(3, "0").length : 3;
   // o número ocupa quase a largura do quadro; passando de três dígitos ele
   // encolhe, senão a senha #1024 sairia pela borda
-  const tamanho = digitos <= 3 ? "text-[19vw]" : digitos === 4 ? "text-[15vw]" : "text-[12vw]";
+  const tamanho = digitos <= 3 ? "text-[24vw]" : digitos === 4 ? "text-[18vw]" : "text-[14vw]";
 
   return (
     <section className="flex min-h-0 flex-col rounded-[2vw] border-[0.25vw] border-brand bg-surface/60 p-[2vw]">
-      <h2 className="flex items-center gap-[1vw] whitespace-nowrap text-[2.3vw] font-extrabold text-brand uppercase">
-        <LogoIcon className="h-[2.8vw] max-h-14" />
-        Agora é a sua vez
-      </h2>
+      <h2 className="whitespace-nowrap text-[2.3vw] font-extrabold text-brand uppercase">Agora é a sua vez</h2>
 
       {senha ? (
         <div className="my-auto flex flex-col items-center">
           <span className={`${tamanho} leading-[0.82] font-extrabold tabular-nums drop-shadow-[0_0_2vw_rgb(255_138_31/0.35)]`}>
-            #{String(senha.number).padStart(3, "0")}
+            {String(senha.number).padStart(3, "0")}
           </span>
           {/* o nome resolve quando duas senhas ficam prontas quase juntas */}
           <span className="mt-[1vw] max-w-full truncate text-[1.6vw] font-bold text-muted">{senha.customerName}</span>
@@ -153,7 +150,7 @@ function Ultimos({ senhas }: { senhas: SenhaNaTela[] }) {
                   {retirado ? "Retirado" : "Pode retirar"}
                 </span>
                 <span className="mt-[0.4vw] text-[3.6vw] leading-none font-extrabold tabular-nums">
-                  #{String(p.number).padStart(3, "0")}
+                  {String(p.number).padStart(3, "0")}
                 </span>
                 <span className="mt-[0.4vw] max-w-full truncate text-[1vw] text-muted">
                   {retirado ? "Obrigado!" : p.customerName}
@@ -182,7 +179,7 @@ function EmPreparo({ senhas }: { senhas: SenhaNaTela[] }) {
               key={p.id}
               className="rounded-[0.9vw] border border-line bg-surface-2 px-[1vw] py-[0.6vw] text-[2.1vw] leading-none font-extrabold tabular-nums text-muted"
             >
-              #{String(p.number).padStart(3, "0")}
+              {String(p.number).padStart(3, "0")}
             </li>
           ))}
         </ul>
