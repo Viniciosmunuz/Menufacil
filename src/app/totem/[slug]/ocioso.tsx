@@ -49,7 +49,10 @@ const ouvintes = new Set<() => void>();
 function lerDescanso(): boolean {
   if (descansando === null) {
     try {
-      descansando = sessionStorage.getItem(CHAVE) === "1";
+      // "?descanso=1" abre já no cartaz: serve para o dono conferir a arte
+      // dele sem ter que esperar um minuto olhando para o tablet
+      const forcado = new URLSearchParams(window.location.search).get("descanso") === "1";
+      descansando = forcado || sessionStorage.getItem(CHAVE) === "1";
     } catch {
       // navegador sem armazenamento: só não emenda o descanso após recarregar
       descansando = false;
