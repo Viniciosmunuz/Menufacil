@@ -40,8 +40,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Ferramentas do Android
-        uses: android-actions/setup-android@v3
+      # O runner do GitHub já vem com o SDK do Android instalado e com as
+      # licenças aceitas. A ação android-actions/setup-android baixava outra
+      # cópia das ferramentas e parava na pergunta "Accept? (y/N)", que
+      # ninguém está lá para responder -- era isso que derrubava o build.
+      - name: Licenças do SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       # O Gradle do runner muda sem avisar, e versão nova demais não roda
       # com este plugin do Android. Travar aqui é o que faz o APK de hoje
