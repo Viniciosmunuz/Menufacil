@@ -2,6 +2,9 @@ package app.menufacil.print
 
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * A via em ESC/POS, a língua que a impressora térmica entende.
@@ -109,6 +112,9 @@ object EscPos {
    * computador recebe.
    */
   fun montar(dados: JSONObject, papelMm: Int): ByteArray {
+    // o servidor diz qual dos dois papéis é este. Sem o campo, é comanda --
+    // que é o que o Print Fácil do computador sempre recebeu.
+    if (dados.optString("papel") == "senha") return recibo(dados, papelMm)
     val largura = if (papelMm == 58) 32 else 48
     val entrega = dados.optString("tipo") == "DELIVERY"
     val noTotem = dados.optString("origem") == "TOTEM"
@@ -202,6 +208,87 @@ object EscPos {
     }
 
     return via.cortar().paraBytes()
+  }
+
+  /**
+   * O recibo do cliente: o papel que sai na impressora do próprio tablet,
+   * na mão de quem acabou de pagar.
+   *
+   * É curto de propósito. O cliente vai segurá-lo até ser chamado, então o
+   * que importa é a senha enorme, o que ele pediu, quanto pagou e como
+   * pagou. Observação para a cozinha, endereço e telefone não entram: isso
+   * é assunto da comanda, que sai no computador do balcão.
+   */
+  private fun recibo(dados: JSONObject, papelMm: Int): ByteArray {
+    val largura = if (papelMm == 58) 32 else 48
+    val via = Via()
+
+    via.alinhar(1).tamanho(1).negrito(true).linha(dados.optString("restaurante").uppercase()).negrito(false)
+    via.tamanho(0).separador(largura, true)
+
+    // a senha é o único número que o cliente procura neste papel: sai
+    // sozinha e no maior tamanho que a térmica faz
+    via.linha()
+    via.tamanho(1).negrito(true).linha("SENHA")
+    via.tamanho(2).linha("#${dados.optInt("numero")}").negrito(false)
+    via.tamanho(0).linha()
+    via.separador(largura, true).alinhar(0)
+
+    via.tamanho(1)
+    val itens = dados.optJSONArray("itens")
+    for (i in 0 until (itens?.length() ?: 0)) {
+      val item = itens!!.optJSONObject(i) ?: continue
+      val quantidade = "${item.optInt("quantidade")}x".padEnd(4)
+      val nome = item.optString("nome")
+      val valor = dinheiro(item.optInt("total_centavos"))
+      if (quantidade.length + nome.length + valor.length + 2 <= largura) {
+        via.linha(entre(quantidade + nome, valor, largura))
+      } else {
+        quebrar(nome, largura - 4).forEachIndexed { indice, l -> via.linha((if (indice == 0) quantidade else "    ") + l) }
+        via.linha(entre("", valor, largura))
+      }
+      val opcoes = item.optJSONArray("opcoes")
+      for (o in 0 until (opcoes?.length() ?: 0)) {
+        quebrar(opcoes!!.optString(o), largura - 4).forEach { via.linha("    $it") }
+      }
+    }
+
+    via.separador(largura)
+    via.negrito(true).linha(entre("TOTAL PAGO", dinheiro(dados.optInt("total_centavos")), largura)).negrito(false)
+    via.separador(largura, true)
+
+    // como pagou, escrito por extenso: o cliente confere sem abrir o app do
+    // banco, e o balcão não cobra de novo por engano
+    val forma = dados.optJSONObject("pagamento")?.optString("forma").orEmpty()
+    via.negrito(true).linha("PAGO").negrito(false)
+    via.linha(if (forma == "PIX") "Por Pix, no totem" else "No cartão, na maquininha do totem")
+
+    via.separador(largura)
+    via.linha(if (dados.optBoolean("comer_aqui", true)) "COMER NO LOCAL" else "PARA VIAGEM")
+    val quando = relogio(dados.optString("criado_em"))
+    if (quando.isNotBlank()) via.linha(quando)
+
+    via.separador(largura, true).alinhar(1)
+    via.linha("Guarde este papel.")
+    via.linha("Chamamos pela senha.")
+    via.alinhar(0)
+
+    return via.cortar().paraBytes()
+  }
+
+  /** a data que o servidor manda, no formato que se lê de relance */
+  private fun relogio(iso: String): String {
+    if (iso.isBlank()) return ""
+    for (molde in listOf("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'")) {
+      try {
+        val leitor = SimpleDateFormat(molde, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+        val data = leitor.parse(iso) ?: continue
+        return SimpleDateFormat("dd/MM HH:mm", Locale("pt", "BR")).format(data)
+      } catch (e: Exception) {
+        // formato diferente do esperado: o papel sai sem a hora, e pronto
+      }
+    }
+    return ""
   }
 
   /** via de teste, para conferir a impressora antes do primeiro pedido */

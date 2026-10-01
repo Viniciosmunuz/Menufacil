@@ -1,12 +1,26 @@
 import "server-only";
 
+import type { PrintRole } from "@/generated/prisma/enums";
+
 import { db } from "@/lib/db";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { ticketLines, ticketText } from "@/lib/ticket";
+import { receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
 
 // A fila do Print Fácil: os pedidos que ainda não saíram no papel daquele
 // restaurante. O "printedAt" é a trava contra imprimir duas vezes — o
 // programa só marca depois que a impressora aceitou a via.
+//
+// Um pedido de totem rende dois papéis, em duas impressoras diferentes:
+//
+// - COMANDA: a cozinha, na impressora do computador do balcão. É a via de
+//   sempre, com tudo que o cozinheiro precisa.
+// - SENHA: o recibo do cliente, na impressora do próprio tablet. Sai só com
+//   o que ele pediu, quanto pagou e a senha.
+//
+// Cada papel tem a sua trava (printedAt e senhaPrintedAt), então um não
+// atrapalha o outro: a cozinha não deixa de receber porque o tablet já
+// imprimiu, e nenhum dos dois sai duas vezes. Quem não tem totem continua
+// como sempre — toda impressora nasce COMANDA.
 
 /** pedido velho não sai do nada quando o programa liga depois de horas */
 const WINDOW_HOURS = 12;
@@ -36,11 +50,19 @@ const ticketSelect = {
   items: { orderBy: { id: "asc" }, select: { productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
 } as const;
 
-export function pendingOrders(restaurantId: string) {
+/** o que falta sair naquela impressora, conforme o papel dela */
+const aindaNaoSaiu = (role: PrintRole) =>
+  role === "SENHA"
+    ? // a impressora de senha só olha pedido de totem: pedido de delivery
+      // não tem senha para o cliente levar
+      { origin: "TOTEM" as const, senhaPrintedAt: null }
+    : { printedAt: null };
+
+export function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA") {
   return db.order.findMany({
     where: {
       restaurantId,
-      printedAt: null,
+      ...aindaNaoSaiu(role),
       status: { in: [...OPEN_ORDER_STATUSES] },
       createdAt: { gte: new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000) },
     },
@@ -51,7 +73,7 @@ export function pendingOrders(restaurantId: string) {
 }
 
 /** a via pronta: o mesmo texto que sai pela impressão do navegador */
-export async function orderTicket(restaurantId: string, orderId: string) {
+export async function orderTicket(restaurantId: string, orderId: string, role: PrintRole = "COMANDA") {
   const order = await db.order.findFirst({
     where: { id: orderId, restaurantId },
     select: { ...ticketSelect, restaurant: { select: { name: true, receiptWidth: true } } },
@@ -59,6 +81,11 @@ export async function orderTicket(restaurantId: string, orderId: string) {
   if (!order) return null;
 
   const paper = order.restaurant.receiptWidth;
+  // só pedido de totem tem recibo de cliente; se a impressora de senha
+  // pedir a via de um pedido de delivery, sai a comanda normal
+  const senha = role === "SENHA" && order.origin === "TOTEM";
+  const monta = senha ? { linhas: receiptLines, texto: receiptText } : { linhas: ticketLines, texto: ticketText };
+
   return {
     id: order.id,
     numero: order.number,
@@ -66,12 +93,15 @@ export async function orderTicket(restaurantId: string, orderId: string) {
     criadoEm: order.createdAt.toISOString(),
     // a largura vem do painel: 80 mm por padrão, 58 mm para bobina estreita
     papel_mm: paper,
+    // qual dos dois papéis é este, para a térmica dar o destaque certo
+    papel: senha ? ("senha" as const) : ("comanda" as const),
     // texto pronto, para a impressora comum do Windows
-    texto: ticketText(order, order.restaurant.name, paper),
-    linhas: ticketLines(order, order.restaurant.name, paper),
+    texto: monta.texto(order, order.restaurant.name, paper),
+    linhas: monta.linhas(order, order.restaurant.name, paper),
     // os mesmos dados em partes, para a térmica ESC/POS dar destaque ao
     // número do pedido, ao total e ao que o cliente escreveu
     dados: {
+      papel: senha ? ("senha" as const) : ("comanda" as const),
       restaurante: order.restaurant.name,
       numero: order.number,
       criado_em: order.createdAt.toISOString(),
@@ -107,10 +137,11 @@ export async function orderTicket(restaurantId: string, orderId: string) {
 }
 
 /** só marca quem ainda não estava marcado: dois programas não duplicam a via */
-export async function markOrderPrinted(restaurantId: string, orderId: string) {
+export async function markOrderPrinted(restaurantId: string, orderId: string, role: PrintRole = "COMANDA") {
+  const agora = new Date();
   const { count } = await db.order.updateMany({
-    where: { id: orderId, restaurantId, printedAt: null },
-    data: { printedAt: new Date() },
+    where: { id: orderId, restaurantId, ...aindaNaoSaiu(role) },
+    data: role === "SENHA" ? { senhaPrintedAt: agora } : { printedAt: agora },
   });
   return { marcado: count > 0 };
 }

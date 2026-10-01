@@ -107,7 +107,9 @@ class ServicoDeImpressao : Service() {
           // só depois que o papel saiu. O servidor só aceita uma vez por
           // pedido, então dois aparelhos nunca imprimem a mesma comanda.
           api.marcarImpresso(pedidoId)
-          atualizar("Comanda impressa")
+          // a impressora de senha tira o recibo do cliente; a de comanda, a
+          // via da cozinha. O servidor diz qual, pelo papel do aparelho.
+          atualizar(if (dados.optString("papel") == "senha") "Senha impressa" else "Comanda impressa")
         }
 
         delay(ESPERA_NORMAL)

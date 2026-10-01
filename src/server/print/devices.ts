@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHash, randomBytes, randomInt } from "node:crypto";
 
+import type { PrintRole } from "@/generated/prisma/enums";
+
 import { db } from "@/lib/db";
 
 // Print Fácil: o programa que o restaurante instala no computador para os
@@ -50,6 +52,8 @@ export async function registerDevice(name: string) {
 export type AuthedDevice = {
   id: string;
   name: string;
+  /** qual papel sai nesta impressora: a comanda da cozinha ou a senha do cliente */
+  role: PrintRole;
   restaurantId: string | null;
   pairingCode: string | null;
   printerName: string | null;
@@ -67,6 +71,7 @@ export async function deviceFromRequest(request: Request): Promise<AuthedDevice 
     select: {
       id: true,
       name: true,
+      role: true,
       restaurantId: true,
       pairingCode: true,
       printerName: true,
@@ -106,11 +111,21 @@ export function listDevices(restaurantId: string) {
   return db.printDevice.findMany({
     where: { restaurantId },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, printerName: true, pairedAt: true, lastSeenAt: true },
+    select: { id: true, name: true, role: true, printerName: true, pairedAt: true, lastSeenAt: true },
   });
 }
 
 /** desligar um computador do restaurante (perdeu, trocou de máquina) */
 export function unpairDevice(id: string, restaurantId: string) {
   return db.printDevice.deleteMany({ where: { id, restaurantId } });
+}
+
+/**
+ * Trocar o papel de uma impressora.
+ *
+ * Só aparece para quem tem totem: no restaurante sem totem toda impressora
+ * é de comanda, que é como todas nascem.
+ */
+export function setDeviceRole(id: string, restaurantId: string, role: PrintRole) {
+  return db.printDevice.updateMany({ where: { id, restaurantId }, data: { role } });
 }

@@ -155,7 +155,15 @@ function startNow() {
   write(SINCE_KEY, String(Date.now()));
 }
 
-export type PrintDevice = { id: string; name: string; printerName: string | null; pairedAt: string | null; lastSeenAt: string | null };
+export type PrintDevice = {
+  id: string;
+  name: string;
+  /** o que sai nesta impressora: a comanda da cozinha ou a senha do cliente */
+  role: "COMANDA" | "SENHA";
+  printerName: string | null;
+  pairedAt: string | null;
+  lastSeenAt: string | null;
+};
 export type PairState = { error?: string; ok?: boolean };
 
 export function PrintSettings({
@@ -607,11 +615,18 @@ export function PrintFacilPanel({
   restaurantId,
   pairAction,
   unpairAction,
+  roleAction,
 }: {
   devices: PrintDevice[];
   restaurantId: string;
   pairAction: (prev: PairState, formData: FormData) => Promise<PairState>;
   unpairAction: (formData: FormData) => Promise<void>;
+  /**
+   * Só quem tem totem recebe isto, e só então a escolha do papel aparece.
+   * Sem totem não existe recibo de cliente: toda impressora é de comanda,
+   * e a tela fica exatamente como sempre foi.
+   */
+  roleAction?: (formData: FormData) => Promise<void>;
 }) {
   const [state, action] = useActionState<PairState, FormData>(pairAction, {});
 
@@ -637,14 +652,31 @@ export function PrintFacilPanel({
                   {device.printerName ? `Impressora: ${device.printerName}` : "Impressora ainda não escolhida"}
                   {device.lastSeenAt && ` · ${online(device.lastSeenAt) ? "conectado agora" : `visto ${when(device.lastSeenAt)}`}`}
                 </span>
+                {roleAction && (
+                  <span className="mt-1 block text-muted">
+                    {device.role === "SENHA" ? "Tira o recibo do cliente, com a senha." : "Tira a comanda da cozinha."}
+                  </span>
+                )}
               </span>
-              <form action={unpairAction}>
-                <input type="hidden" name="restaurantId" value={restaurantId} />
-                <input type="hidden" name="dispositivoId" value={device.id} />
-                <SubmitButton size="sm" variant="ghost" pendingText="Desligando...">
-                  Desligar
-                </SubmitButton>
-              </form>
+              <span className="flex flex-wrap items-center gap-2">
+                {roleAction && (
+                  <form action={roleAction}>
+                    <input type="hidden" name="restaurantId" value={restaurantId} />
+                    <input type="hidden" name="dispositivoId" value={device.id} />
+                    <input type="hidden" name="papel" value={device.role === "SENHA" ? "COMANDA" : "SENHA"} />
+                    <SubmitButton size="sm" variant="outline" pendingText="Trocando...">
+                      {device.role === "SENHA" ? "Passar para comanda" : "Passar para senha"}
+                    </SubmitButton>
+                  </form>
+                )}
+                <form action={unpairAction}>
+                  <input type="hidden" name="restaurantId" value={restaurantId} />
+                  <input type="hidden" name="dispositivoId" value={device.id} />
+                  <SubmitButton size="sm" variant="ghost" pendingText="Desligando...">
+                    Desligar
+                  </SubmitButton>
+                </form>
+              </span>
             </li>
           ))}
         </ul>

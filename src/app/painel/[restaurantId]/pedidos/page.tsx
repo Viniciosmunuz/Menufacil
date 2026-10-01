@@ -130,6 +130,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         devices={printDevices.map((d) => ({
           id: d.id,
           name: d.name,
+          role: d.role,
           printerName: d.printerName,
           pairedAt: d.pairedAt?.toISOString() ?? null,
           lastSeenAt: d.lastSeenAt?.toISOString() ?? null,

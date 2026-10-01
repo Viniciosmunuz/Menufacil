@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/impr
   if (!device?.restaurantId) return Response.json({ erro: "não autorizado" }, { status: 401 });
 
   const { orderId } = await params;
-  const result = await markOrderPrinted(device.restaurantId, orderId);
+  const result = await markOrderPrinted(device.restaurantId, orderId, device.role);
   await touchDevice(device.id);
   return Response.json(result);
 }

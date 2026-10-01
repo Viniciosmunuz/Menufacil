@@ -56,6 +56,9 @@ export function TotemCheckout({
   const [forma, setForma] = useState<"cartao" | "pix" | null>(null);
   const [nome, setNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  // quando a cobrança para por falta de ativação, a tela oferece o caminho:
+  // é o dono que está testando, e sem isto ele não descobre onde ativar
+  const [precisaAtivar, setPrecisaAtivar] = useState(false);
 
   const [etapa, setEtapa] = useState<Etapa>("escolhendo");
   const [qr, setQr] = useState<string | null>(null);
@@ -114,6 +117,7 @@ export function TotemCheckout({
     const canal = ponte();
     if (!canal) {
       setErro("Este aparelho ainda não foi ativado como totem. Chame um atendente.");
+      setPrecisaAtivar(true);
       return;
     }
 
@@ -330,6 +334,15 @@ export function TotemCheckout({
       </Card>
 
       {erro && <Alert tone="danger">{erro}</Alert>}
+      {precisaAtivar && (
+        <p className="text-center text-sm text-muted">
+          É o dono do restaurante?{" "}
+          <Link href={`/totem/${restaurant.slug}?ativar=1`} className="font-bold text-brand underline">
+            Ativar este aparelho
+          </Link>{" "}
+          com o código que o painel gera, na aba Totem.
+        </p>
+      )}
       {!aberto && <Alert tone="warning">O restaurante está fechado agora. Chame um atendente.</Alert>}
       {falta > 0 && <Alert tone="warning">Faltam {formatCents(falta)} para o pedido mínimo.</Alert>}
 

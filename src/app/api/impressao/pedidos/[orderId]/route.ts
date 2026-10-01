@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: RouteContext<"/api/impre
   if (!device?.restaurantId) return Response.json({ erro: "não autorizado" }, { status: 401 });
 
   const { orderId } = await params;
-  const ticket = await orderTicket(device.restaurantId, orderId);
+  const ticket = await orderTicket(device.restaurantId, orderId, device.role);
   if (!ticket) return Response.json({ erro: "pedido não encontrado" }, { status: 404 });
 
   return Response.json(ticket);

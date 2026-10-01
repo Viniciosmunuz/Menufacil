@@ -20,7 +20,7 @@ import { verConfig } from "@/server/totem/config";
 import { listarTotens } from "@/server/totem/dispositivos";
 import { temChaveDoTotem } from "@/server/totem/segredo";
 
-import { pairPrintDevice, unpairPrintDevice } from "../pedidos/actions";
+import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedidos/actions";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
 import { AccessTokenForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
 
@@ -96,6 +96,30 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
               </Link>
               <CopyLinkButton url={linkDoTotem} />
             </div>
+          </div>
+
+          {/* O link abre o cardápio e não pergunta nada -- é ele que o cliente
+              vai usar. Ativar é outro endereço, e é por onde o dono passa uma
+              vez em cada tablet para aquele aparelho poder cobrar. */}
+          <div className="flex flex-col items-start gap-3 rounded-control border border-dashed border-brand/50 bg-brand/5 p-4 sm:flex-row sm:items-center">
+            <KeyRound className="size-6 shrink-0 text-brand" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold">Primeira vez neste tablet? Ative o aparelho</p>
+              <p className="text-sm text-muted">
+                O link acima só mostra o cardápio: ele não pede código nenhum, de propósito, para o cliente nunca ver essa
+                tela. Para o tablet conseguir <strong className="text-ink">cobrar</strong>, abra o endereço de ativação nele
+                e digite um código gerado aqui embaixo, em Tablets ativados.
+              </p>
+            </div>
+            <Link
+              href={`/totem/${restaurant.slug}?ativar=1`}
+              target="_blank"
+              rel="noopener"
+              className={buttonClasses("secondary")}
+            >
+              <KeyRound className="size-4" aria-hidden="true" />
+              Ativar aparelho
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface-2 p-3">
@@ -206,13 +230,27 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           icone={<Printer />}
         >
           <p className="text-sm text-muted">
-            Vale para o Menu Fácil Print no tablet e para o Menu Fácil no computador do balcão. Os dois pegam o pedido da
-            mesma fila, e a comanda nunca sai duas vezes.
+            Um pedido de totem rende <strong className="text-ink">dois papéis</strong>, e os dois trazem a senha:
+          </p>
+          <ul className="ml-5 list-disc text-sm text-muted">
+            <li>
+              <strong className="text-ink">Comanda</strong> — sai na impressora do computador do balcão, para a cozinha,
+              com tudo que foi pedido. É como toda impressora vem de fábrica.
+            </li>
+            <li>
+              <strong className="text-ink">Senha</strong> — sai na impressora do tablet, para o cliente levar: os itens,
+              quanto pagou, como pagou e a senha dele.
+            </li>
+          </ul>
+          <p className="text-sm text-muted">
+            Marque a impressora do tablet como senha e a do computador como comanda. Cada papel tem a sua conta, então um
+            não cancela o outro e nenhum sai duas vezes.
           </p>
           <PrintFacilPanel
             devices={impressoras.map((d) => ({
               id: d.id,
               name: d.name,
+              role: d.role,
               printerName: d.printerName,
               pairedAt: d.pairedAt?.toISOString() ?? null,
               lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
@@ -220,6 +258,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
             restaurantId={restaurant.id}
             pairAction={pairPrintDevice}
             unpairAction={unpairPrintDevice}
+            roleAction={setPrintDeviceRole}
           />
         </Gaveta>
       </section>

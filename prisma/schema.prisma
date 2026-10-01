@@ -438,15 +438,21 @@ model Order {
   totalCents       Int
 
   /**
-   * quando o Print Fácil imprimiu: evita a via sair duas vezes
+   * quando a comanda da cozinha saiu: evita a via sair duas vezes
    */
-  printedAt DateTime?
+  printedAt      DateTime?
+  /**
+   * quando o recibo do cliente saiu (so pedido de totem tem).
+   * E uma coluna a parte porque sao dois papeis diferentes, em duas
+   * impressoras diferentes: a da cozinha e a do balcao do totem.
+   */
+  senhaPrintedAt DateTime?
   /**
    * quantas vezes o restaurante pediu a via de novo. O programa imprime
    * uma vez por tentativa: e por isso que pedir de novo funciona mesmo
    * com a via ja na lista do que ele imprimiu.
    */
-  printRuns Int       @default(0)
+  printRuns      Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -635,9 +641,21 @@ model AuditLog {
 // esse código no painel e aí o dispositivo passa a receber os pedidos
 // daquele restaurante, e só dele. Do token fica só o hash, como nas
 // sessões: vazar a tabela não dá acesso a ninguém.
+// O que esta impressora imprime. Um restaurante com totem tem duas: a da
+// cozinha, no computador do balcao, e a do totem, que entrega o recibo na
+// mao do cliente. Sem papel definido, as duas disputariam a mesma fila e a
+// comanda sairia no lugar errado.
+enum PrintRole {
+  COMANDA // a via da cozinha, com o que preparar
+  SENHA // o recibo do cliente: itens, valor, como pagou e a senha
+}
+
 model PrintDevice {
   id           String  @id @default(cuid())
   restaurantId String?
+
+  /// o que sai nesta impressora; tudo que ja existia continua sendo comanda
+  role PrintRole @default(COMANDA)
 
   /**
    * nome do computador, para o dono reconhecer no painel

@@ -133,6 +133,7 @@ export default async function MenuFacilPcPage({ params }: PageProps<"/painel/[re
               devices={devices.map((d) => ({
                 id: d.id,
                 name: d.name,
+                role: d.role,
                 printerName: d.printerName,
                 pairedAt: d.pairedAt?.toISOString() ?? null,
                 lastSeenAt: d.lastSeenAt?.toISOString() ?? null,

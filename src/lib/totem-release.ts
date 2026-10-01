@@ -7,23 +7,26 @@
 // impressora térmica. Ele é o Print Fácil do computador, em Android --
 // mesma API, mesmo pareamento por código, mesma impressão automática.
 //
-// O arquivo não mora dentro do site: um instalador de ~100 MB em public/ já
-// fez a Vercel recusar o deploy inteiro. Ele fica no Blob do projeto, e aqui
-// guardamos só o endereço.
+// O arquivo não mora dentro do site: um instalador grande em public/ já fez
+// a Vercel recusar o deploy inteiro. O APK fica numa release do repositório,
+// que o próprio GitHub publica depois de compilar
+// (.github/workflows/menufacil-print.yml) -- e o endereço de release é
+// aberto, sem conta nem login, que é o que o tablet precisa para baixar.
 //
-// Para publicar uma versão nova:
-//  1. o GitHub compila o APK sozinho (.github/workflows/menufacil-print.yml)
-//  2. baixar o APK do resultado da execução
-//  3. subir para o Blob (Vercel → Storage → menufacil-blob → Browse data)
-//  4. colar o endereço em PRINT_APK_URL e mudar PRINT_APK_VERSION aqui
-//
-// Sem endereço, o painel mostra "em preparo" em vez de um botão que levaria
-// a lugar nenhum.
+// Para publicar uma versão nova: subir versionName/versionCode em
+// menufacil-print/app/build.gradle.kts e PRINT_APK_VERSION aqui. O GitHub
+// compila no push e troca o arquivo da release sozinho.
 
 export const PRINT_APK_VERSION = "0.1.0";
 
-/** endereço público do APK; vazio enquanto não estiver publicado */
-export const PRINT_APK_URL = "";
+const REPO = "https://github.com/Viniciosmunuz/Menufacil";
+
+/** a etiqueta da release e o nome do arquivo, iguais aos do workflow */
+export const PRINT_APK_TAG = `print-v${PRINT_APK_VERSION}`;
+export const PRINT_APK_FILE = `menufacil-print-${PRINT_APK_VERSION}.apk`;
+
+/** endereço público do APK; vazio desliga o botão no painel */
+export const PRINT_APK_URL = `${REPO}/releases/download/${PRINT_APK_TAG}/${PRINT_APK_FILE}`;
 
 export const PRINT_APK_DISPONIVEL = PRINT_APK_URL.length > 0;
 

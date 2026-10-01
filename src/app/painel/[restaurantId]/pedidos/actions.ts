@@ -7,7 +7,7 @@ import { PAPER_WIDTHS } from "@/lib/ticket";
 import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
-import { pairDevice, unpairDevice } from "@/server/print/devices";
+import { pairDevice, setDeviceRole, unpairDevice } from "@/server/print/devices";
 import { avisarTeste, esquecerAparelho, guardarAparelho } from "@/server/push/avisos";
 
 // Atendimento dos pedidos pelo painel do restaurante. Cada ação confere o
@@ -57,6 +57,25 @@ export async function pairPrintDevice(_prev: PairState, formData: FormData): Pro
 export async function unpairPrintDevice(formData: FormData) {
   const { restaurantId } = await access(formData);
   await unpairDevice(String(formData.get("dispositivoId") ?? ""), restaurantId);
+  refresh();
+}
+
+/**
+ * Qual papel sai em cada impressora.
+ *
+ * Pedido de totem rende dois: a comanda da cozinha, que sai na impressora
+ * do computador do balcão, e o recibo do cliente com a senha, que sai na
+ * impressora do tablet. Quem não tem totem nunca vê esta escolha, e toda
+ * impressora continua nascendo como comanda.
+ */
+export async function setPrintDeviceRole(formData: FormData) {
+  const { restaurantId, actor } = await access(formData);
+  const papel = String(formData.get("papel") ?? "");
+  if (papel !== "COMANDA" && papel !== "SENHA") return;
+
+  const dispositivoId = String(formData.get("dispositivoId") ?? "");
+  await setDeviceRole(dispositivoId, restaurantId, papel);
+  await audit({ actorUserId: actor.userId, restaurantId, action: "restaurant.print.role", details: { dispositivoId, papel } });
   refresh();
 }
 

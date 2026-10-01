@@ -47,7 +47,14 @@ export type TicketOrder = {
 const clock = (date: Date | string) =>
   new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
+/**
+ * As ferramentas de desenho na largura da bobina.
+ *
+ * Ficam juntas aqui porque a comanda do balcão e o recibo do cliente usam
+ * exatamente as mesmas: o que muda entre os dois é o que entra em cada
+ * bloco, não como a linha é montada.
+ */
+function pincel(paper: number) {
   const width = columnsFor(paper);
   const forte = "=".repeat(width);
   const fraco = "-".repeat(width);
@@ -87,20 +94,14 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   };
 
   const titulo = (nome: string) => [fraco, `${margem}${nome}`];
-  const delivery = o.type === "DELIVERY";
+
+  return { width, forte, fraco, margem, meio, entre, texto, titulo };
+}
+
+/** cada item com a quantidade na frente e o preço à direita */
+function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>) {
+  const { width, entre, texto } = p;
   const lines: string[] = [];
-
-  // cabeçalho: o restaurante, o número e como o cliente recebe
-  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
-  lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
-  const noTotem = o.origin === "TOTEM";
-  lines.push(`${margem}${delivery ? "ENTREGA" : noTotem ? (o.dineIn ? "COMER NO LOCAL" : "PARA VIAGEM") : "RETIRADA NO LOCAL"}`);
-  // quem está no balcão precisa ver de longe que ninguém anotou este:
-  // saiu do totem, já pago, e o cliente está esperando ali mesmo
-  if (noTotem) lines.push(`${margem}TOTEM - AUTOATENDIMENTO (JA PAGO)`);
-  lines.push(forte);
-
-  // itens: quantidade destacada, preço à direita, escolhas embaixo
   for (const item of o.items) {
     const quantidade = `${item.quantity}x`;
     const nome = `${quantidade.padEnd(4)}${item.productName}`;
@@ -117,6 +118,29 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
     }
     if (item.notes) lines.push(...texto(`Obs.: ${item.notes}`, 4, 2));
   }
+  return lines;
+}
+
+export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
+  const p = pincel(paper);
+  const { forte, fraco, margem, meio, entre, texto, titulo } = p;
+  const delivery = o.type === "DELIVERY";
+  const lines: string[] = [];
+
+  // cabeçalho: o restaurante, o número e como o cliente recebe
+  const noTotem = o.origin === "TOTEM";
+  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
+  // No totem, esse número é a senha que o cliente está segurando na mão. A
+  // cozinha precisa ler "senha" para saber que é por ele que vai chamar.
+  lines.push(entre(noTotem ? `SENHA #${o.number}` : `PEDIDO #${o.number}`, clock(o.createdAt)));
+  lines.push(`${margem}${delivery ? "ENTREGA" : noTotem ? (o.dineIn ? "COMER NO LOCAL" : "PARA VIAGEM") : "RETIRADA NO LOCAL"}`);
+  // quem está no balcão precisa ver de longe que ninguém anotou este:
+  // saiu do totem, já pago, e o cliente está esperando ali mesmo
+  if (noTotem) lines.push(`${margem}TOTEM - AUTOATENDIMENTO (JA PAGO)`);
+  lines.push(forte);
+
+  // itens: quantidade destacada, preço à direita, escolhas embaixo
+  lines.push(...itemLines(o, p));
 
   // contas
   lines.push(fraco, entre("Subtotal", formatCents(o.subtotalCents)));
@@ -165,3 +189,45 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
 /** a via em texto puro, do jeito que a impressora recebe */
 export const ticketText = (o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER) =>
   `${ticketLines(o, restaurantName, paper).join("\n")}\n\n\n`;
+
+/**
+ * O recibo do cliente: o papel que sai na impressora do próprio totem, na
+ * mão de quem acabou de pagar.
+ *
+ * Só pedido de totem tem este papel, e ele é curto de propósito. O cliente
+ * vai segurá-lo até ser chamado, então o que importa é a senha bem à vista,
+ * o que ele pediu, quanto pagou e como pagou.
+ *
+ * O que é assunto da cozinha -- observação do pedido, endereço, telefone --
+ * fica de fora: isso sai na comanda do balcão.
+ */
+export function receiptLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
+  const p = pincel(paper);
+  const { forte, fraco, margem, meio, entre, texto } = p;
+  const lines: string[] = [];
+
+  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
+
+  // a senha sozinha no meio: é o único número que o cliente procura aqui
+  lines.push("", meio("SENHA"), meio(`#${o.number}`), "", forte);
+
+  lines.push(...itemLines(o, p));
+
+  lines.push(fraco, entre("TOTAL PAGO", formatCents(o.totalCents)), forte);
+
+  // como pagou, escrito por extenso: o cliente confere sem abrir o app do
+  // banco, e o balcão não cobra de novo por engano
+  lines.push(`${margem}PAGO`);
+  lines.push(...texto(o.paymentMethod === "PIX" ? "Por Pix, no totem" : "No cartão, na maquininha do totem"));
+
+  lines.push(fraco);
+  lines.push(`${margem}${o.dineIn === false ? "PARA VIAGEM" : "COMER NO LOCAL"}`);
+  lines.push(`${margem}${clock(o.createdAt)}`);
+
+  lines.push(forte, meio("Guarde este papel."), meio("Chamamos pela senha."), forte);
+  return lines;
+}
+
+/** o recibo em texto puro */
+export const receiptText = (o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER) =>
+  `${receiptLines(o, restaurantName, paper).join("\n")}\n\n\n`;
