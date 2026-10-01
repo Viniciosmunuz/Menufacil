@@ -183,6 +183,8 @@ model Restaurant {
   chatEnabled         Boolean @default(false)
   // totem de autoatendimento: modulo isolado, nasce desligado para todo mundo
   totemEnabled        Boolean @default(false)
+  // cartaz que fica na tela do totem parado; sem ele entra a capa
+  totemIdleUrl        String?
 
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?

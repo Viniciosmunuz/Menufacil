@@ -60,8 +60,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
   // varrer a tela com os olhos para achar o preço.
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
-      {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui */}
-      <TotemOcioso href={`/totem/${r.slug}`} />
+      {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui.
+          Parado, vira o cartaz de descanso que chama quem passa. */}
+      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} cartazUrl={r.totemIdleUrl} capaUrl={r.coverUrl} />
 
       {/* capa e nome, como na página do link -- só sem os botões de voltar,
           compartilhar e favoritar, que no balcão não levam a lugar nenhum */}

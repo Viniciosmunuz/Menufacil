@@ -16,7 +16,7 @@ import sharp, { type Sharp } from "sharp";
 // quando existe BLOB_READ_WRITE_TOKEN. Outro provedor (S3/R2) entra aqui sem
 // mudar quem chama saveImage.
 
-export type ImageKind = "logo" | "cover" | "product";
+export type ImageKind = "logo" | "cover" | "product" | "descanso";
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
@@ -25,6 +25,9 @@ const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   logo: (img) => img.resize(512, 512, { fit: "cover" }),
   cover: (img) => img.resize(1600, 900, { fit: "cover" }),
   product: (img) => img.resize(1000, 1000, { fit: "inside", withoutEnlargement: true }),
+  // o cartaz do totem é feito à parte, muitas vezes em pé (o tablet fica
+  // em pé no balcão): aqui não se corta nada, só se limita o tamanho
+  descanso: (img) => img.resize(1400, 2000, { fit: "inside", withoutEnlargement: true }),
 };
 
 export class ImageError extends Error {}

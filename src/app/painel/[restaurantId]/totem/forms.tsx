@@ -3,6 +3,7 @@
 import { CircleCheck, Trash2 } from "lucide-react";
 import { useActionState } from "react";
 
+import { ImageField } from "@/components/panel/image-field";
 import { Alert } from "@/components/ui/alert";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Field, Input } from "@/components/ui/field";
@@ -14,6 +15,7 @@ import {
   gerarCodigoDoTotem,
   removerTotem,
   salvarAccessToken,
+  salvarCartazDoTotem,
   salvarDeviceId,
   salvarWebhook,
   type TotemState,
@@ -170,6 +172,29 @@ export function RemoverTotemForm({ restaurantId, deviceId }: { restaurantId: str
         Desligar
       </ConfirmButton>
       <Recado state={state} />
+    </form>
+  );
+}
+
+export function CartazForm({ restaurantId, cartazUrl }: { restaurantId: string; cartazUrl: string | null }) {
+  const [state, action] = useTotemForm(salvarCartazDoTotem);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="restaurantId" value={restaurantId} />
+      <ImageField
+        name="cartaz"
+        removeName="removerCartaz"
+        label="Cartaz da tela de descanso"
+        currentUrl={cartazUrl}
+        shape="wide"
+        maxSide={1600}
+        hint="Pode ser em pé ou deitado: ele preenche a tela inteira do tablet. Sem cartaz, o totem monta a tela com a sua capa e o nome do restaurante."
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton pendingText="Salvando...">Salvar cartaz</SubmitButton>
+        <Recado state={state} />
+      </div>
     </form>
   );
 }

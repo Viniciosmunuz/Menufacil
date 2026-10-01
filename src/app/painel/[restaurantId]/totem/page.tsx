@@ -1,4 +1,4 @@
-import { CreditCard, Download, ExternalLink, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
+import { CreditCard, Download, ExternalLink, ImageIcon, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
 import { Gaveta } from "@/components/ui/gaveta";
+import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { PRINT_APK_DISPONIVEL, PRINT_APK_URL, PRINT_APK_VERSION } from "@/lib/totem-release";
@@ -22,7 +23,7 @@ import { temChaveDoTotem } from "@/server/totem/segredo";
 
 import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedidos/actions";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
-import { AccessTokenForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
+import { AccessTokenForm, CartazForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
 
 export const metadata: Metadata = { title: "Totem" };
 
@@ -46,11 +47,14 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
   // barra de novo, para o endereço digitado na mão também não passar
   if (!restaurant.totemEnabled) notFound();
 
-  const [config, totens, impressoras] = await Promise.all([
+  const [config, totens, impressoras, cartaz] = await Promise.all([
     verConfig(restaurant.id),
     listarTotens(restaurant.id),
     listDevices(restaurant.id),
+    // o acesso traz só o essencial do restaurante; o cartaz é desta tela
+    db.restaurant.findUnique({ where: { id: restaurant.id }, select: { totemIdleUrl: true } }),
   ]);
+  const cartazUrl = cartaz?.totemIdleUrl ?? null;
 
   const servidor = appUrl();
   const linkDoTotem = `${servidor}/totem/${restaurant.slug}`;
@@ -194,6 +198,19 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           )}
 
           <NovoTotemForm restaurantId={restaurant.id} />
+        </Gaveta>
+
+        <Gaveta
+          titulo="Tela de descanso"
+          resumo={cartazUrl ? "Cartaz próprio cadastrado" : "Montada com a sua capa"}
+          icone={<ImageIcon />}
+          selo={cartazUrl ? <Badge tone="success">Cartaz próprio</Badge> : undefined}
+        >
+          <p className="text-sm text-muted">
+            Sem ninguém tocar no tablet por um minuto, o totem vira um cartaz chamando quem passa — e some no primeiro
+            toque, abrindo o cardápio. Com comida na sacola o cartaz não entra: quem está escolhendo não é interrompido.
+          </p>
+          <CartazForm restaurantId={restaurant.id} cartazUrl={cartazUrl} />
         </Gaveta>
       </section>
 
