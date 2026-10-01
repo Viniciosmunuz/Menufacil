@@ -632,13 +632,37 @@ export function PrintFacilPanel({
 
   return (
     <div className="flex flex-col gap-3 rounded-control border border-line bg-surface-2 p-4 text-sm">
-      <p className="font-bold">Computadores com o Print Fácil</p>
+      <p className="font-bold">{roleAction ? "Aparelhos que imprimem" : "Computadores com o Print Fácil"}</p>
 
       {devices.length === 0 ? (
-        <p className="text-muted">
-          Nenhum computador ligado ainda. Instale o Print Fácil no computador do restaurante: no programa, entre com o mesmo e-mail e senha deste
-          painel e ele já fica ligado aqui. Se preferir, use o código que ele mostra.
-        </p>
+        // Aqui é onde o dono mais se perde: ele procura o código nesta tela, e
+        // o código nasce no aparelho. Com totem são dois aparelhos diferentes,
+        // então a explicação muda para falar dos dois.
+        roleAction ? (
+          <div className="flex flex-col gap-2 text-muted">
+            <p>
+              Nenhum aparelho ligado ainda. O código <strong className="text-ink">não sai daqui</strong>: ele aparece na tela
+              do aplicativo, e você digita aqui embaixo.
+            </p>
+            <ol className="ml-5 flex list-decimal flex-col gap-1">
+              <li>
+                No <strong className="text-ink">tablet</strong>, abra o Menu Fácil Print. Ele mostra um código parecido com
+                MF-8K29-XP4.
+              </li>
+              <li>Digite esse código no campo abaixo e toque em Conectar.</li>
+              <li>O aparelho aparece nesta lista, e aí você escolhe se ele tira a comanda ou a senha.</li>
+            </ol>
+            <p>
+              No <strong className="text-ink">computador do balcão</strong> é o mesmo caminho, com o Print Fácil — ou entre
+              nele com o seu e-mail e senha, que ele se liga sozinho.
+            </p>
+          </div>
+        ) : (
+          <p className="text-muted">
+            Nenhum computador ligado ainda. Instale o Print Fácil no computador do restaurante: no programa, entre com o mesmo e-mail e senha deste
+            painel e ele já fica ligado aqui. Se preferir, use o código que ele mostra.
+          </p>
+        )
       ) : (
         <ul className="flex flex-col gap-2">
           {devices.map((device) => (
@@ -685,7 +709,9 @@ export function PrintFacilPanel({
       <form action={action} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="restaurantId" value={restaurantId} />
         <label className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="font-bold">Ligar pelo código do programa</span>
+          <span className="font-bold">
+            {roleAction ? "Digite aqui o código que apareceu no aparelho" : "Ligar pelo código do programa"}
+          </span>
           <input
             name="codigo"
             placeholder="MF-8K29-XP4"
@@ -700,7 +726,11 @@ export function PrintFacilPanel({
       </form>
 
       {state.error && <p className="font-bold text-danger">{state.error}</p>}
-      {state.ok && <p className="font-bold text-success">Computador ligado. Os próximos pedidos saem nele.</p>}
+      {state.ok && (
+        <p className="font-bold text-success">
+          {roleAction ? "Aparelho ligado. Agora escolha o papel dele na lista acima." : "Computador ligado. Os próximos pedidos saem nele."}
+        </p>
+      )}
 
       <p className="text-muted">Com o Print Fácil ligado, o pedido sai no papel mesmo com esta tela fechada.</p>
     </div>
