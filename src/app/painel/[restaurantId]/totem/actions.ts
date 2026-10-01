@@ -8,6 +8,7 @@ import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/da
 import { panelAudit } from "@/server/panel";
 import { esquecerConta, salvarChaveDoWebhook, salvarMaquininha, salvarToken } from "@/server/totem/config";
 import { desligarTotem, novoCodigoDePareamento } from "@/server/totem/dispositivos";
+import { darBaixaNoPagamento, gravarPedidoDoPagamento } from "@/server/totem/pagos";
 import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
 
 // Ações da seção Totem.
@@ -126,4 +127,36 @@ export async function salvarCartazDoTotem(_prev: TotemState, formData: FormData)
 
   await panelAudit(access, "totem.cartaz", { cartaz: totemIdleUrl ? "trocado" : "removido" });
   return remover ? { ok: true, message: "Cartaz removido. O totem volta a montar a tela com a sua capa." } : salvo();
+}
+
+// ---- pagamento que entrou sem o pedido entrar ---------------------------
+//
+// O dinheiro do cliente já saiu. As duas ações abaixo são as duas saídas
+// que o balcão tem: gravar o pedido com o mesmo carrinho, ou dar baixa
+// porque resolveu na mão.
+
+export async function gravarPedidoPago(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  const pagamentoId = String(formData.get("pagamentoId") ?? "");
+
+  const resultado = await gravarPedidoDoPagamento(access.restaurant.id, pagamentoId);
+  if ("erro" in resultado) return { error: resultado.erro };
+
+  await panelAudit(access, "totem.pago_sem_pedido.gravado", { pagamentoId, pedido: resultado.numero });
+  refresh();
+  return { ok: true, message: `Pedido #${resultado.numero} gravado. Ele já está na aba Pedidos e sai na impressora.` };
+}
+
+export async function baixarPagamento(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  const pagamentoId = String(formData.get("pagamentoId") ?? "");
+  const nota = String(formData.get("nota") ?? "");
+  if (!nota.trim()) return { error: "Escreva o que foi feito: devolveu o dinheiro, entregou na mão..." };
+
+  const resultado = await darBaixaNoPagamento(access.restaurant.id, pagamentoId, nota);
+  if ("erro" in resultado) return { error: resultado.erro };
+
+  await panelAudit(access, "totem.pago_sem_pedido.baixa", { pagamentoId, nota: nota.trim().slice(0, 200) });
+  refresh();
+  return { ok: true, message: "Baixa registrada." };
 }

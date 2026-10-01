@@ -21,8 +21,10 @@ import { nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
+import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
+import { AvisoDePagosSemPedido } from "../totem/pagos";
 import {
   desligarAvisos,
   ligarAvisos,
@@ -64,7 +66,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   const statuses = FILTERS[filter].statuses;
   const where = { restaurantId: restaurant.id, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
@@ -86,6 +88,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       },
     }),
     listDevices(restaurant.id),
+    // dinheiro de cliente parado: o balcão vive nesta aba, então o aviso
+    // nasce aqui mesmo, com o caminho para resolver
+    restaurant.totemEnabled ? contarPagamentosSemPedido(restaurant.id) : Promise.resolve(0),
   ]);
 
   const countOf = (key: FilterKey) => {
@@ -109,6 +114,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
       <AutoRefresh seconds={45} background />
       <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
+      <AvisoDePagosSemPedido quantos={pagosSemPedido} href={`/painel/${restaurant.id}/totem`} />
       <PrintSettings
         base={base}
         panelUrl={`${appUrl()}/painel`}

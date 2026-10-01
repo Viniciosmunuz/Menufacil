@@ -842,6 +842,13 @@ model TotemPayment {
 
   paidAt    DateTime?
   printedAt DateTime?
+  /**
+   * quando o balcao deu baixa num pagamento que ficou sem pedido: ou o
+   * pedido foi gravado depois, ou o dinheiro foi devolvido na mao. Enquanto
+   * for nulo e orderId tambem, o pagamento aparece no painel pedindo conta.
+   */
+  resolvedAt   DateTime?
+  resolvedNote String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

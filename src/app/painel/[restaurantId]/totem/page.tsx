@@ -19,11 +19,13 @@ import { requireRestaurantAccess } from "@/server/auth/dal";
 import { listDevices } from "@/server/print/devices";
 import { verConfig } from "@/server/totem/config";
 import { listarTotens } from "@/server/totem/dispositivos";
+import { pagamentosSemPedido } from "@/server/totem/pagos";
 import { temChaveDoTotem } from "@/server/totem/segredo";
 
 import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedidos/actions";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
 import { AccessTokenForm, CartazForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
+import { PagosSemPedido } from "./pagos";
 
 export const metadata: Metadata = { title: "Totem" };
 
@@ -47,12 +49,13 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
   // barra de novo, para o endereço digitado na mão também não passar
   if (!restaurant.totemEnabled) notFound();
 
-  const [config, totens, impressoras, cartaz] = await Promise.all([
+  const [config, totens, impressoras, cartaz, pendentes] = await Promise.all([
     verConfig(restaurant.id),
     listarTotens(restaurant.id),
     listDevices(restaurant.id),
     // o acesso traz só o essencial do restaurante; o cartaz é desta tela
     db.restaurant.findUnique({ where: { id: restaurant.id }, select: { totemIdleUrl: true } }),
+    pagamentosSemPedido(restaurant.id),
   ]);
   const cartazUrl = cartaz?.totemIdleUrl ?? null;
 
@@ -70,6 +73,23 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
       <PageHeader
         title="Totem de autoatendimento"
         description="Transforme um tablet em terminal do balcão: o cliente monta o pedido, paga no cartão ou por Pix, e a comanda sai sozinha."
+      />
+
+      {/* dinheiro de cliente parado vem antes de qualquer configuração */}
+      <PagosSemPedido
+        restaurantId={restaurant.id}
+        pagamentos={pendentes.map((p) => ({
+          id: p.id,
+          metodo: p.metodo,
+          valorCents: p.valorCents,
+          quando: formatWhen(p.pagoEm ?? p.criadoEm),
+          mpPaymentId: p.mpPaymentId,
+          motivo: p.motivo,
+          cliente: p.cliente,
+          comerAqui: p.comerAqui,
+          observacao: p.observacao,
+          itens: p.itens.map((i) => ({ nome: i.nome, quantidade: i.quantidade })),
+        }))}
       />
 
       {!guardaSegredo && (
