@@ -56,7 +56,7 @@ export default async function PainelDeSenhasPage({ params }: PageProps<"/painel/
       <OrdersLive restaurantId={restaurant.id} />
       <AutoRefresh seconds={20} background />
 
-      <header className="flex items-center justify-between gap-6">
+      <header className="flex items-center gap-6">
         <div className="flex min-w-0 items-center gap-[1.4vw]">
           <LogoIcon className="h-[6.5vw] max-h-24" />
           <div className="min-w-0 leading-none">
@@ -68,12 +68,6 @@ export default async function PainelDeSenhasPage({ params }: PageProps<"/painel/
             </p>
           </div>
         </div>
-
-        <p className="shrink-0 text-right font-script text-[2.6vw] leading-[1.05] text-ink">
-          Seu pedido
-          <br />
-          <span className="text-brand">já está sendo preparado!</span>
-        </p>
       </header>
 
       <main className="mt-[2vw] grid min-h-0 flex-1 grid-cols-1 gap-[2vw] lg:grid-cols-[1.75fr_minmax(0,1fr)]">
