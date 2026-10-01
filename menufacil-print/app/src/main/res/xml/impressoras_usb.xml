@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Quais aparelhos USB fazem o aplicativo abrir sozinho.
+
+  A classe 7 e a de impressora: quase toda termica se apresenta assim. Se
+  alguma impressora do mercado nao aparecer, basta acrescentar o vendor-id
+  dela aqui.
+-->
+<resources>
+  <usb-device class="7" />
+</resources>

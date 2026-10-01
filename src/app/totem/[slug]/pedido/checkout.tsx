@@ -13,6 +13,8 @@ import { Field, Input } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 
+import { ponte } from "../ponte";
+
 // Fechar o pedido no totem.
 //
 // O cardápio é o mesmo do link; é aqui que o caminho se separa. Em vez de
@@ -20,31 +22,13 @@ import { formatCents } from "@/lib/format";
 // leva, e paga no cartão ou no Pix. Dinheiro não existe no totem -- não há
 // quem receba nem quem dê troco.
 //
-// Quem cobra é o aplicativo do totem, não esta página: ela pede pela ponte
-// window.totemApp, e o aplicativo fala com o servidor com o token do
-// aparelho. Assim o token nunca chega ao navegador. Aberta fora do totem
-// (no seu celular, para conferir o visual), a tela funciona até o botão de
-// confirmar, que avisa que só o totem cobra.
+// Quem cobra não é esta página diretamente: ela pede pela ponte (ver
+// ../ponte.ts), que sabe falar tanto pelo tablet no navegador quanto pelo
+// aplicativo antigo do Windows. Num aparelho que ainda não foi ativado, a
+// tela funciona inteira até o botão de confirmar -- é assim que dá para
+// conferir o visual pelo celular sem cobrar nada de ninguém.
 
 type Via = { numero?: number } | null;
-
-type PonteDoTotem = {
-  cobrar: (p: {
-    forma: "cartao" | "pix";
-    comer_aqui: boolean;
-    nome: string;
-    itens: { productId: string; quantity: number; optionIds?: string[]; flavorIds?: string[]; notes?: string | null }[];
-  }) => Promise<{ erro?: string; pagamento_id?: string; total_centavos?: number; pix?: { imagem_base64?: string | null } }>;
-  conferirPagamento: (id: string) => Promise<{ situacao?: string; erro?: string; pedido?: Via }>;
-  cancelarPagamento: (id: string) => Promise<{ ok?: boolean; erro?: string }>;
-  imprimir: (via: unknown) => Promise<{ ok?: boolean; erro?: string }>;
-};
-
-declare global {
-  interface Window {
-    totemApp?: PonteDoTotem;
-  }
-}
 
 /** de quanto em quanto tempo perguntamos como está o pagamento */
 const PASSO_MS = 2000;
@@ -85,20 +69,21 @@ export function TotemCheckout({
   // função declarada (não const) de propósito: ela se chama de novo a cada
   // volta do relógio, e uma const não pode se referenciar antes de existir
   async function acompanhar(comecouEm: number) {
-    const ponte = window.totemApp;
+    const canal = ponte();
     const id = pagamentoId.current;
-    if (!ponte || !id) return;
+    if (!canal || !id) return;
 
-    const resposta = await ponte.conferirPagamento(id);
+    const resposta = (await canal.conferirPagamento(id)) as { situacao?: string; erro?: string; pedido?: Via };
 
     if (resposta.situacao === "aprovado") {
       pagamentoId.current = null;
       setNumero(resposta.pedido?.numero ?? null);
       setEtapa("pronto");
       clearCart();
-      // a comanda sai na impressora do totem; a do balcão sai sozinha pela
-      // fila da aba Pedidos, sem esta tela precisar fazer nada
-      if (resposta.pedido) await ponte.imprimir(resposta.pedido);
+      // No tablet quem imprime é o Menu Fácil Print, que pega o pedido na
+      // fila do restaurante sozinho. No aplicativo do Windows, a via sai
+      // ali mesmo. A ponte sabe qual dos dois é.
+      if (resposta.pedido) await canal.imprimir(resposta.pedido);
       return;
     }
     if (resposta.situacao === "cancelado" || resposta.situacao === "recusado") {
@@ -126,14 +111,14 @@ export function TotemCheckout({
     if (comerAqui === null) return setErro("Diga se vai comer aqui ou levar.");
     if (!forma) return setErro("Escolha como quer pagar.");
 
-    const ponte = window.totemApp;
-    if (!ponte) {
-      setErro("Esta tela só cobra dentro do totem. Aqui é uma prévia do que o cliente vê.");
+    const canal = ponte();
+    if (!canal) {
+      setErro("Este aparelho ainda não foi ativado como totem. Chame um atendente.");
       return;
     }
 
     setEtapa("cobrando");
-    const resposta = await ponte.cobrar({
+    const resposta = (await canal.cobrar({
       forma,
       comer_aqui: comerAqui,
       nome: nome.trim(),
@@ -144,7 +129,7 @@ export function TotemCheckout({
         flavorIds: i.flavorIds ?? [],
         notes: i.notes || null,
       })),
-    });
+    })) as { erro?: string; pagamento_id?: string; total_centavos?: number; pix?: { imagem_base64?: string | null } };
 
     if (resposta.erro || !resposta.pagamento_id) {
       setEtapa("escolhendo");
@@ -161,7 +146,8 @@ export function TotemCheckout({
   async function desistir() {
     clearTimeout(relogio.current);
     const id = pagamentoId.current;
-    const resposta = id ? await window.totemApp?.cancelarPagamento(id) : { ok: true };
+    const canal = ponte();
+    const resposta = (id && canal ? await canal.cancelarPagamento(id) : { ok: true }) as { ok?: boolean; erro?: string };
     if (resposta?.erro) {
       // pagou enquanto o dedo ia no botão: volta a acompanhar
       setErro(resposta.erro);

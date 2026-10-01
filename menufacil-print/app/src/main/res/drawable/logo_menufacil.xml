@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A marca do MenuFacil, a mesma de src/components/brand/logo.tsx. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="108dp"
+  android:height="108dp"
+  android:viewportWidth="676"
+  android:viewportHeight="540">
+  <group android:translateX="-44" android:translateY="-50">
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="30" android:strokeLineCap="round"
+      android:pathData="M483,100 A31,31 0 1 1 421,100 A31,31 0 1 1 483,100" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="40" android:strokeLineCap="round"
+      android:pathData="M231,300A233,233 0 0 1 685,375" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="22" android:strokeLineCap="round"
+      android:pathData="M283,310A181,181 0 0 1 460,194" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="38" android:strokeLineCap="round"
+      android:pathData="M123,300H231" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="38" android:strokeLineCap="round"
+      android:pathData="M69,375H172" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="38" android:strokeLineCap="round"
+      android:pathData="M239,375H693" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="38" android:strokeLineCap="round"
+      android:pathData="M114,440H337" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="40" android:strokeLineCap="round"
+      android:pathData="M240,440V545" />
+    <path android:strokeColor="#ff8a1f" android:strokeWidth="36" android:strokeLineCap="round"
+      android:pathData="M630,532L655,428" />
+    <path android:fillColor="#ff8a1f"
+      android:pathData="M220,505H630L619,552Q612,585 578,585H252Q220,585 220,553ZM410,540H462A11,11 0 0 1 462,562H410A11,11 0 0 1 410,540Z" />
+  </group>
+</vector>

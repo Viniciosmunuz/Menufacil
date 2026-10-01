@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     // Aplicativo do totem: projeto Electron próprio, com o Node dele.
     // Não faz parte do site e não entra no build da Vercel.
     "totem-app/**",
+    // Aplicativo de impressão do totem: projeto Android, compilado pelo
+    // GitHub. Não faz parte do site.
+    "menufacil-print/**",
   ]),
 ]);
 

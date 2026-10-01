@@ -1,0 +1,51 @@
+name: Menu Fácil Print (APK)
+
+# Compila o aplicativo de impressão do totem no próprio GitHub, para não
+# depender de ninguém ter o Android Studio instalado.
+#
+# Como baixar o APK:
+#   GitHub → aba Actions → a execução mais recente → Artifacts →
+#   "menufacil-print-apk"
+#
+# Roda sozinho quando algo em menufacil-print/ muda, e também pelo botão
+# "Run workflow" quando você quiser gerar de novo sem mudar nada.
+
+on:
+  push:
+    paths:
+      - "menufacil-print/**"
+      - ".github/workflows/menufacil-print.yml"
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Ferramentas do Android
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # APK de depuração: assinado com a chave de teste do próprio Android.
+      # Instala no tablet liberando "fontes desconhecidas", que é o caminho
+      # normal para aplicativo que não passa pela Play Store.
+      - name: Compilar
+        working-directory: menufacil-print
+        run: gradle --no-daemon assembleDebug
+
+      - name: Guardar o APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: menufacil-print-apk
+          path: menufacil-print/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

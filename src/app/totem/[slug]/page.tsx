@@ -7,6 +7,7 @@ import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { isOpenNow } from "@/lib/opening-hours";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 
+import { AtivarTotem } from "./ativar";
 import { TotemOcioso } from "./ocioso";
 
 // A tela do totem: o mesmo cardápio que o cliente abre pelo link do
@@ -24,14 +25,18 @@ import { TotemOcioso } from "./ocioso";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default async function TotemMenuPage({ params }: PageProps<"/totem/[slug]">) {
+export default async function TotemMenuPage({ params, searchParams }: PageProps<"/totem/[slug]">) {
   const { slug } = await params;
+  const sp = await searchParams;
   const dados = await getPublicRestaurant(slug, false);
   if (!dados) notFound();
 
   const r = dados.restaurant;
   // o admin da plataforma libera o totem restaurante por restaurante
   if (!r.totemEnabled) notFound();
+
+  // o dono abre esta tela uma vez por aparelho, com o codigo do painel
+  if (sp.ativar === "1") return <AtivarTotem slug={r.slug} nome={r.name} />;
 
   const aberto = isOpenNow(r.openMode, r.openingHours);
   const categorias = r.menuCategories.filter((c) => c.products.length > 0 && !c.pizzaFlavors);

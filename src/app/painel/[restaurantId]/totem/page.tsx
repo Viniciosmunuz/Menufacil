@@ -1,220 +1,304 @@
-import { Download, ExternalLink, KeyRound, MonitorCheck, Receipt, Tv } from "lucide-react";
+import { CreditCard, Download, ExternalLink, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PageHeader, SectionTitle } from "@/components/panel/page-header";
+import { PageHeader } from "@/components/panel/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
+import { Gaveta } from "@/components/ui/gaveta";
 import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
-import { TOTEM_APP_DISPONIVEL, TOTEM_APP_VERSION, TOTEM_SETUP_URL } from "@/lib/totem-release";
+import { PRINT_APK_DISPONIVEL, PRINT_APK_URL, PRINT_APK_VERSION } from "@/lib/totem-release";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { listDevices } from "@/server/print/devices";
 import { verConfig } from "@/server/totem/config";
 import { listarTotens } from "@/server/totem/dispositivos";
 import { temChaveDoTotem } from "@/server/totem/segredo";
 
+import { pairPrintDevice, unpairPrintDevice } from "../pedidos/actions";
+import { PrintFacilPanel } from "@/components/panel/print-settings";
 import { AccessTokenForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
 
 export const metadata: Metadata = { title: "Totem" };
 
-// A tela do totem no painel do restaurante.
+// A aba Totem, em três blocos na ordem em que o dono precisa deles:
 //
-// Três coisas moram aqui: a conta do Mercado Pago que vai cobrar (é a do
-// próprio restaurante, o dinheiro não passa pela plataforma), os aparelhos
-// de totem ligados a ele, e o link do painel de senhas do segundo monitor.
+//   1. TOTEM      o link que vira o terminal, e os tablets ativados
+//   2. IMPRESSÃO  o Menu Fácil Print e as impressoras ligadas
+//   3. PAGAMENTOS a conta do Mercado Pago
+//
+// O que é configuração técnica (credencial, webhook, aparelhos) fica em
+// gaveta fechada: ocupa uma linha quando não está em uso, e nada some.
+//
+// Esta mesma página serve o dono e o admin da plataforma -- o admin entra
+// com a própria conta (viaAdmin, ver src/server/auth/dal.ts) e vê o mesmo
+// que o dono veria.
 
 export default async function TotemPage({ params }: PageProps<"/painel/[restaurantId]/totem">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
-  // o admin da plataforma libera restaurante por restaurante; o menu esconde,
-  // e aqui barra de novo, para o endereço digitado na mão também não passar
+  // o admin libera restaurante por restaurante; o menu esconde, e aqui
+  // barra de novo, para o endereço digitado na mão também não passar
   if (!restaurant.totemEnabled) notFound();
 
-  const [config, totens] = await Promise.all([verConfig(restaurant.id), listarTotens(restaurant.id)]);
+  const [config, totens, impressoras] = await Promise.all([
+    verConfig(restaurant.id),
+    listarTotens(restaurant.id),
+    listDevices(restaurant.id),
+  ]);
+
   const servidor = appUrl();
+  const linkDoTotem = `${servidor}/totem/${restaurant.slug}`;
   const linkDasSenhas = `${servidor}/painel/senhas/${restaurant.id}`;
-  // o id do restaurante vai no endereço: é por ele que o aviso do Mercado
-  // Pago encontra a conta certa, já que cada restaurante usa a conta dele
   const linkDoWebhook = `${servidor}/api/totem/webhook?r=${restaurant.id}`;
   const guardaSegredo = temChaveDoTotem();
 
-  const ligados = totens.filter((t) => !t.pairingCode);
+  const ativados = totens.filter((t) => !t.pairingCode);
   const esperando = totens.filter((t) => t.pairingCode);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Totem de autoatendimento"
-        description="A tela de toque do balcão: o cliente monta o pedido, paga no cartão ou por Pix, e a comanda sai na hora."
+        description="Transforme um tablet em terminal do balcão: o cliente monta o pedido, paga no cartão ou por Pix, e a comanda sai sozinha."
       />
 
       {!guardaSegredo && (
         <Alert tone="warning">
-          Este servidor ainda não está preparado para guardar os dados da sua conta do Mercado Pago com segurança. Fale com a
-          equipe do MenuFácil antes de cadastrar o token.
+          Este servidor ainda não está preparado para guardar os dados da sua conta do Mercado Pago com segurança. Fale com
+          a equipe do MenuFácil antes de cadastrar o token.
         </Alert>
       )}
 
-      <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <MonitorCheck className="size-12 shrink-0 text-brand" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-extrabold">A tela do totem</h2>
-          <p className="text-sm text-muted">
-            É o seu cardápio, o mesmo que você manda pelo WhatsApp — só que o fim do pedido pergunta se é para comer aqui
-            ou levar, e cobra no cartão ou no Pix. Abra para ver como o cliente vê.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Link href={`/totem/${restaurant.slug}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
-            <ExternalLink className="size-4" aria-hidden="true" />
-            Ver a tela
-          </Link>
-          <CopyLinkButton url={`${servidor}/totem/${restaurant.slug}`} />
-        </div>
-      </Card>
+      {/* ---- 1. TOTEM ---------------------------------------------------- */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Totem</h2>
 
-      <Card className="flex flex-col items-start gap-4 border-brand/50 sm:flex-row sm:items-center">
-        <Tv className="size-12 shrink-0 text-brand" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-extrabold">Painel de senhas</h2>
-          <p className="text-sm text-muted">
-            A tela virada para o salão, com o número dos pedidos em preparo e dos que já podem ser retirados. Abra este link
-            numa segunda aba do navegador e arraste a janela para o outro monitor — ela se atualiza sozinha.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Link href={`/painel/senhas/${restaurant.id}`} target="_blank" rel="noopener" className={buttonClasses("primary")}>
-            <ExternalLink className="size-4" aria-hidden="true" />
-            Abrir
-          </Link>
-          <CopyLinkButton url={linkDasSenhas} />
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle description="No totem o cliente paga no cartão ou por Pix — dinheiro não entra. Os dois caem direto na sua conta do Mercado Pago; o MenuFácil não fica com nada no meio.">
-          <span className="flex items-center gap-2">
-            <KeyRound className="size-5 text-faint" aria-hidden="true" />
-            Sua conta do Mercado Pago
-          </span>
-        </SectionTitle>
-
-        <div className="flex flex-col gap-6">
-          <AccessTokenForm restaurantId={restaurant.id} resumo={config.tokenResumo} />
-          <div className="border-t border-line pt-6">
-            <MaquininhaForm restaurantId={restaurant.id} deviceId={config.deviceId} />
-          </div>
-          <div className="border-t border-line pt-6">
-            <WebhookForm restaurantId={restaurant.id} temChave={config.temWebhook} />
-            <div className="mt-4 rounded-control border border-line bg-surface-2 p-4">
-              <p className="text-sm font-bold">Endereço para colar no Mercado Pago</p>
-              <p className="mt-1 text-sm text-muted">
-                Em Suas integrações → Webhooks, cadastre este endereço e marque o evento de pagamentos.
+        <Card className="flex flex-col gap-4 border-brand/50">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <MonitorSmartphone className="size-12 shrink-0 text-brand" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-extrabold">O link do seu totem</h3>
+              <p className="text-sm text-muted">
+                Abra este endereço no navegador do tablet e deixe em tela cheia. Não precisa instalar nada e não precisa de
+                senha: o link já diz qual é o restaurante.
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <code className="min-w-0 truncate rounded-control bg-surface-3 px-3 py-2 text-sm">{linkDoWebhook}</code>
-                <CopyButton text={linkDoWebhook} />
-              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link href={`/totem/${restaurant.slug}`} target="_blank" rel="noopener" className={buttonClasses("primary")}>
+                <ExternalLink className="size-4" aria-hidden="true" />
+                Abrir Totem
+              </Link>
+              <CopyLinkButton url={linkDoTotem} />
             </div>
           </div>
 
-          {(config.tokenResumo || config.deviceId) && (
-            <div className="border-t border-line pt-6">
-              <DesconectarForm restaurantId={restaurant.id} />
-            </div>
-          )}
-        </div>
+          <div className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface-2 p-3">
+            <code className="min-w-0 flex-1 truncate text-sm">{linkDoTotem}</code>
+            <CopyButton text={linkDoTotem} />
+          </div>
+        </Card>
 
-        {/* no totem o cliente paga no cartão ou por Pix -- dinheiro não existe lá */}
+        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Tv className="size-10 shrink-0 text-faint" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-extrabold">Painel de senhas</h3>
+            <p className="text-sm text-muted">
+              A tela virada para o salão, com as senhas em preparo e as que já podem ser retiradas. Abra numa TV ou num
+              segundo monitor.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link href={`/painel/senhas/${restaurant.id}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              Abrir
+            </Link>
+            <CopyLinkButton url={linkDasSenhas} />
+          </div>
+        </Card>
+
+        <Gaveta
+          titulo="Tablets ativados"
+          resumo={
+            ativados.length === 0
+              ? "Nenhum tablet ativado para cobrar ainda"
+              : `${ativados.length} ativado${ativados.length === 1 ? "" : "s"}`
+          }
+          icone={<Settings2 />}
+          selo={esperando.length > 0 ? <Badge tone="warning">código em aberto</Badge> : undefined}
+        >
+          <p className="text-sm text-muted">
+            O cardápio abre em qualquer aparelho, mas <strong className="text-ink">cobrar exige ativação</strong> — é o que
+            impede alguém de fora cobrar em nome do seu restaurante. Gere um código aqui e digite no tablet, uma vez por
+            aparelho, em <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{linkDoTotem}?ativar=1</code>.
+          </p>
+
+          {ativados.length === 0 && esperando.length === 0 ? (
+            <p className="text-muted">Nenhum aparelho ligado ainda.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line">
+              {ativados.map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold">{t.name}</span>
+                    <span className="block truncate text-sm text-muted">
+                      {t.appVersion ? `versão ${t.appVersion} · ` : ""}
+                      {t.lastSeenAt ? `visto ${formatWhen(t.lastSeenAt)}` : "nunca abriu"}
+                    </span>
+                  </span>
+                  <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
+                </li>
+              ))}
+              {esperando.map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 font-bold">
+                      Aguardando o tablet
+                      <Badge tone="warning">código {t.pairingCode}</Badge>
+                    </span>
+                    <span className="block text-sm text-muted">Digite este código no tablet para ativá-lo.</span>
+                  </span>
+                  <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <NovoTotemForm restaurantId={restaurant.id} />
+        </Gaveta>
+      </section>
+
+      {/* ---- 2. IMPRESSÃO ------------------------------------------------ */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Impressão</h2>
+
+        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Printer className="size-12 shrink-0 text-brand" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-extrabold">Menu Fácil Print</h3>
+            <p className="text-sm text-muted">
+              Instale no mesmo tablet do totem. Ele fica em segundo plano, recebe os pedidos sozinho e manda para a
+              impressora térmica — ninguém precisa tocar em nada.
+            </p>
+          </div>
+          {PRINT_APK_DISPONIVEL ? (
+            <a href={PRINT_APK_URL} download className={buttonClasses("primary")}>
+              <Download className="size-4" aria-hidden="true" />
+              Baixar (versão {PRINT_APK_VERSION})
+            </a>
+          ) : (
+            <Badge tone="warning">Em preparo</Badge>
+          )}
+        </Card>
+
+        <Gaveta
+          titulo="Impressoras ligadas"
+          resumo={
+            impressoras.length === 0
+              ? "Nenhuma impressora pareada"
+              : `${impressoras.length} aparelho${impressoras.length === 1 ? "" : "s"} imprimindo`
+          }
+          icone={<Printer />}
+        >
+          <p className="text-sm text-muted">
+            Vale para o Menu Fácil Print no tablet e para o Menu Fácil no computador do balcão. Os dois pegam o pedido da
+            mesma fila, e a comanda nunca sai duas vezes.
+          </p>
+          <PrintFacilPanel
+            devices={impressoras.map((d) => ({
+              id: d.id,
+              name: d.name,
+              printerName: d.printerName,
+              pairedAt: d.pairedAt?.toISOString() ?? null,
+              lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+            }))}
+            restaurantId={restaurant.id}
+            pairAction={pairPrintDevice}
+            unpairAction={unpairPrintDevice}
+          />
+        </Gaveta>
+      </section>
+
+      {/* ---- 3. PAGAMENTOS ----------------------------------------------- */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Pagamentos</h2>
+
         {!config.prontoPix ? (
-          <Alert tone="info" className="mt-6">
+          <Alert tone="info">
             Falta o Access Token para o totem conseguir cobrar. Sem ele, nem cartão nem Pix funcionam.
           </Alert>
         ) : config.prontoCartao ? (
-          <Alert tone="success" className="mt-6">
+          <Alert tone="success">
             Tudo cadastrado. No totem o cliente paga no cartão (na maquininha) ou por Pix (QR na tela).
           </Alert>
         ) : (
-          <Alert tone="warning" className="mt-6">
+          <Alert tone="warning">
             O Pix já funciona. Falta o número da maquininha para o cliente também poder pagar no cartão.
           </Alert>
         )}
-      </Card>
 
-      <Card>
-        <SectionTitle description="Cada tela de toque instalada no balcão deste restaurante.">
-          <span className="flex items-center gap-2">
-            <MonitorCheck className="size-5 text-faint" aria-hidden="true" />
-            Totens ligados
-          </span>
-        </SectionTitle>
-
-        {ligados.length === 0 && esperando.length === 0 ? (
-          <p className="text-muted">
-            Nenhum totem ligado ainda. Instale o aplicativo no computador do totem e entre com o mesmo e-mail e senha deste
-            painel — ele já abre no seu cardápio.
-          </p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-line">
-            {ligados.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <span className="min-w-0">
-                  <span className="block truncate font-bold">{t.name}</span>
-                  <span className="block truncate text-sm text-muted">
-                    {t.printerName ?? "Impressora não escolhida"}
-                    {t.appVersion ? ` · versão ${t.appVersion}` : ""}
-                    {t.lastSeenAt ? ` · visto ${formatWhen(t.lastSeenAt)}` : " · nunca abriu"}
-                  </span>
-                </span>
-                <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
-              </li>
-            ))}
-            {esperando.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2 font-bold">
-                    Aguardando o totem
-                    <Badge tone="warning">código {t.pairingCode}</Badge>
-                  </span>
-                  <span className="block text-sm text-muted">Digite este código na tela do totem para ligá-lo a este restaurante.</span>
-                </span>
-                <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="mt-4 border-t border-line pt-4">
-          <NovoTotemForm restaurantId={restaurant.id} />
-          <p className="mt-2 text-sm text-faint">
-            Só precisa do código quem vai instalar o totem sem ter a senha do painel à mão.
-          </p>
-        </div>
-      </Card>
-
-      <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-        <Receipt className="size-12 shrink-0 text-faint" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-extrabold">Aplicativo do totem</h2>
+        <Gaveta
+          titulo="Mercado Pago"
+          resumo="Conta que recebe, maquininha Point e avisos de pagamento"
+          icone={<CreditCard />}
+          selo={
+            config.prontoCartao ? (
+              <Badge tone="success">Pronto</Badge>
+            ) : config.prontoPix ? (
+              <Badge tone="warning">Só Pix</Badge>
+            ) : (
+              <Badge tone="neutral">Falta cadastrar</Badge>
+            )
+          }
+        >
           <p className="text-sm text-muted">
-            Roda em tela cheia no computador do totem, sem deixar ninguém sair para o Windows. A comanda sai na impressora
-            que estiver ligada nele — e a mesma comanda continua saindo na impressora do balcão, pela aba Pedidos.
+            O dinheiro cai direto na sua conta: o MenuFácil só manda a cobrança para a sua maquininha e não fica com nada
+            no meio.
           </p>
-        </div>
-        {TOTEM_APP_DISPONIVEL ? (
-          <a href={TOTEM_SETUP_URL} download className={buttonClasses("primary")}>
-            <Download className="size-4" aria-hidden="true" />
-            Baixar (versão {TOTEM_APP_VERSION})
-          </a>
-        ) : (
-          <Badge tone="warning">Em preparo</Badge>
-        )}
-      </Card>
+
+          <AccessTokenForm restaurantId={restaurant.id} resumo={config.tokenResumo} />
+
+          <div className="border-t border-line pt-5">
+            <MaquininhaForm restaurantId={restaurant.id} deviceId={config.deviceId} />
+          </div>
+
+          {(config.tokenResumo || config.deviceId) && (
+            <div className="border-t border-line pt-5">
+              <DesconectarForm restaurantId={restaurant.id} />
+            </div>
+          )}
+        </Gaveta>
+
+        <Gaveta
+          titulo="Avisos de pagamento"
+          resumo="Endereço e chave para colar no Mercado Pago (opcional)"
+          icone={<KeyRound />}
+          selo={config.temWebhook ? <Badge tone="success">Cadastrada</Badge> : undefined}
+        >
+          <p className="text-sm text-muted">
+            Sem isto o totem funciona: ele pergunta ao Mercado Pago de dois em dois segundos como está o pagamento. Com o
+            aviso cadastrado, o pedido entra mesmo se o tablet travar no meio da passada.
+          </p>
+
+          <div className="rounded-control border border-line bg-surface-2 p-4">
+            <p className="text-sm font-bold">Endereço para colar no Mercado Pago</p>
+            <p className="mt-1 text-sm text-muted">
+              Em Suas integrações → Webhooks, cadastre este endereço e marque o evento de pagamentos.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <code className="min-w-0 flex-1 truncate rounded-control bg-surface-3 px-3 py-2 text-sm">{linkDoWebhook}</code>
+              <CopyButton text={linkDoWebhook} />
+            </div>
+          </div>
+
+          <WebhookForm restaurantId={restaurant.id} temChave={config.temWebhook} />
+        </Gaveta>
+      </section>
     </div>
   );
 }
