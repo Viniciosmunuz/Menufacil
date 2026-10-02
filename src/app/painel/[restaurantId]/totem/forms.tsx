@@ -189,7 +189,7 @@ export function CartazForm({ restaurantId, cartazUrl }: { restaurantId: string; 
         currentUrl={cartazUrl}
         shape="wide"
         maxSide={1600}
-        hint="Pode ser em pé ou deitado: ele preenche a tela inteira do tablet. Sem cartaz, o totem monta a tela com a sua capa e o nome do restaurante."
+        hint="Pode ser em pé ou deitado: ele preenche a tela inteira do tablet. Para voltar à tela que o próprio sistema monta — com a sua capa e o nome do restaurante — toque em Remover e salve."
       />
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton pendingText="Salvando...">Salvar cartaz</SubmitButton>

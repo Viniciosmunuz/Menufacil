@@ -103,7 +103,8 @@ export async function removerTotem(_prev: TotemState, formData: FormData): Promi
 export async function salvarCartazDoTotem(_prev: TotemState, formData: FormData): Promise<TotemState> {
   const access = await acesso(formData);
   const arquivo = formData.get("cartaz");
-  const remover = formData.get("removerCartaz") === "1";
+  const marcado = String(formData.get("removerCartaz") ?? "");
+  const remover = marcado === "on" || marcado === "true";
 
   if (!remover && !hasFile(arquivo)) return { error: "Escolha uma imagem para o cartaz." };
 
