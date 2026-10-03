@@ -1,5 +1,12 @@
 import "server-only";
 
+// Conversa com a API do Mercado Pago: maquininha Point e Pix.
+//
+// Mora fora do Totem e fora do 100% Delivery porque os dois usam, e nenhum
+// é dono do outro. O que é de cada módulo -- token, chave de assinatura,
+// que conta cobra o quê -- fica no módulo. Aqui só tem o jeito de falar com
+// o Mercado Pago, sem saber de quem é o dinheiro.
+//
 // Maquininha Point do restaurante, pela API do Mercado Pago.
 //
 // O totem não cobra nada sozinho: ele manda uma "intenção de pagamento"

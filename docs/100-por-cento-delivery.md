@@ -43,6 +43,24 @@ Sem `MP_CLIENT_ID`/`MP_CLIENT_SECRET`, a seção Entrega avisa que não dá para
 conectar e nada mais quebra. Sem `MP_TOKEN_KEY`, cai na `TOTEM_TOKEN_KEY`,
 que já está configurada.
 
+### O Totem é outro módulo
+
+Este módulo **não lê nada do Totem**: nem token, nem chave de assinatura,
+nem configuração. Quem usa o 100% Delivery liga a conta aqui, na seção
+Entrega -- pelo OAuth, ou colando o Access Token no caminho de fuga, que
+fica fechado atrás de "Não consigo conectar".
+
+Isso já foi diferente, e custou caro: o módulo caía no Access Token colado
+no Totem quando não havia conta própria, e junto com o token vinha a chave
+de assinatura da aplicação do Totem. O webhook do delivery passou a recusar
+todo aviso que chegava, porque ele não vem assinado com aquela chave --
+e a confirmação do pagamento só funcionava enquanto o cliente ficasse com a
+tela aberta.
+
+A única coisa compartilhada é `src/server/mercado-pago/api.ts`, que é o
+jeito de falar com a API do Mercado Pago. Ele não sabe de quem é o dinheiro:
+recebe o token de quem chamou.
+
 ### 2. Por restaurante (admin da plataforma)
 
 `/admin/restaurantes/<id>` → quadro **Recursos** → marcar **100% Delivery**.

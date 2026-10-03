@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
-import { desligarConta, prontoParaCobrar, salvarSegredoDoWebhook } from "@/server/pagamentos/conta";
+import { desligarConta, prontoParaCobrar, salvarSegredoDoWebhook, salvarTokenColado } from "@/server/pagamentos/conta";
 import { criarState, enderecoDeAutorizacao } from "@/server/pagamentos/oauth";
 import { panelAudit } from "@/server/panel";
 
@@ -85,6 +85,28 @@ export async function desconectarMercadoPago(_prev: EntregaState, formData: Form
   await panelAudit(access, "entrega.mercado_pago.desconectar");
 
   return salvo("Conta desconectada. O restaurante voltou para o Pedido pelo WhatsApp.");
+}
+
+/**
+ * Caminho de fuga para quem não consegue ligar pelo OAuth -- caso típico:
+ * a conta do restaurante é a mesma que é dona da aplicação, e o Mercado
+ * Pago não deixa uma conta autorizar a aplicação dela mesma.
+ */
+export async function salvarTokenDoDelivery(_prev: EntregaState, formData: FormData): Promise<EntregaState> {
+  const access = await acesso(formData);
+  const token = String(formData.get("accessToken") ?? "");
+  if (!token.trim()) return { error: "Cole o Access Token da sua conta do Mercado Pago." };
+
+  const resultado = await salvarTokenColado(access.restaurant.id, token);
+  if ("erro" in resultado) return { error: resultado.erro };
+
+  // o token em si nunca entra no histórico: só o fato de ter sido trocado
+  await panelAudit(access, "entrega.mercado_pago.token", { producao: resultado.producao });
+  return salvo(
+    resultado.producao
+      ? "Token salvo. Já dá para ligar o 100% Delivery."
+      : "Token de teste salvo. Serve para experimentar, mas nenhum pagamento de verdade entra.",
+  );
 }
 
 export async function salvarSegredoDoWebhookDaConta(_prev: EntregaState, formData: FormData): Promise<EntregaState> {

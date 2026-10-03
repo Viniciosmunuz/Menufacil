@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { db } from "@/lib/db";
 import { credenciais } from "@/server/totem/config";
-import { verPagamento } from "@/server/totem/mercado-pago";
+import { verPagamento } from "@/server/mercado-pago/api";
 import { criarPedidoDoTotem, TotemError, type ItemDoTotem } from "@/server/totem/pedido";
 
 // Aviso de pagamento do Mercado Pago.

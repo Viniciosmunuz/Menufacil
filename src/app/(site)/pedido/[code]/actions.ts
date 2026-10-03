@@ -8,7 +8,7 @@ import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { enviarComoCliente, marcarLidoPeloCliente } from "@/server/chat/chat";
 import { credenciaisDePagamento } from "@/server/pagamentos/conta";
 import { pixDoPedido } from "@/server/pagamentos/pix";
-import { cancelarPagamento } from "@/server/totem/mercado-pago";
+import { cancelarPagamento } from "@/server/mercado-pago/api";
 
 // Ações da página do pedido, do lado do cliente.
 //

@@ -19,7 +19,7 @@ import { resumoDoFullDelivery, ultimoAvisoDoMercadoPago } from "@/server/pagamen
 import { temChaveDePagamento } from "@/server/pagamentos/segredo";
 
 import { conectarMercadoPago } from "./actions";
-import { ConectarForm, DesconectarForm, ModoForm, SegredoDoWebhookForm } from "./forms";
+import { ConectarForm, DesconectarForm, ModoForm, SegredoDoWebhookForm, TokenColadoForm } from "./forms";
 
 export const metadata: Metadata = { title: "Entrega" };
 
@@ -52,8 +52,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
     contarNaoLidasDoRestaurante(restaurant.id),
     ultimoAvisoDoMercadoPago(restaurant.id),
   ]);
-  /** cobrando pelo token colado na seção Totem, sem ter passado pelo OAuth */
-  const peloTotem = pronto && !conta.conectada;
+
 
   const podeLigar = temAplicativo();
   const temChave = temChaveDePagamento();
@@ -105,8 +104,6 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
             ) : (
               <Badge tone="warning">Conta de teste</Badge>
             )
-          ) : peloTotem ? (
-            <Badge tone="success">Ligado pelo Totem</Badge>
           ) : (
             <Badge tone="neutral">Desconectado</Badge>
           )}
@@ -167,14 +164,6 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {peloTotem && (
-              <Alert tone="success">
-                Já dá para cobrar: o 100% Delivery está usando o Access Token que você salvou na seção{" "}
-                <strong>Totem</strong>. É a sua conta do mesmo jeito, e o dinheiro cai nela. Conectar aqui pelo botão abaixo é
-                melhor mesmo assim — o acesso passa a se renovar sozinho e você corta ele pelo Mercado Pago quando quiser, sem
-                mexer em token nenhum.
-              </Alert>
-            )}
             <ol className="flex flex-col gap-2 text-sm text-muted">
               <li>
                 <strong className="text-ink">1.</strong> Toque em Conectar Mercado Pago. Você sai para o site deles.
@@ -195,6 +184,11 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
               <Alert tone="warning">
                 Este servidor ainda não está cadastrado como aplicativo no Mercado Pago. Fale com o suporte do MenuFácil.
               </Alert>
+            )}
+            {temChave && (
+              <div className="border-t border-line pt-4">
+                <TokenColadoForm restaurantId={restaurant.id} resumo={conta.tokenResumo} />
+              </div>
             )}
           </div>
         )}

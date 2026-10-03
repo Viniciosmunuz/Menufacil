@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { appUrl } from "@/lib/site";
-import { criarPix, situacaoDoPagamento, verPagamento } from "@/server/totem/mercado-pago";
+import { criarPix, situacaoDoPagamento, verPagamento } from "@/server/mercado-pago/api";
 
 import { anotarErro, credenciaisDePagamento } from "./conta";
 

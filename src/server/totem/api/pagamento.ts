@@ -13,7 +13,7 @@ import {
   situacaoDoPagamento,
   verIntencao,
   verPagamento,
-} from "@/server/totem/mercado-pago";
+} from "@/server/mercado-pago/api";
 import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } from "@/server/totem/pedido";
 
 // O pagamento no totem, em três chamadas:

@@ -1,7 +1,6 @@
 import "server-only";
 
 import { db } from "@/lib/db";
-import { credenciais as credenciaisDoTotem } from "@/server/totem/config";
 
 import { renovarToken, type TokensMp } from "./oauth";
 import { cifrar, decifrar, resumoDoSegredo, temChaveDePagamento } from "./segredo";
@@ -92,6 +91,41 @@ export async function salvarConta(restaurantId: string, tokens: TokensMp) {
   return { ok: true as const, producao: tokens.liveMode };
 }
 
+/**
+ * Access Token colado à mão, para quem não consegue ligar pelo OAuth.
+ *
+ * Guardado aqui, na conta deste módulo, e não lido do Totem: são duas
+ * coisas separadas, de dois módulos separados, e misturar as duas já deu
+ * problema uma vez.
+ */
+export async function salvarTokenColado(restaurantId: string, token: string) {
+  const limpo = token.trim();
+  if (!temChaveDePagamento()) {
+    return { erro: "Este servidor ainda não tem a chave para guardar o token do Mercado Pago (MP_TOKEN_KEY)." };
+  }
+  if (limpo.length < 20) return { erro: "Esse token parece curto demais. Copie o Access Token inteiro do Mercado Pago." };
+
+  const producao = limpo.startsWith("APP_USR-");
+  const dados = {
+    accessToken: cifrar(limpo),
+    // token colado não tem como se renovar sozinho: sem refresh, sem prazo
+    refreshToken: null,
+    expiresAt: null,
+    tokenHint: resumoDoSegredo(limpo),
+    liveMode: producao,
+    connectedAt: new Date(),
+    lastCheckAt: new Date(),
+    lastError: null,
+  };
+  await db.mercadoPagoAccount.upsert({
+    where: { restaurantId },
+    create: { restaurantId, ...dados },
+    update: dados,
+    select: { id: true },
+  });
+  return { ok: true as const, producao };
+}
+
 /** guarda a chave da assinatura das notificações, copiada do painel do Mercado Pago */
 export async function salvarSegredoDoWebhook(restaurantId: string, segredo: string) {
   const limpo = segredo.trim();
@@ -144,10 +178,11 @@ export type CredenciaisMp = {
  * isso que esta função é assíncrona e grava no banco: o cliente no checkout
  * não pode esperar o dono do restaurante reconectar a conta.
  *
- * Sem conta ligada pelo OAuth, cai no Access Token que o restaurante já
- * tenha colado na seção Totem. É a conta dele do mesmo jeito -- o dinheiro
- * continua caindo na conta dele -- e assim quem já estava cobrando no
- * balcão passa a cobrar no delivery sem reconfigurar nada.
+ * Só olha a conta do próprio módulo. O Totem é um módulo à parte e fica
+ * à parte: antes isto caía no Access Token colado lá, e a conveniência
+ * custou caro -- junto com o token vinha a chave de assinatura da
+ * aplicação do Totem, e o webhook do delivery passou a recusar todo aviso
+ * que chegava, porque ele não vem assinado com aquela chave.
  */
 export async function credenciaisDePagamento(restaurantId: string): Promise<CredenciaisMp | null> {
   const conta = await db.mercadoPagoAccount.findUnique({
@@ -198,9 +233,7 @@ export async function credenciaisDePagamento(restaurantId: string): Promise<Cred
     }
   }
 
-  const totem = await credenciaisDoTotem(restaurantId);
-  if (!totem) return null;
-  return { accessToken: totem.accessToken, webhookSecret: totem.webhookKey };
+  return null;
 }
 
 /** dá para cobrar Pix por este restaurante agora? */

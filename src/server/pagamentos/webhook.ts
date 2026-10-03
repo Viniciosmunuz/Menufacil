@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { db } from "@/lib/db";
-import { verPagamento, situacaoDoPagamento } from "@/server/totem/mercado-pago";
+import { verPagamento, situacaoDoPagamento } from "@/server/mercado-pago/api";
 import { avisarPagamentoConfirmado } from "@/server/push/avisos";
 
 import { credenciaisDePagamento } from "./conta";

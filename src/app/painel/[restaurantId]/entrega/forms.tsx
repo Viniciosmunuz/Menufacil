@@ -10,7 +10,13 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/format";
 
-import { desconectarMercadoPago, escolherModo, salvarSegredoDoWebhookDaConta, type EntregaState } from "./actions";
+import {
+  desconectarMercadoPago,
+  escolherModo,
+  salvarSegredoDoWebhookDaConta,
+  salvarTokenDoDelivery,
+  type EntregaState,
+} from "./actions";
 
 // Formulários da seção Entrega. Cada um salva sozinho e avisa na hora, do
 // mesmo jeito que os blocos de "Meu restaurante" e do Totem.
@@ -166,6 +172,51 @@ export function DesconectarForm({ restaurantId }: { restaurantId: string }) {
         pagamentos que já entraram ficam na sua conta, como sempre estiveram.
       </p>
     </form>
+  );
+}
+
+/**
+ * Caminho de fuga do OAuth.
+ *
+ * Fica fechado atrás de um resumo porque não é o caminho normal: token
+ * colado não se renova sozinho e só sai de circulação se alguém apagar.
+ * Mas ele precisa existir -- o Mercado Pago não deixa uma conta autorizar
+ * a aplicação que ela mesma criou, e aí sem isto o dono fica sem saída.
+ */
+export function TokenColadoForm({ restaurantId, resumo }: { restaurantId: string; resumo: string | null }) {
+  const [state, action] = useEntregaForm(salvarTokenDoDelivery);
+
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer font-bold text-muted hover:text-ink">Não consigo conectar: quero colar o token</summary>
+      <form action={action} className="mt-4 flex flex-col gap-4">
+        <input type="hidden" name="restaurantId" value={restaurantId} />
+        <Field
+          label="Access Token do Mercado Pago"
+          htmlFor="accessToken"
+          hint={
+            resumo
+              ? `Guardado: ${resumo}. Para trocar, cole o token novo. Ele fica criptografado e não volta a aparecer inteiro.`
+              : "No site do Mercado Pago: Suas integrações → a sua aplicação → Credenciais de produção. Este é só da sua conta e não tem nada a ver com o do Totem."
+          }
+        >
+          <Input
+            id="accessToken"
+            name="accessToken"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={resumo ? "Cole o token novo" : "APP_USR-..."}
+          />
+        </Field>
+        <div className="flex flex-wrap items-center gap-3">
+          <SubmitButton variant="secondary" pendingText="Salvando...">
+            {resumo ? "Trocar token" : "Salvar token"}
+          </SubmitButton>
+          <Recado state={state} />
+        </div>
+      </form>
+    </details>
   );
 }
 
