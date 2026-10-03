@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ExternalLink, Printer, ReceiptText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -194,6 +194,19 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
                     <span className="flex flex-wrap items-center gap-2">
+                      {/* no 100% Delivery o cliente fala por aqui, e não pelo
+                          WhatsApp: sem um caminho na lista, a mensagem dele
+                          só seria vista por quem abrisse o pedido por outro
+                          motivo */}
+                      {o.origin === "FULL_DELIVERY" && (
+                        <Link
+                          href={`${base}/${o.id}#conversa`}
+                          className={buttonClasses((naoLidas.get(o.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
+                        >
+                          <MessagesSquare className="size-4" aria-hidden="true" />
+                          {(naoLidas.get(o.id) ?? 0) > 0 ? `Responder (${naoLidas.get(o.id)})` : "Conversa"}
+                        </Link>
+                      )}
                       <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
                         <Printer className="size-4" aria-hidden="true" />
                         Imprimir

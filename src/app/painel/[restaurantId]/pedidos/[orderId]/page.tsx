@@ -86,7 +86,7 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       </Card>
 
       {conversa && (
-        <Card>
+        <Card id="conversa" className="scroll-mt-4">
           <SectionTitle
             description="Amarrada a este pedido. O cliente vê e responde na mesma tela em que acompanha o andamento."
           >
