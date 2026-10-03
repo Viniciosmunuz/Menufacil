@@ -504,12 +504,19 @@ export function RestaurantMenu({
                 type="button"
                 data-tab="destaques"
                 onClick={() => jump("destaques")}
+                // Desligado, igual aos outros.
+                //
+                // Ele vivia laranja mesmo sem estar na vez, e os outros só
+                // acendem quando a rolagem chega neles -- então, descendo
+                // até Porções, dois botões ficavam laranja ao mesmo tempo,
+                // com dois laranjas diferentes. Parecia defeito. A estrela
+                // já basta para dizer que este é especial.
                 className={cn(
                   "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors",
-                  active === "destaques" ? "border-brand bg-brand text-brand-ink" : "border-brand/40 bg-brand-soft text-brand",
+                  active === "destaques" ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:text-ink",
                 )}
               >
-                <Star className={cn("size-3.5", active === "destaques" ? "fill-brand-ink" : "fill-brand")} aria-hidden="true" />
+                <Star className={cn("size-3.5", active === "destaques" ? "fill-brand-ink" : "fill-brand text-brand")} aria-hidden="true" />
                 Destaques
               </button>
             )}
