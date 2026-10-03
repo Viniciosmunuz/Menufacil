@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { appUrl } from "@/lib/site";
 import { criarPix, situacaoDoPagamento, verPagamento } from "@/server/totem/mercado-pago";
 
 import { anotarErro, credenciaisDePagamento } from "./conta";
@@ -81,6 +82,9 @@ export async function pixDoPedido(orderId: string): Promise<{ ok: true; pix: Pix
     amountCents: pagamento.amountCents,
     descricao: `${pedido.restaurant.name} · pedido ${pedido.number}`,
     referencia: ref,
+    // o aviso deste pagamento vem direto para a porta deste restaurante,
+    // sem ninguém cadastrar endereço em painel nenhum
+    notificationUrl: `${appUrl()}/api/pagamento/webhook?r=${pedido.restaurantId}`,
   });
   if (!criado.ok) {
     await anotarErro(pedido.restaurantId, criado.erro);

@@ -51,7 +51,7 @@ que já está configurada.
 
 Logo abaixo nasce o quadro **100% Delivery**, de leitura, que responde à
 pergunta de suporte: o dono ligou? a conta está de pé? é conta de verdade ou
-de teste? o webhook foi cadastrado? quantos pedidos e quanto dinheiro?
+de teste? quantos pedidos e quanto dinheiro?
 
 ### 3. Por restaurante (o dono, no painel dele)
 
@@ -63,8 +63,8 @@ Aparece a seção **Entrega** no menu.
 2. **Escolher o fluxo**: Pedido pelo WhatsApp ou 100% Delivery. A segunda
    opção só destrava com a conta ligada — ligar o modo sem conta levaria o
    cliente a um checkout sem forma de pagar.
-3. **(Recomendado) Cadastrar o aviso automático**, na gaveta do webhook. O
-   painel mostra o endereço pronto para copiar e onde colar a chave secreta.
+
+Só isso. **Não há webhook para cadastrar** -- ver mais abaixo.
 
 ---
 
@@ -124,10 +124,25 @@ deixa um passar (o `updateMany` com o status antigo no `where` é a trava).
 2. **A consulta da própria tela** — enquanto o cliente está com o Pix
    aberto, a página pergunta de quatro em quatro segundos
    (`GET /api/pagamento/situacao?code=<pedido>`), e o servidor pergunta ao
-   Mercado Pago. É o que faz o sistema funcionar mesmo sem o webhook
-   cadastrado.
+   Mercado Pago. É a rede embaixo da rede: vale mesmo que o aviso se perca
+   no caminho.
 
 ### O webhook, em detalhe
+
+**Ninguém cadastra webhook.** O endereço do aviso
+(`/api/pagamento/webhook?r=<restaurante>`) vai no campo `notification_url`
+de cada cobrança, já apontando para o restaurante certo.
+
+É assim porque tem de ser: no Mercado Pago, webhook mora dentro de uma
+*aplicação* de desenvolvedor, e o restaurante que só vende não tem aplicação
+nenhuma -- ele apenas autoriza a do MenuFácil. Mandar o endereço por
+cobrança resolve os dois modos de uma vez e tira um passo de configuração da
+frente de todo mundo.
+
+A chave da assinatura continua existindo no painel, fechada atrás de "Tenho
+uma aplicação própria no Mercado Pago": é o caso de quem veio do Totem, que
+criou uma aplicação para pegar o Access Token. Para esse, conferir a
+assinatura é uma camada a mais. Nunca é requisito.
 
 O aviso do Mercado Pago traz só um id. Nada é feito com base no que ele
 diz: o servidor pega o id e **pergunta ao Mercado Pago** como está aquele
@@ -135,8 +150,8 @@ pagamento, com o token do próprio restaurante. Um POST forjado não aprova
 pedido nenhum — ele levaria o servidor a consultar um pagamento que não
 está aprovado.
 
-A assinatura (`x-signature`) é conferida quando o restaurante cadastrou a
-chave secreta; aí o aviso mal assinado é recusado antes de gastar consulta.
+A assinatura (`x-signature`) é conferida quando existe uma chave secreta
+cadastrada; aí o aviso mal assinado é recusado antes de gastar consulta.
 
 **Idempotência** em duas camadas:
 

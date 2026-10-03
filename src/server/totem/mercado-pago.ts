@@ -153,6 +153,16 @@ export function criarPix(params: {
   descricao: string;
   referencia: string;
   email?: string;
+  /**
+   * Para onde o Mercado Pago avisa que este pagamento mudou.
+   *
+   * Vai por pagamento, e não cadastrado na conta, porque no 100% Delivery
+   * o restaurante nem tem onde cadastrar: webhook no Mercado Pago mora
+   * dentro de uma aplicação, e quem vende não tem aplicação nenhuma -- ele
+   * só autoriza a do MenuFácil. Mandando aqui, o aviso chega no endereço
+   * certo (com o id do restaurante na ponta) sem ninguém configurar nada.
+   */
+  notificationUrl?: string;
 }): Promise<RespostaDoPonto<PixCriado>> {
   const expira = new Date(Date.now() + MINUTOS_DO_PIX * 60 * 1000);
 
@@ -167,6 +177,7 @@ export function criarPix(params: {
       external_reference: params.referencia,
       date_of_expiration: expira.toISOString(),
       payer: { email: params.email ?? "totem@menufacil.app" },
+      ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
     },
   });
 }

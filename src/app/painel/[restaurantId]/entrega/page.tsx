@@ -242,36 +242,53 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
       {/* ---- o aviso automático do Mercado Pago ---- */}
       <Gaveta
         titulo="Aviso automático do Mercado Pago"
-        resumo="Faz o pedido aparecer como pago mesmo com o celular do cliente desligado"
+        resumo="Já funciona sozinho: você não precisa cadastrar nada"
         icone={<Webhook />}
-        selo={conta.temWebhook ? <Badge tone="success">Cadastrado</Badge> : <Badge tone="warning">Falta a chave</Badge>}
+        selo={<Badge tone="success">Automático</Badge>}
       >
         <p className="text-sm text-muted">
-          Sem isto o sistema funciona: enquanto o cliente está com a tela do Pix aberta, o MenuFácil pergunta ao Mercado Pago
-          de poucos em poucos segundos e confirma na hora. O aviso automático cobre o resto -- o cliente que pagou e fechou o
-          navegador, ou pagou pelo aplicativo do banco em outro aparelho.
+          Quando o cliente paga, o Mercado Pago avisa o MenuFácil na hora, e o pedido aparece aqui como pago mesmo que ele
+          tenha fechado o navegador ou pago pelo aplicativo do banco em outro aparelho.
+        </p>
+        <p className="text-sm text-muted">
+          <strong className="text-ink">Você não precisa fazer nada.</strong> O endereço do aviso vai junto com cada cobrança, já
+          apontando para o seu restaurante. Não há nada para cadastrar na sua conta do Mercado Pago — e nem haveria onde: esse
+          tipo de aviso mora dentro de uma aplicação de desenvolvedor, que quem vende não tem.
+        </p>
+        <p className="text-sm text-muted">
+          E há uma segunda rede embaixo dessa: enquanto o cliente está com a tela do Pix aberta, o MenuFácil pergunta sozinho ao
+          Mercado Pago de poucos em poucos segundos. Os dois caminhos chegam no mesmo lugar, e o pedido não é marcado como pago
+          duas vezes.
         </p>
 
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-bold">1. Cole este endereço no painel do Mercado Pago, em Webhooks:</p>
-          <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-3 sm:flex-row sm:items-center">
-            <code className="min-w-0 flex-1 text-sm break-all text-muted">{enderecoDoWebhook}</code>
-            <CopyButton text={enderecoDoWebhook} label="Copiar" copiedLabel="Copiado!" variant="secondary" size="sm" />
+        {/* O endereço e a chave ficam aqui embaixo, fechados, para o caso de
+            quem já tem aplicação própria no Mercado Pago -- é o caso de quem
+            usa o Totem, que cadastrou tudo na mão. Para esse, conferir a
+            assinatura do aviso é uma camada a mais. Para todo o resto, não é
+            para aparecer nada disso na frente. */}
+        <details className="border-t border-line pt-4 text-sm">
+          <summary className="cursor-pointer font-bold text-muted hover:text-ink">
+            Tenho uma aplicação própria no Mercado Pago
+          </summary>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="font-bold">O endereço do aviso deste restaurante:</p>
+              <div className="flex flex-col gap-2 rounded-control border border-line bg-surface-2 p-3 sm:flex-row sm:items-center">
+                <code className="min-w-0 flex-1 break-all text-muted">{enderecoDoWebhook}</code>
+                <CopyButton text={enderecoDoWebhook} label="Copiar" copiedLabel="Copiado!" variant="secondary" size="sm" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="font-bold">A chave secreta da assinatura, se você tiver uma:</p>
+              <SegredoDoWebhookForm restaurantId={restaurant.id} cadastrado={conta.temWebhook} />
+              <p className="text-muted">
+                Com ela, o sistema confere a assinatura de cada aviso antes de olhar para ele. Sem ela, o aviso é tratado com
+                desconfiança e só vale o que o próprio sistema for perguntar ao Mercado Pago — que é seguro do mesmo jeito,
+                só gasta uma consulta a mais.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted">
-            Marque o evento <strong className="text-ink">Pagamentos</strong>. O endereço é só deste restaurante: o
-            <code className="mx-1 text-muted">?r=</code> no fim é o que diz ao sistema de quem é o aviso.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-sm font-bold">2. Cole aqui a chave secreta que o Mercado Pago mostrar:</p>
-          <SegredoDoWebhookForm restaurantId={restaurant.id} cadastrado={conta.temWebhook} />
-          <p className="text-sm text-muted">
-            É com ela que o sistema confere que o aviso veio mesmo do Mercado Pago. Sem ela, o aviso é tratado com
-            desconfiança: o sistema só acredita no que ele mesmo for perguntar ao Mercado Pago.
-          </p>
-        </div>
+        </details>
       </Gaveta>
 
       {/* ---- o que o cliente vê ---- */}

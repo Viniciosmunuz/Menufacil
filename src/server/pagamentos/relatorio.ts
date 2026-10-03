@@ -36,13 +36,19 @@ export type ResumoDoFullDelivery = {
   mensagensSemResposta: number;
 };
 
+// Sobre o webhook: ele não é mais coisa de cadastrar. O endereço do aviso
+// vai junto com cada cobrança, já apontando para o restaurante certo --
+// webhook no Mercado Pago mora dentro de uma aplicação de desenvolvedor, e
+// quem só vende não tem nenhuma. A chave da assinatura continua no resumo
+// porque quem veio do Totem tem aplicação própria e pode ter cadastrado
+// uma; é camada a mais, nunca requisito.
+
 /** o que falta para o modo funcionar, em uma frase; null quando está tudo de pé */
 export function oQueFalta(r: ResumoDoFullDelivery): string | null {
   if (!r.liberado) return "O recurso não está liberado para este restaurante.";
   if (!r.ligado) return "Liberado, mas o dono ainda está no Pedido pelo WhatsApp.";
   if (!r.conta.conectada) return "Falta o dono conectar a conta do Mercado Pago.";
   if (!r.conta.producao) return "A conta ligada é de teste: nenhum pagamento de verdade vai entrar.";
-  if (!r.conta.webhook) return "Funciona, mas sem o webhook cadastrado o pagamento só confirma com a tela do cliente aberta.";
   return null;
 }
 

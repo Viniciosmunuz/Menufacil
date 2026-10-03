@@ -65,8 +65,9 @@ export function FullDeliveryPanel({ restaurantId, resumo }: { restaurantId: stri
             A conta ligada é de <strong>teste</strong>: serve para experimentar, não para receber.
           </Linha>
         )}
-        <Linha ok={conta.webhook} aviso={conta.conectada && !conta.webhook}>
-          Webhook do Mercado Pago {conta.webhook ? "cadastrado" : "sem a chave da assinatura"}
+        <Linha ok={conta.conectada}>
+          Aviso de pagamento: <strong>automático</strong>, vai junto com cada cobrança
+          {conta.webhook && <span className="text-muted"> · com assinatura conferida</span>}
         </Linha>
       </ul>
 
