@@ -69,12 +69,19 @@ export function Conversa({
 }) {
   const [state, action] = useActionState<EstadoDaConversa, FormData>(acao, {});
   const campo = useRef<HTMLInputElement>(null);
-  const fim = useRef<HTMLDivElement>(null);
+  const caixa = useRef<HTMLDivElement>(null);
   const quantas = mensagens.length;
 
-  // conversa abre no fim, onde está a última mensagem
+  // A conversa abre no fim, onde está a última mensagem -- mexendo só na
+  // rolagem da própria caixa.
+  //
+  // Antes isto era um scrollIntoView, que rola a *página*: a pessoa abria a
+  // tela do pedido e ela se jogava lá para baixo sozinha, parando na altura
+  // da conversa. Quem chegou para pagar o Pix, que fica no topo, tinha de
+  // rolar de volta. Acontecia até sem mensagem nenhuma na conversa.
   useEffect(() => {
-    fim.current?.scrollIntoView({ block: "nearest" });
+    const el = caixa.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [quantas]);
 
   // o campo só é limpo quando a mensagem saiu de verdade: falhou o envio,
@@ -85,7 +92,10 @@ export function Conversa({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex max-h-96 min-h-24 flex-col gap-2 overflow-y-auto overscroll-contain rounded-control border border-line bg-surface-2 p-3">
+      <div
+        ref={caixa}
+        className="flex max-h-96 min-h-24 flex-col gap-2 overflow-y-auto overscroll-contain rounded-control border border-line bg-surface-2 p-3"
+      >
         {quantas === 0 ? (
           <p className="my-auto text-center text-sm text-muted">{vazio}</p>
         ) : (
@@ -112,7 +122,6 @@ export function Conversa({
             );
           })
         )}
-        <div ref={fim} />
       </div>
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
