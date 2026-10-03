@@ -13,7 +13,7 @@ import { formatCents, formatDateTime } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { contarNaoLidasDoRestaurante } from "@/server/chat/chat";
-import { verConta } from "@/server/pagamentos/conta";
+import { prontoParaCobrar, verConta } from "@/server/pagamentos/conta";
 import { temAplicativo } from "@/server/pagamentos/oauth";
 import { resumoDoFullDelivery } from "@/server/pagamentos/relatorio";
 import { temChaveDePagamento } from "@/server/pagamentos/segredo";
@@ -42,11 +42,17 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
   const sp = await searchParams;
   const recado = typeof sp.mp === "string" ? RECADOS[sp.mp] : undefined;
 
-  const [conta, resumo, naoLidas] = await Promise.all([
+  const [conta, pronto, resumo, naoLidas] = await Promise.all([
     verConta(restaurant.id),
+    // dá para cobrar agora? não é a mesma pergunta que "ligou pelo Mercado
+    // Pago": quem já tinha colado o Access Token na seção Totem consegue
+    // cobrar sem ligar nada -- é a conta dele do mesmo jeito
+    prontoParaCobrar(restaurant.id),
     resumoDoFullDelivery(restaurant.id),
     contarNaoLidasDoRestaurante(restaurant.id),
   ]);
+  /** cobrando pelo token colado na seção Totem, sem ter passado pelo OAuth */
+  const peloTotem = pronto && !conta.conectada;
 
   const podeLigar = temAplicativo();
   const temChave = temChaveDePagamento();
@@ -81,7 +87,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
         <ModoForm
           restaurantId={restaurant.id}
           modo={restaurant.deliveryMode}
-          contaPronta={conta.conectada}
+          contaPronta={pronto}
         />
       </Card>
 
@@ -98,6 +104,8 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
             ) : (
               <Badge tone="warning">Conta de teste</Badge>
             )
+          ) : peloTotem ? (
+            <Badge tone="success">Ligado pelo Totem</Badge>
           ) : (
             <Badge tone="neutral">Desconectado</Badge>
           )}
@@ -158,6 +166,14 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {peloTotem && (
+              <Alert tone="success">
+                Já dá para cobrar: o 100% Delivery está usando o Access Token que você salvou na seção{" "}
+                <strong>Totem</strong>. É a sua conta do mesmo jeito, e o dinheiro cai nela. Conectar aqui pelo botão abaixo é
+                melhor mesmo assim — o acesso passa a se renovar sozinho e você corta ele pelo Mercado Pago quando quiser, sem
+                mexer em token nenhum.
+              </Alert>
+            )}
             <ol className="flex flex-col gap-2 text-sm text-muted">
               <li>
                 <strong className="text-ink">1.</strong> Toque em Conectar Mercado Pago. Você sai para o site deles.
