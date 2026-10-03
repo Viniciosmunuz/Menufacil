@@ -3,14 +3,17 @@ import type { Metadata } from "next";
 
 import { buttonClasses } from "@/components/ui/button";
 
-import { linkDoWhatsapp } from "./conteudo";
+import { linkDoWhatsapp, PLANOS } from "./conteudo";
 import { LeadForm } from "./lead-form";
 import { ANCORA, Beneficios, ComoComecar, Duvidas, Plano, Topo, VejaFuncionando } from "./sections";
 
+// o preço vem do mesmo lugar que a página mostra: escrito duas vezes, ele
+// desencontra na primeira troca -- e foi o que aconteceu
+const essencial = PLANOS[0];
+
 export const metadata: Metadata = {
   title: "Cardápio digital para restaurantes",
-  description:
-    "Receba pedidos direto do cliente, sem comissão. Cardápio com link próprio, aviso de pedido e impressão automática. Plano Essencial por R$ 120/mês.",
+  description: `Receba pedidos direto do cliente, sem comissão. Cardápio com link próprio, aviso de pedido e impressão automática. ${essencial.nome} por ${essencial.preco}${essencial.periodo}.`,
 };
 
 export default function LeadPage() {
