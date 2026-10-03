@@ -42,9 +42,23 @@ const ler = () => estado;
 /** no servidor nunca há conversa: a barra nasce igual para todo mundo */
 const lerNoServidor = () => vazio;
 
-/** a página do pedido avisa que tem conversa, e quantas estão esperando */
-export function registrarChat(naoLidas: number) {
-  mudar({ ...estado, ativo: true, naoLidas });
+/**
+ * A página do pedido entrou: o botão passa a existir na barra.
+ *
+ * Separado de "quantas estão esperando" de propósito. As duas coisas
+ * moravam na mesma função, chamada de novo a cada mudança no número de não
+ * lidas -- e a limpeza do efeito, que roda antes de cada chamada nova,
+ * zerava o estado inteiro. Era isso que fechava a conversa na cara de quem
+ * estava esperando: chegava a resposta do restaurante, o número mudava, e o
+ * "aberto" ia junto para o lixo.
+ */
+export function marcarChatAtivo() {
+  mudar({ ...estado, ativo: true });
+}
+
+/** quantas mensagens do restaurante esperam o cliente */
+export function definirNaoLidas(naoLidas: number) {
+  mudar({ ...estado, naoLidas });
 }
 
 /** saiu da página do pedido: o botão some da barra */

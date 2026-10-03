@@ -358,16 +358,6 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 <p className="text-sm font-bold text-danger">{err.paymentMethod ?? "Escolha como você vai pagar."}</p>
               )}
 
-              {method === "PIX" && restaurant.pixOnline && (
-                <div className="rounded-control border border-brand/40 bg-brand-soft p-4">
-                  <p className="font-bold text-brand">O QR aparece na próxima tela</p>
-                  <p className="mt-1 text-sm text-muted">
-                    Ao confirmar, você vai ver o QR e o código de copia e cola. Pague pelo aplicativo do banco e a tela avisa
-                    sozinha quando o pagamento cair — o pedido entra na cozinha nesse instante.
-                  </p>
-                </div>
-              )}
-
               {method === "PIX" && restaurant.pix && (
                 <div className="rounded-control border border-line bg-surface-2 p-4">
                   <p className="text-sm text-muted">Chave Pix</p>

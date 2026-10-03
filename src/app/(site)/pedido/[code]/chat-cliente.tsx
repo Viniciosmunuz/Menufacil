@@ -6,9 +6,10 @@ import { useEffect, useRef } from "react";
 import { Conversa, type MensagemNaTela } from "@/components/chat/conversa";
 import {
   abrirChat,
+  definirNaoLidas,
   esquecerChat,
   fecharChat,
-  registrarChat,
+  marcarChatAtivo,
   useChat,
 } from "@/components/site/chat-store";
 
@@ -45,10 +46,15 @@ export function ChatDoCliente({
   const chat = useChat();
   const folha = useRef<HTMLDialogElement>(null);
 
-  // avisa a barra de baixo que esta tela tem conversa
+  // o botão existe enquanto esta tela existir, e só some ao sair dela
   useEffect(() => {
-    registrarChat(naoLidas);
+    marcarChatAtivo();
     return esquecerChat;
+  }, []);
+
+  // o número de mensagens esperando muda sozinho, pelo canal ao vivo
+  useEffect(() => {
+    definirNaoLidas(naoLidas);
   }, [naoLidas]);
 
   // Abre e fecha a folha conforme o botão da barra.

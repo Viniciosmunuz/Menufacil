@@ -274,9 +274,16 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         {/* é por esta página que o cliente segue o pedido: o restaurante só
             manda mensagem quando sai para entrega */}
         <p className="mb-4 text-sm text-muted">
-          {cemPorCento
-            ? "Cada passo do restaurante aparece aqui na hora, sem você fazer nada. Pode deixar a página aberta ou voltar pelo link quando quiser."
-            : "Esta página é onde você acompanha o seu pedido. Ela se atualiza sozinha — pode deixar aberta ou voltar pelo link quando quiser."}
+          {cemPorCento ? (
+            <>
+              Cada passo aparece aqui na hora.{" "}
+              {order.type === "DELIVERY"
+                ? "Quando o pedido sair para entrega, o restaurante também avisa no seu WhatsApp."
+                : "Quando o pedido ficar pronto, o restaurante também avisa no seu WhatsApp."}
+            </>
+          ) : (
+            "Esta página é onde você acompanha o seu pedido. Ela se atualiza sozinha — pode deixar aberta ou voltar pelo link quando quiser."
+          )}
         </p>
         {canceled ? (
           <p className="text-danger">Este pedido foi cancelado. Se tiver dúvida, fale com o restaurante.</p>
