@@ -50,7 +50,7 @@ export async function gerarOutroPix(formData: FormData) {
   if (order.payment?.status === "EXPIRED" || order.payment?.status === "CANCELED") {
     await db.payment.updateMany({ where: { orderId: order.id, status: { in: ["EXPIRED", "CANCELED"] } }, data: { status: "PENDING" } });
   }
-  await pixDoPedido(order.id);
+  await pixDoPedido(order.id, { renovar: true });
   refresh();
 }
 

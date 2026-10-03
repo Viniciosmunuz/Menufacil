@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
+import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 import { isOpenNow, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
@@ -38,7 +39,12 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const [dia, semana, inProgress, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
     semanaDePedidos(escopo),
-    db.order.count({ where: { ...escopo, status: { in: OPEN_ORDER_STATUSES } } }),
+    // "em andamento" é trabalho esperando alguém, então o pedido do 100%
+    // Delivery que parou na tela do Pix fica de fora: carrinho abandonado
+    // não é fila, e somado dia após dia viraria um número que ninguém
+    // consegue zerar. Ele continua aparecendo na lista de Pedidos, onde dá
+    // para olhar e cancelar.
+    db.order.count({ where: { ...escopo, status: { in: OPEN_ORDER_STATUSES }, ...EXCLUDE_UNPAID } }),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
     // o esquecimento mais comum do balcão: marcar esgotado e nunca religar
     db.product.count({ where: { ...escopo, available: false } }),

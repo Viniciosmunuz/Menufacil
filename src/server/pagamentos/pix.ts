@@ -36,13 +36,22 @@ function referencia(orderId: string) {
 const aindaVale = (venceEm: Date | null | undefined) => !!venceEm && venceEm.getTime() - Date.now() > 30_000;
 
 /**
- * O QR do pedido, criando-o se ainda não existe ou se o anterior venceu.
+ * O QR do pedido.
  *
- * Chamada tanto na criação do pedido quanto quando o cliente volta na
- * página: devolver o mesmo QR enquanto ele vale é o que evita cobrar duas
- * vezes a mesma compra.
+ * A página do cliente chama isto a cada desenho, e ela se redesenha de
+ * poucos em poucos segundos. Por isso o padrão é **não** criar cobrança
+ * nova: enquanto existir um QR guardado, ele é devolvido como está, válido
+ * ou vencido. Vencido, quem decide gerar outro é a pessoa, no botão.
+ *
+ * Sem essa trava, uma aba esquecida aberta criava uma cobrança de verdade
+ * na conta do restaurante a cada dez minutos, para sempre.
+ *
+ * "renovar" é o caminho do botão: aí sim nasce um QR novo.
  */
-export async function pixDoPedido(orderId: string): Promise<{ ok: true; pix: PixDoPedido } | { ok: false; erro: string }> {
+export async function pixDoPedido(
+  orderId: string,
+  { renovar = false }: { renovar?: boolean } = {},
+): Promise<{ ok: true; pix: PixDoPedido } | { ok: false; erro: string }> {
   const pedido = await db.order.findUnique({
     where: { id: orderId },
     select: {
@@ -59,7 +68,9 @@ export async function pixDoPedido(orderId: string): Promise<{ ok: true; pix: Pix
   const pagamento = pedido.payment;
 
   if (pagamento.status === "CONFIRMED") return { ok: false, erro: "Este pedido já está pago." };
-  if (pagamento.pixQrCode && aindaVale(pagamento.pixExpiresAt)) {
+  // já existe QR e ninguém pediu outro: devolve esse, mesmo vencido. A tela
+  // mostra a contagem zerada e o botão de gerar outro
+  if (pagamento.pixQrCode && (renovar ? aindaVale(pagamento.pixExpiresAt) : true)) {
     return {
       ok: true,
       pix: {
