@@ -119,27 +119,66 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
       {!FINAL.includes(order.status) &&
         (cemPorCento ? <PedidoAoVivo code={order.code} esperandoPagamento={!!esperandoPix} /> : <AutoRefresh />)}
 
+      {/* Esperando o Pix, a primeira coisa da tela é o QR.
+          Ele estava embaixo do cartão de "pedido criado", que no celular
+          toma a tela inteira -- a pessoa abria e tinha de rolar para achar o
+          que ela foi ali fazer. E o certinho verde grande dizendo "criado!"
+          antes de alguém pagar ensinava justamente o contrário do que
+          precisa acontecer. */}
+      {pixDaVez?.ok && pay && (
+        <PixCard
+          code={order.code}
+          totalCents={pixDaVez.pix.totalCents}
+          copiaECola={pixDaVez.pix.copiaECola}
+          qrBase64={pixDaVez.pix.qrBase64}
+          venceEm={pixDaVez.pix.venceEm?.toISOString() ?? null}
+          gerarOutro={gerarOutroPix}
+        />
+      )}
+
+      {/* o Mercado Pago recusou, ou o restaurante desligou a conta no meio do
+          caminho: o cliente precisa saber o que fazer, não ficar olhando uma
+          tela sem botão */}
+      {esperandoPix && pixDaVez && !pixDaVez.ok && (
+        <Card className="flex flex-col gap-3 border-danger/50">
+          <h2 className="text-xl font-extrabold">Não consegui gerar o Pix</h2>
+          <p className="text-muted">{pixDaVez.erro}</p>
+          {r.whatsapp && (
+            <a
+              href={`https://wa.me/${r.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-brand underline-offset-4 hover:underline"
+            >
+              Falar com o restaurante no WhatsApp
+            </a>
+          )}
+        </Card>
+      )}
+
       <Card className="flex flex-col gap-2 text-center">
+        {/* o certinho verde é a comemoração de "deu certo"; enquanto o
+            pagamento não entrou, não há o que comemorar */}
         {canceled ? (
           <CircleX className="mx-auto size-12 text-danger" aria-hidden="true" />
-        ) : (
+        ) : esperandoPix ? null : (
           <CircleCheck className="mx-auto size-12 text-success" aria-hidden="true" />
         )}
         <h1 className="text-2xl font-extrabold sm:text-3xl">
-          {sp.novo === "1" ? `Pedido #${order.number} criado!` : `Pedido #${order.number}`}
+          {sp.novo === "1" && !esperandoPix ? `Pedido #${order.number} criado!` : `Pedido #${order.number}`}
         </h1>
         {justPlaced && sendOrderAppLink && sendOrderLink && <OpenWhatsAppOnce code={order.code} appUrl={sendOrderAppLink} webUrl={sendOrderLink} />}
-        {sp.novo === "1" && (
+        {(sp.novo === "1" || esperandoPix) && (
           <p className="text-muted">
-            {cemPorCento && esperandoPix
-              ? "Falta pagar o Pix aqui embaixo. Assim que o pagamento cair, o restaurante recebe e esta página avisa."
+            {esperandoPix
+              ? "Assim que o pagamento cair, o restaurante recebe e esta página avisa sozinha."
               : "O restaurante já recebeu. Acompanhe por esta página — ela se atualiza sozinha a cada passo."}
           </p>
         )}
         {showSendCta && sendOrderLink && (
           <SendOrderCta code={order.code} url={sendOrderLink} chatUrl={chatLink ?? sendOrderLink} accepted={accepted} pixNote={showPix} />
         )}
-        {sp.novo === "1" && (
+        {sp.novo === "1" && !esperandoPix && (
           <Link href={`/restaurante/${r.slug}`} className="text-sm font-bold text-muted hover:text-ink">
             Voltar para o início
           </Link>
@@ -176,37 +215,6 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
                   : "Sem troco."}
             </p>
           </div>
-        </Card>
-      )}
-
-      {pixDaVez?.ok && pay && (
-        <PixCard
-          code={order.code}
-          totalCents={pixDaVez.pix.totalCents}
-          copiaECola={pixDaVez.pix.copiaECola}
-          qrBase64={pixDaVez.pix.qrBase64}
-          venceEm={pixDaVez.pix.venceEm?.toISOString() ?? null}
-          gerarOutro={gerarOutroPix}
-        />
-      )}
-
-      {/* o Mercado Pago recusou, ou o restaurante desligou a conta no meio do
-          caminho: o cliente precisa saber o que fazer, não ficar olhando uma
-          tela sem botão */}
-      {esperandoPix && pixDaVez && !pixDaVez.ok && (
-        <Card className="flex flex-col gap-3 border-danger/50">
-          <h2 className="text-xl font-extrabold">Não consegui gerar o Pix</h2>
-          <p className="text-muted">{pixDaVez.erro}</p>
-          {r.whatsapp && (
-            <a
-              href={`https://wa.me/${r.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-brand underline-offset-4 hover:underline"
-            >
-              Falar com o restaurante no WhatsApp
-            </a>
-          )}
         </Card>
       )}
 
