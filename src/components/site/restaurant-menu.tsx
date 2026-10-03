@@ -236,7 +236,18 @@ function AddBadge({ className }: { className?: string }) {
 
 // No celular cabem dois por linha com a foto em cima; da largura de tablet
 // para cima volta a linha larga, com a foto ao lado do texto.
-function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlavor[]; onOpen: (p: MenuProduct) => void }) {
+function ProductRow({
+  p,
+  flavors,
+  onOpen,
+  empilhado = false,
+}: {
+  p: MenuProduct;
+  flavors: PizzaFlavor[];
+  onOpen: (p: MenuProduct) => void;
+  /** foto em cima do texto em qualquer largura; é o cartão do totem */
+  empilhado?: boolean;
+}) {
   return (
     // content-visibility: o navegador não gasta desenho com o cartão que
     // está fora da tela. Num cardápio de 130 itens isso é a diferença entre
@@ -248,9 +259,12 @@ function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlav
         type="button"
         onClick={() => onOpen(p)}
         aria-label={`${p.name}, ${hasPricedOptions(p.optionGroups) || flavorSlots(p) ? "a partir de " : ""}${formatCents(listPrice(p, flavors))}${p.available ? "" : ", esgotado"}`}
-        className="group flex w-full flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99] sm:flex-row sm:gap-3"
+        className={cn(
+          "group flex w-full flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-3 text-left transition hover:border-line-strong active:scale-[0.99]",
+          !empilhado && "sm:flex-row sm:gap-3",
+        )}
       >
-        <span className={cn("order-2 flex min-w-0 flex-1 flex-col sm:order-1", !p.available && "opacity-55")}>
+        <span className={cn("order-2 flex min-w-0 flex-1 flex-col", !empilhado && "sm:order-1", !p.available && "opacity-55")}>
           <span className="flex items-start gap-1.5 text-[0.95rem] leading-snug font-extrabold sm:text-base">
             {p.featured && <Star className="mt-0.5 size-4 shrink-0 fill-brand text-brand" aria-hidden="true" />}
             {p.name}
@@ -260,7 +274,12 @@ function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlav
             {p.available ? <Price p={p} flavors={flavors} /> : <span className="text-sm font-bold text-faint">Esgotado</span>}
           </span>
         </span>
-        <span className="relative order-1 block aspect-[4/3] w-full shrink-0 sm:order-2 sm:aspect-auto sm:size-28">
+        <span
+          className={cn(
+            "relative order-1 block aspect-[4/3] w-full shrink-0",
+            !empilhado && "sm:order-2 sm:aspect-auto sm:size-28",
+          )}
+        >
           {p.imageUrl ? (
             // A foto fica num quadrado de 112px no computador e em meia
             // tela no celular, mas o arquivo guardado tem 800px de lado.
@@ -272,11 +291,14 @@ function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlav
             // foto, e em 130 fotos isso sozinho engordou o HTML em 260 KB
             // -- a página demorava mais para chegar do que economizava em
             // imagem. Assim a lista tem duas entradas, 192 e 384.
+            // Empilhado, o cartão é bem mais largo (meia tela de tablet),
+            // então pede uma foto maior: com 192 a lista do totem ficaria
+            // borrada em tela retina.
             <Image
               src={p.imageUrl}
               alt=""
-              width={192}
-              height={144}
+              width={empilhado ? 384 : 192}
+              height={empilhado ? 288 : 144}
               className={cn("h-full w-full rounded-control object-cover", !p.available && "grayscale")}
             />
           ) : (
@@ -304,6 +326,7 @@ export function RestaurantMenu({
   carrinhoHref = "/carrinho",
   barraDoCarrinho = "bottom-[calc(4rem+env(safe-area-inset-bottom))]",
   barraSempreVisivel = false,
+  duasColunas = false,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -331,6 +354,15 @@ export function RestaurantMenu({
    * nenhum jeito de chegar ao pedido.
    */
   barraSempreVisivel?: boolean;
+  /**
+   * Duas colunas em qualquer largura, com a foto em cima do texto.
+   *
+   * É o totem. No site a lista faz o contrário -- dois cartõezinhos no
+   * celular e linha larga do tablet para cima --, e ali isso é certo: a
+   * pessoa está sentada, com tempo. No balcão ela está de pé, muitas vezes
+   * com gente atrás, e o que ajuda é enxergar mais item por tela sem rolar.
+   */
+  duasColunas?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -601,9 +633,9 @@ export function RestaurantMenu({
           <section key={c.id} id={`cat-${c.id}`} data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
             <h2 className="text-xl font-extrabold">{c.name}</h2>
             {c.description && <p className="text-sm text-muted">{c.description}</p>}
-            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-1 2xl:grid-cols-2">
+            <ul className={cn("mt-3 grid grid-cols-2 gap-3", !duasColunas && "sm:grid-cols-1 2xl:grid-cols-2")}>
               {c.products.map((p) => (
-                <ProductRow key={p.id} p={p} flavors={pizzaFlavors} onOpen={open} />
+                <ProductRow key={p.id} p={p} flavors={pizzaFlavors} onOpen={open} empilhado={duasColunas} />
               ))}
             </ul>
           </section>

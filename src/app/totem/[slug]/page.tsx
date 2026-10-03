@@ -116,6 +116,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
             // e não existe coluna do carrinho à direita: a barra tem que ficar
             // mesmo em monitor grande, senão não há como chegar ao pedido
             barraSempreVisivel
+            // de pé no balcão, com gente atrás: ver mais item por tela sem
+            // rolar vale mais que foto grande
+            duasColunas
           />
         )}
       </div>
