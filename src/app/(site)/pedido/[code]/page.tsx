@@ -23,6 +23,7 @@ import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messag
 import { desistirDoPedido, gerarOutroPix, markPaymentSent } from "./actions";
 import { PedidoAoVivo } from "./ao-vivo";
 import { ChatDoCliente } from "./chat-cliente";
+import { GuardarLink } from "./guardar-link";
 import { ClearCartAfterOrder, OpenWhatsAppOnce, PixActions, RememberOrder, SendOrderCta } from "./order-live";
 import { PixCard, PixPago } from "./pix-card";
 
@@ -382,11 +383,26 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         {order.notes && <p className="rounded-control bg-surface-2 p-3 text-sm">Obs.: {order.notes}</p>}
       </Card>
 
-      <p className="text-center text-sm text-faint">
-        {cemPorCento
-          ? "Guarde este link: é por ele que você acompanha o pedido e fala com o restaurante."
-          : "Guarde este link para acompanhar o pedido. Ele atualiza sozinho."}
-      </p>
+      {/* No 100% Delivery este link é a única porta do cliente para o
+          pedido dele: não há conversa de WhatsApp onde ele tenha ficado
+          guardado. A aba "Pedidos" do rodapé resolve no mesmo navegador, e
+          é justamente aí que mora o buraco -- quem pediu dentro do
+          Instagram e depois abriu o Chrome não acha nada. */}
+      {cemPorCento && !canceled ? (
+        <div className="flex flex-col items-center gap-2">
+          <GuardarLink texto={`Pedido #${order.number} em ${r.name}`} />
+          <p className="text-center text-sm text-faint">
+            É por este link que você acompanha o pedido e fala com o restaurante. Ele também fica em{" "}
+            <strong className="text-muted">Pedidos</strong>, aqui embaixo, neste aparelho.
+          </p>
+        </div>
+      ) : (
+        <p className="text-center text-sm text-faint">
+          {cemPorCento
+            ? "Guarde este link: é por ele que você acompanha o pedido e fala com o restaurante."
+            : "Guarde este link para acompanhar o pedido. Ele atualiza sozinho."}
+        </p>
+      )}
     </div>
   );
 }
