@@ -5,206 +5,246 @@
 <title>Reel MenuFácil</title>
 <style>
   @font-face { font-family: "Nunito"; src: url("fonts/XRXI3I6Li01BKofiOc5wtlZ2di8HDFwmdTo3jw.woff2") format("woff2"); font-weight: 200 1000; font-display: block; }
-  @font-face { font-family: "Caveat"; src: url("fonts/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9eIWpYQ.woff2") format("woff2"); font-weight: 400 700; font-display: block; }
 
   :root {
-    --bg: #08080a; --surface: #121215; --surface-2: #1a1a1e; --surface-3: #232329;
-    --line: #27272e; --line-strong: #3b3b45;
-    --ink: #f4f4f6; --muted: #a6a6ae; --faint: #73737d;
-    --brand: #f9680b; --brand-hover: #ff7f2e; --brand-ink: #1a0d03;
-    --success: #34d27b; --danger: #f26363;
+    --bg: #05070b;
+    --ink: #ffffff;
+    --sub: #9aa3ad;
+    --faint: #6b7480;
+    --orange: #f97316;        /* o laranja do texto */
+    --orange-card: #ff8214;   /* o laranja chapado dos cartoes de abre e fecha */
+    --paper: #faf6ec;         /* o creme das telas do aplicativo */
+    --paper-2: #fffdf8;
+    --paper-ink: #11161d;
+    --paper-sub: #8a8578;
+    --bezel: #1b2430;
+    --card: #0d1219;
+    --card-line: #1e2630;
+    --pill: #161d26;
+    --pill-line: #2b3542;
+    --green: #22c55e;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); }
   body { font-family: "Nunito", sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .emoji { font-family: "Noto Color Emoji", sans-serif; }
 
   #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
 
-  /* brilho de fundo, laranja bem baixo, para o preto não ficar chapado */
-  #glow {
+  /* a grade bem fraca do fundo, que some nas bordas */
+  #grid {
     position: absolute; inset: 0; pointer-events: none;
-    background:
-      radial-gradient(760px 760px at 50% 34%, rgb(249 104 11 / 0.16), transparent 70%),
-      radial-gradient(900px 620px at 50% 104%, rgb(249 104 11 / 0.08), transparent 72%);
+    background-image:
+      linear-gradient(rgb(104 150 138 / .055) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(104 150 138 / .055) 1px, transparent 1px);
+    background-size: 132px 132px;
+    -webkit-mask-image: radial-gradient(880px 880px at 58% 40%, #000 0%, transparent 74%);
   }
-  #grain { position: absolute; inset: 0; opacity: .035; pointer-events: none;
-    background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 4px 4px; }
+  #glow { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(760px 620px at 50% 30%, rgb(249 115 22 / .07), transparent 72%); }
 
-  .scene { position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 200px 84px 340px;
-    will-change: opacity, transform; }
+  .scene { position: absolute; inset: 0; padding: 250px 84px 300px;
+    display: flex; flex-direction: column; align-items: flex-start; will-change: opacity, transform; }
+  .scene.meio { justify-content: center; align-items: center; padding: 250px 84px 300px; }
 
-  /* marca d'água de canto, presente nas cenas do meio */
-  #mark { position: absolute; top: 150px; left: 84px; display: flex; align-items: center; gap: 18px; }
-  #mark svg { height: 54px; width: auto; color: var(--brand); }
-  #mark b { font-size: 38px; font-weight: 800; letter-spacing: -.5px; }
-  #mark b i { font-style: normal; color: var(--brand); }
+  /* ---------- cabeçalho de cena: título à esquerda, acento laranja ---------- */
+  .chip { display: inline-flex; align-items: center; background: var(--pill);
+    border: 1px solid var(--pill-line); color: var(--orange);
+    font-size: 26px; font-weight: 900; letter-spacing: 2.6px; text-transform: uppercase;
+    padding: 12px 24px; border-radius: 999px; margin-bottom: 34px; }
+  h1 { font-size: 104px; line-height: .98; font-weight: 900; letter-spacing: -3.4px; }
+  h1 .o { color: var(--orange); }
+  h1 .emoji { font-size: 84px; vertical-align: -6px; margin-left: 10px; }
+  .sub { font-size: 38px; line-height: 1.3; color: var(--sub); margin-top: 22px; max-width: 840px; }
+  .palco { width: 100%; flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative; margin-top: 30px; }
 
-  .eyebrow { font-size: 32px; font-weight: 800; letter-spacing: 5px; text-transform: uppercase; color: var(--brand); }
-  h1 { font-size: 104px; line-height: 1.02; font-weight: 900; letter-spacing: -3px; text-align: center; }
-  h2 { font-size: 78px; line-height: 1.06; font-weight: 900; letter-spacing: -2px; text-align: center; }
-  .sub { font-size: 40px; line-height: 1.32; color: var(--muted); text-align: center; max-width: 820px; }
-  .script { font-family: "Caveat", cursive; color: var(--brand); font-size: 62px; }
+  /* ---------- celular de creme ---------- */
+  .phone { width: 556px; border: 12px solid var(--bezel); border-radius: 52px;
+    background: var(--paper); overflow: hidden;
+    box-shadow: 0 50px 120px rgb(0 0 0 / .72), 0 0 0 1px rgb(255 255 255 / .05); }
+  .ph-bar { display: flex; justify-content: space-between; padding: 20px 28px 10px;
+    font-size: 23px; font-weight: 800; color: var(--paper-ink); }
+  .ph-url { margin: 4px 20px 16px; background: #ebe6da; border-radius: 14px;
+    padding: 13px 18px; font-size: 20px; color: #5d5a51; display: flex; gap: 10px; align-items: center; }
+  .ph-cover { height: 150px; margin: 0 20px; border-radius: 20px; background: var(--orange-card); }
+  .ph-ava { width: 108px; height: 108px; border-radius: 50%; background: var(--paper-2);
+    margin: -58px 0 0 34px; display: grid; place-items: center; font-size: 58px;
+    box-shadow: 0 6px 20px rgb(0 0 0 / .18); }
+  .ph-nome { padding: 14px 32px 0; font-size: 36px; font-weight: 900; color: var(--paper-ink); }
+  .ph-meta { padding: 2px 32px 0; font-size: 23px; color: #6f6a5e; }
+  .ph-meta b { color: #15803d; }
+  .ph-chips { display: flex; gap: 11px; padding: 20px 32px 12px; }
+  .ph-chips span { font-size: 21px; font-weight: 800; padding: 10px 19px; border-radius: 999px;
+    background: #ece7da; color: #6f6a5e; }
+  .ph-chips span.on { background: var(--paper-ink); color: var(--paper-2); }
+  .ph-item { display: flex; align-items: center; gap: 17px; margin: 0 20px 12px;
+    background: var(--paper-2); border-radius: 20px; padding: 16px 18px; }
+  .ph-item .th { width: 86px; height: 86px; border-radius: 17px; background: #f6e7d4;
+    display: grid; place-items: center; font-size: 48px; flex: none; }
+  .ph-item .nm { font-size: 27px; font-weight: 900; color: var(--paper-ink); }
+  .ph-item .ds { font-size: 20px; color: var(--paper-sub); margin-top: 2px; }
+  .ph-item .pr { font-size: 25px; font-weight: 900; color: var(--orange); margin-top: 5px; }
+  .ph-item .mais { margin-left: auto; width: 54px; height: 54px; border-radius: 50%;
+    background: var(--paper-ink); color: var(--paper-2); display: grid; place-items: center;
+    font-size: 34px; font-weight: 700; flex: none; }
 
-  /* ---------- 1. gancho: a fatia que o aplicativo leva ---------- */
-  #s1 .pie { position: relative; width: 620px; height: 620px; margin-bottom: 78px; }
-  #s1 .pie img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    border-radius: 50%; }
-  #s1 .wedge { position: absolute; inset: 0; }
-  #s1 .cutlabel { position: absolute; right: -18px; top: 92px; background: var(--danger);
-    color: #1a0404; font-weight: 900; font-size: 34px; padding: 12px 26px; border-radius: 999px;
-    box-shadow: 0 18px 50px rgb(242 99 99 / .4); }
+  /* tela de opções do produto (cena "pedido sem erro") */
+  .op-tit { padding: 22px 32px 0; font-size: 34px; font-weight: 900; color: var(--paper-ink); }
+  .op-sub { padding: 0 32px 6px; font-size: 22px; color: var(--paper-sub); }
+  .op-lab { padding: 20px 32px 10px; font-size: 20px; font-weight: 900; letter-spacing: 1.4px;
+    color: #8a8578; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .op-lab em { font-style: normal; background: var(--orange); color: #fff; font-size: 17px;
+    padding: 5px 12px; border-radius: 999px; letter-spacing: .8px; }
+  .op-row { display: flex; align-items: center; margin: 0 24px 11px; background: var(--paper-2);
+    border: 2px solid #e6e0d2; border-radius: 16px; padding: 17px 20px;
+    font-size: 25px; font-weight: 700; color: var(--paper-ink); }
+  .op-row.on { border-color: var(--orange); }
+  .op-row span { margin-left: auto; font-weight: 900; }
+  .op-row .bola { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--orange);
+    margin-left: 14px; background: radial-gradient(circle, var(--orange) 45%, transparent 46%); }
+  .op-obs { margin: 0 24px; background: var(--paper-2); border: 2px solid #e6e0d2;
+    border-radius: 16px; padding: 17px 20px; font-size: 24px; color: #4a463d; }
+  .op-add { margin: 20px 24px 24px; background: var(--orange); border-radius: 18px;
+    padding: 22px 24px; display: flex; justify-content: space-between;
+    font-size: 28px; font-weight: 900; color: #fff; }
 
-  /* ---------- 2. promessa: zero comissão ---------- */
-  #s2 .zero { font-size: 360px; font-weight: 900; line-height: .86; letter-spacing: -16px;
-    color: var(--brand); text-shadow: 0 0 120px rgb(249 104 11 / .45); }
-  #s2 .zerorow { display: flex; align-items: baseline; gap: 10px; }
-  #s2 .pct { font-size: 150px; font-weight: 900; color: var(--brand); letter-spacing: -6px; }
+  /* ---------- balãozinho com linha tracejada ---------- */
+  .callout { position: absolute; display: flex; align-items: center; gap: 0; }
+  .callout .tracejo { width: 52px; border-top: 3px dashed var(--orange); }
+  .callout .balao { background: var(--pill); border: 1px solid var(--pill-line);
+    border-radius: 16px; padding: 16px 26px; font-size: 28px; font-weight: 900;
+    white-space: nowrap; box-shadow: 0 16px 40px rgb(0 0 0 / .5); }
+  .callout .balao i { font-style: normal; font-weight: 600; color: var(--sub); }
 
-  /* ---------- 3. benefícios ---------- */
-  #s3 { justify-content: center; }
-  #s3 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; width: 100%; margin-top: 56px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
-    padding: 36px 32px; display: flex; flex-direction: column; gap: 16px; }
-  .card .ic { width: 68px; height: 68px; border-radius: 20px; background: rgb(249 104 11 / .12);
-    display: grid; place-items: center; color: var(--brand); }
-  .card .ic svg { width: 38px; height: 38px; }
-  .card h3 { font-size: 37px; font-weight: 900; letter-spacing: -.8px; }
-  .card p { font-size: 28px; line-height: 1.34; color: var(--muted); }
+  /* ---------- selo verde ---------- */
+  .selo { display: inline-flex; align-items: center; gap: 12px; background: var(--pill);
+    border: 1px solid var(--pill-line); border-radius: 999px; padding: 15px 26px;
+    font-size: 27px; font-weight: 800; }
+  .selo .v { width: 28px; height: 28px; border-radius: 50%; background: var(--green);
+    display: grid; place-items: center; }
+  .selo .v svg { width: 17px; height: 17px; color: #052e14; }
 
-  /* ---------- 4. mockup do cardápio no celular ---------- */
-  #s4 .phone { position: relative; width: 560px; height: 1060px; border-radius: 62px;
-    border: 10px solid #2b2b33; background: var(--bg); overflow: hidden;
-    box-shadow: 0 60px 140px rgb(0 0 0 / .7), 0 0 0 2px rgb(255 255 255 / .04); }
-  #s4 .ph-head { position: relative; z-index: 3; height: 128px; display: flex; align-items: center; gap: 16px; padding: 0 30px;
-    border-bottom: 1px solid var(--line); background: var(--surface); }
-  #s4 .ph-head svg { height: 38px; color: var(--brand); }
-  #s4 .ph-head b { font-size: 30px; font-weight: 900; }
-  #s4 .ph-head span { font-size: 21px; color: var(--success); display: block; font-weight: 700; }
-  #s4 .ph-view { position: absolute; top: 128px; left: 0; right: 0; bottom: 0; overflow: hidden; }
-  #s4 .ph-scroll { position: relative; }
-  #s4 .ph-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 250px; z-index: 2;
-    background: linear-gradient(to bottom, rgb(8 8 10 / 0), var(--bg) 60%); }
-  #s4 .item { display: flex; gap: 20px; padding: 24px 28px; border-bottom: 1px solid var(--line); }
-  #s4 .item img { width: 132px; height: 132px; border-radius: 20px; object-fit: cover; flex: none; }
-  #s4 .item .nm { font-size: 29px; font-weight: 800; }
-  #s4 .item .ds { font-size: 22px; color: var(--faint); line-height: 1.3; margin-top: 4px; }
-  #s4 .item .pr { font-size: 28px; font-weight: 900; color: var(--brand); margin-top: 10px; }
-  #s4 .cta-bar { z-index: 4; position: absolute; left: 24px; right: 24px; bottom: 28px; height: 108px;
-    border-radius: 26px; background: var(--brand); color: var(--brand-ink);
-    display: flex; align-items: center; justify-content: center; gap: 18px;
-    font-size: 34px; font-weight: 900; box-shadow: 0 24px 60px rgb(249 104 11 / .45); }
+  /* ---------- cartão laranja de abre e fecha ---------- */
+  .bumper { position: absolute; inset: 0; background: var(--orange-card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 260px 90px 320px; text-align: center; color: #fff; }
+  .bumper svg.lg { height: 150px; color: #fff; }
+  .bumper img.lg { height: 150px; width: auto; }
+  .plano .cab img.lg { height: 46px; width: auto; }
+  .imp .papel .cab img.lg { height: 56px; width: auto; }
+  .bumper .marca { font-size: 86px; font-weight: 900; letter-spacing: -2.4px; margin-top: 24px; }
+  .bumper .tag { font-size: 38px; line-height: 1.35; margin-top: 28px; max-width: 760px; }
+  .bumper .tag b { font-weight: 900; }
+  .bumper h2 { font-size: 72px; line-height: 1.08; font-weight: 900; letter-spacing: -2px; margin-top: 30px; }
+  .bumper .botao { background: #fff; color: #11161d; font-size: 34px; font-weight: 900;
+    padding: 26px 44px; border-radius: 18px; margin-top: 44px;
+    box-shadow: 0 24px 60px rgb(0 0 0 / .2); }
+  .bumper .site { font-size: 32px; font-weight: 800; margin-top: 30px; }
+  .bumper .fone { display: inline-flex; align-items: center; gap: 13px; margin-top: 18px;
+    background: rgb(255 255 255 / .18); border-radius: 999px; padding: 14px 28px;
+    font-size: 30px; font-weight: 800; }
+  .bumper .fone .wa { width: 34px; height: 34px; border-radius: 50%; background: #25d366;
+    display: grid; place-items: center; }
+  .bumper .fone .wa svg { width: 21px; height: 21px; color: #052e14; }
 
-  /* ---------- 5 e 6. planos ---------- */
-  .plan { width: 100%; background: var(--surface); border: 1px solid var(--line);
-    border-radius: 40px; padding: 56px 52px; }
-  .plan.hi { border-color: var(--brand); background: linear-gradient(180deg, rgb(249 104 11 / .10), var(--surface) 42%);
-    box-shadow: 0 0 0 1px var(--brand), 0 40px 120px rgb(249 104 11 / .28); }
-  .plan .badge { display: inline-block; background: var(--brand); color: var(--brand-ink);
-    font-size: 27px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
-    padding: 11px 24px; border-radius: 999px; margin-bottom: 26px; }
-  .plan .nome { font-size: 58px; font-weight: 900; letter-spacing: -1.4px; }
-  .plan .resumo { font-size: 31px; color: var(--muted); line-height: 1.34; margin-top: 12px; }
-  .plan .precorow { display: flex; align-items: baseline; gap: 12px; margin: 34px 0 10px; }
-  .plan .preco { font-size: 136px; font-weight: 900; letter-spacing: -6px; color: var(--brand); line-height: .9; }
-  .plan .periodo { font-size: 44px; font-weight: 800; color: var(--muted); }
-  .plan .semcom { font-size: 27px; font-weight: 800; color: var(--success); }
-  .plan .herda { font-size: 29px; font-weight: 900; color: var(--brand); margin: 30px 0 4px;
-    letter-spacing: .4px; text-transform: uppercase; }
-  .plan ul { list-style: none; margin-top: 26px; display: flex; flex-direction: column; gap: 19px; }
-  .plan li { display: flex; gap: 18px; align-items: flex-start; font-size: 31px; line-height: 1.3; }
-  .plan li .tick { flex: none; width: 40px; height: 40px; border-radius: 50%;
-    background: rgb(52 210 123 / .14); display: grid; place-items: center; margin-top: 1px; }
-  .plan li .tick svg { width: 24px; height: 24px; color: var(--success); }
+  /* ---------- painel de pedidos ---------- */
+  .painel { width: 640px; background: #0e141c; border: 1px solid var(--card-line);
+    border-radius: 28px; padding: 30px; box-shadow: 0 46px 110px rgb(0 0 0 / .66); }
+  .painel .top { display: flex; align-items: center; justify-content: space-between; }
+  .painel .top b { font-size: 33px; font-weight: 900; }
+  .painel .top .st { font-size: 22px; color: var(--green); margin-top: 4px; }
+  .painel .sino { width: 76px; height: 76px; border-radius: 50%; background: var(--orange);
+    display: grid; place-items: center; font-size: 38px;
+    box-shadow: 0 0 0 0 rgb(249 115 22 / .5); }
+  .painel .ped { display: flex; align-items: center; gap: 20px; margin-top: 20px;
+    background: #121a24; border-left: 5px solid var(--orange); border-radius: 14px; padding: 20px 22px; }
+  .painel .ped .id { font-size: 27px; font-weight: 900; color: var(--sub); }
+  .painel .ped .nm { font-size: 28px; font-weight: 900; }
+  .painel .ped .ds { font-size: 21px; color: var(--faint); margin-top: 3px; }
+  .painel .ped .vl { margin-left: auto; text-align: right; }
+  .painel .ped .vl b { font-size: 29px; font-weight: 900; display: block; }
+  .painel .ped .vl em { font-style: normal; font-size: 18px; font-weight: 900; color: var(--orange);
+    border: 1px solid var(--orange); border-radius: 6px; padding: 2px 8px; display: inline-block; margin-top: 6px; }
 
-  /* ---------- 7. chamada final ---------- */
-  #s7 .biglogo svg { height: 190px; color: var(--brand); }
-  #s7 .wa { display: flex; align-items: center; gap: 22px; background: #25d366; color: #052e14;
-    font-size: 46px; font-weight: 900; padding: 30px 54px; border-radius: 999px;
-    box-shadow: 0 30px 90px rgb(37 211 102 / .36); }
-  #s7 .wa svg { width: 52px; height: 52px; }
-  #s7 .site { font-size: 38px; font-weight: 800; color: var(--muted); letter-spacing: 1px; }
+  /* ---------- impressora e comanda ---------- */
+  .imp { position: relative; width: 560px; }
+  .imp .maq { width: 560px; height: 150px; background: #222b36; border-radius: 22px;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 36px; }
+  .imp .maq .slot { width: 110px; height: 24px; border-radius: 999px; background: #39434f; }
+  .imp .maq .led { width: 22px; height: 22px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 18px rgb(34 197 94 / .8); }
+  .imp .papel { width: 410px; margin: -8px auto 0; background: var(--paper-2);
+    padding: 26px 26px 30px; color: #11161d;
+    font-family: "DejaVu Sans Mono", monospace; font-size: 21px; line-height: 1.5;
+    box-shadow: 0 34px 80px rgb(0 0 0 / .6); }
+  .imp .papel .cab { text-align: center; }
+  .imp .papel .cab svg { height: 56px; color: #11161d; }
+  .imp .papel .cab .n { font-family: "Nunito", sans-serif; font-size: 31px; font-weight: 900; margin-top: 6px; }
+  .imp .papel .cab .r { font-size: 20px; color: #6f6a5e; }
+  .imp .papel .hr { border-top: 2px dashed #c9c3b4; margin: 14px 0; }
+  .imp .papel .li { display: flex; justify-content: space-between; }
+  .imp .papel .ob { font-weight: 700; padding-left: 22px; }
+  .imp .papel .tot { display: flex; justify-content: space-between; font-weight: 700; font-size: 23px; }
+
+  /* ---------- lista de esgotado ---------- */
+  .toggles { width: 640px; }
+  .toggles .lin { display: flex; align-items: center; gap: 20px; background: #0e141c;
+    border: 1px solid var(--card-line); border-radius: 18px; padding: 22px 26px; margin-bottom: 16px; }
+  .toggles .lin .th { font-size: 44px; }
+  .toggles .lin .nm { font-size: 29px; font-weight: 900; }
+  .toggles .lin .pr { font-size: 23px; color: var(--faint); margin-top: 2px; }
+  .toggles .lin .sw { margin-left: auto; width: 76px; height: 42px; border-radius: 999px;
+    background: var(--green); position: relative; flex: none; }
+  .toggles .lin .sw::after { content: ""; position: absolute; top: 5px; right: 5px;
+    width: 32px; height: 32px; border-radius: 50%; background: #fff; }
+  .toggles .lin.off { opacity: .55; }
+  .toggles .lin.off .sw { background: #39434f; }
+  .toggles .lin.off .sw::after { right: auto; left: 5px; }
+  .toggles .lin .tag { font-size: 19px; font-weight: 900; color: #fff; background: #dc2626;
+    border-radius: 7px; padding: 5px 11px; letter-spacing: .8px; }
+
+  /* ---------- cartão de plano ---------- */
+  .plano { width: 100%; background: var(--card); border: 1px solid var(--card-line);
+    border-radius: 34px; padding: 44px 44px 48px; }
+  .plano.hi { border-color: var(--orange);
+    background: linear-gradient(180deg, rgb(249 115 22 / .09), var(--card) 46%);
+    box-shadow: 0 0 0 1px var(--orange), 0 40px 110px rgb(249 115 22 / .22); }
+  .plano .cab { display: flex; align-items: center; gap: 16px; }
+  .plano .cab svg { height: 46px; color: var(--orange); }
+  .plano .cab .n { font-size: 42px; font-weight: 900; letter-spacing: -1px; }
+  .plano .cab .sel { margin-left: auto; font-size: 20px; font-weight: 900; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--orange); border: 1px solid var(--orange);
+    border-radius: 999px; padding: 8px 16px; }
+  .plano .cab .sel.cheio { background: var(--orange); color: #fff; border-color: var(--orange); }
+  .plano .preco { display: flex; align-items: baseline; gap: 6px; margin: 26px 0 6px; }
+  .plano .preco .cif { font-size: 44px; font-weight: 900; }
+  .plano .preco .n { font-size: 126px; font-weight: 900; letter-spacing: -5px; line-height: .86; }
+  .plano .preco .mes { font-size: 38px; font-weight: 800; color: var(--sub); }
+  .plano .herda { font-size: 25px; font-weight: 900; color: var(--orange); letter-spacing: 1px;
+    text-transform: uppercase; margin-top: 16px; }
+  .plano ul { list-style: none; margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
+  .plano li { display: flex; align-items: flex-start; gap: 15px; font-size: 29px; line-height: 1.26; }
+  .plano li .v { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--green);
+    display: grid; place-items: center; margin-top: 3px; }
+  .plano li .v svg { width: 18px; height: 18px; color: #052e14; }
+
+  /* ---------- 0% ---------- */
+  #s4 .zero { font-size: 384px; font-weight: 900; letter-spacing: -18px; color: var(--orange);
+    line-height: .88; text-shadow: 0 0 110px rgb(249 115 22 / .4); }
+  #s4 h2 { font-size: 66px; font-weight: 900; line-height: 1.08; letter-spacing: -1.6px;
+    text-align: center; margin-top: 12px; }
+  #s4 .diz { font-size: 34px; color: var(--sub); margin-top: 26px; }
+  #s4 .selos { display: flex; gap: 16px; margin-top: 26px; }
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="glow"></div>
-
-  <!-- =============== 1. gancho =============== -->
-  <div class="scene" id="s1">
-    <div class="pie">
-      <img src="../../public/demo/pizzaria/margherita.webp" alt="" />
-      <svg class="wedge" viewBox="0 0 620 620">
-        <!-- fatia de 70 graus, a partir de -35 graus, que se solta -->
-        <g id="s1-wedge">
-          <path d="M310 310 L617 133 A310 310 0 0 1 617 487 Z" fill="rgb(8 8 10 / .78)" />
-          <path d="M310 310 L617 133 A310 310 0 0 1 617 487 Z" fill="none"
-                stroke="var(--danger)" stroke-width="7" stroke-dasharray="14 12" />
-        </g>
-      </svg>
-      <div class="cutlabel" id="s1-cut">a comissão</div>
-    </div>
-    <h1 id="s1-l1">Todo pedido<br />pelo aplicativo,</h1>
-    <h1 id="s1-l2" style="color: var(--danger); margin-top: 26px">o app leva<br />uma fatia sua.</h1>
-  </div>
-
-  <!-- =============== 2. promessa =============== -->
-  <div class="scene" id="s2">
-    <div class="eyebrow" id="s2-eb">No MenuFácil, não</div>
-    <div class="zerorow" id="s2-zero" style="margin: 26px 0 6px">
-      <span class="zero">0</span><span class="pct">%</span>
-    </div>
-    <h2 id="s2-t" style="margin-bottom: 30px">de comissão por pedido</h2>
-    <p class="sub" id="s2-s">Seu cardápio, seu link, seu cliente.<br />O dinheiro da venda é todo seu.</p>
-  </div>
-
-  <!-- =============== 3. benefícios =============== -->
-  <div class="scene" id="s3">
-    <h2 id="s3-t">Tudo o que o seu<br />balcão precisa</h2>
-    <div class="grid" id="s3-grid"></div>
-  </div>
-
-  <!-- =============== 4. cardápio no celular =============== -->
-  <div class="scene" id="s4">
-    <h2 id="s4-t" style="margin-bottom: 48px; font-size: 64px">O pedido chega<br />pronto e conferido</h2>
-    <div class="phone" id="s4-phone">
-      <div class="ph-head">
-        <svg viewBox="44 48 682 578" fill="none" class="lg"></svg>
-        <div>
-          <b>Papa Léguas Burger</b>
-          <span>● Aberto agora</span>
-        </div>
-      </div>
-      <div class="ph-view"><div class="ph-scroll" id="s4-scroll"></div></div>
-      <div class="ph-fade"></div>
-      <div class="cta-bar" id="s4-cta">Adicionar • R$ 32,90</div>
-    </div>
-  </div>
-
-  <!-- =============== 5 e 6. planos (preenchidos por JS) =============== -->
-  <div class="scene" id="s5"></div>
-  <div class="scene" id="s6"></div>
-
-  <!-- =============== 7. chamada final =============== -->
-  <div class="scene" id="s7">
-    <div class="biglogo" id="s7-lg"><svg viewBox="44 48 682 578" fill="none"></svg></div>
-    <h2 id="s7-t" style="margin: 44px 0 20px">A gente monta seu<br />cardápio com você.</h2>
-    <p class="sub" id="s7-s" style="margin-bottom: 54px">Seu link pode ficar pronto hoje.</p>
-    <div class="wa" id="s7-wa">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.79-1.67-2.09-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.06 2.87 1.21 3.07c.15.2 2.08 3.18 5.04 4.35 2.46.97 2.96.78 3.5.73.53-.05 1.72-.7 1.96-1.38.24-.68.24-1.26.17-1.38-.07-.12-.27-.2-.57-.35Z"/><path d="M12 2a10 10 0 0 0-8.54 15.2L2 22l4.93-1.42A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.1.89.9-3.03-.19-.31A8.2 8.2 0 1 1 12 20.2Z"/></svg>
-      (92) 99913-0838
-    </div>
-    <div class="site" id="s7-site" style="margin-top: 34px">menufacil.app</div>
-  </div>
-
-  <div id="mark">
-    <svg viewBox="44 48 682 578" fill="none"></svg>
-    <b>Menu<i>Fácil</i></b>
-  </div>
-  <div id="grain"></div>
+  <div id="grid"></div>
+  <div id="cenas"></div>
 </div>
-
 <script src="timeline.js"></script>
 </body>
 </html>

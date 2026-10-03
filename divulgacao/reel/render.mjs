@@ -10,6 +10,7 @@
    ========================================================================= */
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -40,7 +41,11 @@ const pagina = await navegador.newPage({
   viewport: { width: L, height: A },
   deviceScaleFactor: 1,
 });
-await pagina.goto(pathToFileURL(resolve(AQUI, "index.html")).href, { waitUntil: "load" });
+// Se a arte oficial estiver em reel/logo.png, ela entra no lugar do vetor.
+const temPng = existsSync(resolve(AQUI, "logo.png"));
+const endereco = pathToFileURL(resolve(AQUI, "index.html")).href + (temPng ? "?logo=png" : "");
+console.log(temPng ? "logo: usando logo.png" : "logo: usando o vetor do logo.tsx");
+await pagina.goto(endereco, { waitUntil: "load" });
 await pagina.evaluate(() => window.__pronto);
 const duração = await pagina.evaluate(() => window.__DURACAO);
 
