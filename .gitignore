@@ -61,3 +61,6 @@ next-env.d.ts
 # Instaladores: pesam ~100 MB e o git guarda cada versao para sempre.
 # Distribuicao fica fora do repositorio (ver docs/totem-maquininha.md).
 public/totem/*.exe
+
+# quadros soltos do reel de divulgacao: saem do render quando precisa conferir
+/divulgacao/previa/
