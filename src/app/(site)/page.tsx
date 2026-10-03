@@ -13,12 +13,17 @@ const placeholders = ["Lanches • Pizzas • Bebidas", "Comida caseira • Marm
 
 export default async function HomePage() {
   const city = await selectedCity();
-  const [categories, featured] = await Promise.all([
+  // Os três juntos, e não a lista cheia só depois de ver que não há
+  // destaque: a segunda consulta esperando a primeira custava uma ida ao
+  // banco inteira na home, e é justamente o caso de hoje, com ninguém em
+  // destaque. Uma consulta a mais em paralelo sai bem mais barato.
+  const [categories, featured, todos] = await Promise.all([
     listPublicCategories(),
     listRestaurants({ featuredOnly: true, city, take: 8 }),
+    listRestaurants({ city, take: 8 }),
   ]);
   // sem nenhum em destaque, mostra os que estão no ar
-  const restaurants = featured.length ? featured : await listRestaurants({ city, take: 8 });
+  const restaurants = featured.length ? featured : todos;
 
   const cards = restaurants.length
     ? restaurants.map((r, i) => <RestaurantMiniCard key={r.id} data={r} priority={i === 0} />)

@@ -78,7 +78,14 @@ export const getRestaurantAccess = cache(
     const user = await getCurrentUser();
     if (!user) return null;
 
-    const restaurant = await db.restaurant.findUnique({
+    // O restaurante e o vínculo do dono vêm juntos, de propósito.
+    //
+    // Eram duas consultas em fila, e esta função roda em toda tela do
+    // painel, antes de qualquer dado da página: uma ida ao banco a menos
+    // aqui é uma ida a menos em cada abertura de tela. Para o admin o
+    // filtro de dono não serve para nada, mas custa quase nada -- é um
+    // índice -- e pagar isso é melhor do que manter dois caminhos.
+    const linha = await db.restaurant.findUnique({
       where: { id: restaurantId },
       select: {
         id: true,
@@ -90,17 +97,14 @@ export const getRestaurantAccess = cache(
         totemEnabled: true,
         fullDeliveryEnabled: true,
         deliveryMode: true,
+        owners: { where: { userId: user.id }, select: { id: true }, take: 1 },
       },
     });
-    if (!restaurant) return null;
+    if (!linha) return null;
+    const { owners, ...restaurant } = linha;
 
     if (user.role === "ADMIN") return { user, restaurant, viaAdmin: true };
-
-    const ownership = await db.restaurantOwner.findUnique({
-      where: { restaurantId_userId: { restaurantId, userId: user.id } },
-      select: { id: true },
-    });
-    if (!ownership || restaurant.status === "BLOCKED") return null;
+    if (owners.length === 0 || restaurant.status === "BLOCKED") return null;
 
     return { user, restaurant, viaAdmin: false };
   },

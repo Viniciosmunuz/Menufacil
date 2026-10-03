@@ -24,7 +24,10 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "
 const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   logo: (img) => img.resize(512, 512, { fit: "cover" }),
   cover: (img) => img.resize(1600, 900, { fit: "cover" }),
-  product: (img) => img.resize(1000, 1000, { fit: "inside", withoutEnlargement: true }),
+  // 800 chega: a foto aparece no máximo numa folha de 512px de largura, e
+  // o que se vê na lista é um quadrado de 112px. Guardar 1000 só engordava
+  // o arquivo e o que a transformação tem de ler.
+  product: (img) => img.resize(800, 800, { fit: "inside", withoutEnlargement: true }),
   // o cartaz do totem é feito à parte, muitas vezes em pé (o tablet fica
   // em pé no balcão): aqui não se corta nada, só se limita o tamanho
   descanso: (img) => img.resize(1400, 2000, { fit: "inside", withoutEnlargement: true }),

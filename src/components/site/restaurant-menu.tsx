@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- fotos já otimizadas no envio (WebP no tamanho de uso) */
 import { CircleCheck, Plus, Search, ShoppingBag, Star, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -238,7 +238,12 @@ function AddBadge({ className }: { className?: string }) {
 // para cima volta a linha larga, com a foto ao lado do texto.
 function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlavor[]; onOpen: (p: MenuProduct) => void }) {
   return (
-    <li className="flex">
+    // content-visibility: o navegador não gasta desenho com o cartão que
+    // está fora da tela. Num cardápio de 130 itens isso é a diferença entre
+    // a rolagem lisa e a travada no celular simples. O "auto" do
+    // contain-intrinsic-size faz ele lembrar a altura de verdade depois do
+    // primeiro desenho, então a barra de rolagem não pula.
+    <li className="flex [content-visibility:auto] [contain-intrinsic-size:auto_13rem]">
       <button
         type="button"
         onClick={() => onOpen(p)}
@@ -257,11 +262,16 @@ function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlav
         </span>
         <span className="relative order-1 block aspect-[4/3] w-full shrink-0 sm:order-2 sm:aspect-auto sm:size-28">
           {p.imageUrl ? (
-            <img
+            // A foto fica num quadrado de 112px no computador e em meia
+            // tela no celular, mas o arquivo guardado tem 1000px de lado.
+            // Pedindo o tamanho de uso, a mesma lista deixa de baixar
+            // alguns megabytes num cardápio grande.
+            <Image
               src={p.imageUrl}
               alt=""
-              loading="lazy"
-              className={cn("size-full rounded-control object-cover", !p.available && "grayscale")}
+              fill
+              sizes="(min-width: 640px) 112px, 48vw"
+              className={cn("rounded-control object-cover", !p.available && "grayscale")}
             />
           ) : (
             <span className="grid size-full place-items-center rounded-control bg-surface-2">
@@ -537,7 +547,7 @@ export function RestaurantMenu({
                   >
                     <span className="relative block aspect-square w-full bg-surface-2">
                       {p.imageUrl ? (
-                        <img src={p.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
+                        <Image src={p.imageUrl} alt="" fill sizes="(min-width: 640px) 192px, 160px" className="object-cover" />
                       ) : (
                         <span className="grid size-full place-items-center">
                           <LogoIcon className="h-10 opacity-40" />
@@ -633,7 +643,15 @@ export function RestaurantMenu({
             <div className="overflow-y-auto overscroll-contain">
               <div className="relative">
                 {product.imageUrl ? (
-                  <img src={product.imageUrl} alt="" className="aspect-[4/3] w-full object-cover" />
+                  <Image
+                    src={product.imageUrl}
+                    alt=""
+                    width={1024}
+                    height={768}
+                    sizes="(min-width: 640px) 512px, 100vw"
+                    priority
+                    className="aspect-[4/3] w-full object-cover"
+                  />
                 ) : (
                   <div className="h-16" />
                 )}
