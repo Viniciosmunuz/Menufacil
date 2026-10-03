@@ -36,19 +36,56 @@ export function linkDoWhatsapp() {
   return `https://wa.me/${contato.replace(/\D/g, "")}?text=${encodeURIComponent(WHATSAPP_MSG)}`;
 }
 
-export const PLANO = {
-  nome: "Plano Essencial",
-  preco: "R$ 120",
-  periodo: "/mês",
-  itens: [
-    "Cardápio digital com link próprio",
-    "Painel de pedidos com aviso sonoro",
-    `Impressão automática com o ${NOME_DO_APP}`,
-    "Montagem do cardápio feita por nós",
-    "Suporte incluso: chamou, a gente atende",
-    "Sem comissão por pedido",
-  ],
+export type Plano = {
+  nome: string;
+  preco: string;
+  periodo: string;
+  /** uma linha dizendo para quem é */
+  resumo: string;
+  itens: string[];
+  /** o que aparece no botão */
+  botao: string;
+  /** o cartão em evidência; só um deve ter */
+  destaque?: boolean;
+  /** frase curta acima da lista, quando o plano soma ao anterior */
+  herda?: string;
 };
+
+export const PLANOS: Plano[] = [
+  {
+    nome: "Plano Essencial",
+    preco: "R$ 100",
+    periodo: "/mês",
+    resumo: "O cardápio no link e o pedido chegando no seu WhatsApp.",
+    itens: [
+      "Cardápio digital com link próprio",
+      "Pedido pronto no seu WhatsApp",
+      "Painel de pedidos com aviso sonoro",
+      `Impressão automática com o ${NOME_DO_APP}`,
+      "Montagem do cardápio feita por nós",
+      "Suporte incluso: chamou, a gente atende",
+      "Sem comissão por pedido",
+    ],
+    botao: "Quero o plano Essencial",
+  },
+  {
+    nome: "Plano 100% Delivery",
+    preco: "R$ 180",
+    periodo: "/mês",
+    resumo: "O pedido inteiro dentro do sistema, já pago, sem sair para conversa nenhuma.",
+    herda: "Tudo do Essencial, e mais:",
+    itens: [
+      "Cliente paga por Pix na hora, na própria tela",
+      "O dinheiro cai direto na sua conta do Mercado Pago",
+      "O pedido só vira comanda depois de pago",
+      "Cliente acompanha cada passo sem precisar perguntar",
+      "Conversa com o cliente dentro do pedido",
+      "Continua sem comissão: nem um centavo da venda",
+    ],
+    botao: "Quero o 100% Delivery",
+    destaque: true,
+  },
+];
 
 export const BENEFICIOS: { icon: LucideIcon; title: string; text: string }[] = [
   {

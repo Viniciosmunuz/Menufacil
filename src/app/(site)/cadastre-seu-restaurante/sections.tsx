@@ -7,7 +7,7 @@ import { LogoIcon } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-import { BENEFICIOS, DEMO_URL, DUVIDAS, PASSOS, PLANO } from "./conteudo";
+import { BENEFICIOS, DEMO_URL, DUVIDAS, PASSOS, PLANOS, type Plano } from "./conteudo";
 import { TelaDoCardapio, TelaDoPainel, ViaImpressa } from "./mockups";
 
 // Página de venda do MenuFácil: quem chega aqui é dono de restaurante,
@@ -175,25 +175,48 @@ export function ComoComecar() {
 
 // ─── 5. plano ─────────────────────────────────────────────────────────
 
+function CartaoDoPlano({ plano }: { plano: Plano }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col rounded-card p-5 sm:p-7",
+        plano.destaque
+          ? "border-2 border-brand bg-[linear-gradient(170deg,rgb(249_104_11/0.14),transparent_55%)] shadow-[0_0_40px_-12px_rgb(249_104_11/0.45)]"
+          : "border border-line bg-surface",
+      )}
+    >
+      <p className="text-lg font-extrabold sm:text-xl">{plano.nome}</p>
+      <p className="mt-1 flex items-end gap-1">
+        <span className={cn("text-4xl leading-none font-extrabold sm:text-5xl", plano.destaque ? "text-brand" : "text-ink")}>
+          {plano.preco}
+        </span>
+        <span className="pb-1 font-bold text-muted">{plano.periodo}</span>
+      </p>
+      <p className="mt-2 text-sm text-muted">{plano.resumo}</p>
+      {plano.herda && <p className="mt-5 text-sm font-extrabold text-brand">{plano.herda}</p>}
+      <ul className={cn("flex flex-col gap-2.5", plano.herda ? "mt-2.5" : "mt-5")}>
+        {plano.itens.map((item) => (
+          <li key={item} className="flex items-start gap-2.5 text-sm sm:text-base">
+            <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+      {/* o botão fica colado embaixo: com listas de tamanhos diferentes, os
+          dois cartões terminam na mesma linha */}
+      <BotaoDoForm className="mt-6 w-full">{plano.botao}</BotaoDoForm>
+    </div>
+  );
+}
+
 export function Plano() {
   return (
     <section>
-      <Titulo sub="Um plano só, sem pegadinha: você sabe quanto vai pagar.">Quanto custa</Titulo>
-      <div className="mx-auto max-w-md rounded-card border-2 border-brand bg-[linear-gradient(170deg,rgb(249_104_11/0.14),transparent_55%)] p-5 shadow-[0_0_40px_-12px_rgb(249_104_11/0.45)] sm:p-7">
-        <p className="text-lg font-extrabold sm:text-xl">{PLANO.nome}</p>
-        <p className="mt-1 flex items-end gap-1">
-          <span className="text-4xl leading-none font-extrabold text-brand sm:text-5xl">{PLANO.preco}</span>
-          <span className="pb-1 font-bold text-muted">{PLANO.periodo}</span>
-        </p>
-        <ul className="mt-5 flex flex-col gap-2.5">
-          {PLANO.itens.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm sm:text-base">
-              <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-        <BotaoDoForm className="mt-6 w-full">Quero o plano Essencial</BotaoDoForm>
+      <Titulo sub="Dois planos, sem pegadinha e sem comissão: você sabe quanto vai pagar.">Quanto custa</Titulo>
+      <div className="mx-auto grid max-w-4xl grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {PLANOS.map((plano) => (
+          <CartaoDoPlano key={plano.nome} plano={plano} />
+        ))}
       </div>
     </section>
   );

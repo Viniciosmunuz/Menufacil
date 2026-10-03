@@ -2,6 +2,7 @@
 
 import { Check, CircleCheck, Clock, QrCode, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
@@ -47,6 +48,7 @@ export function PixCard({
   qrBase64,
   venceEm,
   gerarOutro,
+  desistir,
   code,
 }: {
   totalCents: number;
@@ -56,6 +58,8 @@ export function PixCard({
   venceEm: string | null;
   /** ação que cria outro QR quando este vence */
   gerarOutro: (formData: FormData) => Promise<void>;
+  /** o cliente mudou de ideia antes de pagar */
+  desistir: (formData: FormData) => Promise<void>;
   code: string;
 }) {
   const tempo = useTempoRestante(venceEm);
@@ -129,9 +133,60 @@ export function PixCard({
               instante. Não precisa mandar comprovante para ninguém.
             </span>
           </div>
+
+          {/* Discreto de propósito: quem chegou aqui veio pagar, e um botão
+              de desistir do tamanho do de pagar convida a desistir. Mas ele
+              precisa existir -- sem ele, quem muda de ideia só fecha a aba, e
+              o pedido fica pendurado em "aguardando pagamento" para sempre,
+              com o balcão olhando um pedido que nunca vai chegar. */}
+          <form action={desistir} className="text-center">
+            <input type="hidden" name="code" value={code} />
+            <BotaoDeDesistir />
+          </form>
         </>
       )}
     </Card>
+  );
+}
+
+/** o "não quero mais": o segundo toque é que vale */
+function BotaoDeDesistir() {
+  const [perguntando, setPerguntando] = useState(false);
+  const { pending } = useFormStatus();
+
+  if (!perguntando) {
+    return (
+      <button
+        type="button"
+        onClick={() => setPerguntando(true)}
+        className="text-sm font-semibold text-faint underline-offset-4 hover:text-muted hover:underline"
+      >
+        Mudei de ideia, cancelar o pedido
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex flex-col items-center gap-2">
+      <span className="text-sm text-muted">Cancelar este pedido e voltar ao cardápio?</span>
+      <span className="flex flex-wrap justify-center gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="h-10 rounded-control border border-danger/50 px-4 text-sm font-bold text-danger hover:bg-danger/10 disabled:opacity-60"
+        >
+          {pending ? "Cancelando..." : "Sim, cancelar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPerguntando(false)}
+          disabled={pending}
+          className="h-10 rounded-control px-4 text-sm font-bold text-muted hover:text-ink"
+        >
+          Continuar pagando
+        </button>
+      </span>
+    </span>
   );
 }
 

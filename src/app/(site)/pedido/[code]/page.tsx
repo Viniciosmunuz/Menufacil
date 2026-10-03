@@ -20,7 +20,7 @@ import { conversaDoPedido } from "@/server/chat/chat";
 import { pixDoPedido } from "@/server/pagamentos/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
-import { gerarOutroPix, markPaymentSent } from "./actions";
+import { desistirDoPedido, gerarOutroPix, markPaymentSent } from "./actions";
 import { PedidoAoVivo } from "./ao-vivo";
 import { ChatDoCliente } from "./chat-cliente";
 import { ClearCartAfterOrder, OpenWhatsAppOnce, PixActions, RememberOrder, SendOrderCta } from "./order-live";
@@ -133,6 +133,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           qrBase64={pixDaVez.pix.qrBase64}
           venceEm={pixDaVez.pix.venceEm?.toISOString() ?? null}
           gerarOutro={gerarOutroPix}
+          desistir={desistirDoPedido}
         />
       )}
 

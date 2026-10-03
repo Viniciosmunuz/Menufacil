@@ -1,11 +1,14 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { enviarComoCliente, marcarLidoPeloCliente } from "@/server/chat/chat";
+import { credenciaisDePagamento } from "@/server/pagamentos/conta";
 import { pixDoPedido } from "@/server/pagamentos/pix";
+import { cancelarPagamento } from "@/server/totem/mercado-pago";
 
 // Ações da página do pedido, do lado do cliente.
 //
@@ -49,6 +52,64 @@ export async function gerarOutroPix(formData: FormData) {
   }
   await pixDoPedido(order.id);
   refresh();
+}
+
+/**
+ * O cliente desistiu na tela do Pix.
+ *
+ * Sem isto, quem abre o QR e muda de ideia deixa um pedido pendurado em
+ * "aguardando pagamento" para sempre, e o balcão fica olhando um pedido
+ * que nunca vai chegar.
+ *
+ * A ordem importa: primeiro vira a linha do pagamento, com o status
+ * antigo no where. Se nesse instante o Pix tiver caído, o update não
+ * acha nada e a desistência é recusada -- ninguém cancela um pedido que
+ * acabou de ser pago. Só depois disso o Mercado Pago é avisado.
+ */
+export async function desistirDoPedido(formData: FormData) {
+  const code = String(formData.get("code") ?? "");
+  const pedido = await db.order.findUnique({
+    where: { code },
+    select: {
+      id: true,
+      restaurantId: true,
+      status: true,
+      origin: true,
+      restaurant: { select: { slug: true } },
+      payment: { select: { id: true, status: true, mpPaymentId: true } },
+    },
+  });
+  if (!pedido || pedido.origin !== "FULL_DELIVERY") return;
+  const destino = `/restaurante/${pedido.restaurant.slug}`;
+  if (pedido.status !== "AWAITING_PAYMENT" || !pedido.payment) redirect(destino);
+
+  const { count } = await db.payment.updateMany({
+    where: { id: pedido.payment.id, status: { in: ["PENDING", "EXPIRED"] } },
+    data: { status: "CANCELED" },
+  });
+  // o pagamento saiu de "esperando" no meio do caminho: a tela recarregada
+  // mostra o que aconteceu de verdade, e nada é cancelado por cima
+  if (count === 0) {
+    refresh();
+    return;
+  }
+
+  await db.$transaction([
+    db.order.updateMany({ where: { id: pedido.id, status: "AWAITING_PAYMENT" }, data: { status: "CANCELED" } }),
+    db.orderStatusEvent.create({ data: { orderId: pedido.id, status: "CANCELED", note: "Cliente desistiu na tela do Pix" } }),
+  ]);
+
+  // tira a cobrança da conta do restaurante; se falhar, ela vence sozinha
+  if (pedido.payment.mpPaymentId) {
+    try {
+      const contas = await credenciaisDePagamento(pedido.restaurantId);
+      if (contas) await cancelarPagamento(contas.accessToken, pedido.payment.mpPaymentId);
+    } catch {
+      // o QR vence em dez minutos de qualquer jeito
+    }
+  }
+
+  redirect(destino);
 }
 
 /** o cliente abriu a conversa: o que o restaurante escreveu está lido */
