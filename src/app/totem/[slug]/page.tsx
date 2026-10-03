@@ -98,7 +98,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
         <span aria-hidden="true" className="block h-0.5 bg-gradient-to-r from-brand via-brand/40 to-transparent" />
       </header>
 
-      <div className="mt-4 px-4 pb-24">
+      {/* sem margem própria: a busca já vem com o respiro dela, e os dois
+          juntos abriam um vão escuro entre a faixa e o cardápio */}
+      <div className="px-4 pb-24">
         {categorias.length === 0 ? (
           <p className="mt-10 text-center text-muted">O cardápio ainda está sendo montado.</p>
         ) : (
