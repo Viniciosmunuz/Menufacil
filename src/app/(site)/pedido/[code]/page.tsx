@@ -1,4 +1,4 @@
-import { Check, CircleCheck, CircleX, MessageCircle, MessagesSquare } from "lucide-react";
+import { Check, CircleCheck, CircleX, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,13 +16,13 @@ import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { fullDeliverySteps } from "@/lib/order-flow";
 import { paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
-import { Conversa } from "@/components/chat/conversa";
 import { conversaDoPedido } from "@/server/chat/chat";
 import { pixDoPedido } from "@/server/pagamentos/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
-import { enviarMensagem, gerarOutroPix, markPaymentSent } from "./actions";
+import { gerarOutroPix, markPaymentSent } from "./actions";
 import { PedidoAoVivo } from "./ao-vivo";
+import { ChatDoCliente } from "./chat-cliente";
 import { ClearCartAfterOrder, OpenWhatsAppOnce, PixActions, RememberOrder, SendOrderCta } from "./order-live";
 import { PixCard, PixPago } from "./pix-card";
 
@@ -310,25 +310,17 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         )}
       </Card>
 
+      {/* a conversa não ocupa lugar na página: ela vive no botão Chat da
+          barra de baixo e abre como folha por cima (ver ChatDoCliente) */}
       {conversa && (
-        <Card className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-lg font-extrabold">
-              <MessagesSquare className="size-5 text-brand" aria-hidden="true" />
-              Falar com {r.name}
-            </h2>
-            <span className="text-sm text-faint">Pedido #{order.number}</span>
-          </div>
-          <Conversa
-            mensagens={conversa.mensagens.map((m) => ({ ...m, em: m.em.toISOString() }))}
-            euSou="CUSTOMER"
-            acao={enviarMensagem}
-            hidden={{ code: order.code }}
-            vazio="Precisa avisar algo? Escreva aqui — a mensagem vai direto para o balcão, junto com este pedido."
-            fechada={FINAL.includes(order.status)}
-            fechadaTexto="Este pedido já foi encerrado. O que foi conversado fica guardado aqui."
-          />
-        </Card>
+        <ChatDoCliente
+          code={order.code}
+          restaurante={r.name}
+          numero={order.number}
+          mensagens={conversa.mensagens.map((m) => ({ ...m, em: m.em.toISOString() }))}
+          naoLidas={conversa.naoLidasDoCliente}
+          fechada={FINAL.includes(order.status)}
+        />
       )}
 
       <Card className="flex flex-col gap-4">

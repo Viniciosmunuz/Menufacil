@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { marcarLidoPeloCliente } from "@/server/chat/chat";
 
 import { conferirPagamentoDoPedido } from "../pix";
 
@@ -30,14 +29,12 @@ export async function situacaoDoPedido(request: Request) {
 
   const conversa = await db.chatConversation.findFirst({
     where: { order: { code } },
-    select: { orderId: true, lastMessageAt: true, customerUnread: true, _count: { select: { messages: true } } },
+    select: { lastMessageAt: true, customerUnread: true, _count: { select: { messages: true } } },
   });
 
-  // A tela está aberta na mão do cliente: o que o restaurante escreveu
-  // está lido. É aqui, e não na montagem da página, porque desenhar uma
-  // tela não deveria mudar nada no banco -- e esta pergunta só acontece
-  // quando a página está de fato na frente de alguém.
-  if (conversa && conversa.customerUnread > 0) await marcarLidoPeloCliente(conversa.orderId);
+  // Aqui não se marca nada como lido. A conversa fica atrás do botão Chat
+  // da barra de baixo: ter a página aberta não quer dizer que a pessoa viu
+  // a mensagem. Quem marca é a abertura da própria conversa.
 
   return Response.json(
     {

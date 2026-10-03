@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { db } from "@/lib/db";
 import type { EstadoDaConversa } from "@/components/chat/conversa";
-import { enviarComoCliente } from "@/server/chat/chat";
+import { enviarComoCliente, marcarLidoPeloCliente } from "@/server/chat/chat";
 import { pixDoPedido } from "@/server/pagamentos/pix";
 
 // Ações da página do pedido, do lado do cliente.
@@ -48,6 +48,14 @@ export async function gerarOutroPix(formData: FormData) {
     await db.payment.updateMany({ where: { orderId: order.id, status: { in: ["EXPIRED", "CANCELED"] } }, data: { status: "PENDING" } });
   }
   await pixDoPedido(order.id);
+  refresh();
+}
+
+/** o cliente abriu a conversa: o que o restaurante escreveu está lido */
+export async function lerConversaDoPedido(code: string) {
+  const pedido = await db.order.findUnique({ where: { code }, select: { id: true, origin: true } });
+  if (!pedido || pedido.origin !== "FULL_DELIVERY") return;
+  await marcarLidoPeloCliente(pedido.id);
   refresh();
 }
 

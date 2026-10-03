@@ -114,10 +114,10 @@ export function Conversa({
                   {!minha && m.autorNome && <p className="mb-0.5 text-xs font-extrabold opacity-70">{m.autorNome}</p>}
                   <p className="break-words whitespace-pre-wrap">{m.texto}</p>
                 </div>
-                <span className="mt-0.5 px-1 text-[0.7rem] text-faint">
-                  {formatTime(new Date(m.em))}
-                  {minha && m.lida && " · lida"}
-                </span>
+                {/* só a hora: o "lida" não entra. Conversa de pedido é
+                    curta e tem o andamento do lado contando a verdade -- o
+                    recibo de leitura só criaria cobrança de resposta */}
+                <span className="mt-0.5 px-1 text-[0.7rem] text-faint">{formatTime(new Date(m.em))}</span>
               </div>
             );
           })

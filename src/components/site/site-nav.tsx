@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, ReceiptText, Utensils } from "lucide-react";
+import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, MessagesSquare, ReceiptText, Utensils } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
@@ -9,6 +9,7 @@ import { CategoryIcon } from "@/lib/category-icons";
 import { cn } from "@/lib/cn";
 
 import { useCart } from "./cart-store";
+import { abrirChat, useChat } from "./chat-store";
 
 export type NavCategory = { slug: string; name: string; icon: string | null };
 
@@ -106,6 +107,11 @@ function CategoriesDrawer({ categories, active, onNavigate }: { categories: NavC
 export function BottomNav({ store }: { store?: { slug: string; whatsapp: string | null } | null }) {
   const pathname = usePathname();
   const cart = useCart();
+  // conversa do pedido do 100% Delivery: quando existe, ela toma o último
+  // lugar da barra. É onde o polegar já está, e é o lugar em que a pessoa
+  // procura quando quer falar com o restaurante -- antes a conversa ficava
+  // no meio da página do pedido, e quem queria falar tinha de ir caçar
+  const chat = useChat();
   // A página de venda é uma chegada de fora, do Instagram, e fala com o dono
   // do restaurante, não com quem vai pedir comida. Ali a barra só tiraria a
   // atenção do botão de contato.
@@ -114,17 +120,34 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
   // o carrinho não entra aqui: ele já está no topo e na barra "Ver carrinho"
   const orders = { href: "/meus-pedidos", label: "Pedidos", icon: ReceiptText, active: pathname === "/meus-pedidos" || pathname.startsWith("/pedido/") };
 
-  const items: { href: string; label: string; icon: typeof Home; active: boolean; badge?: number; external?: boolean }[] = store
+  type Item = {
+    href?: string;
+    label: string;
+    icon: typeof Home;
+    active: boolean;
+    badge?: number;
+    external?: boolean;
+    /** abre alguma coisa em cima da tela em vez de navegar */
+    aoTocar?: () => void;
+  };
+
+  const conversa: Item = { label: "Chat", icon: MessagesSquare, active: chat.aberto, aoTocar: abrirChat, badge: chat.naoLidas || undefined };
+
+  const items: Item[] = store
     ? [
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
         orders,
-        ...(store.whatsapp ? [{ href: `https://wa.me/${store.whatsapp}`, label: "WhatsApp", icon: MessageCircle, active: false, external: true }] : []),
+        ...(chat.ativo
+          ? [conversa]
+          : store.whatsapp
+            ? [{ href: `https://wa.me/${store.whatsapp}`, label: "WhatsApp", icon: MessageCircle, active: false, external: true }]
+            : []),
       ]
     : [
         { href: "/", label: "Início", icon: Home, active: pathname === "/" },
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
         orders,
-        { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },
+        chat.ativo ? conversa : { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },
       ];
 
   if (venda) return null;
@@ -135,14 +158,10 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
       aria-label="Navegação principal"
     >
       <ul className="mx-auto grid max-w-lg auto-cols-fr grid-flow-col">
-        {items.map(({ href, label, icon: Icon, active, badge, external }) => (
-          <li key={label}>
-            <Link
-              href={href}
-              {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              aria-current={active ? "page" : undefined}
-              className={cn("flex h-16 flex-col items-center justify-center gap-1 text-xs font-bold", active ? "text-brand" : "text-muted")}
-            >
+        {items.map(({ href, label, icon: Icon, active, badge, external, aoTocar }) => {
+          const classes = cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold", active ? "text-brand" : "text-muted");
+          const dentro = (
+            <>
               <span className="relative">
                 <Icon className="size-6" aria-hidden="true" />
                 {badge !== undefined && (
@@ -152,10 +171,28 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
                 )}
               </span>
               {label}
-              {badge !== undefined && badge > 0 && <span className="sr-only">({badge} itens)</span>}
-            </Link>
-          </li>
-        ))}
+              {badge !== undefined && badge > 0 && <span className="sr-only">({badge} novas)</span>}
+            </>
+          );
+          return (
+            <li key={label}>
+              {aoTocar ? (
+                <button type="button" onClick={aoTocar} aria-expanded={active} className={classes}>
+                  {dentro}
+                </button>
+              ) : (
+                <Link
+                  href={href ?? "/"}
+                  {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  aria-current={active ? "page" : undefined}
+                  className={classes}
+                >
+                  {dentro}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
