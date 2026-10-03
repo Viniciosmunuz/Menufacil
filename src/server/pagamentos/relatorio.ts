@@ -52,6 +52,23 @@ export function oQueFalta(r: ResumoDoFullDelivery): string | null {
   return null;
 }
 
+/**
+ * Quando chegou o último aviso do Mercado Pago para este restaurante.
+ *
+ * Existe para responder, sem log e sem ninguém de plantão, à única pergunta
+ * que não dá para responder olhando a tela: "o aviso automático está
+ * chegando?". Com data recente, está. Vazio depois de vendas, não está --
+ * e aí o pagamento só confirma enquanto o cliente deixa a tela aberta.
+ */
+export async function ultimoAvisoDoMercadoPago(restaurantId: string) {
+  const ultimo = await db.mpWebhookEvent.findFirst({
+    where: { restaurantId },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  return ultimo?.createdAt ?? null;
+}
+
 export async function resumoDoFullDelivery(restaurantId: string): Promise<ResumoDoFullDelivery | null> {
   const restaurante = await db.restaurant.findUnique({
     where: { id: restaurantId },

@@ -1,4 +1,4 @@
-import { Bike, CreditCard, Link2, MessageSquare, Webhook } from "lucide-react";
+import { Bike, CircleCheck, CreditCard, Link2, MessageSquare, Webhook } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,13 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Gaveta } from "@/components/ui/gaveta";
-import { formatCents, formatDateTime } from "@/lib/format";
+import { formatCents, formatDateTime, formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { contarNaoLidasDoRestaurante } from "@/server/chat/chat";
 import { prontoParaCobrar, verConta } from "@/server/pagamentos/conta";
 import { temAplicativo } from "@/server/pagamentos/oauth";
-import { resumoDoFullDelivery } from "@/server/pagamentos/relatorio";
+import { resumoDoFullDelivery, ultimoAvisoDoMercadoPago } from "@/server/pagamentos/relatorio";
 import { temChaveDePagamento } from "@/server/pagamentos/segredo";
 
 import { conectarMercadoPago } from "./actions";
@@ -42,7 +42,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
   const sp = await searchParams;
   const recado = typeof sp.mp === "string" ? RECADOS[sp.mp] : undefined;
 
-  const [conta, pronto, resumo, naoLidas] = await Promise.all([
+  const [conta, pronto, resumo, naoLidas, ultimoAviso] = await Promise.all([
     verConta(restaurant.id),
     // dá para cobrar agora? não é a mesma pergunta que "ligou pelo Mercado
     // Pago": quem já tinha colado o Access Token na seção Totem consegue
@@ -50,6 +50,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
     prontoParaCobrar(restaurant.id),
     resumoDoFullDelivery(restaurant.id),
     contarNaoLidasDoRestaurante(restaurant.id),
+    ultimoAvisoDoMercadoPago(restaurant.id),
   ]);
   /** cobrando pelo token colado na seção Totem, sem ter passado pelo OAuth */
   const peloTotem = pronto && !conta.conectada;
@@ -260,6 +261,26 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
           Mercado Pago de poucos em poucos segundos. Os dois caminhos chegam no mesmo lugar, e o pedido não é marcado como pago
           duas vezes.
         </p>
+
+        {/* a única coisa que não dá para descobrir olhando a tela: se o
+            aviso automático está mesmo chegando. Com data aqui, está */}
+        <div className="rounded-control border border-line bg-surface-2 p-4">
+          <p className="text-sm font-bold">Último aviso recebido do Mercado Pago</p>
+          {ultimoAviso ? (
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
+              <CircleCheck className="size-4 shrink-0 text-success" aria-hidden="true" />
+              <strong className="text-success">Está chegando</strong>
+              <span className="text-muted">· {formatWhen(ultimoAviso)}</span>
+            </p>
+          ) : resumo && resumo.pedidos.pagos > 0 ? (
+            <p className="mt-1 text-sm text-warning">
+              Nenhum aviso chegou até agora, e já houve pedido pago. Enquanto for assim, o pagamento só confirma com a tela do
+              cliente aberta. Vale avisar o suporte do MenuFácil.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-muted">Nada ainda — o primeiro aparece aqui depois da primeira venda por Pix.</p>
+          )}
+        </div>
 
         {/* O endereço e a chave ficam aqui embaixo, fechados, para o caso de
             quem já tem aplicação própria no Mercado Pago -- é o caso de quem
