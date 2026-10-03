@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { connection } from "next/server";
 
 import type { RestaurantCardData } from "@/components/public/restaurant-card";
@@ -130,7 +131,16 @@ export async function listPopularCategories(limit = 6) {
  * Página do restaurante. Fora do ar, só abre em prévia para quem gerencia
  * o restaurante (dono ou admin); para os outros é como se não existisse.
  */
-export async function getPublicRestaurant(slug: string, preview: boolean) {
+/**
+ * Dentro de cache() porque esta consulta roda duas vezes por acesso: uma
+ * para o título e a prévia do link (generateMetadata) e outra para a
+ * página. São as mesmas 131 linhas de cardápio, com opções e sabores,
+ * indo e voltando do banco duas vezes para desenhar uma tela só.
+ *
+ * O cache é do pedido, não do tempo: dois acessos diferentes continuam
+ * cada um com a sua consulta, e nada fica velho.
+ */
+export const getPublicRestaurant = cache(async (slug: string, preview: boolean) => {
   await connection();
   const restaurant = await db.restaurant.findUnique({
     where: { slug },
@@ -188,4 +198,4 @@ export async function getPublicRestaurant(slug: string, preview: boolean) {
     isPreview,
     open: isOpenNow(restaurant.openMode, restaurant.openingHours),
   };
-}
+});
