@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 
-import type { RestaurantStatus, UserRole } from "@/generated/prisma/client";
+import type { OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 import { readSession } from "./session";
@@ -65,6 +65,9 @@ export type RestaurantAccess = {
     // recursos liberados pelo admin: o painel usa para esconder e barrar
     printEnabled: boolean;
     totemEnabled: boolean;
+    fullDeliveryEnabled: boolean;
+    /// fluxo escolhido pelo dono; só vale com fullDeliveryEnabled ligado
+    deliveryMode: OrderFlowMode;
   };
   /** true quando quem está no painel é o admin da plataforma */
   viaAdmin: boolean;
@@ -85,6 +88,8 @@ export const getRestaurantAccess = cache(
         receiptWidth: true,
         printEnabled: true,
         totemEnabled: true,
+        fullDeliveryEnabled: true,
+        deliveryMode: true,
       },
     });
     if (!restaurant) return null;

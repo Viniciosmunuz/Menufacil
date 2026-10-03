@@ -4,6 +4,8 @@ export const paymentStatusLabel: Record<PaymentStatus, string> = {
   PENDING: "A receber",
   PROOF_SENT: "Comprovante enviado",
   CONFIRMED: "Confirmado",
+  REJECTED: "Recusado",
+  EXPIRED: "Venceu sem pagar",
   REFUNDED: "Estornado",
   CANCELED: "Cancelado",
 };
@@ -27,6 +29,7 @@ export const restaurantStatusTone: Record<RestaurantStatus, "info" | "success" |
 export const orderStatusLabel: Record<OrderStatus, string> = {
   NEW: "Novo",
   AWAITING_PAYMENT: "Aguardando pagamento",
+  PAID: "Pago",
   PAYMENT_SENT: "Pagamento enviado",
   CONFIRMED: "Confirmado",
   PREPARING: "Em preparo",
@@ -40,6 +43,7 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
 export const OPEN_ORDER_STATUSES: OrderStatus[] = [
   "NEW",
   "AWAITING_PAYMENT",
+  "PAID",
   "PAYMENT_SENT",
   "CONFIRMED",
   "PREPARING",
@@ -62,6 +66,8 @@ export function isOrderStatus(value: unknown): value is OrderStatus {
 export const orderStatusTone: Record<OrderStatus, "info" | "success" | "warning" | "danger" | "neutral" | "brand"> = {
   NEW: "brand",
   AWAITING_PAYMENT: "warning",
+  // pago e ninguem olhou ainda: e o que mais precisa de atencao na lista
+  PAID: "brand",
   PAYMENT_SENT: "warning",
   CONFIRMED: "info",
   PREPARING: "info",

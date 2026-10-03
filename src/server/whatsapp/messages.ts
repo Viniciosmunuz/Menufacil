@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
+import type { OrderOrigin, CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
 import { nextOrderStep } from "@/lib/order-flow";
@@ -257,10 +257,19 @@ const readyForPickup = (o: { number: number }, r: { name: string }) =>
   [`Pedido *#${o.number}* em *${r.name}*: está pronto!`, "", "Pode vir buscar aqui no balcão. Obrigado!"].join("\n");
 
 export function nextStatusNotice(
-  o: { number: number; code: string; customerName: string; customerWhatsapp: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod },
+  o: {
+    number: number;
+    code: string;
+    customerName: string;
+    customerWhatsapp: string;
+    status: OrderStatus;
+    type: OrderType;
+    paymentMethod: PaymentMethod;
+    origin?: OrderOrigin | null;
+  },
   r: { name: string },
 ) {
-  const step = nextOrderStep(o.status, o.type, o.paymentMethod);
+  const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
   if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
   const body = o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);
   // app: abre o WhatsApp instalado (computador ou celular); web: o plano B

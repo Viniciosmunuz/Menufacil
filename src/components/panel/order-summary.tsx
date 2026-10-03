@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -152,7 +152,18 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
  * A data só aparece quando o pedido não é de hoje, e o bairro entra quando
  * é entrega: numa lista de nomes parecidos, é o que diz para onde vai.
  */
-export function OrderDrawer({ order: o, prefix, children }: { order: OrderSummaryData; prefix?: string; children: ReactNode }) {
+export function OrderDrawer({
+  order: o,
+  prefix,
+  /** mensagens do cliente esperando resposta (100% Delivery) */
+  naoLidas = 0,
+  children,
+}: {
+  order: OrderSummaryData;
+  prefix?: string;
+  naoLidas?: number;
+  children: ReactNode;
+}) {
   const delivery = o.type === "DELIVERY";
   // no totem, "retirada" não diz nada: o que o balcão precisa saber é se a
   // pessoa vai comer ali ou levar
@@ -172,6 +183,15 @@ export function OrderDrawer({ order: o, prefix, children }: { order: OrderSummar
             <Badge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
             {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
+            {/* no 100% Delivery o cliente fala por aqui, não pelo WhatsApp:
+                sem este selo, a mensagem dele ficaria sem resposta dentro de
+                um pedido fechado na lista */}
+            {naoLidas > 0 && (
+              <Badge tone="brand">
+                <MessageSquare className="size-3.5" aria-hidden="true" />
+                {naoLidas}
+              </Badge>
+            )}
             <span className="truncate text-sm text-muted">{meta}</span>
           </span>
         </span>

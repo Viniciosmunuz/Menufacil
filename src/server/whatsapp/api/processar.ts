@@ -15,11 +15,8 @@ function authorized(request: Request) {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-async function run(request: Request) {
+export async function processar(request: Request) {
   if (!authorized(request)) return Response.json({ error: "não autorizado" }, { status: 401 });
   const result = await processWhatsAppQueue({ limit: 50 });
   return Response.json(result);
 }
-
-export const GET = run;
-export const POST = run;

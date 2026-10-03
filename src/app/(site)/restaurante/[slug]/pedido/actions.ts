@@ -30,8 +30,13 @@ export async function submitOrder(_prev: CheckoutState, formData: FormData): Pro
     const items = parseItems(formData.get("items"));
     const order = await placeOrder({ slug: String(formData.get("slug") ?? ""), input: parsed.data, items });
     scheduleWhatsAppDelivery(order.id);
-    // apita no celular do restaurante mesmo com o painel fechado
-    agendarAvisoDePedido(order);
+    // apita no celular do restaurante mesmo com o painel fechado.
+    //
+    // No 100% Delivery, o pedido que está esperando o Pix não apita: quem
+    // apita é a confirmação do Mercado Pago (ver o webhook). Avisar aqui
+    // faria o celular do balcão tocar a cada carrinho abandonado.
+    const esperandoPagamento = order.origin === "FULL_DELIVERY" && order.status === "AWAITING_PAYMENT";
+    if (!esperandoPagamento) agendarAvisoDePedido(order);
     code = order.code;
   } catch (error) {
     if (error instanceof OrderError) {

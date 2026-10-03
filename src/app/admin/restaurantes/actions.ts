@@ -162,7 +162,17 @@ export async function setRestaurantFeatures(_prev: AdminFormState, formData: For
   if (!before) return { error: "Restaurante não encontrado." };
 
   const data = Object.fromEntries(FEATURES.map((f) => [f.key, marcados.has(f.key)])) as Record<FeatureKey, boolean>;
-  await db.restaurant.update({ where: { id: restaurantId }, data, select: { id: true } });
+  // Tirar o 100% Delivery devolve o restaurante ao Pedido pelo WhatsApp. O
+  // servidor já barraria o fluxo pelo recurso desligado, mas deixar
+  // "deliveryMode" apontando para um modo proibido faria o painel dele
+  // mostrar uma escolha que não vale -- e, religado o recurso meses depois,
+  // ele voltaria cobrando Pix sem ninguém pedir.
+  const voltaParaWhatsApp = !data.fullDeliveryEnabled;
+  await db.restaurant.update({
+    where: { id: restaurantId },
+    data: { ...data, ...(voltaParaWhatsApp ? { deliveryMode: "WHATSAPP" as const } : {}) },
+    select: { id: true },
+  });
 
   const changes = Object.fromEntries(
     FEATURES.filter((f) => before[f.key] !== data[f.key]).map((f) => [f.key, data[f.key] ? "ligado" : "desligado"]),

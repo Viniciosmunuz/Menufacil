@@ -2,10 +2,12 @@
 
 import { refresh } from "next/cache";
 
+import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { db } from "@/lib/db";
 import { PAPER_WIDTHS } from "@/lib/ticket";
 import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { enviarComoRestaurante, marcarLidoPeloRestaurante } from "@/server/chat/chat";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
 import { pairDevice, setDeviceRole, unpairDevice } from "@/server/print/devices";
 import { avisarTeste, esquecerAparelho, guardarAparelho } from "@/server/push/avisos";
@@ -17,8 +19,40 @@ async function access(formData: FormData) {
   const { user, restaurant, viaAdmin } = await requireRestaurantAccess(String(formData.get("restaurantId") ?? ""));
   return {
     restaurantId: restaurant.id,
+    user,
     actor: { userId: user.id, note: viaAdmin ? "Alterado pelo administrador" : "Alterado pelo restaurante" },
   };
+}
+
+/**
+ * Resposta do balcão na conversa do pedido (só no 100% Delivery).
+ *
+ * Quem escreveu fica gravado junto com a mensagem: num restaurante com três
+ * pessoas no balcão, saber quem respondeu o quê é o que resolve discussão.
+ */
+export async function responderNoChat(_prev: EstadoDaConversa, formData: FormData): Promise<EstadoDaConversa> {
+  const { restaurantId, user } = await access(formData);
+  const texto = String(formData.get("texto") ?? "");
+  if (!texto.trim()) return { error: "Escreva a mensagem antes de enviar." };
+
+  const resultado = await enviarComoRestaurante({
+    orderId: String(formData.get("orderId") ?? ""),
+    restaurantId,
+    userId: user.id,
+    userName: user.name,
+    texto,
+  });
+  if ("erro" in resultado) return { error: resultado.erro };
+
+  refresh();
+  return { enviadaEm: Date.now() };
+}
+
+/** o balcão abriu a conversa: o que o cliente escreveu está lido */
+export async function lerConversa(formData: FormData) {
+  const { restaurantId } = await access(formData);
+  await marcarLidoPeloRestaurante(String(formData.get("orderId") ?? ""), restaurantId);
+  refresh();
 }
 
 export async function updateRestaurantOrder(_prev: OrderFormState, formData: FormData): Promise<OrderFormState> {

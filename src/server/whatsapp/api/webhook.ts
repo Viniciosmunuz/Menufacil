@@ -8,8 +8,11 @@ import { db } from "@/lib/db";
 //
 // GET: verificação do endereço no painel da Meta (WHATSAPP_VERIFY_TOKEN).
 // POST: eventos, assinados com o App Secret (X-Hub-Signature-256).
+//
+// O endereço continua /api/whatsapp/webhook, o mesmo cadastrado na Meta: o
+// que mudou é que a porta de entrada é compartilhada (ver a rota [acao]).
 
-export async function GET(request: Request) {
+export async function verificar(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
   const token = url.searchParams.get("hub.verify_token");
@@ -35,7 +38,7 @@ const fromMeta: Record<string, WhatsAppMessageStatus> = { sent: "SENT", delivere
 
 type StatusEvent = { id?: string; status?: string; errors?: { code?: number; title?: string; message?: string }[] };
 
-export async function POST(request: Request) {
+export async function eventos(request: Request) {
   const raw = await request.text();
   if (!validSignature(raw, request.headers.get("x-hub-signature-256"))) {
     return new Response("assinatura inválida", { status: 401 });

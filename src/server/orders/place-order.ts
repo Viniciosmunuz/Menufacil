@@ -11,11 +11,23 @@ import { isOpenNow } from "@/lib/opening-hours";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
+import { prontoParaCobrar } from "@/server/pagamentos/conta";
 import { queueNewOrderMessages } from "@/server/whatsapp/queue";
 
 // Criação do pedido feito pelo cliente no site. Nada que vem do navegador é
 // confiado: preço, taxa, disponibilidade e se o restaurante está aberto são
 // conferidos aqui, com os dados do banco.
+//
+// Dois fluxos terminam aqui, e a diferença entre eles é pequena de
+// propósito: o carrinho, o endereço, o preço e as regras do cardápio são
+// conferidos do mesmo jeito nos dois. O que muda é só o fim.
+//
+// - WhatsApp (o de sempre): o pedido nasce e o cliente leva a conversa para
+//   o WhatsApp do restaurante. No Pix, ele copia a chave e manda o
+//   comprovante por lá.
+// - 100% Delivery: o pedido nasce aguardando pagamento, o Pix é cobrado na
+//   conta do próprio restaurante pelo Mercado Pago, e nada sai pelo
+//   WhatsApp -- o cliente acompanha e conversa na própria página do pedido.
 
 const MAX_LINES = 40;
 const MAX_QTY = 50;
@@ -123,7 +135,14 @@ export async function placeOrder(params: {
   if (type === "DELIVERY" && !restaurant.deliveryEnabled) throw new OrderError("Este restaurante não faz entrega.", "type");
   if (type === "PICKUP" && !restaurant.pickupEnabled) throw new OrderError("Este restaurante não tem retirada no local.", "type");
   const method = input.paymentMethod;
-  const accepted = method === "PIX" ? !!restaurant.pixKey : method === "CARD" ? restaurant.acceptsCard : restaurant.acceptsCash;
+  // o recurso é liberado pelo admin e ligado pelo dono: as duas coisas
+  // valem, e quem confere é aqui, não a tela
+  const cemPorCento = restaurant.fullDeliveryEnabled && restaurant.deliveryMode === "FULL_DELIVERY";
+  // No 100% Delivery o Pix é o do Mercado Pago, na conta do próprio
+  // restaurante -- não a chave copiada à mão. Sem conta ligada não há Pix
+  // para oferecer, porque não haveria para onde mandar comprovante nenhum.
+  const pixAceito = method !== "PIX" ? false : cemPorCento ? await prontoParaCobrar(restaurant.id) : !!restaurant.pixKey;
+  const accepted = method === "PIX" ? pixAceito : method === "CARD" ? restaurant.acceptsCard : restaurant.acceptsCash;
   if (!accepted) throw new OrderError("O restaurante não aceita essa forma de pagamento. Escolha outra.", "paymentMethod");
 
   // produtos: deste restaurante, disponíveis, em categoria visível
@@ -298,6 +317,7 @@ export async function placeOrder(params: {
         deliveryNeighborhood: address?.neighborhood,
         deliveryReference: address?.reference,
         type,
+        origin: cemPorCento ? "FULL_DELIVERY" : "WHATSAPP",
         paymentMethod: method,
         status: initialStatus,
         notes: input.notes,
@@ -310,8 +330,11 @@ export async function placeOrder(params: {
           create: {
             method,
             status: "PENDING",
+            provider: cemPorCento && method === "PIX" ? "MERCADO_PAGO" : "MANUAL",
             amountCents: totalCents,
-            ...(method === "PIX" ? { pixKey: restaurant.pixKey, pixKeyType: restaurant.pixKeyType } : {}),
+            // a chave Pix é o retrato do que foi mostrado ao cliente; no
+            // 100% Delivery não há chave na tela, o QR vem do Mercado Pago
+            ...(method === "PIX" && !cemPorCento ? { pixKey: restaurant.pixKey, pixKeyType: restaurant.pixKeyType } : {}),
             cardType: method === "CARD" ? (input.cardType ?? null) : null,
             changeForCents,
           },
@@ -321,8 +344,10 @@ export async function placeOrder(params: {
     });
 
     // as instruções do Pix entram na fila junto com o pedido; ao restaurante,
-    // o pedido chega pelo WhatsApp do próprio cliente (página do pedido)
-    await queueNewOrderMessages(tx, { order: created, restaurant });
+    // o pedido chega pelo WhatsApp do próprio cliente (página do pedido).
+    // No 100% Delivery nada disso acontece: o cliente paga na própria
+    // página, e mandar instruções de Pix por fora faria ele pagar duas vezes
+    if (!cemPorCento) await queueNewOrderMessages(tx, { order: created, restaurant });
     return created;
   });
 

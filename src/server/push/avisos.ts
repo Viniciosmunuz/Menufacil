@@ -106,6 +106,33 @@ export async function avisarPedidoNovo(pedido: {
   });
 }
 
+/** 100% Delivery: o Mercado Pago confirmou o dinheiro deste pedido */
+export async function avisarPagamentoConfirmado(pedido: {
+  id: string;
+  number: number;
+  restaurantId: string;
+  type: OrderType;
+  totalCents: number;
+  customerName: string;
+}) {
+  return enviarParaORestaurante(pedido.restaurantId, {
+    titulo: `Pago · pedido #${pedido.number} · ${formatCents(pedido.totalCents)}`,
+    corpo: `${pedido.customerName} · ${pedido.type === "DELIVERY" ? "Entrega" : "Retirada"}`,
+    // tag diferente da do pedido novo: o aviso de pago não apaga o de entrada
+    tag: `pago-${pedido.id}`,
+  });
+}
+
+/** 100% Delivery: o cliente escreveu na conversa do pedido */
+export async function avisarMensagemDoCliente(params: { restaurantId: string; orderNumber: number; texto: string }) {
+  return enviarParaORestaurante(params.restaurantId, {
+    titulo: `Mensagem no pedido #${params.orderNumber}`,
+    corpo: params.texto.slice(0, 120),
+    // uma mensagem nova substitui o aviso da anterior do mesmo pedido
+    tag: `chat-${params.orderNumber}`,
+  });
+}
+
 /** o dono apertou "testar": mesmo caminho de um pedido de verdade */
 export async function avisarTeste(restaurantId: string) {
   return enviarParaORestaurante(restaurantId, {

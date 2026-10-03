@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, MonitorCheck, ReceiptText, Store } from "lucide-react";
+import { BookOpen, Bike, LayoutDashboard, MonitorCheck, ReceiptText, Store } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -46,6 +46,9 @@ export default async function RestaurantPanelLayout({
           : []),
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck /> }] : []),
+        // 100% Delivery: idem. Quem nao tem o recurso liberado nao ve a
+        // secao nem sabe que ela existe
+        ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Entrega", icon: <Bike /> }] : []),
       ]}
     >
       {children}

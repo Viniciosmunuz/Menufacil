@@ -4,6 +4,7 @@ import type { PrintRole } from "@/generated/prisma/enums";
 
 import { db } from "@/lib/db";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
+import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 import { receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
 
 // A fila do Print Fácil: os pedidos que ainda não saíram no papel daquele
@@ -64,6 +65,8 @@ export function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA")
       restaurantId,
       ...aindaNaoSaiu(role),
       status: { in: [...OPEN_ORDER_STATUSES] },
+      // 100% Delivery: a via só sai depois que o Mercado Pago confirmou
+      ...EXCLUDE_UNPAID,
       createdAt: { gte: new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000) },
     },
     orderBy: { createdAt: "asc" },

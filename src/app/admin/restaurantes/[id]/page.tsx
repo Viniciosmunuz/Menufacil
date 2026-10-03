@@ -13,12 +13,14 @@ import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
+import { resumoDoFullDelivery } from "@/server/pagamentos/relatorio";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { resumoDaExclusao } from "@/server/restaurants/delete";
 
 import { BasicsForm } from "./basics-form";
 import { DeletePanel } from "./delete-panel";
 import { FeaturesPanel } from "./features-panel";
+import { FullDeliveryPanel } from "./full-delivery-panel";
 import { OwnersPanel } from "./owners-panel";
 import { StatusPanel } from "./status-panel";
 
@@ -51,7 +53,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
   });
   if (!restaurant) notFound();
 
-  const [checklist, categories, logs, resumoExclusao] = await Promise.all([
+  const [checklist, categories, logs, resumoExclusao, fullDelivery] = await Promise.all([
     activationChecklist(id),
     db.platformCategory.findMany({
       where: { OR: [{ active: true }, { restaurants: { some: { id } } }] },
@@ -65,6 +67,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
       include: { actor: { select: { name: true, role: true } } },
     }),
     resumoDaExclusao(id),
+    resumoDoFullDelivery(id),
   ]);
 
   return (
@@ -137,8 +140,16 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
             features={{
               printEnabled: restaurant.printEnabled,
               totemEnabled: restaurant.totemEnabled,
+              fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
             }}
           />
+
+          {/* o quadro do 100% Delivery só aparece depois de o recurso ser
+              liberado uma vez: para quem nunca usou, seria uma caixa de
+              zeros em toda tela de restaurante */}
+          {fullDelivery && (fullDelivery.liberado || fullDelivery.pedidos.total > 0) && (
+            <FullDeliveryPanel restaurantId={restaurant.id} resumo={fullDelivery} />
+          )}
 
           <Card>
             <SectionTitle>Resumo</SectionTitle>

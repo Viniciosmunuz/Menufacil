@@ -21,14 +21,35 @@ const VIDA_MS = 50_000;
 /** sinal de vida, para nenhum intermediário fechar a conexão por silêncio */
 const PING_MS = 15_000;
 
-/** retrato do que importa: quantos pedidos abertos e quando mudaram */
+/**
+ * Retrato do que importa: quantos pedidos abertos, quando mudaram, e o que
+ * está esperando resposta na conversa.
+ *
+ * A conversa entra aqui porque no 100% Delivery ela faz o papel que o
+ * WhatsApp fazia: o cliente escreve "estou na portaria" e isso tem de
+ * aparecer no balcão sem ninguém recarregar a tela. Sem a conversa no
+ * retrato, a mensagem só surgiria no próximo pedido que mudasse de status.
+ */
 async function retrato(restaurantId: string) {
-  const r = await db.order.aggregate({
-    where: { restaurantId, status: { in: [...OPEN_ORDER_STATUSES] } },
-    _count: { _all: true },
-    _max: { updatedAt: true, createdAt: true },
-  });
-  return `${r._count._all}:${r._max.createdAt?.getTime() ?? 0}:${r._max.updatedAt?.getTime() ?? 0}`;
+  const [pedidos, conversas] = await Promise.all([
+    db.order.aggregate({
+      where: { restaurantId, status: { in: [...OPEN_ORDER_STATUSES] } },
+      _count: { _all: true },
+      _max: { updatedAt: true, createdAt: true },
+    }),
+    db.chatConversation.aggregate({
+      where: { restaurantId, order: { status: { in: [...OPEN_ORDER_STATUSES] } } },
+      _sum: { restaurantUnread: true },
+      _max: { lastMessageAt: true },
+    }),
+  ]);
+  return [
+    pedidos._count._all,
+    pedidos._max.createdAt?.getTime() ?? 0,
+    pedidos._max.updatedAt?.getTime() ?? 0,
+    conversas._sum.restaurantUnread ?? 0,
+    conversas._max.lastMessageAt?.getTime() ?? 0,
+  ].join(":");
 }
 
 export async function GET(request: Request, { params }: RouteContext<"/api/painel/[restaurantId]/eventos">) {

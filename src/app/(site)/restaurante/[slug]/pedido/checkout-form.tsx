@@ -33,7 +33,18 @@ type RestaurantInfo = {
   open: boolean;
   /** formas que o restaurante aceita (Pix só com chave cadastrada) */
   payments: { pix: boolean; card: boolean; cash: boolean };
-  /** mostrada antes do pedido e copiada ao fazer o pedido */
+  /**
+   * 100% Delivery ligado: o pedido se resolve inteiro aqui dentro, e o
+   * cliente não é mandado para o WhatsApp de ninguém.
+   */
+  fullDelivery: boolean;
+  /**
+   * 100% Delivery com a conta do Mercado Pago de pé: o Pix é pago aqui
+   * dentro. O QR nasce na tela do pedido, logo depois de confirmar -- não há
+   * chave para copiar nem comprovante para mandar por fora.
+   */
+  pixOnline: boolean;
+  /** mostrada antes do pedido e copiada ao fazer o pedido (só no fluxo do WhatsApp) */
   pix: { key: string; display: string; holder: string | null } | null;
   /** produtos que dá para pedir agora e as opções de cada um */
   menu: Record<string, OptionGroupData[]>;
@@ -179,7 +190,8 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
     }
     confirmed.current = false;
     // copia ainda no toque do botão (depois o navegador não deixa): a pessoa
-    // sai do WhatsApp para o banco com a chave pronta para colar
+    // sai do WhatsApp para o banco com a chave pronta para colar. No 100%
+    // Delivery não há chave: o copia e cola nasce com o QR, na tela seguinte
     if (method === "PIX" && restaurant.pix) void copyToClipboard(restaurant.pix.key);
     try {
       if (!remember) {
@@ -307,7 +319,11 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Forma de pagamento">
                   {available.map((m) => {
                     const info = {
-                      PIX: { title: "Pix", text: "Pague e mande o comprovante no WhatsApp.", Icon: QrCode },
+                      PIX: {
+                        title: "Pix",
+                        text: restaurant.pixOnline ? "Pague agora pelo QR, aqui mesmo." : "Pague e mande o comprovante no WhatsApp.",
+                        Icon: QrCode,
+                      },
                       CARD: {
                         title: "Cartão",
                         text: type === "DELIVERY" ? "Crédito ou débito. O entregador leva a maquininha." : "Crédito ou débito, no balcão.",
@@ -340,6 +356,16 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               )}
               {(err.paymentMethod || missingPayment) && (
                 <p className="text-sm font-bold text-danger">{err.paymentMethod ?? "Escolha como você vai pagar."}</p>
+              )}
+
+              {method === "PIX" && restaurant.pixOnline && (
+                <div className="rounded-control border border-brand/40 bg-brand-soft p-4">
+                  <p className="font-bold text-brand">O QR aparece na próxima tela</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Ao confirmar, você vai ver o QR e o código de copia e cola. Pague pelo aplicativo do banco e a tela avisa
+                    sozinha quando o pagamento cair — o pedido entra na cozinha nesse instante.
+                  </p>
+                </div>
               )}
 
               {method === "PIX" && restaurant.pix && (
@@ -457,7 +483,9 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 </p>
                 <p className="text-muted">
                   {method === "PIX"
-                    ? "A chave é copiada ao fazer o pedido."
+                    ? restaurant.pixOnline
+                      ? "O QR do Pix aparece na próxima tela."
+                      : "A chave é copiada ao fazer o pedido."
                     : type === "DELIVERY"
                       ? "Você paga ao receber o pedido."
                       : "Você paga na retirada."}
@@ -481,11 +509,23 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 do envio — assustava. A versão seguinte disse só a 1, e o
                 cliente fechava o WhatsApp sem mandar nada. Agora diz as duas,
                 na ordem em que acontecem. */}
-            <p className="text-sm leading-snug text-muted">
-              Ao confirmar, <strong className="font-bold text-ink">seu pedido já entra no restaurante</strong>. Em seguida o
-              WhatsApp abre com o pedido escrito: <strong className="font-bold text-ink">toque em enviar</strong> para falar com
-              eles e acompanhar.
-            </p>
+            {restaurant.fullDelivery ? (
+              /* no 100% Delivery não há WhatsApp no caminho: o que o cliente
+                 precisa saber é que ele acompanha tudo na tela seguinte, e
+                 que o pedido só vai para a cozinha depois de pago */
+              <p className="text-sm leading-snug text-muted">
+                Ao confirmar, você vai para a{" "}
+                <strong className="font-bold text-ink">tela do seu pedido</strong>
+                {method === "PIX" ? ", com o QR do Pix. O restaurante recebe assim que o pagamento cair" : ". O restaurante recebe na hora"}
+                , e de lá você acompanha cada passo e fala com eles.
+              </p>
+            ) : (
+              <p className="text-sm leading-snug text-muted">
+                Ao confirmar, <strong className="font-bold text-ink">seu pedido já entra no restaurante</strong>. Em seguida o
+                WhatsApp abre com o pedido escrito: <strong className="font-bold text-ink">toque em enviar</strong> para falar
+                com eles e acompanhar.
+              </p>
+            )}
             <SubmitButton size="lg" pendingText="Enviando pedido..." disabled={missing > 0 || !restaurant.open || stale.length > 0} className="w-full justify-between">
               <span>Fazer pedido</span>
               <span className="tabular-nums">{formatCents(total)}</span>

@@ -1,4 +1,4 @@
-import { ExternalLink, Printer } from "lucide-react";
+import { ExternalLink, MessagesSquare, Printer } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,10 +15,12 @@ import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
-import { FINAL_ORDER_STATUSES } from "@/lib/order-flow";
+import { FINAL_ORDER_STATUSES, isFullDelivery } from "@/lib/order-flow";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { conversaDoPedido } from "@/server/chat/chat";
 
 import { stepRestaurantOrder, updateRestaurantOrder } from "../actions";
+import { ChatDoPedido } from "./chat-card";
 
 export const metadata: Metadata = { title: "Pedido", robots: { index: false, follow: false } };
 
@@ -43,6 +45,8 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
 
   const final = FINAL_ORDER_STATUSES.includes(order.status);
   const hidden = { restaurantId: restaurant.id };
+  // a conversa existe só no 100% Delivery: é ela que substitui o WhatsApp
+  const conversa = isFullDelivery(order.origin) ? await conversaDoPedido(order.id) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,7 +63,15 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       />
 
       <Card>
-        <SectionTitle description={final ? undefined : "Aceitar o pedido abre o WhatsApp com o aviso e o link de acompanhamento para o cliente."}>
+        <SectionTitle
+          description={
+            final
+              ? undefined
+              : conversa
+                ? "Cada passo que você toca aqui aparece na tela do cliente na hora. Ele não precisa de aviso nenhum por fora."
+                : "Aceitar o pedido abre o WhatsApp com o aviso e o link de acompanhamento para o cliente."
+          }
+        >
           Atendimento
         </SectionTitle>
         {final ? (
@@ -72,6 +84,31 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       <Card>
         <OrderSummary order={order} />
       </Card>
+
+      {conversa && (
+        <Card>
+          <SectionTitle
+            description="Amarrada a este pedido. O cliente vê e responde na mesma tela em que acompanha o andamento."
+          >
+            <span className="flex flex-wrap items-center gap-2">
+              <MessagesSquare className="size-5 text-brand" aria-hidden="true" />
+              Conversa com {order.customerName}
+              {conversa.naoLidasDoRestaurante > 0 && (
+                <Badge tone="brand">
+                  {conversa.naoLidasDoRestaurante === 1 ? "1 nova" : `${conversa.naoLidasDoRestaurante} novas`}
+                </Badge>
+              )}
+            </span>
+          </SectionTitle>
+          <ChatDoPedido
+            restaurantId={restaurant.id}
+            orderId={order.id}
+            mensagens={conversa.mensagens.map((m) => ({ ...m, em: m.em.toISOString() }))}
+            naoLidas={conversa.naoLidasDoRestaurante}
+            fechada={final}
+          />
+        </Card>
+      )}
 
       <Card>
         <SectionTitle>Histórico</SectionTitle>

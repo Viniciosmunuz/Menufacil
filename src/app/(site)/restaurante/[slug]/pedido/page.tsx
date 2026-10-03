@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/panel/page-header";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
 import { formatPixKey } from "@/lib/pix";
+import { prontoParaCobrar } from "@/server/pagamentos/conta";
 import { getPublicRestaurant } from "@/server/public/restaurants";
 
 import { CheckoutForm } from "./checkout-form";
@@ -15,6 +16,12 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
   const data = await getPublicRestaurant(slug, false);
   if (!data) notFound();
   const { restaurant: r, open } = data;
+
+  // 100% Delivery: o Pix é cobrado na conta do restaurante pelo Mercado
+  // Pago, aqui mesmo. Sem conta ligada não há Pix para oferecer -- e nem
+  // chave para mostrar, porque neste modo não existe comprovante por fora.
+  const cemPorCento = r.fullDeliveryEnabled && r.deliveryMode === "FULL_DELIVERY";
+  const pixOnline = cemPorCento && (await prontoParaCobrar(r.id));
 
   const address = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood].filter(Boolean).join(" - ") || null;
   // cardápio atual (só o que dá para pedir): o checkout confere o carrinho antes de enviar
@@ -37,8 +44,10 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           deliveryTime: deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax),
           address,
           open,
-          payments: { pix: !!r.pixKey, card: r.acceptsCard, cash: r.acceptsCash },
-          pix: r.pixKey ? { key: r.pixKey, display: formatPixKey(r.pixKeyType, r.pixKey), holder: r.pixHolderName } : null,
+          payments: { pix: cemPorCento ? pixOnline : !!r.pixKey, card: r.acceptsCard, cash: r.acceptsCash },
+          fullDelivery: cemPorCento,
+          pixOnline,
+          pix: !cemPorCento && r.pixKey ? { key: r.pixKey, display: formatPixKey(r.pixKeyType, r.pixKey), holder: r.pixHolderName } : null,
           menu,
         }}
       />

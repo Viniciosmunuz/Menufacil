@@ -98,6 +98,18 @@ enum RestaurantStatus {
   BLOCKED // bloqueado pelo admin: some do site e o dono nao entra no painel
 }
 
+// Como o restaurante fecha o pedido do cliente. O que existe hoje e o
+// WHATSAPP: o cardapio do link termina na conversa, e o pagamento acontece
+// fora do sistema. No FULL_DELIVERY tudo acontece aqui dentro -- carrinho,
+// endereco, Pix pelo Mercado Pago, acompanhamento e conversa.
+//
+// Quem escolhe e o dono do restaurante, e so depois de o admin da
+// plataforma liberar o recurso (Restaurant.fullDeliveryEnabled).
+enum OrderFlowMode {
+  WHATSAPP
+  FULL_DELIVERY
+}
+
 enum OpenMode {
   AUTO // segue o horario de funcionamento
   OPEN // aberto manualmente
@@ -181,10 +193,13 @@ model Restaurant {
   printEnabled        Boolean @default(true)
   fullDeliveryEnabled Boolean @default(false)
   chatEnabled         Boolean @default(false)
+
+  /// fluxo escolhido pelo dono; so sai de WHATSAPP com o recurso liberado
+  deliveryMode OrderFlowMode @default(WHATSAPP)
   // totem de autoatendimento: modulo isolado, nasce desligado para todo mundo
-  totemEnabled        Boolean @default(false)
+  totemEnabled Boolean       @default(false)
   // cartaz que fica na tela do totem parado; sem ele entra a capa
-  totemIdleUrl        String?
+  totemIdleUrl String?
 
   // avaliacao (preenchida no futuro por avaliacoes reais)
   ratingAverage Float?
@@ -219,6 +234,8 @@ model Restaurant {
   totemConfig         TotemConfig?
   totemDevices        TotemDevice[]
   totemPayments       TotemPayment[]
+  mercadoPago         MercadoPagoAccount?
+  chats               ChatConversation[]
 
   @@index([status])
   @@index([city])
@@ -384,6 +401,8 @@ enum OrderType {
 enum OrderOrigin {
   WHATSAPP
   TOTEM // balcao, pago na maquininha do proprio totem
+  /// 100% Delivery: fechado e pago dentro do MenuFacil, sem passar pela conversa
+  FULL_DELIVERY
 }
 
 enum PaymentMethod {
@@ -400,6 +419,8 @@ enum CardType {
 enum OrderStatus {
   NEW
   AWAITING_PAYMENT
+  /// Mercado Pago confirmou o dinheiro; o restaurante ainda nao abriu o pedido
+  PAID
   PAYMENT_SENT
   CONFIRMED
   PREPARING
@@ -466,6 +487,7 @@ model Order {
   statusEvents OrderStatusEvent[]
   payment      Payment?
   messages     WhatsAppMessage[]
+  chat         ChatConversation?
 
   // o numero repete de um dia para o outro (#1 todo dia), entao quem
   // identifica o pedido e o id e o code, nunca o numero
@@ -510,16 +532,28 @@ model OrderStatusEvent {
 enum PaymentStatus {
   PENDING // aguardando o cliente pagar
   PROOF_SENT // cliente diz que enviou o comprovante
-  CONFIRMED // restaurante confirmou
+  CONFIRMED // restaurante confirmou, ou o Mercado Pago aprovou
+  REJECTED // o Mercado Pago recusou
+  EXPIRED // o QR venceu sem ninguem pagar
   REFUNDED
   CANCELED
 }
 
+// Quem conduz o pagamento. MANUAL e o que sempre existiu: a chave Pix do
+// restaurante na tela, e alguem confere o comprovante na mao. MERCADO_PAGO
+// e o 100% Delivery: o QR nasce na conta do proprio restaurante e quem diz
+// que foi pago e o Mercado Pago, nunca o cliente.
+enum PaymentProvider {
+  MANUAL
+  MERCADO_PAGO
+}
+
 model Payment {
-  id             String        @id @default(cuid())
-  orderId        String        @unique
+  id             String          @id @default(cuid())
+  orderId        String          @unique
   method         PaymentMethod
-  status         PaymentStatus @default(PENDING)
+  status         PaymentStatus   @default(PENDING)
+  provider       PaymentProvider @default(MANUAL)
   amountCents    Int
   // retrato da chave Pix exibida ao cliente
   pixKey         String?
@@ -529,10 +563,26 @@ model Payment {
   changeForCents Int?
   proofSentAt    DateTime?
   confirmedAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+
+  // ---- Mercado Pago (so no 100% Delivery) ----
+  /// id do pagamento na conta do restaurante; e por ele que o webhook confere
+  mpPaymentId  String?   @unique
+  /// external_reference mandado ao Mercado Pago, para achar este pagamento
+  mpReference  String?   @unique
+  /// o "copia e cola" do Pix, do jeito que o Mercado Pago devolveu
+  pixQrCode    String?
+  /// a imagem do QR, em base64
+  pixQrBase64  String?
+  pixExpiresAt DateTime?
+  /// ultimo aviso recebido, para conferir quando der errado
+  lastEvent    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([mpReference])
 }
 
 // ============================================================
@@ -840,8 +890,8 @@ model TotemPayment {
    */
   lastEvent Json?
 
-  paidAt    DateTime?
-  printedAt DateTime?
+  paidAt       DateTime?
+  printedAt    DateTime?
   /**
    * quando o balcao deu baixa num pagamento que ficou sem pedido: ou o
    * pedido foi gravado depois, ou o dinheiro foi devolvido na mao. Enquanto
@@ -849,8 +899,8 @@ model TotemPayment {
    */
   resolvedAt   DateTime?
   resolvedNote String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   restaurant Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   device     TotemDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
@@ -859,4 +909,128 @@ model TotemPayment {
   @@index([status])
   @@index([reference])
   @@index([mpPaymentId])
+}
+
+// ============================================================
+// 100% Delivery
+// ============================================================
+// Modulo a parte, como o totem: nada aqui e lido pelo fluxo do WhatsApp nem
+// pelo Menu Facil para PC. So existe para o restaurante que o admin liberou
+// (Restaurant.fullDeliveryEnabled) e que escolheu FULL_DELIVERY.
+//
+// O dinheiro e do restaurante. A plataforma nao intermedia pagamento
+// nenhum: cada restaurante liga a propria conta do Mercado Pago pelo fluxo
+// oficial de autorizacao, e o Pix nasce direto nessa conta.
+
+// Conta do Mercado Pago de um restaurante, ligada pelo OAuth oficial.
+//
+// Os dois tokens ficam cifrados (AES-256-GCM) e nunca voltam para o
+// navegador -- o painel mostra so o comeco e o fim, como no totem. O
+// refresh_token existe porque o access_token do Mercado Pago vence: o
+// servidor renova sozinho antes de cobrar.
+model MercadoPagoAccount {
+  id           String @id @default(cuid())
+  restaurantId String @unique
+
+  /// user_id da conta do restaurante no Mercado Pago
+  mpUserId     String?
+  /// access_token cifrado; nunca sai do servidor
+  accessToken  String?
+  /// refresh_token cifrado; serve para renovar o access_token
+  refreshToken String?
+  /// public_key da conta (nao e segredo, pode ir para a tela)
+  publicKey    String?
+  /// comeco e fim do token, so para o dono reconhecer o que esta ligado
+  tokenHint    String?
+  /// escopos que a conta autorizou, do jeito que o Mercado Pago devolveu
+  scope        String?
+  /// false quando a conta ligada e de teste (credencial de sandbox)
+  liveMode     Boolean @default(false)
+
+  /// segredo da assinatura das notificacoes, cifrado
+  webhookSecret String?
+
+  expiresAt   DateTime?
+  connectedAt DateTime?
+  /// ultima vez que o servidor falou com o Mercado Pago por esta conta
+  lastCheckAt DateTime?
+  /// ultimo erro, para o painel dizer o que esta errado em vez de so falhar
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+// Aviso do Mercado Pago que ja foi processado.
+//
+// O Mercado Pago reenvia o mesmo aviso quando desconfia que nao chegou, e
+// manda mais de um pelo mesmo pagamento (criado, atualizado, aprovado).
+// Cada aviso entra aqui com uma chave unica antes de qualquer coisa ser
+// feita: se a gravacao falhar por chave repetida, o aviso ja passou e nao
+// se faz nada de novo. E a trava de idempotencia do webhook.
+model MpWebhookEvent {
+  id String @id @default(cuid())
+
+  /// "<id do pagamento>:<situacao>"; e o que nao pode repetir
+  eventKey     String  @unique
+  restaurantId String?
+  mpPaymentId  String?
+  payload      Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([mpPaymentId])
+}
+
+enum ChatAuthor {
+  CUSTOMER
+  RESTAURANT
+}
+
+// Conversa de um pedido: uma por pedido, e so no 100% Delivery.
+//
+// Fica separada de WhatsAppMessage de proposito. Aquela e fila de envio
+// para fora, pela API da Meta; esta e conversa de verdade, dentro do
+// MenuFacil, entre quem pediu e quem esta cozinhando.
+model ChatConversation {
+  id           String @id @default(cuid())
+  restaurantId String
+  orderId      String @unique
+
+  lastMessageAt    DateTime?
+  /// mensagens que o cliente ainda nao leu (escritas pelo restaurante)
+  customerUnread   Int       @default(0)
+  /// mensagens que o restaurante ainda nao leu (escritas pelo cliente)
+  restaurantUnread Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
+
+  @@index([restaurantId, lastMessageAt])
+}
+
+model ChatMessage {
+  id             String     @id @default(cuid())
+  conversationId String
+  author         ChatAuthor
+  /// quem do restaurante escreveu (vazio quando foi o cliente)
+  authorUserId   String?
+  /// nome mostrado na bolha, guardado no momento da mensagem
+  authorName     String?
+  body           String
+  /// quando o outro lado leu
+  readAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

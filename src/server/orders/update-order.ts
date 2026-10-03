@@ -56,7 +56,7 @@ const orderSelect = {
   number: true,
   type: true,
   status: true,
-  payment: { select: { method: true, status: true, confirmedAt: true, proofSentAt: true } },
+  payment: { select: { method: true, provider: true, status: true, confirmedAt: true, proofSentAt: true } },
 } satisfies Prisma.OrderSelect;
 
 type OrderRow = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
@@ -70,6 +70,14 @@ async function recordStatus(tx: Prisma.TransactionClient, order: OrderRow, statu
   await tx.orderStatusEvent.create({ data: { orderId: order.id, status, note: actor.note, changedByUserId: actor.userId } });
   const payment = order.payment;
   if (!payment || payment.status === "REFUNDED") return;
+  // 100% Delivery: o pagamento é do Mercado Pago, e só ele mexe nele.
+  //
+  // Sem esta linha, tocar "Receber pedido" num pedido que ninguém pagou
+  // marcaria o Pix como confirmado -- o cliente veria "pagamento
+  // confirmado" sem um centavo ter saído da conta dele. E, do outro lado,
+  // seguir o atendimento de um pedido já pago devolveria o pagamento para
+  // "a receber". Quem confirma é o webhook (ver src/server/pagamentos).
+  if (payment.provider === "MERCADO_PAGO") return;
   const next = paymentStatusFor(status, payment.method);
   if (next === payment.status) return;
   await tx.payment.update({

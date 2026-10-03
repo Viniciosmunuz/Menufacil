@@ -17,9 +17,10 @@ import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { nextOrderStep } from "@/lib/order-flow";
+import { EXCLUDE_UNPAID, nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { naoLidasPorPedido } from "@/server/chat/chat";
 import { listDevices } from "@/server/print/devices";
 import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
@@ -70,9 +71,12 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
-    // pedidos esperando atendimento: são eles que a impressora tira sozinha
+    // Pedidos esperando atendimento: são eles que a impressora tira sozinha
+    // e que tocam o sino. O pedido do 100% Delivery que ainda está esperando
+    // o Pix fica fora desta lista -- ele aparece na lista de baixo, para o
+    // balcão saber que existe, mas não imprime nem apita.
     db.order.findMany({
-      where: { restaurantId: restaurant.id, status: { in: [...OPEN_ORDER_STATUSES] } },
+      where: { restaurantId: restaurant.id, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: {
@@ -82,6 +86,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         createdAt: true,
         status: true,
         type: true,
+        origin: true,
         paymentMethod: true,
         customerName: true,
         customerWhatsapp: true,
@@ -92,6 +97,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // nasce aqui mesmo, com o caminho para resolver
     restaurant.totemEnabled ? contarPagamentosSemPedido(restaurant.id) : Promise.resolve(0),
   ]);
+
+  // uma consulta só para a página inteira, em vez de uma por linha
+  const naoLidas = restaurant.fullDeliveryEnabled ? await naoLidasPorPedido(restaurant.id, orders.map((o) => o.id)) : new Map();
 
   const countOf = (key: FilterKey) => {
     const list = FILTERS[key].statuses;
@@ -143,7 +151,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         }))}
         orders={openOrders.map((o) => {
           // o aviso da tela só traz o aceite; o resto do atendimento fica na lista
-          const step = nextOrderStep(o.status, o.type, o.paymentMethod);
+          const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
           return {
             id: o.id,
             number: o.number,
@@ -181,7 +189,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
           <ul className="flex flex-col gap-2">
             {orders.map((o) => (
               <li key={o.id}>
-                <OrderDrawer order={o}>
+                <OrderDrawer order={o} naoLidas={naoLidas.get(o.id) ?? 0}>
                   <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />

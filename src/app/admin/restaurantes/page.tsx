@@ -50,6 +50,7 @@ export default async function AdminRestaurantsPage({ searchParams }: PageProps<"
         state: true,
         status: true,
         featured: true,
+        deliveryMode: true,
         owners: { select: { user: { select: { email: true } } }, take: 2 },
         _count: { select: { products: true, orders: true } },
       },
@@ -139,6 +140,9 @@ export default async function AdminRestaurantsPage({ searchParams }: PageProps<"
                       <Star className="size-4 fill-brand text-brand" aria-label="Em destaque" />
                     )}
                     <Badge tone={restaurantStatusTone[r.status]}>{restaurantStatusLabel[r.status]}</Badge>
+                    {/* quem está no 100% Delivery recebe dinheiro pelo
+                        sistema: vale ver isso sem abrir o restaurante */}
+                    {r.deliveryMode === "FULL_DELIVERY" && <Badge tone="brand">100% Delivery</Badge>}
                   </div>
                   <p className="mt-1 truncate text-sm text-muted">
                     {[r.city, r.state].filter(Boolean).join(" - ") || "Cidade não informada"}
