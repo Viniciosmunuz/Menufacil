@@ -107,7 +107,7 @@ function DaVez({ senha }: { senha: SenhaNaTela | null }) {
 
       {senha ? (
         <div className="my-auto flex flex-col items-center">
-          <span className={`${tamanho} leading-[0.82] font-extrabold tabular-nums drop-shadow-[0_0_2vw_rgb(255_138_31/0.35)]`}>
+          <span className={`${tamanho} leading-[0.82] font-extrabold tabular-nums drop-shadow-[0_0_2vw_rgb(249_104_11/0.35)]`}>
             {senha.number}
           </span>
           {/* o nome resolve quando duas senhas ficam prontas quase juntas */}

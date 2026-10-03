@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 /** a cúpula da marca com raios e coração, como na arte de referência */
 function HeroCloche({ className }: { className?: string }) {
   return (
-    <svg viewBox="20 -70 880 690" fill="none" aria-hidden="true" className={cn("text-brand", className)}>
+    <svg viewBox="20 -70 880 715" fill="none" aria-hidden="true" className={cn("text-brand", className)}>
       <g stroke="currentColor" strokeLinecap="round" strokeWidth="22">
         <path d="M452 30V-30" />
         <path d="M279 76L249 24" />
@@ -45,7 +45,7 @@ export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: 
         className="-z-20 object-cover object-right opacity-75"
       />
       <div
-        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0c1119_0%,#0c1119_30%,rgb(12_17_25/0.8)_55%,rgb(12_17_25/0.45)_78%,rgb(12_17_25/0.25)_100%)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0e0e12_0%,#0e0e12_30%,rgb(12_17_25/0.8)_55%,rgb(12_17_25/0.45)_78%,rgb(12_17_25/0.25)_100%)]"
         aria-hidden="true"
       />
       <div className="grid grid-cols-[1.35fr_1fr] items-center gap-1 px-4 py-4 sm:gap-6 sm:p-9">
@@ -74,7 +74,7 @@ export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: 
           </Link>
         </div>
         <div className="flex flex-col items-center">
-          <HeroCloche className="w-full max-w-[6.6rem] drop-shadow-[0_0_16px_rgb(255_138_31/0.45)] sm:max-w-[13rem]" />
+          <HeroCloche className="w-full max-w-[6.6rem] drop-shadow-[0_0_16px_rgb(249_104_11/0.45)] sm:max-w-[13rem]" />
           <p className="mt-1.5 -rotate-12 self-end text-right font-script text-[0.98rem] leading-[1.02] text-ink sm:mt-4 sm:text-3xl">
             {script.map((line) => (
               <span key={line} className="block">

@@ -9,7 +9,7 @@ export function OwnerCta({ className, compact = false }: { className?: string; c
   return (
     <div
       className={cn(
-        "flex flex-col rounded-card border border-brand/70 bg-[linear-gradient(160deg,rgb(255_138_31/0.16),rgb(255_138_31/0.03)_60%)]",
+        "flex flex-col rounded-card border border-brand/70 bg-[linear-gradient(160deg,rgb(249_104_11/0.16),rgb(249_104_11/0.03)_60%)]",
         compact ? "gap-2 p-3.5" : "gap-3 p-5",
         className,
       )}

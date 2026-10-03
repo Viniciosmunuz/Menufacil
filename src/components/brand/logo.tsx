@@ -8,30 +8,41 @@ import { cn } from "@/lib/cn";
 // dizer o nome (topo). A logo completa, com o slogan, fica para poucos
 // lugares (tela de entrada).
 
-/** os traços do ícone, no sistema de coordenadas original (viewBox 44 50 676 540) */
+/**
+ * Os traços do ícone, no sistema de coordenadas do viewBox 44 48 682 578.
+ *
+ * Redesenhado em cima da arte oficial, medindo as duas lado a lado linha
+ * por linha: a versão anterior tinha a base mais rasa, mais estreita e
+ * puxada para a esquerda, e os traços uns 15% mais finos -- de longe
+ * batia, de perto parecia outra marca.
+ *
+ * O relevo da arte não vem junto de propósito: em 32 pixels, que é o
+ * tamanho em que este ícone vive na maior parte do tempo, bisel vira
+ * sujeira. A silhueta é a mesma.
+ */
 export function LogoMark() {
   return (
     <>
       <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
         {/* pegador da cúpula */}
-        <circle cx="452" cy="100" r="31" strokeWidth="30" />
+        <circle cx="452" cy="100" r="31" strokeWidth="32" />
         {/* cúpula e o brilho de dentro */}
-        <path d="M231 300A233 233 0 0 1 685 375" strokeWidth="40" />
-        <path d="M283 310A181 181 0 0 1 460 194" strokeWidth="22" />
+        <path d="M231 296A236 236 0 0 1 688 374" strokeWidth="44" />
+        <path d="M283 310A181 181 0 0 1 460 194" strokeWidth="24" />
         {/* linhas de velocidade e a borda da cúpula */}
-        <path d="M123 300H231" strokeWidth="38" />
-        <path d="M69 375H172" strokeWidth="38" />
-        <path d="M239 375H693" strokeWidth="38" />
-        <path d="M114 440H337" strokeWidth="38" />
-        {/* laterais da base (o celular) */}
-        <path d="M240 440V545" strokeWidth="40" />
-        <path d="M630 532L655 428" strokeWidth="36" />
+        <path d="M123 300H233" strokeWidth="44" />
+        <path d="M69 380H170" strokeWidth="44" />
+        <path d="M241 380H696" strokeWidth="46" />
+        <path d="M114 458H335" strokeWidth="44" />
+        {/* laterais da travessa */}
+        <path d="M243 458V515" strokeWidth="44" />
+        <path d="M690 446L670 506" strokeWidth="42" />
       </g>
-      {/* fundo da base, com o botão do celular vazado */}
+      {/* o fundo da travessa, com o risco vazado */}
       <path
         fill="currentColor"
         fillRule="evenodd"
-        d="M220 505H630L619 552Q612 585 578 585H252Q220 585 220 553ZM410 540H462A11 11 0 0 1 462 562H410A11 11 0 0 1 410 540Z"
+        d="M218 498H692V508A122 122 0 0 1 570 620H340A122 122 0 0 1 218 508ZM425 545H483A11 11 0 0 1 483 567H425A11 11 0 0 1 425 545Z"
       />
     </>
   );
@@ -40,7 +51,7 @@ export function LogoMark() {
 export function LogoIcon({ className, title }: { className?: string; title?: string }) {
   return (
     <svg
-      viewBox="44 50 676 540"
+      viewBox="44 48 682 578"
       fill="none"
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}

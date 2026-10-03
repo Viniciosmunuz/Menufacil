@@ -71,7 +71,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
           {r.coverUrl ? (
             <Image src={r.coverUrl} alt="" fill priority sizes="100vw" className="object-cover" />
           ) : (
-            <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(255_138_31/0.25),transparent_60%)]">
+            <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(249_104_11/0.25),transparent_60%)]">
               <LogoIcon className="h-14 opacity-50" />
             </div>
           )}

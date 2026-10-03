@@ -46,7 +46,7 @@ export function RestaurantCard({ data, href }: { data: RestaurantCardData; href?
             className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_30%_20%,rgb(255_138_31/0.22),transparent_60%)]">
+          <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_30%_20%,rgb(249_104_11/0.22),transparent_60%)]">
             <LogoIcon className="h-12 opacity-60" />
           </div>
         )}

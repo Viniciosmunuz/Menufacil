@@ -100,7 +100,7 @@ export function TotemDescanso({
               {capaUrl ? (
                 <Image src={capaUrl} alt="" fill priority sizes="(max-width: 768px) 100vw, 640px" className="object-cover" />
               ) : (
-                <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_40%,rgb(255_138_31/0.25),transparent_65%)]">
+                <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_40%,rgb(249_104_11/0.25),transparent_65%)]">
                   <LogoIcon className="h-24 opacity-60" />
                 </div>
               )}

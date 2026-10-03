@@ -2,27 +2,30 @@
 
 /* ============================================================
    Identidade MenuFácil
-   Fundo quase preto azulado, laranja como cor de ação, cartões com borda
-   fina e cantos bem arredondados. Tirado das telas de referência.
+   Preto neutro de fundo, laranja da marca como cor de ação, cartões com
+   borda fina e cantos bem arredondados. As duas cores vêm da logo: o
+   laranja é a face iluminada da cúpula, o fundo é o preto em que ela mora.
    ============================================================ */
 @theme {
-  --color-bg: #0a0e14;
-  --color-surface: #111822;
-  --color-surface-2: #172030;
-  --color-surface-3: #1e2939;
-  --color-line: #232e3d;
-  --color-line-strong: #33415a;
+  /* Cinzas neutros, sem o azul que havia antes: ao lado de um preto puro,
+     cartão azulado fica parecendo outro tom de tela, não outra camada. */
+  --color-bg: #08080a;
+  --color-surface: #121215;
+  --color-surface-2: #1a1a1e;
+  --color-surface-3: #232329;
+  --color-line: #27272e;
+  --color-line-strong: #3b3b45;
 
-  --color-ink: #f3f5f8;
-  --color-muted: #a3adba;
-  --color-faint: #6f7a89;
+  --color-ink: #f4f4f6;
+  --color-muted: #a6a6ae;
+  --color-faint: #73737d;
 
-  /* laranja da marca; texto escuro por cima (9:1) */
-  --color-brand: #ff8a1f;
-  --color-brand-hover: #ff9c42;
-  --color-brand-press: #e8740b;
-  --color-brand-ink: #1a1206;
-  --color-brand-soft: rgb(255 138 31 / 0.12);
+  /* laranja da marca, tirado da logo; texto escuro por cima (6,3:1) */
+  --color-brand: #f9680b;
+  --color-brand-hover: #ff7f2e;
+  --color-brand-press: #d8550a;
+  --color-brand-ink: #1a0d03;
+  --color-brand-soft: rgb(249 104 11 / 0.12);
 
   --color-success: #34d27b;
   --color-warning: #f5b53d;

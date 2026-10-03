@@ -65,11 +65,11 @@ export function Topo() {
       {/* escurece da esquerda para a direita: o texto precisa se ler sempre */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-bg/35 bg-[linear-gradient(100deg,#0a0e14_0%,#0a0e14_44%,rgb(10_14_20/0.86)_63%,rgb(10_14_20/0.3)_100%)] sm:bg-bg/0"
+        className="absolute inset-0 -z-10 bg-bg/35 bg-[linear-gradient(100deg,#08080a_0%,#08080a_44%,rgb(8_8_10/0.86)_63%,rgb(8_8_10/0.3)_100%)] sm:bg-bg/0"
       />
 
       <div className="relative max-w-xl lg:max-w-[33rem]">
-        <LogoIcon className="h-8 drop-shadow-[0_0_14px_rgb(255_138_31/0.5)] sm:h-10" />
+        <LogoIcon className="h-8 drop-shadow-[0_0_14px_rgb(249_104_11/0.5)] sm:h-10" />
         <p className="mt-3.5 inline-block rounded-full border border-brand/70 px-3.5 py-1 text-[0.68rem] font-extrabold tracking-[0.09em] text-brand uppercase sm:text-xs">
           Para donos de restaurante
         </p>
@@ -179,7 +179,7 @@ export function Plano() {
   return (
     <section>
       <Titulo sub="Um plano só, sem pegadinha: você sabe quanto vai pagar.">Quanto custa</Titulo>
-      <div className="mx-auto max-w-md rounded-card border-2 border-brand bg-[linear-gradient(170deg,rgb(255_138_31/0.14),transparent_55%)] p-5 shadow-[0_0_40px_-12px_rgb(255_138_31/0.45)] sm:p-7">
+      <div className="mx-auto max-w-md rounded-card border-2 border-brand bg-[linear-gradient(170deg,rgb(249_104_11/0.14),transparent_55%)] p-5 shadow-[0_0_40px_-12px_rgb(249_104_11/0.45)] sm:p-7">
         <p className="text-lg font-extrabold sm:text-xl">{PLANO.nome}</p>
         <p className="mt-1 flex items-end gap-1">
           <span className="text-4xl leading-none font-extrabold text-brand sm:text-5xl">{PLANO.preco}</span>
