@@ -263,15 +263,21 @@ function ProductRow({ p, flavors, onOpen }: { p: MenuProduct; flavors: PizzaFlav
         <span className="relative order-1 block aspect-[4/3] w-full shrink-0 sm:order-2 sm:aspect-auto sm:size-28">
           {p.imageUrl ? (
             // A foto fica num quadrado de 112px no computador e em meia
-            // tela no celular, mas o arquivo guardado tem 1000px de lado.
+            // tela no celular, mas o arquivo guardado tem 800px de lado.
             // Pedindo o tamanho de uso, a mesma lista deixa de baixar
             // alguns megabytes num cardápio grande.
+            //
+            // Com medida fixa, e não "fill" com "sizes": o segundo faz o
+            // Next escrever a lista inteira de larguras possíveis em cada
+            // foto, e em 130 fotos isso sozinho engordou o HTML em 260 KB
+            // -- a página demorava mais para chegar do que economizava em
+            // imagem. Assim a lista tem duas entradas, 192 e 384.
             <Image
               src={p.imageUrl}
               alt=""
-              fill
-              sizes="(min-width: 640px) 112px, 48vw"
-              className={cn("rounded-control object-cover", !p.available && "grayscale")}
+              width={192}
+              height={144}
+              className={cn("h-full w-full rounded-control object-cover", !p.available && "grayscale")}
             />
           ) : (
             <span className="grid size-full place-items-center rounded-control bg-surface-2">
@@ -547,7 +553,7 @@ export function RestaurantMenu({
                   >
                     <span className="relative block aspect-square w-full bg-surface-2">
                       {p.imageUrl ? (
-                        <Image src={p.imageUrl} alt="" fill sizes="(min-width: 640px) 192px, 160px" className="object-cover" />
+                        <Image src={p.imageUrl} alt="" width={192} height={192} className="h-full w-full object-cover" />
                       ) : (
                         <span className="grid size-full place-items-center">
                           <LogoIcon className="h-10 opacity-40" />
@@ -643,13 +649,13 @@ export function RestaurantMenu({
             <div className="overflow-y-auto overscroll-contain">
               <div className="relative">
                 {product.imageUrl ? (
+                  // sem "priority": a folha nasce fechada, e a foto grande
+                  // não deve disputar banda com o cardápio que está à vista
                   <Image
                     src={product.imageUrl}
                     alt=""
-                    width={1024}
-                    height={768}
-                    sizes="(min-width: 640px) 512px, 100vw"
-                    priority
+                    width={640}
+                    height={480}
                     className="aspect-[4/3] w-full object-cover"
                   />
                 ) : (
