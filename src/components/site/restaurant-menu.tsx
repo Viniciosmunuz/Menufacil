@@ -649,13 +649,18 @@ export function RestaurantMenu({
             <div className="overflow-y-auto overscroll-contain">
               <div className="relative">
                 {product.imageUrl ? (
-                  // sem "priority": a folha nasce fechada, e a foto grande
-                  // não deve disputar banda com o cardápio que está à vista
+                  // Sem "priority": a folha nasce fechada, e a foto grande
+                  // não deve disputar banda com o cardápio que está à vista.
+                  //
+                  // Aqui o "sizes" vale a pena, ao contrário da lista: é uma
+                  // foto só, e sem ele o navegador pedia a de 1920 px (137
+                  // KB) para uma folha que tem 512 px de largura.
                   <Image
                     src={product.imageUrl}
                     alt=""
                     width={640}
                     height={480}
+                    sizes="(min-width: 640px) 512px, 100vw"
                     className="aspect-[4/3] w-full object-cover"
                   />
                 ) : (
