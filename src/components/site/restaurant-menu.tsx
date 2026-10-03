@@ -475,8 +475,13 @@ export function RestaurantMenu({
 
   return (
     <>
-      {/* busca e abas de categoria, grudadas no topo ao rolar */}
-      <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg/95 px-4 pt-3 pb-3 backdrop-blur lg:top-[4.75rem] lg:mx-0 lg:px-0">
+      {/* Busca e abas de categoria, grudadas no topo ao rolar.
+          
+          Fundo sólido, não translúcido: o cartão de produto que desliza por
+          baixo aparecia borrado atrás da busca, e o que se via era um
+          cartão cortado no meio com um rastro laranja em cima -- parecia
+          defeito de tela, não efeito. */}
+      <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
         <label className="relative block">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-faint" aria-hidden="true" />
           <input

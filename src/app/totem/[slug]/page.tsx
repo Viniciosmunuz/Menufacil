@@ -64,38 +64,41 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
           Parado, vira o cartaz de descanso que chama quem passa. */}
       <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} cartazUrl={r.totemIdleUrl} capaUrl={r.coverUrl} />
 
-      {/* capa e nome, como na página do link -- só sem os botões de voltar,
-          compartilhar e favoritar, que no balcão não levam a lugar nenhum */}
-      <section>
-        <div className="relative h-40 overflow-hidden bg-surface-2 sm:h-48">
-          {r.coverUrl ? (
-            <Image src={r.coverUrl} alt="" fill priority sizes="100vw" className="object-cover" />
-          ) : (
-            <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(249_104_11/0.25),transparent_60%)]">
-              <LogoIcon className="h-14 opacity-50" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-bg/40" aria-hidden="true" />
-        </div>
-
-        <div className="relative -mt-10 px-4">
-          <div className="flex items-end gap-3">
-            <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-card border border-line bg-surface">
-              {r.logoUrl ? (
-                <Image src={r.logoUrl} alt="" width={80} height={80} className="size-full object-cover" />
-              ) : (
-                <LogoIcon className="h-9" />
-              )}
-            </span>
-            <div className="min-w-0 pb-1">
-              <h1 className="truncate text-2xl font-extrabold">{r.name}</h1>
-              <p className="text-sm text-muted">Monte seu pedido aqui e retire no balcão.</p>
-            </div>
+      {/* A faixa de cima do totem é fina de propósito.
+          
+          Na página do link vem a capa grande, o logo por cima e o nome: ali
+          a pessoa está decidindo se pede naquele restaurante, e a foto
+          ajuda a decidir. No balcão ela já decidiu -- está parada na frente
+          do lugar, e quem anunciou o restaurante foi a tela de descanso,
+          que ela acabou de tocar.
+          
+          Num tablet de 7 polegadas, a capa mais o logo tomavam quase um
+          terço da altura para dizer o que a pessoa já sabe. Esse espaço
+          agora é cardápio. */}
+      {/* sem grudar no topo: quem precisa ficar à mão o tempo todo é a
+          busca com as categorias, logo abaixo. Duas barras presas numa tela
+          de 7 polegadas comeriam a altura que a mudança acabou de liberar */}
+      <header className="border-b border-line bg-surface/40">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-surface">
+            {r.logoUrl ? (
+              <Image src={r.logoUrl} alt="" width={88} height={88} className="size-full object-cover" />
+            ) : (
+              <LogoIcon className="h-6" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg leading-tight font-extrabold">{r.name}</h1>
+            <p className="truncate text-xs text-muted">Monte seu pedido e retire no balcão</p>
           </div>
+          {/* o traço da marca: diz de quem é o sistema sem roubar uma linha
+              inteira do cardápio */}
+          <LogoIcon className="h-6 shrink-0 opacity-70" />
         </div>
-      </section>
+        <span aria-hidden="true" className="block h-0.5 bg-gradient-to-r from-brand via-brand/40 to-transparent" />
+      </header>
 
-      <div className="mt-5 px-4 pb-24">
+      <div className="mt-4 px-4 pb-24">
         {categorias.length === 0 ? (
           <p className="mt-10 text-center text-muted">O cardápio ainda está sendo montado.</p>
         ) : (
