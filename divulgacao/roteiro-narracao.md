@@ -1,7 +1,9 @@
 # Reel MenuFácil — roteiro de narração
 
-Vídeo: `divulgacao/reel-menufacil.mp4` — 1080×1920, 30 fps, **56 s**, sem áudio.
-Você grava a narração no labs e junta depois (comando no fim deste arquivo).
+Pronto para publicar: **`divulgacao/reel-menufacil-com-voz.mp4`** — 1080×1920,
+30 fps, 55,8 s, com a narração já encaixada e normalizada a −14 LUFS.
+
+O `reel-menufacil.mp4` é o mesmo vídeo sem áudio, caso você queira trocar a voz.
 
 O desenho segue o vídeo de referência: título à esquerda com a segunda parte
 em laranja, telas do aplicativo desenhadas em creme, emoji no lugar de foto,
@@ -15,24 +17,27 @@ seção deste arquivo.
 
 ## Como o vídeo está dividido
 
-| Trecho | Cena na tela | Fala |
-|---|---|---|
-| 0,0 – 4,5 s | "Ainda pagando **comissão** em cada pedido?" | bloco 1 |
-| 4,5 – 7,5 s | Cartão laranja: logo + "sem pagar comissão" | bloco 2 |
-| 7,5 – 13,5 s | "Link **próprio**" + celular com o cardápio | bloco 3 |
-| 13,5 – 18,0 s | **0%** de comissão + Pix / Cartão / Dinheiro | bloco 4 |
-| 18,0 – 23,0 s | "Pedido **sem erro**" + tela de opções | bloco 5 |
-| 23,0 – 27,5 s | "Aviso na hora, **com som**" + painel | bloco 6 |
-| 27,5 – 33,5 s | "Imprime sozinho **no balcão**" + comanda | bloco 7 |
-| 33,5 – 38,0 s | "Cardápio **na sua mão**" + esgotado | bloco 8 |
-| 38,0 – 44,5 s | "Quanto **custa?**" + **Essencial R$ 100** | bloco 9 |
-| 44,5 – 51,0 s | "O pedido **todo aqui**" + **100% Delivery R$ 180** | bloco 10 |
-| 51,0 – 56,0 s | Cartão laranja: cadastrar, site e WhatsApp | bloco 11 |
+A narração **já está gravada e encaixada** (`narracao.mp3`, voz Paulo). Os
+tempos abaixo foram medidos nela pelo `reel/align.mjs`, não escolhidos a mão:
+o vídeo é que foi ajustado à fala, e cada cena entra 0,30 s antes do bloco
+dela para já estar na tela quando a voz começa.
 
-A fala toda soma ~49 s dentro dos 56 s. A sobra é de propósito: dá respiro
-entre uma cena e outra, e é onde a trilha aparece sozinha.
+| Bloco | Fala entra | Cena entra | Cena na tela |
+|---|---|---|---|
+| 1 | 0,00 s | 0,00 s | "Ainda pagando **comissão** em cada pedido?" |
+| 2 | 4,15 s | 3,85 s | Cartão laranja: logo + "sem pagar comissão" |
+| 3 | 7,70 s | 7,40 s | "Link **próprio**" + celular com o cardápio |
+| 4 | 14,62 s | 14,32 s | **0%** de comissão + Pix / Cartão / Dinheiro |
+| 5 | 18,55 s | 18,25 s | "Pedido **sem erro**" + tela de opções |
+| 6 | 24,23 s | 23,93 s | "Aviso na hora, **com som**" + painel |
+| 7 | 28,55 s | 28,25 s | "Imprime sozinho **no balcão**" + comanda |
+| 8 | 34,30 s | 34,00 s | "Cardápio **na sua mão**" + esgotado |
+| 9 | 38,40 s | 38,10 s | "Quanto **custa?**" + **Essencial R$ 100** |
+| 10 | 44,30 s | 44,00 s | "O pedido **todo aqui**" + **100% Delivery R$ 180** |
+| 11 | 50,05 s | 49,75 s | Cartão laranja: cadastrar, site e WhatsApp |
 
----
+A fala acaba em 54,16 s e o vídeo em 55,80 s: a sobra de 1,65 s deixa o cartão
+final respirar antes de acabar.
 
 ## A narração, bloco por bloco
 

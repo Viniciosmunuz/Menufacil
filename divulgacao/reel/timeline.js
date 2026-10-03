@@ -12,7 +12,7 @@
    cartão laranja chapado para abrir e fechar.
    ========================================================================= */
 
-const DURACAO = 56.0;
+const DURACAO = 55.81;
 const XF = 0.32; // passagem de uma cena para a outra
 
 /* ---------- contas de animação ---------- */
@@ -94,13 +94,13 @@ const CENAS = [
       `Tem um jeito mais fácil. ${em("👇")}`, "Dono de restaurante")}</div>` },
 
   /* ---- 2. cartão laranja de abertura ---- */
-  { id: "s2", t: 4.5, html: `<div class="scene"><div class="bumper">
+  { id: "s2", t: 3.85, html: `<div class="scene"><div class="bumper">
       ${lg()}<div class="marca">MenuFácil</div>
       <div class="tag">Receba pedidos direto do cliente,<br /><b>sem pagar comissão.</b></div>
     </div></div>` },
 
   /* ---- 3. link próprio ---- */
-  { id: "s3", t: 7.5, html: `<div class="scene">${cabec(
+  { id: "s3", t: 7.4, html: `<div class="scene">${cabec(
       [`Link <span class="o">próprio</span>`], "Seu cardápio com logo, fotos e preços.")}
     <div class="palco"><div class="phone">
       <div class="ph-bar"><span>9:41</span><span>5G</span></div>
@@ -119,7 +119,7 @@ const CENAS = [
     </div></div>` },
 
   /* ---- 4. zero por cento ---- */
-  { id: "s4", t: 13.5, html: `<div class="scene meio" id="s4">
+  { id: "s4", t: 14.32, html: `<div class="scene meio" id="s4">
       <div class="zero">0%</div>
       <h2>de comissão<br />por pedido</h2>
       <div class="diz">O cliente paga direto pra você:</div>
@@ -127,7 +127,7 @@ const CENAS = [
     </div>` },
 
   /* ---- 5. pedido sem erro ---- */
-  { id: "s5", t: 18.0, html: `<div class="scene">${cabec(
+  { id: "s5", t: 18.25, html: `<div class="scene">${cabec(
       [`Pedido <span class="o">sem erro</span>`], "Tamanho, sabor e adicionais escolhidos antes de confirmar.")}
     <div class="palco"><div class="phone">
       <div class="ph-bar"><span>9:41</span><span>5G</span></div>
@@ -141,7 +141,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 6. aviso com som ---- */
-  { id: "s6", t: 23.0, html: `<div class="scene">${cabec(
+  { id: "s6", t: 23.93, html: `<div class="scene">${cabec(
       ["Aviso na hora,", `<span class="o">com som</span> ${em("🔔")}`], "No celular, tablet ou computador.")}
     <div class="palco"><div class="painel">
       <div class="top"><div><b>Painel de pedidos</b><div class="st">● Loja aberta</div></div>
@@ -155,7 +155,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 7. imprime sozinho ---- */
-  { id: "s7", t: 27.5, html: `<div class="scene">${cabec(
+  { id: "s7", t: 28.25, html: `<div class="scene">${cabec(
       ["Imprime sozinho", `<span class="o">no balcão</span> ${em("🖨️")}`])}
     <div class="palco" style="justify-content:flex-start"><div class="imp">
       <div class="maq"><div class="slot"></div><div class="led"></div></div>
@@ -184,7 +184,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 8. cardápio na sua mão ---- */
-  { id: "s8", t: 33.5, html: `<div class="scene">${cabec(
+  { id: "s8", t: 34.0, html: `<div class="scene">${cabec(
       ["Cardápio", `<span class="o">na sua mão</span>`], "Acabou? Marque como esgotado na hora.")}
     <div class="palco"><div class="toggles">
       <div class="lin"><span class="th">${em("🍔")}</span><div><div class="nm">X-Bacon</div>
@@ -198,7 +198,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 9. plano Essencial ---- */
-  { id: "s9", t: 38.0, html: `<div class="scene">${cabec(
+  { id: "s9", t: 38.1, html: `<div class="scene">${cabec(
       [`Quanto <span class="o">custa?</span>`], "Dois planos, sem comissão em nenhum dos dois.")}
     <div class="palco"><div class="plano">
       <div class="cab">${lg()}<div class="n">Plano Essencial</div>
@@ -215,7 +215,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 10. plano 100% Delivery ---- */
-  { id: "s10", t: 44.5, html: `<div class="scene">${cabec(
+  { id: "s10", t: 44.0, html: `<div class="scene">${cabec(
       [`O pedido <span class="o">todo aqui</span>`], "Já pago, sem sair para conversa nenhuma.")}
     <div class="palco"><div class="plano hi">
       <div class="cab">${lg()}<div class="n">100% Delivery</div>
@@ -232,7 +232,7 @@ const CENAS = [
     </div></div></div>` },
 
   /* ---- 11. cartão laranja de fechamento ---- */
-  { id: "s11", t: 51.0, html: `<div class="scene"><div class="bumper">
+  { id: "s11", t: 49.75, html: `<div class="scene"><div class="bumper">
       ${lg()}<div class="marca">MenuFácil</div>
       <h2>Comece a receber<br />pedidos em<br />poucos minutos.</h2>
       <div class="botao">Cadastrar meu restaurante →</div>

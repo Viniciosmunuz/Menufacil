@@ -5,13 +5,16 @@ verdade da página de venda (`src/app/(site)/cadastre-seu-restaurante/conteudo.t
 
 ```
 divulgacao/
-├── reel-menufacil.mp4      o vídeo pronto (1080×1920, 30 fps, 56 s, sem áudio)
-├── roteiro-narracao.md     a narração com os tempos, e como juntar o áudio
+├── reel-menufacil-com-voz.mp4   o que vai para o Instagram (com a narração)
+├── reel-menufacil.mp4      o vídeo sem áudio (1080×1920, 30 fps, 55,8 s)
+├── narracao.mp3            a narração gravada (voz Paulo, ElevenLabs)
+├── roteiro-narracao.md     o texto da narração e como refazer o encaixe
 ├── previa/                 quadros soltos em PNG, para conferir sem renderizar tudo
 └── reel/
     ├── index.html          as 11 cenas
     ├── timeline.js         a linha do tempo e o conteúdo
     ├── render.mjs          o renderizador
+    ├── align.mjs           acha onde cada bloco da narração começa
     ├── logo.png            (opcional) a arte oficial; sem ela, entra o vetor
     └── fonts/              Nunito, a mesma do site
 ```
@@ -48,6 +51,32 @@ engasga — e dá para pedir um instante específico com `--previa`.
 
 Os quadros vão direto para o `ffmpeg` pela entrada padrão. Gravar os 1680 PNGs
 em disco antes de montar passava de 700 MB e estourava o espaço da sessão.
+
+## O vídeo segue a narração, não o contrário
+
+Os `t:` das cenas no `timeline.js` não são números redondos: saíram da
+narração gravada. O `align.mjs` mede onde cada bloco de fala começa e as cenas
+entram 0,30 s antes, para já estarem na tela quando a voz entra.
+
+```bash
+cd reel
+node align.mjs ../narracao.mp3     # imprime os tempos prontos para colar
+```
+
+Regravou a narração? Rode isso de novo, passe os números para o `t:` de cada
+cena e para o `DURACAO`, renderize, e junte o áudio:
+
+```bash
+cd divulgacao
+ffmpeg -y -i reel-menufacil.mp4 -i narracao.mp3 \
+  -filter_complex "[1:a]loudnorm=I=-14:TP=-1.5:LRA=11,apad[a]" \
+  -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -ar 48000 -shortest \
+  -movflags +faststart reel-menufacil-com-voz.mp4
+```
+
+O `loudnorm` está aí porque a narração veio a −19,3 LUFS e o Instagram
+trabalha perto de −14: sem isso, a plataforma faz esse ganho sozinha, e
+costuma soar pior do que fazer antes.
 
 ## A logo
 
