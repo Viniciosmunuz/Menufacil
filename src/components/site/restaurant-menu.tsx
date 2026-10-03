@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, Plus, Search, ShoppingBag, Star, X } from "lucide-react";
+import { CircleCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, ShoppingBag, Star, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -236,6 +236,87 @@ function AddBadge({ className }: { className?: string }) {
 
 // No celular cabem dois por linha com a foto em cima; da largura de tablet
 // para cima volta a linha larga, com a foto ao lado do texto.
+/**
+ * As categorias numa coluna à esquerda, com foto -- e que sai e entra.
+ *
+ * A faixa de abas em cima é boa no celular, onde arrastar de lado é
+ * natural. Numa tela de balcão não é: a pessoa está de pé, com o braço
+ * esticado, e arrastar uma faixa para procurar "Bebidas" é pior do que
+ * correr os olhos por uma lista parada.
+ *
+ * A foto de cada categoria é a primeira foto de produto dela. Não há campo
+ * de capa de categoria no cardápio, e inventar um significaria o dono subir
+ * mais uma imagem para cada categoria -- trabalho para ele e mais uma coisa
+ * para esquecer. Assim a capa aparece sozinha e já parece com o que a
+ * pessoa vai achar lá dentro.
+ */
+function GavetaDeCategorias({
+  aberta,
+  destaques,
+  categorias,
+  ativa,
+  aoEscolher,
+}: {
+  aberta: boolean;
+  /** foto dos destaques; undefined quando não há destaque nenhum */
+  destaques?: string | null;
+  categorias: { id: string; nome: string; foto: string | null }[];
+  /** null antes de a rolagem decidir qual categoria está na vez */
+  ativa: string | null;
+  aoEscolher: (id: string) => void;
+}) {
+  if (categorias.length <= 1) return null;
+
+  const itens = [
+    ...(destaques !== undefined ? [{ id: "destaques", nome: "Destaques", foto: destaques, estrela: true }] : []),
+    ...categorias.map((c) => ({ ...c, estrela: false })),
+  ];
+
+  return (
+    // a largura é que anima, não a posição: assim o cardápio ao lado cresce
+    // junto, em vez de a gaveta passar por cima dele
+    <aside
+      aria-label="Categorias do cardápio"
+      className={cn(
+        "sticky top-0 shrink-0 self-start overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none",
+        aberta ? "w-[6.5rem]" : "w-0",
+      )}
+    >
+      <ul className="flex max-h-dvh flex-col gap-2 overflow-y-auto py-3 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {itens.map((c) => {
+          const naVez = ativa === c.id;
+          return (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => aoEscolher(c.id)}
+                aria-current={naVez ? "true" : undefined}
+                className={cn(
+                  "flex w-[6rem] flex-col items-center gap-1.5 rounded-card border p-2 transition-colors",
+                  naVez ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                )}
+              >
+                <span className="relative block aspect-square w-full overflow-hidden rounded-control bg-surface-2">
+                  {c.foto ? (
+                    <Image src={c.foto} alt="" width={192} height={192} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="grid size-full place-items-center">
+                      {c.estrela ? <Star className="size-6 fill-brand text-brand" /> : <LogoIcon className="h-6 opacity-40" />}
+                    </span>
+                  )}
+                </span>
+                <span className={cn("line-clamp-2 text-center text-xs leading-tight font-bold", naVez ? "text-brand" : "text-muted")}>
+                  {c.nome}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  );
+}
+
 function ProductRow({
   p,
   flavors,
@@ -327,6 +408,7 @@ export function RestaurantMenu({
   barraDoCarrinho = "bottom-[calc(4rem+env(safe-area-inset-bottom))]",
   barraSempreVisivel = false,
   duasColunas = false,
+  categoriasNaLateral = false,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -363,6 +445,16 @@ export function RestaurantMenu({
    * com gente atrás, e o que ajuda é enxergar mais item por tela sem rolar.
    */
   duasColunas?: boolean;
+  /**
+   * Categorias numa coluna à esquerda, com foto, em vez da faixa de abas
+   * em cima -- e essa coluna abre e fecha como gaveta.
+   *
+   * É o totem. Numa tela de balcão a faixa horizontal obriga a arrastar
+   * para encontrar categoria, e arrastar de pé, com o dedo, é pior do que
+   * ler uma lista parada. Fechada, a gaveta devolve a largura inteira ao
+   * cardápio.
+   */
+  categoriasNaLateral?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -375,6 +467,10 @@ export function RestaurantMenu({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // a gaveta nasce aberta: no balcão as categorias são a navegação, e
+  // esconder a navegação atrás de um toque é cobrar um toque a mais de
+  // quem está de pé com gente atrás
+  const [gavetaAberta, setGavetaAberta] = useState(true);
   const cart = useCart();
 
   const q = normalize(query.trim());
@@ -505,7 +601,7 @@ export function RestaurantMenu({
     close();
   }
 
-  return (
+  const miolo = (
     <>
       {/* Busca e abas de categoria, grudadas no topo ao rolar.
           
@@ -514,7 +610,19 @@ export function RestaurantMenu({
           cartão cortado no meio com um rastro laranja em cima -- parecia
           defeito de tela, não efeito. */}
       <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
-        <label className="relative block">
+        <div className={cn(categoriasNaLateral && "flex items-center gap-2")}>
+        {categoriasNaLateral && visible.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setGavetaAberta((a) => !a)}
+            aria-expanded={gavetaAberta}
+            aria-label={gavetaAberta ? "Fechar as categorias" : "Abrir as categorias"}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-line bg-surface-2 text-muted transition-colors hover:text-ink"
+          >
+            {gavetaAberta ? <PanelLeftClose className="size-5" /> : <PanelLeftOpen className="size-5" />}
+          </button>
+        )}
+        <label className="relative block w-full">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-faint" aria-hidden="true" />
           <input
             type="search"
@@ -525,7 +633,8 @@ export function RestaurantMenu({
             className="h-11 w-full rounded-2xl border border-line bg-surface-2 pr-4 pl-10 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
           />
         </label>
-        {visible.length > 1 && (
+        </div>
+        {visible.length > 1 && !categoriasNaLateral && (
           <nav
             ref={tabsRef}
             className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
@@ -641,6 +750,32 @@ export function RestaurantMenu({
           </section>
         ))}
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {categoriasNaLateral ? (
+        <div className="flex gap-3">
+          <GavetaDeCategorias
+            aberta={gavetaAberta}
+            destaques={featured.length > 0 ? (featured.find((p) => p.imageUrl)?.imageUrl ?? null) : undefined}
+            categorias={visible.map((c) => ({
+              id: `cat-${c.id}`,
+              nome: c.name,
+              // a capa da categoria é a primeira foto de produto dela: sem
+              // inventar campo novo no cardápio, e sempre parecida com o
+              // que a pessoa vai achar lá dentro
+              foto: c.products.find((p) => p.imageUrl)?.imageUrl ?? null,
+            }))}
+            ativa={active}
+            aoEscolher={jump}
+          />
+          <div className="min-w-0 flex-1">{miolo}</div>
+        </div>
+      ) : (
+        miolo
+      )}
 
       {/* aviso rápido de item adicionado */}
       <div

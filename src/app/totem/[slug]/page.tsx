@@ -119,6 +119,10 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
             // de pé no balcão, com gente atrás: ver mais item por tela sem
             // rolar vale mais que foto grande
             duasColunas
+            // e as categorias viram uma coluna com foto, que abre e fecha:
+            // arrastar uma faixa de abas de pé é pior do que correr os
+            // olhos por uma lista parada
+            categoriasNaLateral
           />
         )}
       </div>
