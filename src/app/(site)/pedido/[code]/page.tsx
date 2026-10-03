@@ -314,6 +314,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           barra de baixo e abre como folha por cima (ver ChatDoCliente) */}
       {conversa && (
         <ChatDoCliente
+          key="conversa"
           code={order.code}
           restaurante={r.name}
           numero={order.number}

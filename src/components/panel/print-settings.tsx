@@ -30,6 +30,16 @@ type Order = {
   id: string;
   number: number;
   createdAt: string;
+  /**
+   * Quando este pedido virou problema do restaurante.
+   *
+   * Quase sempre é a hora em que ele nasceu. No 100% Delivery não: lá o
+   * pedido é criado quando o cliente abre a tela do Pix e só vira pedido de
+   * verdade quando o Mercado Pago confirma, minutos depois. Usar a hora de
+   * nascimento faria o sino não tocar para quem abriu o painel nesse meio
+   * -- o pedido apareceria na lista calado.
+   */
+  entrouEm: string;
   status: string;
   /** o próximo passo, quando ele é aceitar o pedido */
   accept: { to: string; label: string } | null;
@@ -227,7 +237,7 @@ export function PrintSettings({
   // de um celular estreito, e cortado no meio não diz nada a ninguém
   const resumoDoModo =
     mode === "pc" ? "Neste computador" : mode === "celular" ? "Neste celular" : mode === "nuvem" ? "Menu Fácil PC" : "Sem impressão";
-  const fresh = orders.filter((o) => new Date(o.createdAt).getTime() >= since);
+  const fresh = orders.filter((o) => new Date(o.entrouEm).getTime() >= since);
   // chegaram com o painel aberto e ainda esperam o restaurante aceitar
   const seen = idList(savedSeen);
   const pending = fresh.filter((o) => o.accept && !seen.includes(o.id));

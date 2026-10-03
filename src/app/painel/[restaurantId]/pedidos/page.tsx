@@ -90,6 +90,8 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         paymentMethod: true,
         customerName: true,
         customerWhatsapp: true,
+        // no 100% Delivery, a hora que conta para o sino é a do pagamento
+        payment: { select: { confirmedAt: true } },
       },
     }),
     listDevices(restaurant.id),
@@ -156,6 +158,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
             id: o.id,
             number: o.number,
             createdAt: o.createdAt.toISOString(),
+            entrouEm: (o.origin === "FULL_DELIVERY" ? (o.payment?.confirmedAt ?? o.createdAt) : o.createdAt).toISOString(),
             status: o.status,
             accept: step?.to === "CONFIRMED" ? step : null,
             notify: nextStatusNotice(o, restaurant),

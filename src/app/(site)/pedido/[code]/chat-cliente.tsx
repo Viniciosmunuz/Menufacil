@@ -51,13 +51,20 @@ export function ChatDoCliente({
     return esquecerChat;
   }, [naoLidas]);
 
-  // abre e fecha a folha conforme o botão da barra
+  // Abre e fecha a folha conforme o botão da barra.
+  //
+  // De propósito sem lista de dependências: isto roda depois de todo
+  // desenho. A resposta do restaurante chega pelo canal ao vivo, que manda
+  // a página inteira se refazer pelo servidor -- e aí o navegador fecha a
+  // folha, porque <dialog> aberto é estado do elemento, não do React.
+  // Rodando sempre, a folha volta no mesmo instante e quem está escrevendo
+  // nem percebe.
   useEffect(() => {
     const el = folha.current;
     if (!el) return;
     if (chat.aberto && !el.open) el.showModal();
     if (!chat.aberto && el.open) el.close();
-  }, [chat.aberto]);
+  });
 
   // Abriu a conversa: agora sim o que o restaurante escreveu está lido.
   // Ter a página aberta não contava -- a conversa fica atrás de um botão.
@@ -91,7 +98,10 @@ export function ChatDoCliente({
 
       <dialog
         ref={folha}
-        onClose={fecharChat}
+        // "cancel" é só o Esc. "close" dispara em qualquer fechamento,
+        // inclusive no que o navegador faz quando a página se refaz -- e aí
+        // a folha se fecharia sozinha no meio da conversa
+        onCancel={fecharChat}
         onClick={(e) => e.target === folha.current && fecharChat()}
         className="mx-auto mt-auto mb-0 max-h-[92dvh] w-full max-w-lg overflow-hidden rounded-t-[1.75rem] bg-surface p-0 text-ink backdrop:bg-black/70 backdrop:backdrop-blur-sm open:animate-[sheet-up_0.28s_ease-out] sm:my-auto sm:rounded-card"
         aria-label={`Conversa com ${restaurante}`}
