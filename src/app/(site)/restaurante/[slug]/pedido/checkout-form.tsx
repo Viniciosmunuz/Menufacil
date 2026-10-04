@@ -268,7 +268,23 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
               <Field label="Seu nome" htmlFor="customerName" error={err.customerName}>
                 <Input id="customerName" name="customerName" required maxLength={80} autoComplete="name" defaultValue={v("customerName")} aria-invalid={!!err.customerName} />
               </Field>
-              <Field label="Seu WhatsApp" htmlFor="customerWhatsapp" error={err.customerWhatsapp} hint="O restaurante fala com você por ele.">
+              {/* Precisa ser o número que tem WhatsApp, e não qualquer
+                  telefone: é por ele que o restaurante avisa que o pedido
+                  saiu, confirma endereço e liga quando o entregador não
+                  acha a casa. Número sem WhatsApp vira pedido que ninguém
+                  consegue resolver. No 100% Delivery a conversa acontece
+                  na página do pedido, então ali o WhatsApp é o caminho de
+                  quando dá problema -- e continua sendo necessário. */}
+              <Field
+                label="Seu número de WhatsApp"
+                htmlFor="customerWhatsapp"
+                error={err.customerWhatsapp}
+                hint={
+                  restaurant.fullDelivery
+                    ? "Precisa ter WhatsApp: é por ele que o restaurante fala com você se precisar."
+                    : "Precisa ter WhatsApp: é por ele que o restaurante fala com você."
+                }
+              >
                 <Input
                   id="customerWhatsapp"
                   name="customerWhatsapp"

@@ -1,6 +1,7 @@
 import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 
 import { formatCents } from "./format";
+import { isFullDelivery } from "./order-flow";
 
 // Formas de pagamento. Pix é pago antes (chave na página do pedido); cartão
 // e dinheiro são pagos na entrega ou no balcão, na retirada.
@@ -28,6 +29,9 @@ export function paymentText(p: PaymentChoice) {
 export function paymentHint(p: PaymentChoice, type: OrderType, totalCents: number, origin?: OrderOrigin | null) {
   // o pedido do totem chega pago: mandar cobrar no balcão faria cobrar duas vezes
   if (origin === "TOTEM") return p.method === "PIX" ? "Pago por Pix no totem." : "Pago no cartão, na maquininha do totem.";
+  // 100% Delivery no Pix: o Mercado Pago já cobrou e já avisou. Cartão e
+  // dinheiro continuam sendo pagos na entrega, e caem nas regras de baixo.
+  if (p.method === "PIX" && isFullDelivery(origin)) return "Pago por Pix, confirmado pelo Mercado Pago.";
   if (p.method === "CARD") return type === "DELIVERY" ? "Levar a maquininha na entrega." : "Pagamento no balcão, na retirada.";
   if (p.method === "CASH") {
     if (!p.changeForCents) return type === "DELIVERY" ? "Pago em dinheiro na entrega, sem troco." : "Pago em dinheiro na retirada, sem troco.";

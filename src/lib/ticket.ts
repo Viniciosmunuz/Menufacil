@@ -1,6 +1,7 @@
 import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 
 import { formatCents, formatPhone } from "./format";
+import { isFullDelivery } from "./order-flow";
 import { pedeSecao } from "./nomes-parecidos";
 import { paymentText } from "./payment";
 
@@ -184,9 +185,24 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   if (o.paymentMethod === "CARD") {
     lines.push(...texto(o.origin === "TOTEM" ? "Pago na maquininha do totem" : delivery ? "Levar a maquininha" : "Pagar no balcão"));
   }
-  // o Pix do totem já caiu na conta: não há comprovante para ninguém conferir
+  // Pix já pago não tem comprovante para ninguém conferir, e dizer que tem
+  // faz o balcão procurar no WhatsApp uma mensagem que nunca vai chegar.
+  //
+  // - totem: passou na máquina do balcão, ali na frente.
+  // - 100% Delivery: o Mercado Pago cobrou e avisou; a comanda só sai depois
+  //   disso (ver EXCLUDE_UNPAID), então todo Pix que chega aqui está pago.
+  // - WhatsApp: é o único em que o cliente paga por fora e manda o
+  //   comprovante na conversa.
   if (o.paymentMethod === "PIX") {
-    lines.push(...texto(o.origin === "TOTEM" ? "Pago por Pix no totem" : "Conferir o comprovante no WhatsApp"));
+    lines.push(
+      ...texto(
+        o.origin === "TOTEM"
+          ? "Pago por Pix no totem"
+          : isFullDelivery(o.origin)
+            ? "Pago por Pix, confirmado pelo Mercado Pago"
+            : "Conferir o comprovante no WhatsApp",
+      ),
+    );
   }
 
   // cliente
