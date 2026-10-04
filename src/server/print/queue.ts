@@ -48,7 +48,17 @@ const ticketSelect = {
   totalCents: true,
   paymentMethod: true,
   payment: { select: { cardType: true, changeForCents: true } },
-  items: { orderBy: { id: "asc" }, select: { productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
+  items: {
+    orderBy: { id: "asc" },
+    select: {
+      productName: true,
+      optionsText: true,
+      quantity: true,
+      totalCents: true,
+      notes: true,
+      product: { select: { category: { select: { name: true } } } },
+    },
+  },
 } as const;
 
 /** o que falta sair naquela impressora, conforme o papel dela */
@@ -122,7 +132,14 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
       itens: order.items.map((i) => ({
         quantidade: i.quantity,
         nome: i.productName,
-        opcoes: (i.optionsText ?? "").split(" · ").filter(Boolean),
+        // A seção entra como a primeira "opção" do item, e não como campo
+        // novo, de propósito: o programa do balcão já imprime a lista de
+        // opções, então a seção aparece na comanda sem ninguém precisar
+        // atualizar o Menu Fácil para PC nem o aplicativo do totem.
+        opcoes: [
+          ...(i.product?.category?.name ? [`[${i.product.category.name.toUpperCase()}]`] : []),
+          ...(i.optionsText ?? "").split(" · ").filter(Boolean),
+        ],
         observacao: i.notes,
         total_centavos: i.totalCents,
       })),

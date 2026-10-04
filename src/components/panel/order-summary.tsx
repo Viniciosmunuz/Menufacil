@@ -33,7 +33,20 @@ export const orderSummarySelect = {
   totalCents: true,
   createdAt: true,
   paymentMethod: true,
-  items: { orderBy: { id: "asc" }, select: { id: true, productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
+  items: {
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      productName: true,
+      optionsText: true,
+      quantity: true,
+      totalCents: true,
+      notes: true,
+      // a seção do cardápio vai na via impressa: nome de prato se repete
+      // entre seções, e a cozinha estava trocando um pelo outro
+      product: { select: { category: { select: { name: true } } } },
+    },
+  },
   payment: { select: { status: true, cardType: true, changeForCents: true } },
 } satisfies Prisma.OrderSelect;
 

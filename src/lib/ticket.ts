@@ -41,7 +41,22 @@ export type TicketOrder = {
   totalCents: number;
   paymentMethod: PaymentMethod;
   payment: { cardType: CardType | null; changeForCents: number | null } | null;
-  items: { productName: string; optionsText: string | null; quantity: number; totalCents: number; notes: string | null }[];
+  items: {
+    productName: string;
+    optionsText: string | null;
+    quantity: number;
+    totalCents: number;
+    notes: string | null;
+    /**
+     * De que parte do cardápio o item veio.
+     *
+     * Vai na via porque nome de prato se repete entre seções: no Papaléguas
+     * há "Pirarucu à milanesa" nas iscas e "Filé de pirarucu à milanesa"
+     * nos grelhados, "Carne de sol" nos dois. São pratos diferentes, preços
+     * diferentes, e a cozinha estava trocando um pelo outro lendo só o nome.
+     */
+    product?: { category: { name: string } | null } | null;
+  }[];
 };
 
 const clock = (date: Date | string) =>
@@ -112,6 +127,10 @@ function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>) {
     } else {
       lines.push(...texto(nome, 0, 4), entre("", valor));
     }
+    // a seção do cardápio, em destaque, antes das escolhas: é ela que
+    // separa a isca do grelhado de nome parecido
+    const secao = item.product?.category?.name;
+    if (secao) lines.push(...texto(`[${secao.toUpperCase()}]`, 4, 2));
     // cada escolha em uma linha: "Tamanho: Grande", "Sabor: Calabresa"
     for (const escolha of (item.optionsText ?? "").split(" · ").filter(Boolean)) {
       lines.push(...texto(escolha, 4, 2));
