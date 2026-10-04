@@ -50,8 +50,8 @@ function CategoryFields({ category, state }: { category?: Category; state: MenuF
           <Checkbox
             name="addons"
             defaultChecked={category.addons}
-            label="É uma categoria de acompanhamentos"
-            hint="Ex.: Arroz, feijão, farofa, purê. Continuam à venda sozinhos e passam a poder ser somados dentro de um prato."
+            label="Esta seção É a lista de acompanhamentos"
+            hint="Marque na seção que tem o arroz, o feijão, a farofa — não na do prato que vai recebê-los. Depois, em cada prato, ligue “Aceita acompanhamento”."
           />
         </>
       )}
