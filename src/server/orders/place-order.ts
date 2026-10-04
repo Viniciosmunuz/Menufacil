@@ -106,6 +106,13 @@ export const checkoutSchema = z
     if (!v.street) ctx.addIssue({ code: "custom", path: ["street"], message: "Informe a rua." });
     if (!v.number) ctx.addIssue({ code: "custom", path: ["number"], message: "Informe o número (ou s/n)." });
     if (!v.neighborhood) ctx.addIssue({ code: "custom", path: ["neighborhood"], message: "Informe o bairro." });
+    // Em Presidente Figueiredo o endereço sozinho não basta: rua sem placa,
+    // casa sem número na fachada, e o entregador acaba ligando para o
+    // cliente no meio da rua. A referência é o que resolve isso antes de
+    // sair, então ela é pedida como o resto do endereço.
+    if (!v.reference) {
+      ctx.addIssue({ code: "custom", path: ["reference"], message: "Informe um ponto de referência. Ex.: casa azul ao lado da farmácia." });
+    }
   });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

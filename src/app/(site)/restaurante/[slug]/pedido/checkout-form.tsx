@@ -320,8 +320,22 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                   <Field label="Complemento" htmlFor="complement" error={err.complement} hint="Opcional." className="sm:col-span-3">
                     <Input id="complement" name="complement" maxLength={80} autoComplete="address-line2" defaultValue={v("complement")} />
                   </Field>
-                  <Field label="Ponto de referência" htmlFor="reference" error={err.reference} hint="Opcional. Ajuda o entregador." className="sm:col-span-6">
-                    <Input id="reference" name="reference" maxLength={120} defaultValue={v("reference")} placeholder="Ex.: casa azul ao lado da farmácia" />
+                  <Field
+                    label="Ponto de referência"
+                    htmlFor="reference"
+                    error={err.reference}
+                    hint="O que ajuda o entregador a achar: uma cor, um comércio ao lado, uma esquina."
+                    className="sm:col-span-6"
+                  >
+                    <Input
+                      id="reference"
+                      name="reference"
+                      required
+                      maxLength={120}
+                      defaultValue={v("reference")}
+                      placeholder="Ex.: casa azul ao lado da farmácia"
+                      aria-invalid={!!err.reference}
+                    />
                   </Field>
                 </div>
               )}
