@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ticketText } from "@/lib/ticket";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { orderTicket } from "@/server/print/queue";
+import { secoesQuePedemDestaque } from "@/server/print/secoes";
 
 // Via do pedido para a impressora térmica. Rota (e não página) porque a via
 // tem a folha toda para ela, sem a casca do painel.
@@ -19,7 +20,7 @@ export async function GET(request: Request, { params }: RouteContext<"/painel/[r
   const order = await db.order.findFirst({ where: { id: orderId, restaurantId: restaurant.id }, select: orderSummarySelect });
   if (!order) return new Response("Pedido não encontrado.", { status: 404 });
 
-  const text = ticketText(order, restaurant.name, paper);
+  const text = ticketText(order, restaurant.name, paper, await secoesQuePedemDestaque(restaurant.id));
   const headers = { "cache-control": "no-store" };
 
   const formato = new URL(request.url).searchParams.get("formato");

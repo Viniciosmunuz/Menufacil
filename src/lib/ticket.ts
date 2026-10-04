@@ -1,6 +1,7 @@
 import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 
 import { formatCents, formatPhone } from "./format";
+import { pedeSecao } from "./nomes-parecidos";
 import { paymentText } from "./payment";
 
 // Via do pedido para a impressora térmica. Só texto, na largura da bobina
@@ -113,8 +114,14 @@ function pincel(paper: number) {
   return { width, forte, fraco, margem, meio, entre, texto, titulo };
 }
 
-/** cada item com a quantidade na frente e o preço à direita */
-function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>) {
+/**
+ * Cada item com a quantidade na frente e o preço à direita.
+ *
+ * `secoes` é o conjunto de nomes que precisam dizer de que parte do
+ * cardápio vieram -- ver `nomes-parecidos.ts`. Sem ele nenhuma seção sai,
+ * que é o certo para o recibo do cliente: a seção é informação de cozinha.
+ */
+function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>, secoes?: Set<string>) {
   const { width, entre, texto } = p;
   const lines: string[] = [];
   for (const item of o.items) {
@@ -128,9 +135,11 @@ function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>) {
       lines.push(...texto(nome, 0, 4), entre("", valor));
     }
     // a seção do cardápio, em destaque, antes das escolhas: é ela que
-    // separa a isca do grelhado de nome parecido
+    // separa a isca do grelhado de nome parecido. Só sai onde desfaz
+    // confusão -- "[BEBIDAS]" embaixo de uma Coca-Cola é linha de papel
+    // gasta para dizer o que ninguém tinha dúvida.
     const secao = item.product?.category?.name;
-    if (secao) lines.push(...texto(`[${secao.toUpperCase()}]`, 4, 2));
+    if (secao && pedeSecao(secoes, item.productName)) lines.push(...texto(`[${secao.toUpperCase()}]`, 4, 2));
     // cada escolha em uma linha: "Tamanho: Grande", "Sabor: Calabresa"
     for (const escolha of (item.optionsText ?? "").split(" · ").filter(Boolean)) {
       lines.push(...texto(escolha, 4, 2));
@@ -140,7 +149,7 @@ function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>) {
   return lines;
 }
 
-export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
+export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER, secoes?: Set<string>): string[] {
   const p = pincel(paper);
   const { forte, fraco, margem, meio, entre, texto, titulo } = p;
   const delivery = o.type === "DELIVERY";
@@ -159,7 +168,7 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   lines.push(forte);
 
   // itens: quantidade destacada, preço à direita, escolhas embaixo
-  lines.push(...itemLines(o, p));
+  lines.push(...itemLines(o, p, secoes));
 
   // contas
   lines.push(fraco, entre("Subtotal", formatCents(o.subtotalCents)));
@@ -206,8 +215,8 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
 }
 
 /** a via em texto puro, do jeito que a impressora recebe */
-export const ticketText = (o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER) =>
-  `${ticketLines(o, restaurantName, paper).join("\n")}\n\n\n`;
+export const ticketText = (o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER, secoes?: Set<string>) =>
+  `${ticketLines(o, restaurantName, paper, secoes).join("\n")}\n\n\n`;
 
 /**
  * O recibo do cliente: o papel que sai na impressora do próprio totem, na

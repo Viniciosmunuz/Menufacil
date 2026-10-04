@@ -4,8 +4,11 @@ import type { PrintRole } from "@/generated/prisma/enums";
 
 import { db } from "@/lib/db";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
+import { pedeSecao } from "@/lib/nomes-parecidos";
 import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 import { receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
+
+import { secoesQuePedemDestaque } from "./secoes";
 
 // A fila do Print Fácil: os pedidos que ainda não saíram no papel daquele
 // restaurante. O "printedAt" é a trava contra imprimir duas vezes — o
@@ -98,6 +101,8 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
   // pedir a via de um pedido de delivery, sai a comanda normal
   const senha = role === "SENHA" && order.origin === "TOTEM";
   const monta = senha ? { linhas: receiptLines, texto: receiptText } : { linhas: ticketLines, texto: ticketText };
+  // quais pratos precisam dizer a seção; o recibo do cliente não leva seção
+  const secoes = senha ? undefined : await secoesQuePedemDestaque(restaurantId);
 
   return {
     id: order.id,
@@ -109,8 +114,8 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
     // qual dos dois papéis é este, para a térmica dar o destaque certo
     papel: senha ? ("senha" as const) : ("comanda" as const),
     // texto pronto, para a impressora comum do Windows
-    texto: monta.texto(order, order.restaurant.name, paper),
-    linhas: monta.linhas(order, order.restaurant.name, paper),
+    texto: monta.texto(order, order.restaurant.name, paper, secoes),
+    linhas: monta.linhas(order, order.restaurant.name, paper, secoes),
     // os mesmos dados em partes, para a térmica ESC/POS dar destaque ao
     // número do pedido, ao total e ao que o cliente escreveu
     dados: {
@@ -137,7 +142,9 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
         // opções, então a seção aparece na comanda sem ninguém precisar
         // atualizar o Menu Fácil para PC nem o aplicativo do totem.
         opcoes: [
-          ...(i.product?.category?.name ? [`[${i.product.category.name.toUpperCase()}]`] : []),
+          ...(i.product?.category?.name && pedeSecao(secoes, i.productName)
+            ? [`[${i.product.category.name.toUpperCase()}]`]
+            : []),
           ...(i.optionsText ?? "").split(" · ").filter(Boolean),
         ],
         observacao: i.notes,
