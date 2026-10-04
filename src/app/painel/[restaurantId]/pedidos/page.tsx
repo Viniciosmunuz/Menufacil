@@ -17,7 +17,7 @@ import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { EXCLUDE_UNPAID, nextOrderStep } from "@/lib/order-flow";
+import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido } from "@/server/chat/chat";
@@ -160,7 +160,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
             createdAt: o.createdAt.toISOString(),
             entrouEm: (o.origin === "FULL_DELIVERY" ? (o.payment?.confirmedAt ?? o.createdAt) : o.createdAt).toISOString(),
             status: o.status,
-            accept: step?.to === "CONFIRMED" ? step : null,
+            accept: esperaAceite(o.status) ? step : null,
             notify: nextStatusNotice(o, restaurant),
           };
         })}

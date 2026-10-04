@@ -30,6 +30,18 @@ export const isFullDelivery = (origin: OrderOrigin | null | undefined) => origin
 export const EXCLUDE_UNPAID = { NOT: { origin: "FULL_DELIVERY" as const, status: "AWAITING_PAYMENT" as const } };
 
 /**
+ * O pedido chegou e ninguém no balcão tocou nele ainda.
+ *
+ * É isto que faz o aviso subir na tela de Pedidos. A versão anterior
+ * perguntava se o próximo passo levava a CONFIRMED -- e quando o fluxo do
+ * 100% Delivery passou a aceitar direto para PREPARING, a conta deu falso e
+ * o aviso sumiu sem ninguém mexer nele. Perguntar pelo estado de agora, e
+ * não pelo nome do destino, não quebra na próxima vez que o caminho mudar.
+ */
+const AGUARDANDO_ACEITE: OrderStatus[] = ["NEW", "PAID", "PAYMENT_SENT"];
+export const esperaAceite = (status: OrderStatus) => AGUARDANDO_ACEITE.includes(status);
+
+/**
  * Próximo passo de um pedido do 100% Delivery.
  *
  * Em AWAITING_PAYMENT não há passo nenhum: o dinheiro ainda não entrou, e
