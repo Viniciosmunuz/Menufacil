@@ -155,6 +155,7 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
           name: true,
           description: true,
           pizzaFlavors: true,
+          addons: true,
           products: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
@@ -167,6 +168,7 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
               available: true,
               featured: true,
               pizzaFlavors: true,
+              allowAddons: true,
               optionGroups: {
                 orderBy: { sortOrder: "asc" },
                 select: {

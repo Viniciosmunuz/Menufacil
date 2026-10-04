@@ -289,6 +289,10 @@ model MenuCategory {
   // nao aparecem soltos no cardapio, sao os sabores que o cliente escolhe
   // dentro da pizza
   pizzaFlavors Boolean  @default(false)
+  /// catalogo de acompanhamentos (Arroz, Farofa, Pure): os produtos daqui
+  /// continuam a venda sozinhos e tambem aparecem para somar dentro de um
+  /// prato que aceite acompanhamento
+  addons       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -313,6 +317,10 @@ model Product {
   // pizza montada: quantos sabores o cliente escolhe (1, 2, 3...). O preco e
   // o do sabor mais caro escolhido, nunca a soma nem a media.
   pizzaFlavors    Int?
+  /// este prato oferece os acompanhamentos do cardapio. Quantos e quais o
+  /// cliente leva fica com ele; o preco de cada um e o mesmo da secao de
+  /// acompanhamentos, somado ao prato.
+  allowAddons     Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

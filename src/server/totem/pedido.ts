@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 
 import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
+import { acceptsAddons, addonProblems, addonsPrice, addonsText, MAX_POR_ADDON, type Addon, type AddonPick } from "@/lib/addons";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
 
@@ -30,6 +31,8 @@ export type ItemDoTotem = {
   optionIds?: string[];
   /** sabores da pizza montada, na ordem em que o cliente escolheu */
   flavorIds?: string[];
+  /** acompanhamentos somados ao prato, com quantidade de cada */
+  addons?: AddonPick[];
 };
 
 const MAX_LINHAS = 40;
@@ -83,6 +86,7 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
       promoPriceCents: true,
       available: true,
       pizzaFlavors: true,
+      allowAddons: true,
       category: { select: { active: true } },
       optionGroups: {
         orderBy: { sortOrder: "asc" },
@@ -136,6 +140,20 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
       }))
     : [];
 
+  // Acompanhamentos, pela mesma razão: o cardápio do totem é o mesmo do
+  // link, e o cliente do balcão vê a mesma lista de arroz e farofa dentro
+  // do prato. O preço de cada um vem daqui, do banco.
+  const temAddon = itens.some((i) => (i.addons ?? []).length > 0);
+  const addons: Addon[] = temAddon
+    ? (
+        await db.product.findMany({
+          where: { restaurantId, category: { addons: true, active: true } },
+          orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+          select: { id: true, name: true, priceCents: true, promoPriceCents: true, available: true },
+        })
+      ).map((a) => ({ id: a.id, name: a.name, priceCents: a.promoPriceCents ?? a.priceCents, available: a.available }))
+    : [];
+
   const linhas = itens.map((item) => {
     const produto = porId.get(item.productId);
     if (!produto || !produto.category.active) throw new TotemError("Um item saiu do cardápio. Comece o pedido de novo.");
@@ -155,11 +173,19 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
       throw new TotemError(`"${produto.name}" não é uma pizza de sabores. Comece o pedido de novo.`);
     }
 
+    const escolhasDeAddon = (item.addons ?? []).filter((a) => a.quantity > 0 && a.quantity <= MAX_POR_ADDON);
+    if (escolhasDeAddon.length && !acceptsAddons(produto)) {
+      throw new TotemError(`"${produto.name}" não aceita acompanhamento. Comece o pedido de novo.`);
+    }
+    const addonsRuins = addonProblems(addons, escolhasDeAddon);
+    if (addonsRuins.length) throw new TotemError(`"${produto.name}": ${addonsRuins[0]}`);
+
     const base = vagas ? pizzaPrice(sabores, item.flavorIds ?? [], tamanho) : (produto.promoPriceCents ?? produto.priceCents);
-    const unitario = base + optionsPrice(produto.optionGroups, item.optionIds ?? []);
+    const unitario = base + optionsPrice(produto.optionGroups, item.optionIds ?? []) + addonsPrice(addons, escolhasDeAddon);
     const escolhas = [
       vagas ? flavorsText(sabores, item.flavorIds ?? [], vagas) : null,
       optionsText(produto.optionGroups, item.optionIds ?? []),
+      addonsText(addons, escolhasDeAddon),
     ].filter(Boolean);
 
     return {

@@ -149,7 +149,14 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const err = state.fieldErrors ?? {};
   const v = (key: string) => state.values?.[key] ?? saved[key] ?? "";
   const items = JSON.stringify(
-    cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity, notes: i.notes, optionIds: i.optionIds ?? [], flavorIds: i.flavorIds ?? [] })),
+    cart.items.map((i) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      notes: i.notes,
+      optionIds: i.optionIds ?? [],
+      flavorIds: i.flavorIds ?? [],
+      addons: i.addons ?? [],
+    })),
   );
 
   /** o que aparece na revisão: o endereço, o pagamento e a observação recém-preenchidos */

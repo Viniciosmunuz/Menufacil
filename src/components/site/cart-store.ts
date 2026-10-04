@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import type { AddonPick } from "@/lib/addons";
+
 // Carrinho do cliente, guardado no aparelho (localStorage). Um restaurante
 // por vez. Os preços daqui servem só para mostrar: quem calcula o total do
 // pedido de verdade é o servidor, com os preços do banco.
@@ -20,6 +22,8 @@ export type CartItem = {
   optionIds?: string[];
   /** sabores da pizza, na ordem em que o cliente escolheu */
   flavorIds?: string[];
+  /** acompanhamentos somados a este prato, com quantidade de cada */
+  addons?: AddonPick[];
   optionsText?: string | null;
 };
 
@@ -101,12 +105,19 @@ export function addToCart(
   const notes = item.notes.trim().slice(0, 140);
   const optionIds = [...(item.optionIds ?? [])].sort();
   const flavorIds = item.flavorIds ?? [];
-  // a mesma pizza com outros sabores é outra linha do carrinho
-  const key = `${item.productId}:${optionIds.join(",")}:${[...flavorIds].sort().join(",")}:${notes.toLowerCase()}`;
+  const addons = (item.addons ?? []).filter((a) => a.quantity > 0);
+  // a mesma pizza com outros sabores é outra linha do carrinho; o mesmo vale
+  // para os acompanhamentos: a mesma lasanha com dois arroz e a mesma lasanha
+  // sem nada são duas linhas, com preços diferentes
+  const addonKey = [...addons]
+    .sort((a, b) => a.productId.localeCompare(b.productId))
+    .map((a) => `${a.productId}x${a.quantity}`)
+    .join(",");
+  const key = `${item.productId}:${optionIds.join(",")}:${[...flavorIds].sort().join(",")}:${addonKey}:${notes.toLowerCase()}`;
   const existing = base.find((i) => i.key === key);
   const items = existing
     ? base.map((i) => (i.key === key ? { ...i, quantity: Math.min(MAX_QUANTITY, i.quantity + item.quantity) } : i))
-    : [...base, { ...item, notes, optionIds, flavorIds, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
+    : [...base, { ...item, notes, optionIds, flavorIds, addons, key, quantity: Math.min(MAX_QUANTITY, item.quantity) }];
   write({ restaurant, items });
   return "ok";
 }

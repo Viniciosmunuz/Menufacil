@@ -17,7 +17,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 import { deleteMenuCategory, moveMenuCategory, saveMenuCategory, type MenuFormState } from "./actions";
 
-type Category = { id: string; name: string; description: string | null; active: boolean; productCount: number };
+type Category = { id: string; name: string; description: string | null; active: boolean; addons: boolean; productCount: number };
 
 function CategoryFields({ category, state }: { category?: Category; state: MenuFormState }) {
   const err = state.fieldErrors ?? {};
@@ -40,7 +40,20 @@ function CategoryFields({ category, state }: { category?: Category; state: MenuF
         <Input id={`cat-desc-${key}`} name="description" maxLength={200} defaultValue={state.values?.description ?? category?.description ?? ""} />
       </Field>
       {category && (
-        <Checkbox name="active" defaultChecked={category.active} label="Aparece no cardápio" hint="Desmarque para esconder a categoria inteira." />
+        <>
+          <Checkbox name="active" defaultChecked={category.active} label="Aparece no cardápio" hint="Desmarque para esconder a categoria inteira." />
+          {/* Diferente das categorias de sabores de pizza, esta continua
+              aparecendo no cardápio: quem quer só um arroz pede um arroz. O
+              que a marcação faz é deixar estes itens também somarem dentro
+              de um prato -- e qual prato aceita isso se escolhe no próprio
+              prato, em "Aceita acompanhamento". */}
+          <Checkbox
+            name="addons"
+            defaultChecked={category.addons}
+            label="É uma categoria de acompanhamentos"
+            hint="Ex.: Arroz, feijão, farofa, purê. Continuam à venda sozinhos e passam a poder ser somados dentro de um prato."
+          />
+        </>
       )}
     </>
   );

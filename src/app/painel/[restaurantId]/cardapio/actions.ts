@@ -50,6 +50,7 @@ const categorySchema = z.object({
   name: text("Informe o nome da categoria.", 50),
   description: optionalText(200),
   active: z.string().optional(),
+  addons: z.string().optional(),
 });
 
 export async function saveMenuCategory(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
@@ -62,9 +63,10 @@ export async function saveMenuCategory(_prev: MenuFormState, formData: FormData)
 
   if (id) {
     const active = parsed.data.active === "on";
-    const { count } = await db.menuCategory.updateMany({ where: { id, restaurantId }, data: { name, description, active } });
+    const addons = parsed.data.addons === "on";
+    const { count } = await db.menuCategory.updateMany({ where: { id, restaurantId }, data: { name, description, active, addons } });
     if (!count) return { error: "Categoria não encontrada." };
-    await panelAudit(acc, "menu.category_update", { name, active });
+    await panelAudit(acc, "menu.category_update", { name, active, addons });
   } else {
     const last = await db.menuCategory.aggregate({ where: { restaurantId }, _max: { sortOrder: true } });
     await db.menuCategory.create({
@@ -118,6 +120,7 @@ const productSchema = z
     promoPrice: z.string().optional(),
     available: checkbox,
     featured: checkbox,
+    allowAddons: checkbox,
     removeImage: checkbox,
   })
   .transform((v, ctx) => {
@@ -286,6 +289,7 @@ export async function saveProduct(_prev: MenuFormState, formData: FormData): Pro
     promoPriceCents: p.promoPriceCents,
     available: p.available,
     featured: p.featured,
+    allowAddons: p.allowAddons,
     imageUrl,
   };
 

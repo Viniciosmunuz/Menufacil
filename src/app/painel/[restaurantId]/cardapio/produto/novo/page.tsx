@@ -17,7 +17,7 @@ export default async function NewProductPage({ params, searchParams }: PageProps
   const categories = await db.menuCategory.findMany({
     where: { restaurantId: restaurant.id },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, pizzaFlavors: true },
+    select: { id: true, name: true, pizzaFlavors: true, addons: true },
   });
   // sem categoria não há onde pôr o produto: volta para criar uma
   if (categories.length === 0) redirect(`/painel/${restaurant.id}/cardapio`);
@@ -40,6 +40,7 @@ export default async function NewProductPage({ params, searchParams }: PageProps
           promoPriceCents: null,
           available: true,
           featured: false,
+          allowAddons: false,
           optionGroups: [],
         }}
       />

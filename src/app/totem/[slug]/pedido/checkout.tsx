@@ -131,6 +131,7 @@ export function TotemCheckout({
         quantity: i.quantity,
         optionIds: i.optionIds ?? [],
         flavorIds: i.flavorIds ?? [],
+        addons: i.addons ?? [],
         notes: i.notes || null,
       })),
     })) as { erro?: string; pagamento_id?: string; total_centavos?: number; pix?: { imagem_base64?: string | null } };

@@ -40,6 +40,8 @@ export type ProductFormData = {
   pizzaFlavors?: number | null;
   available: boolean;
   featured: boolean;
+  /** oferece os acompanhamentos do cardápio somados por cima */
+  allowAddons?: boolean;
   optionGroups: EditableGroup[];
 };
 
@@ -50,7 +52,7 @@ export function ProductForm({
 }: {
   restaurantId: string;
   product: ProductFormData;
-  categories: { id: string; name: string; pizzaFlavors?: boolean }[];
+  categories: { id: string; name: string; pizzaFlavors?: boolean; addons?: boolean }[];
 }) {
   const [state, action] = useActionState<MenuFormState, FormData>(saveProduct, {});
   const [deleteState, deleteAction] = useActionState<MenuFormState, FormData>(deleteProduct, {});
@@ -66,6 +68,12 @@ export function ProductForm({
   const sabor = categories.find((c) => c.id === categoryId)?.pizzaFlavors === true;
   const montada = product.pizzaFlavors != null;
   const precoDoSabor = sabor || montada;
+  // O interruptor de acompanhamento só faz sentido se o restaurante tiver
+  // uma categoria marcada como acompanhamento -- e não num item que é ele
+  // mesmo um acompanhamento, nem num sabor de pizza.
+  const temAcompanhamentos = categories.some((c) => c.addons);
+  const ehAcompanhamento = categories.find((c) => c.id === categoryId)?.addons === true;
+  const podeAceitarAcompanhamento = temAcompanhamentos && !ehAcompanhamento && !sabor;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -165,6 +173,14 @@ export function ProductForm({
             label="Destaque"
             hint="Aparece no topo da sua página, em Destaques."
           />
+          {podeAceitarAcompanhamento && (
+            <Checkbox
+              name="allowAddons"
+              defaultChecked={v ? v.allowAddons === "on" : (product.allowAddons ?? false)}
+              label="Aceita acompanhamento"
+              hint="O cliente escolhe quantos quer de cada acompanhamento do cardápio, pelo mesmo preço, somados a este prato."
+            />
+          )}
         </Card>
         </Fragment>
 

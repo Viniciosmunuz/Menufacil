@@ -7,6 +7,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { LogoIcon } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import {
+  acceptsAddons,
+  addonProblems,
+  addonsPrice,
+  addonsText,
+  MAX_POR_ADDON,
+  type Addon,
+  type AddonPick,
+} from "@/lib/addons";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import {
@@ -48,6 +57,8 @@ export type MenuProduct = {
   featured: boolean;
   /** pizza montada: quantos sabores o cliente escolhe */
   pizzaFlavors?: number | null;
+  /** este prato aceita os acompanhamentos do cardápio somados por cima */
+  allowAddons?: boolean | null;
   optionGroups: OptionGroupData[];
 };
 
@@ -216,6 +227,62 @@ function FlavorPicker({
           })}
         </fieldset>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Acompanhamentos do prato: arroz, feijão, farofa, purê.
+ *
+ * No balcão do Papaléguas o pedido é "uma lasanha e dois arroz" -- e até
+ * agora isso virava duas linhas soltas no sistema, com a cozinha sem saber
+ * que era a mesma pessoa. Aqui o acompanhamento entra dentro da linha do
+ * prato, com quantidade de cada um.
+ *
+ * Por isso a linha é só nome, preço e o – 0 + : ninguém no balcão quer ler
+ * descrição de arroz. Quantidade zero é o mesmo que não querer, então um
+ * toque no "+" já marca e já diz quantos -- não existe marcar primeiro e
+ * contar depois.
+ */
+function AddonPicker({ addons, picks, onChange }: { addons: Addon[]; picks: AddonPick[]; onChange: (id: string, quantity: number) => void }) {
+  const quanto = (id: string) => picks.find((p) => p.productId === id)?.quantity ?? 0;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="font-extrabold">Acompanhamentos</span>
+      <p className="-mt-1 text-sm text-muted">Quantos você quiser, somados ao prato.</p>
+      <ul className="flex flex-col gap-2">
+        {addons.map((a) => {
+          const quantidade = quanto(a.id);
+          return (
+            <li
+              key={a.id}
+              className={cn(
+                "flex items-center gap-3 rounded-control border px-4 py-2",
+                !a.available && "opacity-50",
+                quantidade > 0 ? "border-brand bg-brand-soft" : "border-line bg-surface-2",
+              )}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block leading-tight font-bold">
+                  {a.name}
+                  {!a.available && <span className="ml-1 text-sm font-normal text-faint">(acabou)</span>}
+                </span>
+                <span className="text-sm text-muted tabular-nums">+ {formatCents(a.priceCents)}</span>
+              </span>
+              {a.available && (
+                <QuantityStepper
+                  value={quantidade}
+                  onChange={(q) => onChange(a.id, q)}
+                  min={0}
+                  max={MAX_POR_ADDON}
+                  size="sm"
+                  label={a.name}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -402,6 +469,7 @@ export function RestaurantMenu({
   restaurant,
   categories,
   pizzaFlavors = [],
+  addons = [],
   canOrder,
   closedMessage,
   carrinhoHref = "/carrinho",
@@ -414,6 +482,13 @@ export function RestaurantMenu({
   categories: MenuCategory[];
   /** sabores de pizza do restaurante, de todas as categorias de sabor */
   pizzaFlavors?: PizzaFlavor[];
+  /**
+   * Catálogo de acompanhamentos do restaurante -- os produtos das seções
+   * marcadas como acompanhamento. Eles continuam à venda sozinhos na seção
+   * deles; esta lista é a mesma seção servindo de opção dentro dos pratos
+   * que a aceitam.
+   */
+  addons?: Addon[];
   /** fechado ou em prévia: dá para ver, não para pedir */
   canOrder: boolean;
   closedMessage: string | null;
@@ -463,6 +538,7 @@ export function RestaurantMenu({
   const [notes, setNotes] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [flavorIds, setFlavorIds] = useState<string[]>([]);
+  const [addonPicks, setAddonPicks] = useState<AddonPick[]>([]);
   const [conflict, setConflict] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
@@ -526,6 +602,7 @@ export function RestaurantMenu({
     setNotes("");
     setSelected([]);
     setFlavorIds([]);
+    setAddonPicks([]);
     setConflict(false);
     dialogRef.current?.showModal();
   }
@@ -536,6 +613,8 @@ export function RestaurantMenu({
 
   const groups = product?.optionGroups ?? [];
   const slots = product ? flavorSlots(product) : null;
+  // o prato aceita acompanhamento e o restaurante tem o que oferecer
+  const addonsDoPrato = product && acceptsAddons(product) ? addons : [];
   // o tamanho vem do primeiro grupo de opções do montador (Tamanho)
   const sizeName = slots ? (groups[0]?.options.find((o) => selected.includes(o.id))?.name ?? null) : null;
 
@@ -568,12 +647,30 @@ export function RestaurantMenu({
     });
   }
 
+  function mudarAddon(id: string, quantity: number) {
+    const q = Math.max(0, Math.min(MAX_POR_ADDON, quantity));
+    setAddonPicks((atuais) => {
+      const resto = atuais.filter((p) => p.productId !== id);
+      // zero sai da lista: a linha do carrinho não carrega escolha vazia
+      if (q === 0) return resto;
+      return atuais.some((p) => p.productId === id)
+        ? atuais.map((p) => (p.productId === id ? { ...p, quantity: q } : p))
+        : [...resto, { productId: id, quantity: q }];
+    });
+  }
+
   const problems = product
-    ? [...(slots ? pizzaProblems(pizzaFlavors, flavorIds, slots, sizeName) : []), ...selectionProblems(groups, selected)]
+    ? [
+        ...(slots ? pizzaProblems(pizzaFlavors, flavorIds, slots, sizeName) : []),
+        ...selectionProblems(groups, selected),
+        ...addonProblems(addonsDoPrato, addonPicks),
+      ]
     : [];
   // pizza: vale o sabor mais caro; o resto das opcoes continua somando
   const itemPrice = product
-    ? (slots ? pizzaPrice(pizzaFlavors, flavorIds, sizeName) : unitPrice(product)) + optionsPrice(groups, selected)
+    ? (slots ? pizzaPrice(pizzaFlavors, flavorIds, sizeName) : unitPrice(product)) +
+      optionsPrice(groups, selected) +
+      addonsPrice(addonsDoPrato, addonPicks)
     : 0;
 
   function add(replace = false) {
@@ -589,7 +686,15 @@ export function RestaurantMenu({
         imageUrl: product.imageUrl,
         optionIds: selected,
         flavorIds,
-        optionsText: [slots ? flavorsText(pizzaFlavors, flavorIds, slots) : null, optionsText(groups, selected)].filter(Boolean).join(" · ") || null,
+        addons: addonPicks,
+        optionsText:
+          [
+            slots ? flavorsText(pizzaFlavors, flavorIds, slots) : null,
+            optionsText(groups, selected),
+            addonsText(addonsDoPrato, addonPicks),
+          ]
+            .filter(Boolean)
+            .join(" · ") || null,
       },
       { replace },
     );
@@ -865,6 +970,9 @@ export function RestaurantMenu({
                   groups.map((g) => <OptionGroupPicker key={g.id} group={g} groups={groups} selected={selected} onToggle={toggleOption} />)}
                 {product.available && slots && (
                   <FlavorPicker flavors={pizzaFlavors} slots={slots} chosen={flavorIds} sizeName={sizeName} onToggle={toggleFlavor} />
+                )}
+                {product.available && addonsDoPrato.length > 0 && (
+                  <AddonPicker addons={addonsDoPrato} picks={addonPicks} onChange={mudarAddon} />
                 )}
                 {canOrder && product.available && (
                   <label className="flex flex-col gap-1.5">

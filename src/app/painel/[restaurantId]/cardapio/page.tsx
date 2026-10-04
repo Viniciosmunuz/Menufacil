@@ -163,7 +163,7 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
             <CategoryCard
               key={c.id}
               restaurantId={restaurant.id}
-              category={{ id: c.id, name: c.name, description: c.description, active: c.active, productCount: c.products.length }}
+              category={{ id: c.id, name: c.name, description: c.description, active: c.active, addons: c.addons, productCount: c.products.length }}
               first={i === 0}
               last={i === categories.length - 1}
             >

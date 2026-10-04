@@ -29,6 +29,7 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
         available: true,
         featured: true,
         pizzaFlavors: true,
+        allowAddons: true,
         optionGroups: {
           orderBy: { sortOrder: "asc" },
           select: {
@@ -46,7 +47,7 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
     db.menuCategory.findMany({
       where: { restaurantId: restaurant.id },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true, pizzaFlavors: true },
+      select: { id: true, name: true, pizzaFlavors: true, addons: true },
     }),
   ]);
   if (!product) notFound();

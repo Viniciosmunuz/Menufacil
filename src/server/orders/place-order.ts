@@ -8,6 +8,7 @@ import type { OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
 import { isOpenNow } from "@/lib/opening-hours";
+import { acceptsAddons, addonProblems, addonsPrice, addonsText, MAX_POR_ADDON, type Addon } from "@/lib/addons";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
@@ -55,6 +56,17 @@ const itemsSchema = z
       notes: z.string().trim().max(140, "Observação muito longa.").optional().default(""),
       optionIds: z.array(z.string().max(40), { error: "Opção inválida no carrinho." }).max(30).optional().default([]),
       flavorIds: z.array(z.string().max(40), { error: "Sabor inválido no carrinho." }).max(10).optional().default([]),
+      addons: z
+        .array(
+          z.object({
+            productId: z.string().min(1).max(40),
+            quantity: z.number().int().min(1).max(MAX_POR_ADDON),
+          }),
+          { error: "Acompanhamento inválido no carrinho." },
+        )
+        .max(20)
+        .optional()
+        .default([]),
     }),
     { error: "Carrinho inválido." },
   )
@@ -156,6 +168,7 @@ export async function placeOrder(params: {
       promoPriceCents: true,
       available: true,
       pizzaFlavors: true,
+      allowAddons: true,
       category: { select: { active: true } },
       optionGroups: {
         orderBy: { sortOrder: "asc" },
@@ -208,6 +221,27 @@ export async function placeOrder(params: {
       }))
     : [];
 
+  // Acompanhamentos: só busca o catálogo se alguma linha trouxer escolha.
+  //
+  // O preço vem daqui, do banco, e não do carrinho -- é o mesmo arroz da
+  // seção Acompanhamentos, pelo mesmo preço. Um carrinho adulterado que
+  // mande "arroz por R$ 0" não muda nada: este valor é o que entra na conta.
+  const temAddon = items.some((i) => i.addons.length > 0);
+  const addons: Addon[] = temAddon
+    ? (
+        await db.product.findMany({
+          where: { restaurantId: restaurant.id, category: { addons: true, active: true } },
+          orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+          select: { id: true, name: true, priceCents: true, promoPriceCents: true, available: true },
+        })
+      ).map((a) => ({
+        id: a.id,
+        name: a.name,
+        priceCents: a.promoPriceCents ?? a.priceCents,
+        available: a.available,
+      }))
+    : [];
+
   const lines = items.map((item) => {
     const product = byId.get(item.productId);
     if (!product || !product.category.active) {
@@ -232,9 +266,20 @@ export async function placeOrder(params: {
       throw new OrderError(`"${product.name}" não é uma pizza de sabores. Tire do carrinho e escolha de novo.`);
     }
 
+    // acompanhamento só entra em prato que o restaurante liberou para isso
+    if (item.addons.length && !acceptsAddons(product)) {
+      throw new OrderError(`"${product.name}" não aceita acompanhamento. Tire do carrinho e escolha de novo.`);
+    }
+    const addonsRuins = addonProblems(addons, item.addons);
+    if (addonsRuins.length) throw new OrderError(`"${product.name}": ${addonsRuins[0]}`);
+
     const base = slots ? pizzaPrice(flavors, item.flavorIds, sizeName) : (product.promoPriceCents ?? product.priceCents);
-    const unit = base + optionsPrice(product.optionGroups, item.optionIds);
-    const escolhas = [slots ? flavorsText(flavors, item.flavorIds, slots) : null, optionsText(product.optionGroups, item.optionIds)].filter(Boolean);
+    const unit = base + optionsPrice(product.optionGroups, item.optionIds) + addonsPrice(addons, item.addons);
+    const escolhas = [
+      slots ? flavorsText(flavors, item.flavorIds, slots) : null,
+      optionsText(product.optionGroups, item.optionIds),
+      addonsText(addons, item.addons),
+    ].filter(Boolean);
 
     return {
       productId: product.id,

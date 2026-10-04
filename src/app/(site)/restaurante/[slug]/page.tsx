@@ -78,6 +78,15 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
         categoryName: c.name,
       })),
     );
+  // Catálogo de acompanhamentos: as seções que o restaurante marcou como
+  // acompanhamento. Diferente dos sabores de pizza, elas NÃO saem do
+  // cardápio -- quem quer só um arroz continua pedindo um arroz. Esta lista
+  // é a mesma seção servindo de opção dentro dos pratos que a aceitam.
+  const addons = r.menuCategories
+    .filter((c) => c.addons)
+    .flatMap((c) =>
+      c.products.map((p) => ({ id: p.id, name: p.name, priceCents: p.promoPriceCents ?? p.priceCents, available: p.available })),
+    );
   const canOrder = open && !isPreview;
   const closedMessage = isPreview
     ? "Prévia: o restaurante ainda não está no ar."
@@ -206,6 +215,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 restaurant={{ id: r.id, slug: r.slug, name: r.name }}
                 categories={categories}
                 pizzaFlavors={pizzaFlavors}
+                addons={addons}
                 canOrder={canOrder}
                 closedMessage={closedMessage}
               />
