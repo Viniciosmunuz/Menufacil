@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Fragment, useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { cartSubtotal, setQuantity as setCartQuantity, useCart } from "@/components/site/cart-store";
+import { WhatsappInput } from "@/components/site/whatsapp-input";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -279,20 +280,12 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 label="Seu número de WhatsApp"
                 htmlFor="customerWhatsapp"
                 error={err.customerWhatsapp}
-                hint={
-                  restaurant.fullDelivery
-                    ? "Precisa ter WhatsApp: é por ele que o restaurante fala com você se precisar."
-                    : "Precisa ter WhatsApp: é por ele que o restaurante fala com você."
-                }
+                hint="Com DDD, igual está no WhatsApp. Ex.: (92) 99999-0000"
               >
-                <Input
+                <WhatsappInput
                   id="customerWhatsapp"
                   name="customerWhatsapp"
-                  type="tel"
-                  inputMode="tel"
                   required
-                  autoComplete="tel-national"
-                  placeholder="(92) 99999-0000"
                   defaultValue={v("customerWhatsapp")}
                   aria-invalid={!!err.customerWhatsapp}
                 />
