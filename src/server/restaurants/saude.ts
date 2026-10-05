@@ -1,6 +1,8 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { OPEN_ORDER_STATUSES } from "@/lib/labels";
+import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 
 // O que está de pé no restaurante, para o admin olhar sem pedir print.
 //
@@ -16,7 +18,7 @@ import { db } from "@/lib/db";
 const HORAS_ATE_SUMIR = 24;
 
 export async function saudeDoRestaurante(restaurantId: string) {
-  const [impressoras, avisos, ultimoOk, mp, ultimoAvisoMp, restaurante] = await Promise.all([
+  const [impressoras, avisos, ultimoOk, mp, ultimoAvisoMp, restaurante, ultimaVia, naoImpressos] = await Promise.all([
     db.printDevice.findMany({
       where: { restaurantId },
       orderBy: { pairedAt: "desc" },
@@ -31,12 +33,33 @@ export async function saudeDoRestaurante(restaurantId: string) {
     db.mercadoPagoAccount.findUnique({ where: { restaurantId }, select: { accessToken: true } }),
     db.mpWebhookEvent.findFirst({ where: { restaurantId }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
     db.restaurant.findUnique({ where: { id: restaurantId }, select: { totemEnabled: true } }),
+    // A prova de que o Menu Fácil para PC está de pé é a via ter saído no
+    // papel. O aplicativo não se cadastra em lugar nenhum: ele abre o painel
+    // numa janela e imprime por dentro, e quem sabe disso é o navegador do
+    // balcão (window.menuFacilApp), não o servidor. Mas quando ele imprime,
+    // marca o pedido -- e isso chega aqui.
+    db.order.findFirst({
+      where: { restaurantId, printedAt: { not: null } },
+      orderBy: { printedAt: "desc" },
+      select: { printedAt: true, number: true },
+    }),
+    // pedido aberto que entrou e não saiu no papel: é esta a fila que o
+    // balcão descobre quando a cozinha pergunta "cadê a comanda?"
+    db.order.count({
+      where: { restaurantId, printedAt: null, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
+    }),
   ]);
 
   const agora = Date.now();
   const sumiu = (d: Date | null) => !!d && agora - d.getTime() > HORAS_ATE_SUMIR * 60 * 60 * 1000;
 
   return {
+    impressao: {
+      ultima: ultimaVia?.printedAt ?? null,
+      ultimoNumero: ultimaVia?.number ?? null,
+      naoImpressos,
+      sumiu: sumiu(ultimaVia?.printedAt ?? null),
+    },
     impressoras: impressoras.map((i) => ({ ...i, sumiu: sumiu(i.lastSeenAt) })),
     avisos: { quantos: avisos, ultimoOk: ultimoOk?.lastOkAt ?? null, sumiu: sumiu(ultimoOk?.lastOkAt ?? null) },
     mercadoPago: mp

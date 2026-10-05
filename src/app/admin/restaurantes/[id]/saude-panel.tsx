@@ -17,6 +17,15 @@ import { formatWhen } from "@/lib/format";
 
 export type Saude = {
   /**
+   * A impressão do balcão, medida pelo que saiu no papel.
+   *
+   * O Menu Fácil para PC não se cadastra em lugar nenhum -- ele abre o
+   * painel numa janela e imprime por dentro, e quem o enxerga é o navegador
+   * do balcão, não o servidor. Perguntar por "computador pareado" dizia
+   * "nenhum" num restaurante que estava imprimindo a noite toda.
+   */
+  impressao: { ultima: Date | null; ultimoNumero: number | null; naoImpressos: number; sumiu: boolean };
+  /**
    * `sumiu` vem calculado da página: comparar com o relógio durante o
    * desenho é impuro, e o lint pega.
    */
@@ -51,9 +60,7 @@ function Linha({ icone, titulo, estado, detalhe }: { icone: ReactNode; titulo: s
 }
 
 export function SaudePanel({ saude, cemPorCento }: { saude: Saude; cemPorCento: boolean }) {
-  const comanda = saude.impressoras.filter((i) => i.role !== "SENHA");
-  const viva = comanda.find((i) => i.lastSeenAt && !i.sumiu);
-  const maisRecente = comanda.reduce<Date | null>((a, i) => (i.lastSeenAt && (!a || i.lastSeenAt > a) ? i.lastSeenAt : a), null);
+  const { impressao } = saude;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -65,14 +72,14 @@ export function SaudePanel({ saude, cemPorCento }: { saude: Saude; cemPorCento: 
       <ul className="flex flex-col divide-y divide-line">
         <Linha
           icone={<Printer className="size-5" aria-hidden="true" />}
-          titulo="Menu Fácil PC"
-          estado={comanda.length === 0 ? "desligado" : viva ? "ok" : "parado"}
+          titulo="Impressão das comandas"
+          estado={impressao.naoImpressos > 0 ? "parado" : impressao.ultima ? "ok" : "desligado"}
           detalhe={
-            comanda.length === 0
-              ? "Nenhum computador pareado."
-              : `${comanda[0].printerName ?? "impressora padrão do Windows"} · ${
-                  maisRecente ? `visto ${formatWhen(maisRecente)}` : "pareado, mas nunca deu sinal"
-                }`
+            impressao.naoImpressos > 0
+              ? `${impressao.naoImpressos} ${impressao.naoImpressos === 1 ? "pedido entrou e não saiu" : "pedidos entraram e não saíram"} no papel.`
+              : impressao.ultima
+                ? `Última via: pedido #${impressao.ultimoNumero} · ${formatWhen(impressao.ultima)}`
+                : "Nenhuma comanda impressa ainda."
           }
         />
 
