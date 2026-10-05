@@ -105,19 +105,30 @@ export function openStatusLabel(openMode: OpenMode, hours: OpeningHourData[], no
  * Sem horário cadastrado, ou aberto manualmente num dia marcado como
  * fechado, não há fechamento a que se agarrar: aí vale o limite de
  * segurança, porque um modo sem fim seria exatamente o que se quer evitar.
+ *
+ * E o fim ganha uma folga depois do fechamento, porque restaurante não
+ * fecha no minuto do cadastro: o Papaléguas marca 00:00 e segue atendendo
+ * com "Abrir agora". Sem a folga, quem ligasse o só-retirada às 23:50 veria
+ * a entrega voltar às 00:05 com a loja cheia e sem entregador.
+ *
+ * A folga não vaza para o dia seguinte: quem abre às 18:00 pega um modo que
+ * expirou dezesseis horas antes.
  */
 const LIMITE_SEM_HORARIO_H = 8;
+const FOLGA_APOS_FECHAR_H = 2;
 
 export function fimDoTurno(hours: OpeningHourData[], now = new Date()) {
   const { weekday, minutes } = localClock(now);
   const limite = new Date(now.getTime() + LIMITE_SEM_HORARIO_H * 60 * 60 * 1000);
+
+  const folga = FOLGA_APOS_FECHAR_H * 60 * 60 * 1000;
 
   // madrugada: quem manda é o turno de ontem, que ainda não fechou
   const ontem = hours.find((h) => h.weekday === (weekday + 6) % 7);
   if (ontem && !ontem.closed) {
     const abre = toMinutes(ontem.opensAt);
     const fecha = toMinutes(ontem.closesAt);
-    if (fecha <= abre && minutes < fecha) return new Date(now.getTime() + (fecha - minutes) * 60 * 1000);
+    if (fecha <= abre && minutes < fecha) return new Date(now.getTime() + (fecha - minutes) * 60 * 1000 + folga);
   }
 
   const hoje = hours.find((h) => h.weekday === weekday);
@@ -126,7 +137,7 @@ export function fimDoTurno(hours: OpeningHourData[], now = new Date()) {
     const fecha = toMinutes(hoje.closesAt);
     // o turno que cruza a meia-noite fecha amanhã, não hoje
     const faltam = fecha > abre ? fecha - minutes : fecha + 24 * 60 - minutes;
-    if (faltam > 0) return new Date(now.getTime() + faltam * 60 * 1000);
+    if (faltam > 0) return new Date(now.getTime() + faltam * 60 * 1000 + folga);
   }
 
   return limite;
