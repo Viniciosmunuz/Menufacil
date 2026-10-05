@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { buttonClasses } from "@/components/ui/button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
+import { Gaveta } from "@/components/ui/gaveta";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { RestaurantStatus } from "@/generated/prisma/enums";
 import { appUrl } from "@/lib/site";
@@ -40,14 +41,24 @@ export function StatusCard({
 }) {
   const base = `/painel/${restaurantId}`;
 
+  // No ar, o link vira gaveta.
+  //
+  // Ele é o que mais importa na primeira semana, quando o dono ainda está
+  // divulgando -- e depois disso é um bloco grande ocupando a melhor parte
+  // da tela para uma coisa que já foi feita. Quem abre o painel às 20h
+  // quer ver os pedidos esperando, não o endereço que já mandou no grupo.
+  //
+  // Fechada, a gaveta ainda diz as duas coisas que valem: está no ar, e
+  // qual é o endereço. Copiar continua a um toque.
   if (status === "ACTIVE") {
     const url = `${appUrl()}/restaurante/${slug}`;
     return (
-      <div className="flex flex-col gap-3 rounded-card border border-success/30 bg-success/10 px-5 py-4">
-        <p className="flex items-center gap-2 font-bold text-success">
-          <CircleCheck className="size-5" aria-hidden="true" />
-          Seu restaurante está no ar e recebendo pedidos.
-        </p>
+      <Gaveta
+        titulo="Seu restaurante está no ar"
+        resumo={url.replace(/^https?:\/\//, "")}
+        icone={<CircleCheck className="text-success" />}
+        className="border-success/30"
+      >
         <div className="flex flex-wrap items-center gap-2">
           <span className="min-w-0 flex-1 basis-60 truncate rounded-control border border-line bg-bg/60 px-3 py-2 font-mono text-sm">
             {url.replace(/^https?:\/\//, "")}
@@ -59,7 +70,7 @@ export function StatusCard({
           </Link>
         </div>
         <p className="text-sm text-muted">Mande este link aos seus clientes: quem entra por ele vê só o seu restaurante.</p>
-      </div>
+      </Gaveta>
     );
   }
 

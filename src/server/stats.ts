@@ -1,8 +1,11 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import type { PaymentMethod } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
+import { OPEN_ORDER_STATUSES } from "@/lib/labels";
+import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 
 // Números das telas de visão geral.
 //
@@ -78,4 +81,87 @@ export async function hojeContraOntem(escopo: Prisma.OrderWhereInput = {}): Prom
 export function variacao(hoje: number, ontem: number) {
   if (ontem === 0) return null;
   return Math.round(((hoje - ontem) / ontem) * 100);
+}
+
+export type FilaDeEspera = {
+  quantos: number;
+  /** o que espera há mais tempo, com os minutos já contados */
+  maisAntigo: { number: number; minutos: number } | null;
+};
+
+/**
+ * Os pedidos parados esperando alguém no balcão, e há quanto tempo.
+ *
+ * Os minutos são contados aqui e não na tela porque ler o relógio durante
+ * o desenho de um componente é impuro -- e porque é a mesma razão de
+ * `hojeContraOntem` viver neste arquivo: hora é dado, e dado se busca antes
+ * de desenhar.
+ *
+ * O pedido do 100% Delivery que parou na tela do Pix fica de fora, pelo
+ * mesmo motivo de sempre: carrinho abandonado não é fila.
+ */
+export async function filaDeEspera(escopo: Prisma.OrderWhereInput = {}): Promise<FilaDeEspera> {
+  const where = { ...escopo, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID };
+  const [quantos, maisAntigo] = await Promise.all([
+    db.order.count({ where }),
+    db.order.findFirst({ where, orderBy: { createdAt: "asc" }, select: { number: true, createdAt: true } }),
+  ]);
+
+  return {
+    quantos,
+    maisAntigo: maisAntigo
+      ? { number: maisAntigo.number, minutos: Math.max(0, Math.floor((Date.now() - maisAntigo.createdAt.getTime()) / 60000)) }
+      : null,
+  };
+}
+
+export type LinhaDoFechamento = {
+  method: PaymentMethod;
+  /** onde o dinheiro está: já na conta, em mãos, ou ainda por confirmar */
+  onde: "na-conta" | "em-maos" | "a-confirmar";
+  pedidos: number;
+  centavos: number;
+};
+
+export type Fechamento = { linhas: LinhaDoFechamento[]; totalCentavos: number; totalPedidos: number };
+
+/**
+ * O caixa do dia, separado por onde o dinheiro está.
+ *
+ * "Vendido hoje" é um número só, e no fim da noite ele não fecha nada: no
+ * 100% Delivery o Pix já caiu na conta do Mercado Pago, o dinheiro voltou
+ * na mão do entregador e o cartão passou na maquininha. São três lugares
+ * diferentes, e quem vai conferir precisa saber quanto tem em cada um.
+ *
+ * Pedido cancelado não entra, e o que ainda espera o Pix também não --
+ * ninguém fecha caixa com venda que talvez não aconteça.
+ */
+export async function fechamentoDoDia(escopo: Prisma.OrderWhereInput = {}): Promise<Fechamento> {
+  const pedidos = await db.order.findMany({
+    // os dois status num `notIn` só: espalhar VALE aqui e pôr outro `status`
+    // ao lado apagaria o primeiro, e o cancelado voltaria para a conta do
+    // caixa sem ninguém perceber
+    where: { ...escopo, status: { notIn: ["CANCELED", "AWAITING_PAYMENT"] }, createdAt: { gte: startOfToday() } },
+    select: { totalCents: true, paymentMethod: true, payment: { select: { status: true } } },
+  });
+
+  const porChave = new Map<string, LinhaDoFechamento>();
+  for (const p of pedidos) {
+    // o Pix só está na conta quando alguém confirmou: o Mercado Pago no
+    // 100% Delivery, ou o próprio restaurante no fluxo do WhatsApp
+    const onde: LinhaDoFechamento["onde"] =
+      p.paymentMethod === "PIX" ? (p.payment?.status === "CONFIRMED" ? "na-conta" : "a-confirmar") : "em-maos";
+    const chave = `${p.paymentMethod}:${onde}`;
+    const linha = porChave.get(chave) ?? { method: p.paymentMethod, onde, pedidos: 0, centavos: 0 };
+    linha.pedidos += 1;
+    linha.centavos += p.totalCents;
+    porChave.set(chave, linha);
+  }
+
+  const linhas = [...porChave.values()].sort((a, b) => b.centavos - a.centavos);
+  return {
+    linhas,
+    totalCentavos: linhas.reduce((s, l) => s + l.centavos, 0),
+    totalPedidos: linhas.reduce((s, l) => s + l.pedidos, 0),
+  };
 }

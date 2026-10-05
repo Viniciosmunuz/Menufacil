@@ -1,21 +1,24 @@
-import { CheckCircle2, ChevronRight, Clock, PackageX, ReceiptText, TrendingUp, Wallet } from "lucide-react";
+import { ChevronRight, PackageX, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { StatCard } from "@/components/panel/stat-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { db } from "@/lib/db";
 import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
-import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
-import { EXCLUDE_UNPAID } from "@/lib/order-flow";
+import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { hojeContraOntem, semanaDePedidos, variacao } from "@/server/stats";
+import { fechamentoDoDia, filaDeEspera, hojeContraOntem, semanaDePedidos } from "@/server/stats";
 
+import { toggleProduct } from "./cardapio/actions";
+import { DiaCard } from "./dia-card";
+import { EsperandoCard } from "./esperando-card";
+import { FechamentoCard } from "./fechamento-card";
 import { OpenNowCard } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
@@ -36,18 +39,16 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const hoje = startOfToday();
   const todayWhere = { ...escopo, createdAt: { gte: hoje } };
 
-  const [dia, semana, inProgress, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
+  const [dia, semana, fila, fechamento, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
     semanaDePedidos(escopo),
-    // "em andamento" é trabalho esperando alguém, então o pedido do 100%
-    // Delivery que parou na tela do Pix fica de fora: carrinho abandonado
-    // não é fila, e somado dia após dia viraria um número que ninguém
-    // consegue zerar. Ele continua aparecendo na lista de Pedidos, onde dá
-    // para olhar e cancelar.
-    db.order.count({ where: { ...escopo, status: { in: OPEN_ORDER_STATUSES }, ...EXCLUDE_UNPAID } }),
+    filaDeEspera(escopo),
+    fechamentoDoDia(escopo),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
-    // o esquecimento mais comum do balcão: marcar esgotado e nunca religar
-    db.product.count({ where: { ...escopo, available: false } }),
+    // o esquecimento mais comum do balcão: marcar esgotado e nunca religar.
+    // Os nomes vêm junto: "1 produto esgotado" obrigava a ir até o cardápio
+    // só para descobrir qual era.
+    db.product.findMany({ where: { ...escopo, available: false }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 4 }),
     // os campeões do mês, não de sempre: é o mês que diz o que comprar amanhã
     db.orderItem.groupBy({
       by: ["productName"],
@@ -64,7 +65,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   ]);
 
   const base = `/painel/${restaurant.id}`;
-  const ticket = dia.hoje > 0 ? Math.round(dia.centavosHoje / dia.hoje) : 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -92,44 +92,60 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         today={todayLabel(details.openingHours)}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Pedidos hoje"
-          value={dia.hoje}
-          icon={<ReceiptText />}
-          href={`${base}/pedidos?ver=todos`}
-          variacao={variacao(dia.hoje, dia.ontem)}
-          hint={`Ontem, até agora: ${dia.ontem}`}
-        />
-        <StatCard label="Esperando você" value={inProgress} icon={<Clock />} href={`${base}/pedidos`} hint="Pedidos em andamento" />
-        <StatCard label="Concluídos hoje" value={completedToday} icon={<CheckCircle2 />} href={`${base}/pedidos?ver=concluidos`} />
-        <StatCard
-          label="Vendido hoje"
-          value={formatCents(dia.centavosHoje)}
-          icon={<Wallet />}
-          variacao={variacao(dia.centavosHoje, dia.centavosOntem)}
-          hint={ticket > 0 ? `Ticket médio: ${formatCents(ticket)}` : `Ontem: ${formatCents(dia.centavosOntem)}`}
-        />
-      </div>
+      {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
+      <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
+
+      <DiaCard
+        href={`${base}/pedidos?ver=todos`}
+        pedidos={dia.hoje}
+        pedidosOntem={dia.ontem}
+        centavos={dia.centavosHoje}
+        centavosOntem={dia.centavosOntem}
+        concluidos={completedToday}
+      />
+
+      <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
 
       <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
 
-      {esgotados > 0 && (
+      {/* Esgotado com nome e botão: dizer "1 produto esgotado" obrigava a ir
+          até o cardápio e procurar qual era, para uma coisa de um segundo.
+          Com um só, religar acontece aqui mesmo. */}
+      {esgotados.length > 0 && (
         <Card className="flex flex-wrap items-center gap-4 border-warning/40">
           <span className="grid size-11 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
             <PackageX className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-extrabold">
-              {esgotados} produto{esgotados === 1 ? "" : "s"} esgotado{esgotados === 1 ? "" : "s"}
+              {esgotados.length === 1 ? (
+                <>
+                  <span>{esgotados[0].name}</span> <span className="font-semibold text-muted">está esgotado</span>
+                </>
+              ) : (
+                `${esgotados.length} produtos esgotados`
+              )}
             </p>
-            <p className="text-sm text-muted">
-              {esgotados === 1 ? "Ele não aparece" : "Eles não aparecem"} para o cliente. Chegou mercadoria? É só religar no cardápio.
+            <p className="truncate text-sm text-muted">
+              {esgotados.length === 1
+                ? "Não aparece para o cliente. Chegou mercadoria?"
+                : `${esgotados.map((p) => p.name).join(", ")} — não aparecem para o cliente.`}
             </p>
           </div>
-          <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
-            Ver cardápio
-          </Link>
+          {esgotados.length === 1 ? (
+            <form action={toggleProduct}>
+              <input type="hidden" name="restaurantId" value={restaurant.id} />
+              <input type="hidden" name="id" value={esgotados[0].id} />
+              <input type="hidden" name="field" value="available" />
+              <SubmitButton size="sm" variant="secondary" pendingText="Religando...">
+                Religar
+              </SubmitButton>
+            </form>
+          ) : (
+            <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
+              Ver cardápio
+            </Link>
+          )}
         </Card>
       )}
 
