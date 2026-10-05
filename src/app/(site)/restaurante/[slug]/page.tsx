@@ -13,6 +13,7 @@ import { BackButton, ShareButton } from "@/components/site/restaurant-actions";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import { soRetirada } from "@/lib/opening-hours";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
 import { getPublicRestaurant } from "@/server/public/restaurants";
@@ -87,6 +88,9 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
     .flatMap((c) =>
       c.products.map((p) => ({ id: p.id, name: p.name, priceCents: p.promoPriceCents ?? p.priceCents, available: p.available })),
     );
+  // entrega pausada agora: o cliente precisa saber antes de montar o
+  // carrinho, não só no checkout, senão escolhe tudo contando com entrega
+  const entregaPausada = soRetirada(r.pickupOnlyUntil);
   const canOrder = open && !isPreview;
   const closedMessage = isPreview
     ? "Prévia: o restaurante ainda não está no ar."
@@ -152,12 +156,20 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
 
               <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
                 {time && <Chip icon={Clock}>{time}</Chip>}
-                {r.deliveryEnabled && (
+                {r.deliveryEnabled && !entregaPausada && (
                   <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
                 )}
                 {r.pickupEnabled && <Chip icon={ShoppingBag}>Retirada</Chip>}
                 {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}
               </div>
+
+              {/* junto do aberto/fechado, que é onde o cliente olha para
+                  saber se dá para pedir agora */}
+              {entregaPausada && open && !isPreview && (
+                <p className="mt-4 rounded-card border border-warning/40 bg-warning/10 px-4 py-3 text-sm font-semibold text-warning">
+                  No momento só estamos aceitando pedidos para retirada no balcão.
+                </p>
+              )}
 
               <details className="group mt-4 rounded-card border border-line bg-surface">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">

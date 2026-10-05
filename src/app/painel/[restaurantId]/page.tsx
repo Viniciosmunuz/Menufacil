@@ -10,7 +10,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { db } from "@/lib/db";
 import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
-import { isOpenNow, todayLabel } from "@/lib/opening-hours";
+import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { fechamentoDoDia, filaDeEspera, hojeContraOntem, semanaDePedidos } from "@/server/stats";
@@ -60,7 +60,12 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
     activationChecklist(restaurant.id),
     db.restaurant.findUniqueOrThrow({
       where: { id: restaurant.id },
-      select: { openMode: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
+      select: {
+        openMode: true,
+        deliveryEnabled: true,
+        pickupOnlyUntil: true,
+        openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+      },
     }),
   ]);
 
@@ -90,6 +95,8 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         open={isOpenNow(details.openMode, details.openingHours)}
         openMode={details.openMode}
         today={todayLabel(details.openingHours)}
+        entregaAtiva={details.deliveryEnabled}
+        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
       {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}

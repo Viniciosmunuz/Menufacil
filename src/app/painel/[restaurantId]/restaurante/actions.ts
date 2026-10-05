@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { OpenMode } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
-import { TIME_PATTERN } from "@/lib/opening-hours";
+import { TIME_PATTERN, fimDoTurno, soRetirada } from "@/lib/opening-hours";
 import { isPixKeyType, normalizePixKey } from "@/lib/pix";
 import {
   checkbox,
@@ -204,6 +204,29 @@ export async function setOpenMode(formData: FormData) {
   if (!OPEN_MODES.includes(openMode)) return;
   await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { openMode } });
   await panelAudit(acc, "restaurant.open_mode", { openMode });
+  refresh();
+}
+
+/**
+ * Pausa e despausa a entrega, sem mexer na decisão permanente de fazê-la.
+ *
+ * O balcão liga isto quando o entregador sumiu ou a cozinha não dá conta --
+ * situação de meia hora, não de configuração. Por isso não é um liga/desliga
+ * guardado: grava-se ATÉ QUANDO vale, e o fim é o fechamento daquela noite.
+ * Assim o modo se apaga sozinho e ninguém passa o dia seguinte sem entregar
+ * por ter esquecido ligado.
+ */
+export async function alternarSoRetirada(formData: FormData) {
+  const acc = await access(formData);
+  const restaurant = await db.restaurant.findUniqueOrThrow({
+    where: { id: acc.restaurant.id },
+    select: { pickupOnlyUntil: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
+  });
+
+  // já ligado volta ao normal na hora; desligado vale até o fim do turno
+  const ate = soRetirada(restaurant.pickupOnlyUntil) ? null : fimDoTurno(restaurant.openingHours);
+  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { pickupOnlyUntil: ate } });
+  await panelAudit(acc, "restaurant.so_retirada", { ligado: ate !== null, ate: ate?.toISOString() ?? null });
   refresh();
 }
 

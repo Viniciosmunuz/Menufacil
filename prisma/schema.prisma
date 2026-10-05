@@ -166,10 +166,21 @@ model Restaurant {
   openMode OpenMode @default(AUTO)
 
   // entrega e retirada
-  deliveryEnabled  Boolean @default(true)
-  pickupEnabled    Boolean @default(true)
-  deliveryFeeCents Int     @default(0)
-  minOrderCents    Int     @default(0)
+  deliveryEnabled  Boolean   @default(true)
+  pickupEnabled    Boolean   @default(true)
+  /// "so retirada" temporario: ate quando a entrega esta pausada.
+  ///
+  /// E um instante, e nao um liga/desliga, de proposito -- o modo nasce com
+  /// hora para acabar (o fechamento daquela noite) e se apaga sozinho. Um
+  /// booleano ficaria ligado ate alguem lembrar, e ninguem olha esse botao
+  /// na manha seguinte: o restaurante passaria o dia sem entregar sem saber
+  /// por que. Nulo, ou no passado, quer dizer entrega normal.
+  ///
+  /// Nao se confunde com deliveryEnabled, que e a decisao permanente de
+  /// fazer ou nao entrega.
+  pickupOnlyUntil  DateTime?
+  deliveryFeeCents Int       @default(0)
+  minOrderCents    Int       @default(0)
   deliveryTimeMin  Int? // minutos
   deliveryTimeMax  Int?
 

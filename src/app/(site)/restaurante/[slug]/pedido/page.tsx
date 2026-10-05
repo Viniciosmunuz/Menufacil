@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
+import { soRetirada } from "@/lib/opening-hours";
 import { formatPixKey } from "@/lib/pix";
 import { prontoParaCobrar } from "@/server/pagamentos/conta";
 import { getPublicRestaurant } from "@/server/public/restaurants";
@@ -39,6 +40,7 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           name: r.name,
           deliveryEnabled: r.deliveryEnabled,
           pickupEnabled: r.pickupEnabled,
+          soRetirada: soRetirada(r.pickupOnlyUntil),
           deliveryFeeCents: r.deliveryFeeCents,
           minOrderCents: r.minOrderCents,
           deliveryTime: deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax),

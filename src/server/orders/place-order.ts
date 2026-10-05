@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
-import { isOpenNow } from "@/lib/opening-hours";
+import { isOpenNow, soRetirada } from "@/lib/opening-hours";
 import { acceptsAddons, addonProblems, addonsPrice, addonsText, MAX_POR_ADDON, type Addon } from "@/lib/addons";
 import { optionsPrice, optionsText, selectionProblems } from "@/lib/options";
 import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor } from "@/lib/pizza";
@@ -152,6 +152,12 @@ export async function placeOrder(params: {
   }
   const type = input.type as OrderType;
   if (type === "DELIVERY" && !restaurant.deliveryEnabled) throw new OrderError("Este restaurante não faz entrega.", "type");
+  // Entrega pausada agora. A tela já esconde o botão, mas quem estava com o
+  // checkout aberto quando o balcão pausou ainda tem o formulário antigo na
+  // mão -- e esse pedido entraria para entregar com ninguém para entregar.
+  if (type === "DELIVERY" && soRetirada(restaurant.pickupOnlyUntil)) {
+    throw new OrderError("O restaurante pausou as entregas por enquanto e está só com retirada no balcão.", "type");
+  }
   if (type === "PICKUP" && !restaurant.pickupEnabled) throw new OrderError("Este restaurante não tem retirada no local.", "type");
   const method = input.paymentMethod;
   // o recurso é liberado pelo admin e ligado pelo dono: as duas coisas

@@ -27,6 +27,11 @@ type RestaurantInfo = {
   name: string;
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
+  /**
+   * Entrega pausada pelo balcão agora (faltou entregador, cozinha cheia).
+   * Diferente de deliveryEnabled, que é a decisão permanente de entregar.
+   */
+  soRetirada: boolean;
   deliveryFeeCents: number;
   minOrderCents: number;
   deliveryTime: string | null;
@@ -87,8 +92,12 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
     }
   })();
   const [state, action] = useActionState<CheckoutState, FormData>(submitOrder, {});
+  // com a entrega pausada o pedido nasce como retirada: deixar DELIVERY
+  // marcado numa tela que nem mostra entrega daria um erro no envio sem a
+  // pessoa entender o que escolheu de errado
+  const entregaDisponivel = restaurant.deliveryEnabled && !restaurant.soRetirada;
   const [type, setType] = useState<"DELIVERY" | "PICKUP">(
-    (state.values?.type as "DELIVERY" | "PICKUP" | undefined) ?? (restaurant.deliveryEnabled ? "DELIVERY" : "PICKUP"),
+    (state.values?.type as "DELIVERY" | "PICKUP" | undefined) ?? (entregaDisponivel ? "DELIVERY" : "PICKUP"),
   );
   const [remember, setRemember] = useState(true);
   const available = (["PIX", "CARD", "CASH"] as PaymentMethod[]).filter((m) =>
@@ -294,16 +303,32 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
 
             <Card className="flex flex-col gap-5">
               <h2 className="text-lg font-extrabold">Como você quer receber?</h2>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Entrega ou retirada">
-                {option(
-                  "DELIVERY",
-                  restaurant.deliveryEnabled,
-                  "Entrega",
-                  `${restaurant.deliveryFeeCents > 0 ? formatCents(restaurant.deliveryFeeCents) : "Grátis"}${restaurant.deliveryTime ? ` · ${restaurant.deliveryTime}` : ""}`,
-                  Bike,
-                )}
+              {/* Com a entrega pausada a opção some em vez de aparecer
+                  apagada: um botão desabilitado faz a pessoa tentar clicar e
+                  achar que o site travou. O que fica é a retirada, com a
+                  explicação logo abaixo -- porque sumir sem dizer por quê é
+                  pior do que não ter a opção. */}
+              <div
+                className={cn("grid grid-cols-1 gap-2", !restaurant.soRetirada && "sm:grid-cols-2")}
+                role="radiogroup"
+                aria-label="Entrega ou retirada"
+              >
+                {!restaurant.soRetirada &&
+                  option(
+                    "DELIVERY",
+                    restaurant.deliveryEnabled,
+                    "Entrega",
+                    `${restaurant.deliveryFeeCents > 0 ? formatCents(restaurant.deliveryFeeCents) : "Grátis"}${restaurant.deliveryTime ? ` · ${restaurant.deliveryTime}` : ""}`,
+                    Bike,
+                  )}
                 {option("PICKUP", restaurant.pickupEnabled, "Retirada no local", restaurant.address ?? "Busque no restaurante.", Store)}
               </div>
+              {restaurant.soRetirada && (
+                <p className="rounded-control border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+                  <strong className="font-bold">No momento o restaurante está só com retirada no balcão.</strong> As entregas voltam mais
+                  tarde — seu pedido fica pronto para você buscar.
+                </p>
+              )}
               {err.type && <p className="text-sm text-danger">{err.type}</p>}
 
               {type === "DELIVERY" && (

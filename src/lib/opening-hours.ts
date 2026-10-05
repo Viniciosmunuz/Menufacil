@@ -89,3 +89,49 @@ export function openStatusLabel(openMode: OpenMode, hours: OpeningHourData[], no
   }
   return { open, detail: null };
 }
+
+/**
+ * Quando a noite de hoje acaba, para o "só retirada" saber até onde vale.
+ *
+ * O modo não é um liga/desliga: ele nasce com hora para morrer, e essa hora
+ * é o fechamento do turno em andamento. Com isso ninguém precisa lembrar de
+ * desligar -- e, mais importante, ninguém passa o dia seguinte sem entregar
+ * por ter esquecido ligado.
+ *
+ * O turno que cruza a meia-noite (18:00 às 00:00, que é o do Papaléguas)
+ * fecha no dia seguinte, e é por isso que a conta não é simplesmente "hoje
+ * às closesAt".
+ *
+ * Sem horário cadastrado, ou aberto manualmente num dia marcado como
+ * fechado, não há fechamento a que se agarrar: aí vale o limite de
+ * segurança, porque um modo sem fim seria exatamente o que se quer evitar.
+ */
+const LIMITE_SEM_HORARIO_H = 8;
+
+export function fimDoTurno(hours: OpeningHourData[], now = new Date()) {
+  const { weekday, minutes } = localClock(now);
+  const limite = new Date(now.getTime() + LIMITE_SEM_HORARIO_H * 60 * 60 * 1000);
+
+  // madrugada: quem manda é o turno de ontem, que ainda não fechou
+  const ontem = hours.find((h) => h.weekday === (weekday + 6) % 7);
+  if (ontem && !ontem.closed) {
+    const abre = toMinutes(ontem.opensAt);
+    const fecha = toMinutes(ontem.closesAt);
+    if (fecha <= abre && minutes < fecha) return new Date(now.getTime() + (fecha - minutes) * 60 * 1000);
+  }
+
+  const hoje = hours.find((h) => h.weekday === weekday);
+  if (hoje && !hoje.closed) {
+    const abre = toMinutes(hoje.opensAt);
+    const fecha = toMinutes(hoje.closesAt);
+    // o turno que cruza a meia-noite fecha amanhã, não hoje
+    const faltam = fecha > abre ? fecha - minutes : fecha + 24 * 60 - minutes;
+    if (faltam > 0) return new Date(now.getTime() + faltam * 60 * 1000);
+  }
+
+  return limite;
+}
+
+/** a entrega está pausada agora? */
+export const soRetirada = (pickupOnlyUntil: Date | null | undefined, now = new Date()) =>
+  !!pickupOnlyUntil && pickupOnlyUntil.getTime() > now.getTime();
