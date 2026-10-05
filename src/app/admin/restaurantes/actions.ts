@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { PLANOS, competenciaLabel } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { FEATURES, type FeatureKey } from "@/lib/features";
 import { STATUS_TRANSITIONS, isStatusTransition } from "@/lib/restaurant-status";
@@ -393,4 +394,80 @@ export async function deleteRestaurant(_prev: AdminFormState, formData: FormData
   if (!resultado.ok) return { error: resultado.error };
 
   redirect(`/admin/restaurantes?excluido=${encodeURIComponent(resultado.name)}`);
+}
+
+// ---- Cobrança -----------------------------------------------------------
+
+const planoSchema = z.object({
+  restaurantId: z.string().min(1),
+  plan: z.enum(["", "ESSENCIAL", "FULL_DELIVERY"]),
+  billingDay: z.string().trim(),
+});
+
+/** define (ou tira) o plano e o dia de vencimento do restaurante */
+export async function setPlano(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const parsed = planoSchema.safeParse(formObject(formData));
+  if (!parsed.success) return { error: "Dados inválidos." };
+  const { restaurantId, plan, billingDay } = parsed.data;
+
+  // sem plano, o dia some junto: um vencimento órfão só serviria para a
+  // tela cobrar um valor que ninguém definiu
+  if (!plan) {
+    await db.restaurant.update({ where: { id: restaurantId }, data: { plan: null, billingDay: null }, select: { id: true } });
+    await audit({ actorUserId: admin.id, restaurantId, action: "admin.plano", details: { plano: null } });
+    refresh();
+    return { ok: true, message: "Restaurante sem plano. Ele sai da cobrança." };
+  }
+
+  const dia = Number(billingDay);
+  if (!Number.isInteger(dia) || dia < 1 || dia > 31) {
+    return { fieldErrors: { billingDay: "O dia do vencimento vai de 1 a 31." } };
+  }
+
+  await db.restaurant.update({ where: { id: restaurantId }, data: { plan, billingDay: dia }, select: { id: true } });
+  await audit({ actorUserId: admin.id, restaurantId, action: "admin.plano", details: { plano: plan, dia } });
+  refresh();
+  return { ok: true, message: `Plano ${PLANOS[plan].nome}, vencendo todo dia ${dia}.` };
+}
+
+/**
+ * Registra uma mensalidade recebida.
+ *
+ * O MenuFácil não cobra ninguém: quem cobra é o Vinicios, por fora. Isto é
+ * só a anotação de que entrou, para a próxima pergunta ("pagou setembro?")
+ * ter uma resposta com data em vez de memória.
+ */
+export async function registrarMensalidade(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const competencia = String(formData.get("competencia") ?? "");
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  if (!/^\d{4}-\d{2}$/.test(competencia)) return { error: "Mês inválido." };
+
+  const restaurant = await db.restaurant.findUnique({ where: { id: restaurantId }, select: { plan: true } });
+  if (!restaurant?.plan) return { error: "Defina o plano antes de registrar um pagamento." };
+
+  // o valor é gravado junto: mudar o preço amanhã não pode reescrever o que
+  // foi recebido ontem
+  const amountCents = PLANOS[restaurant.plan].centavos;
+  await db.restaurantPayment.upsert({
+    where: { restaurantId_competencia: { restaurantId, competencia } },
+    create: { restaurantId, competencia, amountCents, note },
+    update: { amountCents, note, paidAt: new Date() },
+  });
+  await audit({ actorUserId: admin.id, restaurantId, action: "admin.mensalidade", details: { competencia, centavos: amountCents } });
+  refresh();
+  return { ok: true, message: `${competenciaLabel(competencia)} marcado como pago.` };
+}
+
+/** desfaz o registro, para quando a anotação foi engano */
+export async function desfazerMensalidade(formData: FormData) {
+  const admin = await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const competencia = String(formData.get("competencia") ?? "");
+  await db.restaurantPayment.deleteMany({ where: { restaurantId, competencia } });
+  await audit({ actorUserId: admin.id, restaurantId, action: "admin.mensalidade_desfeita", details: { competencia } });
+  refresh();
 }

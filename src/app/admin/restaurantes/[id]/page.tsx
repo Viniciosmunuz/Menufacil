@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { describeAudit } from "@/lib/audit-labels";
+import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
@@ -16,8 +17,11 @@ import { requireAdmin } from "@/server/auth/dal";
 import { resumoDoFullDelivery } from "@/server/pagamentos/relatorio";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { resumoDaExclusao } from "@/server/restaurants/delete";
+import { saudeDoRestaurante } from "@/server/restaurants/saude";
 
 import { BasicsForm } from "./basics-form";
+import { CobrancaPanel } from "./cobranca-panel";
+import { SaudePanel } from "./saude-panel";
 import { DeletePanel } from "./delete-panel";
 import { FeaturesPanel } from "./features-panel";
 import { FullDeliveryPanel } from "./full-delivery-panel";
@@ -53,7 +57,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
   });
   if (!restaurant) notFound();
 
-  const [checklist, categories, logs, resumoExclusao, fullDelivery] = await Promise.all([
+  const [checklist, categories, logs, resumoExclusao, fullDelivery, saude, mensalidades] = await Promise.all([
     activationChecklist(id),
     db.platformCategory.findMany({
       where: { OR: [{ active: true }, { restaurants: { some: { id } } }] },
@@ -68,7 +72,17 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
     }),
     resumoDaExclusao(id),
     resumoDoFullDelivery(id),
+    saudeDoRestaurante(id),
+    db.restaurantPayment.findMany({
+      where: { restaurantId: id },
+      orderBy: { competencia: "desc" },
+      take: 6,
+      select: { competencia: true, amountCents: true, paidAt: true, note: true },
+    }),
   ]);
+
+  const doMes = mensalidades.find((m) => m.competencia === competenciaDe()) ?? null;
+  const situacao = situacaoDaCobranca(restaurant, doMes);
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +119,16 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-6">
+          <CobrancaPanel
+            restaurantId={restaurant.id}
+            plan={restaurant.plan}
+            billingDay={restaurant.billingDay}
+            situacao={situacao}
+            historico={mensalidades}
+          />
+
+          <SaudePanel saude={saude} cemPorCento={restaurant.fullDeliveryEnabled} />
+
           <StatusPanel
             restaurantId={restaurant.id}
             status={restaurant.status}

@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { formatCents, formatWhen, startOfDaysAgo } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
+import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
 import { hojeContraOntem, semanaDePedidos, variacao } from "@/server/stats";
 
 export const metadata: Metadata = { title: "Visão geral" };
@@ -23,7 +24,7 @@ export default async function AdminOverviewPage() {
   await requireAdmin();
   const mes = startOfDaysAgo(30);
 
-  const [dia, semana, active, inSetup, openLeads, attention, ranking, ativos] = await Promise.all([
+  const [dia, semana, active, inSetup, openLeads, attention, ranking, ativos, comPlano] = await Promise.all([
     hojeContraOntem(),
     semanaDePedidos(),
     db.restaurant.count({ where: { status: "ACTIVE" } }),
@@ -55,7 +56,24 @@ export default async function AdminOverviewPage() {
         orders: { where: { status: { not: "CANCELED" } }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
       },
     }),
+    // a cobrança do mês, de todo mundo que tem plano
+    db.restaurant.findMany({
+      where: { plan: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        plan: true,
+        billingDay: true,
+        payments: { where: { competencia: competenciaDe() }, take: 1, select: { amountCents: true, paidAt: true } },
+      },
+    }),
   ]);
+
+  // quem já pagou, quem ainda vai vencer e quem passou do dia
+  const cobrancas = comPlano.map((r) => ({ ...r, situacao: situacaoDaCobranca(r, r.payments[0] ?? null) }));
+  const emAtraso = cobrancas.filter((c) => c.situacao.estado === "vencido");
+  const recebido = cobrancas.reduce((s, c) => (c.situacao.estado === "pago" ? s + c.situacao.centavos : s), 0);
+  const previsto = receitaPrevista(comPlano);
 
   // o ranking pode trazer restaurante que já saiu do ar: os nomes vêm dos
   // ids que ele devolveu, não só dos que estão ativos agora
@@ -106,7 +124,49 @@ export default async function AdminOverviewPage() {
           href="/admin/contatos"
           hint="Restaurantes interessados"
         />
+        <StatCard
+          label="Mensalidades do mês"
+          value={formatCents(recebido)}
+          icon={<Wallet />}
+          href="/admin/restaurantes"
+          hint={previsto > recebido ? `de ${formatCents(previsto)} previstos` : "tudo recebido"}
+        />
       </div>
+
+      {/* Atraso aparece e para por aí: nada aqui tira restaurante do ar.
+          Derrubar quem está vendendo por um erro de cadastro custaria muito
+          mais do que o atraso. */}
+      {emAtraso.length > 0 && (
+        <section>
+          <SectionTitle description="Passaram do dia de vencimento. O restaurante continua no ar.">
+            Mensalidade em atraso
+          </SectionTitle>
+          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {emAtraso.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/admin/restaurantes/${c.id}`}
+                  className="flex items-center justify-between gap-3 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 hover:border-danger/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold">{c.name}</span>
+                    <span className="block text-sm text-danger">
+                      {c.situacao.estado === "vencido" &&
+                        `venceu dia ${c.situacao.vence} · ${c.situacao.diasEmAtraso} ${c.situacao.diasEmAtraso === 1 ? "dia" : "dias"}`}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="font-extrabold tabular-nums">
+                      {c.situacao.estado === "vencido" && formatCents(c.situacao.centavos)}
+                    </span>
+                    <ChevronRight className="size-4 text-muted" aria-hidden="true" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Pedidos de toda a plataforma, dia a dia." />
 
