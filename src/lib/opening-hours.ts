@@ -135,3 +135,33 @@ export function fimDoTurno(hours: OpeningHourData[], now = new Date()) {
 /** a entrega está pausada agora? */
 export const soRetirada = (pickupOnlyUntil: Date | null | undefined, now = new Date()) =>
   !!pickupOnlyUntil && pickupOnlyUntil.getTime() > now.getTime();
+
+/**
+ * Quando começou a noite que está acabando (ou a que está em curso).
+ *
+ * O fechamento de caixa não cabe no dia do calendário. O Papaléguas abre às
+ * 18:00 e fecha às 00:00; quem for conferir o caixa às 00:30 -- que é a hora
+ * em que se confere caixa -- cairia num "hoje" recém-nascido e veria zero,
+ * com a noite inteira do outro lado da meia-noite.
+ *
+ * Então a conta é por turno: do momento em que abriu até agora. Fora do
+ * horário, vale o último turno encerrado, que é o que a pessoa tem em mãos
+ * para conferir.
+ */
+export function inicioDaOperacao(hours: OpeningHourData[], now = new Date()) {
+  const { weekday, minutes } = localClock(now);
+  const inicioDeHoje = new Date(now.getTime() - minutes * 60 * 1000);
+
+  // olha o turno de hoje e o de ontem; o mais recente que já começou ganha
+  const candidatos: Date[] = [];
+  for (const diasAtras of [0, 1]) {
+    const dia = hours.find((h) => h.weekday === (weekday - diasAtras + 7) % 7);
+    if (!dia || dia.closed) continue;
+    const abriu = new Date(inicioDeHoje.getTime() + (toMinutes(dia.opensAt) - diasAtras * 24 * 60) * 60 * 1000);
+    if (abriu.getTime() <= now.getTime()) candidatos.push(abriu);
+  }
+
+  // sem horário cadastrado, ou nenhum turno começado ainda: o dia corrente
+  if (candidatos.length === 0) return inicioDeHoje;
+  return new Date(Math.max(...candidatos.map((d) => d.getTime())));
+}

@@ -39,11 +39,10 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const hoje = startOfToday();
   const todayWhere = { ...escopo, createdAt: { gte: hoje } };
 
-  const [dia, semana, fila, fechamento, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
+  const [dia, semana, fila, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
     semanaDePedidos(escopo),
     filaDeEspera(escopo),
-    fechamentoDoDia(escopo),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
     // o esquecimento mais comum do balcão: marcar esgotado e nunca religar.
     // Os nomes vêm junto: "1 produto esgotado" obrigava a ir até o cardápio
@@ -69,6 +68,9 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
     }),
   ]);
 
+  // o caixa é do turno, e o turno vem do horário: por isso depois do
+  // Promise.all, que é quando os horários chegam
+  const fechamento = await fechamentoDoDia(escopo, details.openingHours);
   const base = `/painel/${restaurant.id}`;
 
   return (

@@ -4,6 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
+import { inicioDaOperacao } from "@/lib/opening-hours";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 
@@ -126,7 +127,7 @@ export type LinhaDoFechamento = {
 export type Fechamento = { linhas: LinhaDoFechamento[]; totalCentavos: number; totalPedidos: number };
 
 /**
- * O caixa do dia, separado por onde o dinheiro está.
+ * O caixa da noite, separado por onde o dinheiro está.
  *
  * "Vendido hoje" é um número só, e no fim da noite ele não fecha nada: no
  * 100% Delivery o Pix já caiu na conta do Mercado Pago, o dinheiro voltou
@@ -135,13 +136,21 @@ export type Fechamento = { linhas: LinhaDoFechamento[]; totalCentavos: number; t
  *
  * Pedido cancelado não entra, e o que ainda espera o Pix também não --
  * ninguém fecha caixa com venda que talvez não aconteça.
+ *
+ * A janela é o turno, não o dia do calendário. O Papaléguas fecha às 00:00,
+ * e quem for conferir o caixa às 00:30 -- que é a hora em que se confere
+ * caixa -- cairia num "hoje" recém-nascido, com a noite inteira do outro
+ * lado da meia-noite e a tela mostrando zero.
  */
-export async function fechamentoDoDia(escopo: Prisma.OrderWhereInput = {}): Promise<Fechamento> {
+export async function fechamentoDoDia(
+  escopo: Prisma.OrderWhereInput = {},
+  horarios: { weekday: number; opensAt: string; closesAt: string; closed: boolean }[] = [],
+): Promise<Fechamento> {
   const pedidos = await db.order.findMany({
     // os dois status num `notIn` só: espalhar VALE aqui e pôr outro `status`
     // ao lado apagaria o primeiro, e o cancelado voltaria para a conta do
     // caixa sem ninguém perceber
-    where: { ...escopo, status: { notIn: ["CANCELED", "AWAITING_PAYMENT"] }, createdAt: { gte: startOfToday() } },
+    where: { ...escopo, status: { notIn: ["CANCELED", "AWAITING_PAYMENT"] }, createdAt: { gte: inicioDaOperacao(horarios) } },
     select: { totalCents: true, paymentMethod: true, payment: { select: { status: true } } },
   });
 
