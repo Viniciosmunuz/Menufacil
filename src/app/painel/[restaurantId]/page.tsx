@@ -13,9 +13,10 @@ import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, filaDeEspera, hojeContraOntem, semanaDePedidos } from "@/server/stats";
+import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDePedidos } from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
+import { ClientesCard } from "./clientes-card";
 import { DiaCard } from "./dia-card";
 import { EsperandoCard } from "./esperando-card";
 import { FechamentoCard } from "./fechamento-card";
@@ -39,10 +40,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const hoje = startOfToday();
   const todayWhere = { ...escopo, createdAt: { gte: hoje } };
 
-  const [dia, semana, fila, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
+  const [dia, semana, fila, clientes, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
     semanaDePedidos(escopo),
     filaDeEspera(escopo),
+    quemMaisPede(restaurant.id, startOfDaysAgo(30)),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
     // o esquecimento mais comum do balcão: marcar esgotado e nunca religar.
     // Os nomes vêm junto: "1 produto esgotado" obrigava a ir até o cardápio
@@ -157,6 +159,8 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           )}
         </Card>
       )}
+
+      <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
 
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-2">

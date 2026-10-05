@@ -174,3 +174,79 @@ export async function fechamentoDoDia(
     totalPedidos: linhas.reduce((s, l) => s + l.pedidos, 0),
   };
 }
+
+export type ClienteDoMes = {
+  id: string;
+  nome: string;
+  whatsapp: string;
+  pedidos: number;
+  centavos: number;
+  /** já pedia antes deste mês: é o que separa fregês de cliente novo */
+  jaPediaAntes: boolean;
+};
+
+export type QuemMaisPede = {
+  clientes: ClienteDoMes[];
+  /** quantos pedidos do mês vieram de quem já tinha pedido antes */
+  deQuemVoltou: number;
+  totalDePedidos: number;
+};
+
+/**
+ * Quem sustenta o restaurante neste mês.
+ *
+ * O painel sabia dizer quais PRATOS mais saem, e não sabia dizer quem os
+ * compra. Para um restaurante de bairro essa é a informação que fica de
+ * fora de todo sistema e que o dono tem na cabeça pela metade: quem é o
+ * cliente de toda semana, quem sumiu, quem acabou de chegar.
+ *
+ * Vem com o WhatsApp porque é assim que esse dono fala com o cliente dele --
+ * agradecer, avisar de uma promoção, perguntar por que sumiu. O número já
+ * estava em cada pedido; o que faltava era juntar.
+ *
+ * "Já pedia antes" é olhado fora da janela do mês: quem fez o primeiro
+ * pedido ontem é cliente novo, e isso é uma notícia diferente de um cliente
+ * de um ano que voltou.
+ */
+export async function quemMaisPede(restaurantId: string, desde: Date, limite = 5): Promise<QuemMaisPede> {
+  const doMes = await db.order.groupBy({
+    by: ["customerId"],
+    where: { restaurantId, ...VALE, createdAt: { gte: desde } },
+    _count: { _all: true },
+    _sum: { totalCents: true },
+    orderBy: { _count: { customerId: "desc" } },
+  });
+  if (doMes.length === 0) return { clientes: [], deQuemVoltou: 0, totalDePedidos: 0 };
+
+  const ids = doMes.map((c) => c.customerId);
+  const [pessoas, antigos] = await Promise.all([
+    db.customer.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, whatsapp: true } }),
+    // quem já havia pedido NESTE restaurante antes da janela
+    db.order.groupBy({
+      by: ["customerId"],
+      where: { restaurantId, ...VALE, customerId: { in: ids }, createdAt: { lt: desde } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const nomes = new Map(pessoas.map((p) => [p.id, p]));
+  const jaPedia = new Set(antigos.map((a) => a.customerId));
+
+  const clientes = doMes
+    .map((c) => ({
+      id: c.customerId,
+      nome: nomes.get(c.customerId)?.name ?? "Cliente",
+      whatsapp: nomes.get(c.customerId)?.whatsapp ?? "",
+      pedidos: c._count._all,
+      centavos: c._sum.totalCents ?? 0,
+      jaPediaAntes: jaPedia.has(c.customerId),
+    }))
+    // empate em pedidos desempata por quanto gastou
+    .sort((a, b) => b.pedidos - a.pedidos || b.centavos - a.centavos);
+
+  return {
+    clientes: clientes.slice(0, limite),
+    deQuemVoltou: clientes.reduce((s, c) => (c.jaPediaAntes ? s + c.pedidos : s), 0),
+    totalDePedidos: clientes.reduce((s, c) => s + c.pedidos, 0),
+  };
+}
