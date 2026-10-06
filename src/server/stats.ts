@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
-import type { OrderStatus, PaymentMethod } from "@/generated/prisma/enums";
+import type { OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
 import { inicioDaOperacao } from "@/lib/opening-hours";
@@ -253,7 +253,8 @@ export async function quemMaisPede(restaurantId: string, desde: Date, limite = 5
 
 export type Etapa = { minutos: number; pedidos: number };
 
-export type TemposDoAtendimento = {
+/** as quatro medidas de um conjunto de pedidos */
+export type Etapas = {
   /** do pedido pago até alguém no balcão aceitar */
   aceite: Etapa | null;
   /** do aceite até o prato sair (ou ficar pronto, na retirada) */
@@ -262,12 +263,43 @@ export type TemposDoAtendimento = {
   entrega: Etapa | null;
   /** o caminho inteiro, do pedido pago à entrega */
   total: Etapa | null;
-  /** quantos pedidos concluídos entraram na conta */
+};
+
+export type TemposDoAtendimento = Etapas & {
+  /**
+   * As mesmas medidas nos pedidos ANTERIORES a estes -- a régua.
+   *
+   * Vinte e seis minutos de cozinha não dizem nada sozinhos: é bom numa
+   * casa e péssimo em outra. Dizem tudo ao lado do que aquela casa costuma
+   * fazer, e é só aí que o número vira motivo para ir até a cozinha no meio
+   * do serviço. Vem null quando não há passado suficiente para comparar.
+   */
+  normal: Etapas | null;
+  /** quantos pedidos concluídos entraram na conta de agora */
   base: number;
 };
 
 /** menos que isto é anedota, não média: dois pedidos ruins viram "o normal" */
 const MINIMO_PARA_MEDIR = 5;
+
+/**
+ * Quantos pedidos contam como "agora".
+ *
+ * Quinze, e não o mês inteiro, porque a pergunta que importa no serviço
+ * não é "quanto a cozinha leva em média" -- é "quanto ela está levando
+ * agora". A média de trinta dias dilui a noite ruim de hoje em trinta
+ * noites boas e devolve um número que não serve para decidir nada.
+ */
+const QUANTOS_PEDIDOS = 15;
+
+/**
+ * Teto da consulta.
+ *
+ * Os quinze primeiros são o agora; o resto, até aqui, é a régua. Sem teto a
+ * consulta cresceria junto com o restaurante e a tela de Início ficaria
+ * mais lenta a cada mês que passasse.
+ */
+const TETO_DA_REGUA = 200;
 
 /**
  * A mediana, não a média.
@@ -289,34 +321,14 @@ const etapa = (valores: number[]): Etapa | null => {
   return m === null ? null : { minutos: m, pedidos: valores.length };
 };
 
-/**
- * Quanto tempo o atendimento leva, etapa por etapa.
- *
- * Cada mudança de status já era carimbada com a hora desde sempre, e nunca
- * ninguém leu. Era o dado mais valioso parado no banco: ele responde a
- * pergunta que o cliente faz em todo pedido -- "quanto tempo demora?" --,
- * que até hoje o restaurante respondia por chute.
- *
- * O relógio começa quando o pedido está pago, não quando nasce. No 100%
- * Delivery o pedido existe desde que o cliente confirmou, e os minutos que
- * ele leva para abrir o Pix e pagar não são demora do restaurante: contar
- * dali diria que o balcão demora 12 minutos para aceitar quando ele aceitou
- * em 1.
- *
- * Na retirada a cozinha termina em "pronto para retirar", e não há etapa de
- * entrega -- o que vem depois é o cliente decidir vir buscar, que não é
- * tempo do restaurante.
- */
-export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, desde: Date): Promise<TemposDoAtendimento> {
-  const pedidos = await db.order.findMany({
-    where: { ...escopo, status: "COMPLETED", createdAt: { gte: desde } },
-    select: {
-      createdAt: true,
-      type: true,
-      statusEvents: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
-    },
-  });
+type PedidoMedido = {
+  createdAt: Date;
+  type: OrderType;
+  statusEvents: { status: OrderStatus; createdAt: Date }[];
+};
 
+/** as quatro medidas de uma lista de pedidos já concluídos */
+function medir(pedidos: PedidoMedido[]): Etapas {
   const aceites: number[] = [];
   const cozinhas: number[] = [];
   const entregas: number[] = [];
@@ -350,11 +362,83 @@ export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, d
     guarda(totais, entre(pago, fim));
   }
 
-  return {
-    aceite: etapa(aceites),
-    cozinha: etapa(cozinhas),
-    entrega: etapa(entregas),
-    total: etapa(totais),
-    base: pedidos.length,
-  };
+  return { aceite: etapa(aceites), cozinha: etapa(cozinhas), entrega: etapa(entregas), total: etapa(totais) };
+}
+
+/**
+ * Quanto tempo o atendimento está levando, etapa por etapa, e como isso se
+ * compara com o que esta casa costuma fazer.
+ *
+ * Cada mudança de status já era carimbada com a hora desde sempre, e nunca
+ * ninguém leu. Era o dado mais valioso parado no banco: ele responde a
+ * pergunta que o cliente faz em todo pedido -- "quanto tempo demora?" --,
+ * que até hoje o restaurante respondia por chute.
+ *
+ * O relógio começa quando o pedido está pago, não quando nasce. No 100%
+ * Delivery o pedido existe desde que o cliente confirmou, e os minutos que
+ * ele leva para abrir o Pix e pagar não são demora do restaurante: contar
+ * dali diria que o balcão demora 12 minutos para aceitar quando ele aceitou
+ * em 1.
+ *
+ * Na retirada a cozinha termina em "pronto para retirar", e não há etapa de
+ * entrega -- o que vem depois é o cliente decidir vir buscar, que não é
+ * tempo do restaurante.
+ */
+export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, desde: Date): Promise<TemposDoAtendimento> {
+  const pedidos = await db.order.findMany({
+    where: { ...escopo, status: "COMPLETED", createdAt: { gte: desde } },
+    orderBy: { createdAt: "desc" },
+    take: TETO_DA_REGUA,
+    select: {
+      createdAt: true,
+      type: true,
+      statusEvents: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  const agora = pedidos.slice(0, QUANTOS_PEDIDOS);
+  // a régua é o que veio ANTES destes, e não o conjunto todo: comparar os
+  // quinze últimos com uma média que já os contém esconde metade da
+  // diferença que se quer enxergar
+  const antes = pedidos.slice(QUANTOS_PEDIDOS);
+  const regua = antes.length >= MINIMO_PARA_MEDIR ? medir(antes) : null;
+
+  return { ...medir(agora), normal: regua, base: agora.length };
+}
+
+export type TemposDeUmRestaurante = {
+  id: string;
+  nome: string;
+  tempos: TemposDoAtendimento;
+};
+
+/**
+ * O tempo de atendimento de cada restaurante, separado.
+ *
+ * Juntar todos num número só respondia "quanto a plataforma demora", que
+ * não é pergunta de ninguém: quando um restaurante começa a demorar para
+ * aceitar, a média da plataforma mal se mexe e o telefonema que precisava
+ * acontecer não acontece. Separado, dá para olhar a lista e ver em qual
+ * casa ligar.
+ *
+ * Fica de fora quem não tem pedido concluído suficiente para medir: uma
+ * linha de travessões não diz nada e só faz a lista parecer quebrada.
+ */
+export async function temposPorRestaurante(desde: Date): Promise<TemposDeUmRestaurante[]> {
+  const restaurantes = await db.restaurant.findMany({
+    where: { status: "ACTIVE" },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  const medidos = await Promise.all(
+    restaurantes.map(async (r) => ({ id: r.id, nome: r.name, tempos: await temposDoAtendimento({ restaurantId: r.id }, desde) })),
+  );
+
+  return (
+    medidos
+      .filter((m) => m.tempos.total !== null)
+      // o mais demorado primeiro: é a linha que pede uma ligação
+      .sort((a, b) => (b.tempos.total?.minutos ?? 0) - (a.tempos.total?.minutos ?? 0))
+  );
 }
