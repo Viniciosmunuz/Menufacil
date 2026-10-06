@@ -365,3 +365,34 @@ export async function moveProduct(formData: FormData) {
   );
   if (moved) refresh();
 }
+
+/**
+ * Liga e desliga uma opção (um sabor de suco, um tamanho) sem abrir a
+ * edição do produto.
+ *
+ * Marcar que o cupuaçu acabou custava seis passos e um "Salvar": achar o
+ * produto, entrar na edição, rolar até o grupo, desmarcar, salvar, voltar.
+ * No meio do movimento isso não acontece -- e o cliente continua pedindo um
+ * suco que não existe.
+ *
+ * O caminho do restaurante vem do grupo e do produto, e não do formulário:
+ * um id de opção de outro restaurante simplesmente não encontra nada.
+ */
+export async function toggleProductOption(formData: FormData) {
+  const acc = await access(formData);
+  const option = await db.productOption.findFirst({
+    where: { id: idOf(formData), group: { product: { restaurantId: acc.restaurant.id } } },
+    select: { id: true, name: true, available: true, group: { select: { name: true, product: { select: { name: true } } } } },
+  });
+  if (!option) return;
+
+  const value = !option.available;
+  await db.productOption.update({ where: { id: option.id }, data: { available: value } });
+  await panelAudit(acc, "menu.option_available", {
+    product: option.group.product.name,
+    group: option.group.name,
+    name: option.name,
+    value,
+  });
+  refresh();
+}

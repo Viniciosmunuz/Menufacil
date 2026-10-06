@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import { formatCents } from "@/lib/format";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
-import { moveProduct, toggleProduct } from "./actions";
+import { moveProduct, toggleProduct, toggleProductOption } from "./actions";
 import { BuscaDeProdutos, type ProdutoDaBusca } from "./busca";
 import { CategoryCard, NewCategoryButton } from "./category-card";
 
@@ -122,6 +122,15 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
           promoPriceCents: true,
           available: true,
           featured: true,
+          // sabores e tamanhos: a busca liga e desliga cada um sem abrir a
+          // edição do produto
+          optionGroups: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              name: true,
+              options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, available: true } },
+            },
+          },
         },
       },
     },
@@ -140,6 +149,11 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
       priceCents: p.priceCents,
       promoPriceCents: p.promoPriceCents,
       available: p.available,
+      // grupo de uma opção só não é escolha: "Tamanho: Único" não serve
+      // para nada na tela e só rouba espaço dos sabores que importam
+      grupos: p.optionGroups
+        .filter((g) => g.options.length > 1)
+        .map((g) => ({ nome: g.name, opcoes: g.options.map((o) => ({ id: o.id, nome: o.name, available: o.available })) })),
     })),
   );
 
@@ -152,17 +166,25 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
             ? `${productCount} produto${productCount === 1 ? "" : "s"} em ${categories.length} categoria${categories.length === 1 ? "" : "s"}. Toque no interruptor quando algo acabar.`
             : "Monte o cardápio em dois passos: crie as categorias e depois os produtos."
         }
-        actions={
-          firstCategory ? (
-            <Link href={`/painel/${restaurant.id}/cardapio/produto/novo?categoria=${firstCategory.id}`} className={buttonClasses("primary")}>
-              <Plus className="size-4" aria-hidden="true" />
-              Novo produto
-            </Link>
-          ) : undefined
-        }
       />
 
-      <div>
+      {/* Os dois botões dividem uma linha no celular.
+
+          Empilhados, eles empurravam a busca e a primeira categoria para
+          fora da tela: quem abria o cardápio via dois botões de criar coisa
+          antes de ver o cardápio. Lado a lado, sobra tela para o que a
+          pessoa veio fazer. O de criar categoria vira um formulário de
+          largura inteira quando abre, e aí ele toma a linha sozinho. */}
+      <div className="flex flex-wrap items-start gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+        {firstCategory && (
+          <Link
+            href={`/painel/${restaurant.id}/cardapio/produto/novo?categoria=${firstCategory.id}`}
+            className={buttonClasses("primary")}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Novo produto
+          </Link>
+        )}
         <NewCategoryButton restaurantId={restaurant.id} highlight={categories.length === 0} />
       </div>
 
@@ -172,7 +194,12 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
           <strong>Bebidas</strong>. Depois é só adicionar os produtos dentro dela.
         </EmptyState>
       ) : (
-        <BuscaDeProdutos produtos={paraBusca} restaurantId={restaurant.id} toggleAction={toggleProduct}>
+        <BuscaDeProdutos
+          produtos={paraBusca}
+          restaurantId={restaurant.id}
+          toggleAction={toggleProduct}
+          toggleOptionAction={toggleProductOption}
+        >
           <div className="flex flex-col gap-5">
             {categories.map((c, i) => (
               <CategoryCard

@@ -168,38 +168,67 @@ export function OptionGroupsEditor({ initial, error }: { initial: EditableGroup[
 
           <ul className="flex flex-col gap-2">
             {g.options.map((o, oi) => (
-              <li key={oi} className="flex flex-wrap items-center gap-2">
-                <Input
-                  value={o.name}
-                  onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
-                  maxLength={60}
-                  placeholder="Opção (ex.: Grande)"
-                  aria-label="Nome da opção"
-                  className="h-11 min-w-0 flex-1 basis-40"
-                />
-                <MoneyInput
-                  value={o.price}
-                  onChange={(e) => updateOption(gi, oi, { price: e.target.value })}
-                  aria-label="Valor a mais"
-                  className="h-11 w-32"
-                />
-                <label className={cn("flex items-center gap-1.5 text-sm font-semibold", !o.available && "text-faint")}>
-                  <input
-                    type="checkbox"
-                    checked={o.available}
-                    onChange={(e) => updateOption(gi, oi, { available: e.target.checked })}
-                    className="size-4 accent-brand"
+              // Cada campo numa caixa de largura própria.
+              //
+              // Os campos nascem com largura cheia, e uma classe de largura
+              // posta por cima não vence isso: as três partes da opção
+              // caíam uma embaixo da outra, e o "Tem" acabava longe do nome
+              // a que pertencia. Com oito sabores de suco, eram vinte e
+              // quatro linhas para rolar.
+              <li key={oi} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    value={o.name}
+                    onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
+                    maxLength={60}
+                    placeholder="Opção (ex.: Grande)"
+                    aria-label="Nome da opção"
+                    className={cn("h-11", !o.available && "text-faint")}
                   />
-                  Tem
-                </label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeOption(gi, oi)}
-                  aria-label={`Remover a opção ${o.name || oi + 1}`}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-28 shrink-0">
+                    <MoneyInput
+                      value={o.price}
+                      onChange={(e) => updateOption(gi, oi, { price: e.target.value })}
+                      aria-label="Valor a mais"
+                      className="h-11"
+                    />
+                  </div>
+
+                  {/* O mesmo interruptor que liga e desliga o prato no
+                      cardápio, e o texto muda junto: desmarcado, o antigo
+                      continuava escrito "Tem" -- a tela afirmava "Tem"
+                      justamente quando não tinha. */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={o.available}
+                    onClick={() => updateOption(gi, oi, { available: !o.available })}
+                    aria-label={`${o.name || "Esta opção"}: ${o.available ? "tem" : "acabou"}`}
+                    className={cn("inline-flex h-11 shrink-0 items-center gap-2 rounded-control text-sm font-bold", o.available ? "text-ink" : "text-faint")}
+                  >
+                    <span
+                      className={cn(
+                        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors",
+                        o.available ? "border-success/60 bg-success/80" : "border-line-strong bg-surface-3",
+                      )}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={cn(
+                          "absolute size-5 rounded-full bg-ink shadow transition-transform",
+                          o.available ? "translate-x-[1.45rem]" : "translate-x-0.5",
+                        )}
+                      />
+                    </span>
+                    <span className="w-16 text-left">{o.available ? "Tem" : "Acabou"}</span>
+                  </button>
+
+                  <Button variant="ghost" size="sm" onClick={() => removeOption(gi, oi)} aria-label={`Remover a opção ${o.name || oi + 1}`}>
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

@@ -9,11 +9,13 @@ import { SwitchButton } from "@/components/ui/switch-button";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 
-// Achar um prato entre cento e vinte, no meio do movimento.
+import { PilulaDaOpcao } from "./pilula-da-opcao";
+
+// Achar um prato entre cento e trinta, no meio do movimento.
 //
 // A tela do cardápio sempre listou tudo, categoria por categoria. Num
-// cardápio de cinco pratos isso basta; no Papaléguas são cento e vinte e
-// dois, e a hora em que alguém precisa achar um é justamente a pior: acabou
+// cardápio de cinco pratos isso basta; no Papaléguas são cento e trinta e
+// oito, e a hora em que alguém precisa achar um é justamente a pior: acabou
 // a lasanha às oito da noite e a cozinha está gritando. Rolar a lista
 // inteira procurando com o olho custa mais tempo do que o balcão tem.
 //
@@ -24,6 +26,9 @@ import { formatCents } from "@/lib/format";
 // Enquanto há texto, as categorias somem e ficam só os resultados, numa
 // lista reta. Quem está procurando um prato não quer saber de seções.
 
+export type OpcaoDaBusca = { id: string; nome: string; available: boolean };
+export type GrupoDaBusca = { nome: string; opcoes: OpcaoDaBusca[] };
+
 export type ProdutoDaBusca = {
   id: string;
   name: string;
@@ -31,13 +36,15 @@ export type ProdutoDaBusca = {
   priceCents: number;
   promoPriceCents: number | null;
   available: boolean;
+  /** sabores, tamanhos: o que acaba sem o prato inteiro acabar */
+  grupos: GrupoDaBusca[];
 };
 
 /** sem acento e sem caixa: ninguém digita "lasanha à bolonhesa" com crase */
 const limpo = (s: string) =>
   s
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
 
@@ -45,11 +52,14 @@ export function BuscaDeProdutos({
   produtos,
   restaurantId,
   toggleAction,
+  toggleOptionAction,
   children,
 }: {
   produtos: ProdutoDaBusca[];
   restaurantId: string;
   toggleAction: (formData: FormData) => Promise<void>;
+  /** liga e desliga um sabor sem abrir a edição do produto */
+  toggleOptionAction: (formData: FormData) => Promise<void>;
   children: ReactNode;
 }) {
   const [texto, setTexto] = useState("");
@@ -58,6 +68,7 @@ export function BuscaDeProdutos({
   // todas as palavras digitadas, em qualquer ordem: "frango lasanha" acha
   // "Lasanha de frango", que é como a pessoa lembra do prato
   const palavras = limpo(texto).split(/\s+/).filter(Boolean);
+
   // A seção entra na busca, mas o nome vem primeiro.
   //
   // Procurar "isca" num cardápio com a seção "Iscas e petiscos" trazia
@@ -109,36 +120,62 @@ export function BuscaDeProdutos({
           </p>
           <ul className="divide-y divide-line">
             {achados.map((p) => (
-              <li
-                key={p.id}
-                className={cn("flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5", !p.available && "bg-bg/40")}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block truncate font-bold", !p.available && "text-muted")}>{p.name}</span>
-                  {/* a seção vem junto porque nome de prato se repete entre
-                      elas: "Isca de frango" existe na entrada e no prato feito */}
-                  <span className="block truncate text-sm text-muted">
-                    {p.categoria} · {formatCents(p.promoPriceCents ?? p.priceCents)}
+              <li key={p.id} className={cn("flex flex-col gap-3 px-4 py-3 sm:px-5", !p.available && "bg-bg/40")}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block truncate font-bold", !p.available && "text-muted")}>{p.name}</span>
+                    {/* a seção vem junto porque nome de prato se repete entre
+                        elas: "Carne de sol" existe em Grelhados e em Iscas */}
+                    <span className="block truncate text-sm text-muted">
+                      {p.categoria} · {formatCents(p.promoPriceCents ?? p.priceCents)}
+                    </span>
                   </span>
-                </span>
 
-                <div className="flex items-center justify-between gap-2 sm:shrink-0">
-                <form action={toggleAction} className="shrink-0">
-                  <input type="hidden" name="restaurantId" value={restaurantId} />
-                  <input type="hidden" name="id" value={p.id} />
-                  <input type="hidden" name="field" value="available" />
-                  <SwitchButton checked={p.available} label={p.available ? "Disponível" : "Esgotado"} className="w-36" />
-                </form>
+                  <div className="flex items-center justify-between gap-2 sm:shrink-0">
+                    <form action={toggleAction} className="shrink-0">
+                      <input type="hidden" name="restaurantId" value={restaurantId} />
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="field" value="available" />
+                      <SwitchButton checked={p.available} label={p.available ? "Disponível" : "Esgotado"} className="w-36" />
+                    </form>
 
-                <Link
-                  href={`/painel/${restaurantId}/cardapio/produto/${p.id}`}
-                  className={buttonClasses("secondary", "sm", "shrink-0")}
-                  aria-label={`Editar ${p.name}`}
-                >
-                  <Pencil className="size-4" aria-hidden="true" />
-                  <span className="hidden md:inline">Editar</span>
-                </Link>
+                    <Link
+                      href={`/painel/${restaurantId}/cardapio/produto/${p.id}`}
+                      className={buttonClasses("secondary", "sm", "shrink-0")}
+                      aria-label={`Editar ${p.name}`}
+                    >
+                      <Pencil className="size-4" aria-hidden="true" />
+                      <span className="hidden md:inline">Editar</span>
+                    </Link>
+                  </div>
                 </div>
+
+                {/* Os sabores aqui mesmo, sem entrar na edição.
+
+                    Acabar um sabor de suco é mais comum do que acabar o
+                    suco: o cliente pede cupuaçu, não "suco". Marcar isso
+                    custava seis passos e um "Salvar" dentro da edição do
+                    produto, e no meio do movimento ninguém faz seis passos
+                    -- então o sabor continuava à venda a noite inteira.
+                    Aqui cada toque salva na hora, como o interruptor do
+                    prato logo acima.
+
+                    Com o prato esgotado as opções somem: discutir qual
+                    sabor tem, num suco que não está à venda, é conversa
+                    para depois. */}
+                {p.available &&
+                  p.grupos.map((g) => (
+                    <div key={g.nome} className="flex flex-wrap items-center gap-1.5">
+                      <span className="mr-1 text-xs font-bold tracking-wide text-faint uppercase">{g.nome}</span>
+                      {g.opcoes.map((o) => (
+                        <form key={o.id} action={toggleOptionAction}>
+                          <input type="hidden" name="restaurantId" value={restaurantId} />
+                          <input type="hidden" name="id" value={o.id} />
+                          <PilulaDaOpcao nome={o.nome} tem={o.available} />
+                        </form>
+                      ))}
+                    </div>
+                  ))}
               </li>
             ))}
           </ul>
