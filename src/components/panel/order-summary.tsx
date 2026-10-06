@@ -191,9 +191,11 @@ export function OrderDrawer({
         <span className="mt-0.5 shrink-0 font-extrabold tabular-nums text-muted sm:mt-0 sm:w-14">#{o.number}</span>
 
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-          <span className="min-w-0 truncate font-bold sm:flex-1">{o.customerName}</span>
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
-            <Badge tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</Badge>
+          <span className="min-w-0 truncate font-bold sm:max-w-56 sm:shrink-0">{o.customerName}</span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-1 sm:flex-nowrap">
+            <Badge tone={orderStatusTone[o.status]} className="shrink-0">
+              {orderStatusLabel[o.status]}
+            </Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
             {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
             {/* no 100% Delivery o cliente fala por aqui, não pelo WhatsApp:
