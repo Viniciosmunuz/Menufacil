@@ -96,6 +96,10 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         viaAdmin={viaAdmin}
       />
 
+      {/* Aberto ou fechado fica na largura inteira, acima das colunas.
+          É o interruptor do negócio: enquanto ele estiver errado, nenhum
+          outro número desta tela acontece. Espremido em meia tela viraria
+          mais um cartão entre nove. */}
       <OpenNowCard
         restaurantId={restaurant.id}
         open={isOpenNow(details.openMode, details.openingHours)}
@@ -105,106 +109,119 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
-      {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
-      <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
+      {/* Daqui para baixo, duas colunas na tela grande: à esquerda o que
+          pede decisão agora, à direita o que conta história.
 
-      <DiaCard
-        href={`${base}/pedidos?ver=todos`}
-        pedidos={dia.hoje}
-        pedidosOntem={dia.ontem}
-        centavos={dia.centavosHoje}
-        centavosOntem={dia.centavosOntem}
-        concluidos={completedToday}
-      />
+          Os cartões foram nascendo um embaixo do outro e já são nove: num
+          monitor eles ocupavam uma coluna estreita no meio, com as laterais
+          vazias, e ver o caixa do dia custava rolar a tela inteira. No
+          celular continua uma coluna só -- lá empilhar é o certo. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
+          <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
 
-      <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
-
-      <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
-
-      <TemposCard tempos={tempos} />
-
-      {/* Esgotado com nome e botão: dizer "1 produto esgotado" obrigava a ir
-          até o cardápio e procurar qual era, para uma coisa de um segundo.
-          Com um só, religar acontece aqui mesmo. */}
-      {esgotados.length > 0 && (
-        <Card className="flex flex-wrap items-center gap-4 border-warning/40">
-          <span className="grid size-11 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
-            <PackageX className="size-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-extrabold">
+          {/* Esgotado com nome e botão: dizer "1 produto esgotado" obrigava a ir
+              até o cardápio e procurar qual era, para uma coisa de um segundo.
+              Com um só, religar acontece aqui mesmo. */}
+          {esgotados.length > 0 && (
+            <Card className="flex flex-wrap items-center gap-4 border-warning/40">
+              <span className="grid size-11 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
+                <PackageX className="size-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold">
+                  {esgotados.length === 1 ? (
+                    <>
+                      <span>{esgotados[0].name}</span> <span className="font-semibold text-muted">está esgotado</span>
+                    </>
+                  ) : (
+                    `${esgotados.length} produtos esgotados`
+                  )}
+                </p>
+                <p className="truncate text-sm text-muted">
+                  {esgotados.length === 1
+                    ? "Não aparece para o cliente. Chegou mercadoria?"
+                    : `${esgotados.map((p) => p.name).join(", ")} — não aparecem para o cliente.`}
+                </p>
+              </div>
               {esgotados.length === 1 ? (
-                <>
-                  <span>{esgotados[0].name}</span> <span className="font-semibold text-muted">está esgotado</span>
-                </>
+                <form action={toggleProduct}>
+                  <input type="hidden" name="restaurantId" value={restaurant.id} />
+                  <input type="hidden" name="id" value={esgotados[0].id} />
+                  <input type="hidden" name="field" value="available" />
+                  <SubmitButton size="sm" variant="secondary" pendingText="Religando...">
+                    Religar
+                  </SubmitButton>
+                </form>
               ) : (
-                `${esgotados.length} produtos esgotados`
+                <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
+                  Ver cardápio
+                </Link>
               )}
-            </p>
-            <p className="truncate text-sm text-muted">
-              {esgotados.length === 1
-                ? "Não aparece para o cliente. Chegou mercadoria?"
-                : `${esgotados.map((p) => p.name).join(", ")} — não aparecem para o cliente.`}
-            </p>
-          </div>
-          {esgotados.length === 1 ? (
-            <form action={toggleProduct}>
-              <input type="hidden" name="restaurantId" value={restaurant.id} />
-              <input type="hidden" name="id" value={esgotados[0].id} />
-              <input type="hidden" name="field" value="available" />
-              <SubmitButton size="sm" variant="secondary" pendingText="Religando...">
-                Religar
-              </SubmitButton>
-            </form>
-          ) : (
-            <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
-              Ver cardápio
-            </Link>
+            </Card>
           )}
-        </Card>
-      )}
 
-      <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
+          <DiaCard
+            href={`${base}/pedidos?ver=todos`}
+            pedidos={dia.hoje}
+            pedidosOntem={dia.ontem}
+            centavos={dia.centavosHoje}
+            centavosOntem={dia.centavosOntem}
+            concluidos={completedToday}
+          />
 
-      <Card>
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-extrabold">Mais pedidos no mês</h2>
-            <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
-          </div>
-          <TrendingUp className="size-5 text-faint" aria-hidden="true" />
+          <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
+
+          <TemposCard tempos={tempos} />
         </div>
-        {topProducts.length === 0 ? (
-          <p className="mt-3 text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
-        ) : (
-          <ol className="mt-4 flex flex-col divide-y divide-line">
-            {topProducts.map((p, i) => (
-              <li key={p.productName} className="flex items-center justify-between gap-3 py-3">
-                <span className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={
-                      i === 0
-                        ? "grid size-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink"
-                        : "grid size-7 shrink-0 place-items-center rounded-full bg-surface-3 text-sm text-muted"
-                    }
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 truncate font-semibold">{p.productName}</span>
-                </span>
-                <span className="shrink-0 text-right text-sm">
-                  <span className="block font-extrabold tabular-nums">{p._sum.quantity ?? 0}x</span>
-                  <span className="block text-muted tabular-nums">{formatCents(p._sum.totalCents ?? 0)}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-        <Link href={`${base}/cardapio`} className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand hover:underline">
-          Ver o cardápio
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Link>
-      </Card>
+
+        <div className="flex flex-col gap-6">
+          <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
+
+          <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
+
+          <Card>
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-extrabold">Mais pedidos no mês</h2>
+                <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
+              </div>
+              <TrendingUp className="size-5 text-faint" aria-hidden="true" />
+            </div>
+            {topProducts.length === 0 ? (
+              <p className="mt-3 text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
+            ) : (
+              <ol className="mt-4 flex flex-col divide-y divide-line">
+                {topProducts.map((p, i) => (
+                  <li key={p.productName} className="flex items-center justify-between gap-3 py-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={
+                          i === 0
+                            ? "grid size-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink"
+                            : "grid size-7 shrink-0 place-items-center rounded-full bg-surface-3 text-sm text-muted"
+                        }
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0 truncate font-semibold">{p.productName}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-sm">
+                      <span className="block font-extrabold tabular-nums">{p._sum.quantity ?? 0}x</span>
+                      <span className="block text-muted tabular-nums">{formatCents(p._sum.totalCents ?? 0)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <Link href={`${base}/cardapio`} className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand hover:underline">
+              Ver o cardápio
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </Link>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/format";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
 import { moveProduct, toggleProduct } from "./actions";
+import { BuscaDeProdutos, type ProdutoDaBusca } from "./busca";
 import { CategoryCard, NewCategoryButton } from "./category-card";
 
 export const metadata: Metadata = { title: "Cardápio" };
@@ -129,6 +130,19 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
   const productCount = categories.reduce((sum, c) => sum + c.products.length, 0);
   const firstCategory = categories[0];
 
+  // a lista reta que a busca filtra no aparelho: leve de propósito, só o
+  // que a linha do resultado mostra
+  const paraBusca: ProdutoDaBusca[] = categories.flatMap((c) =>
+    c.products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      categoria: c.name,
+      priceCents: p.priceCents,
+      promoPriceCents: p.promoPriceCents,
+      available: p.available,
+    })),
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -158,27 +172,29 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
           <strong>Bebidas</strong>. Depois é só adicionar os produtos dentro dela.
         </EmptyState>
       ) : (
-        <div className="flex flex-col gap-5">
-          {categories.map((c, i) => (
-            <CategoryCard
-              key={c.id}
-              restaurantId={restaurant.id}
-              category={{ id: c.id, name: c.name, description: c.description, active: c.active, addons: c.addons, productCount: c.products.length }}
-              first={i === 0}
-              last={i === categories.length - 1}
-            >
-              {c.products.length === 0 ? (
-                <p className="px-4 py-5 text-sm text-muted sm:px-5">Nenhum produto nesta categoria ainda.</p>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {c.products.map((p, j) => (
-                    <ProductRow key={p.id} restaurantId={restaurant.id} p={p} first={j === 0} last={j === c.products.length - 1} />
-                  ))}
-                </ul>
-              )}
-            </CategoryCard>
-          ))}
-        </div>
+        <BuscaDeProdutos produtos={paraBusca} restaurantId={restaurant.id} toggleAction={toggleProduct}>
+          <div className="flex flex-col gap-5">
+            {categories.map((c, i) => (
+              <CategoryCard
+                key={c.id}
+                restaurantId={restaurant.id}
+                category={{ id: c.id, name: c.name, description: c.description, active: c.active, addons: c.addons, productCount: c.products.length }}
+                first={i === 0}
+                last={i === categories.length - 1}
+              >
+                {c.products.length === 0 ? (
+                  <p className="px-4 py-5 text-sm text-muted sm:px-5">Nenhum produto nesta categoria ainda.</p>
+                ) : (
+                  <ul className="divide-y divide-line">
+                    {c.products.map((p, j) => (
+                      <ProductRow key={p.id} restaurantId={restaurant.id} p={p} first={j === 0} last={j === c.products.length - 1} />
+                    ))}
+                  </ul>
+                )}
+              </CategoryCard>
+            ))}
+          </div>
+        </BuscaDeProdutos>
       )}
     </div>
   );
