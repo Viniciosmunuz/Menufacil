@@ -1,11 +1,24 @@
 "use client";
 
 import { Bell, BellOff, Check, ChevronDown, Download, Printer, ReceiptText, Smartphone, Volume2 } from "lucide-react";
-import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { SubmitButton } from "@/components/ui/submit-button";
+import {
+  CHOICE_KEY,
+  SOUNDS,
+  SOUND_KEY,
+  type SoundName,
+  idList,
+  isSound,
+  playSound,
+  read,
+  remember,
+  useStored,
+  write,
+} from "@/lib/aviso-local";
 import { cn } from "@/lib/cn";
 
 import { CloudPrinterIcon } from "./cloud-printer-icon";
@@ -48,8 +61,6 @@ type Order = {
 };
 
 const MODE_KEY = "mf_impressao";
-const SOUND_KEY = "mf_som_pedido";
-const CHOICE_KEY = "mf_som_escolha";
 const PRINTED_KEY = "mf_pedidos_impressos";
 const SEEN_KEY = "mf_pedidos_vistos";
 const SINCE_KEY = "mf_impressao_desde";
@@ -57,108 +68,7 @@ const SINCE_KEY = "mf_impressao_desde";
 const HELP_KEY = "mf_impressao_ajuda";
 /** todos os ajustes ficam recolhidos: a tela de pedidos é que precisa do espaço */
 const AJUSTES_KEY = "mf_ajustes_abertos";
-const EVENT = "mf-impressao";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-
-const SOUNDS = {
-  sino: { label: "Sino", file: "/som-sino.wav" },
-  campainha: { label: "Campainha", file: "/som-campainha.wav" },
-  alerta: { label: "Alerta", file: "/som-alerta.wav" },
-} as const;
-type SoundName = keyof typeof SOUNDS;
-const isSound = (v: unknown): v is SoundName => typeof v === "string" && v in SOUNDS;
-
-const read = (key: string) => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-
-function write(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // sem armazenamento: vale só nesta visita
-  }
-  window.dispatchEvent(new Event(EVENT));
-}
-
-function subscribe(callback: () => void) {
-  window.addEventListener(EVENT, callback);
-  window.addEventListener("storage", callback); // outra aba do painel
-  return () => {
-    window.removeEventListener(EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
-}
-
-/** o que está salvo neste aparelho, sem quebrar a primeira pintura no servidor */
-function useStored(key: string) {
-  return useSyncExternalStore(
-    subscribe,
-    () => read(key),
-    () => null,
-  );
-}
-
-const idList = (raw: string | null): string[] => {
-  try {
-    const parsed = raw ? (JSON.parse(raw) as string[]) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const remember = (key: string, ids: string[], raw: string | null) => write(key, JSON.stringify([...ids, ...idList(raw)].slice(0, 200)));
-
-// um tocador só: trocar de som troca o arquivo dele
-let player: HTMLAudioElement | null = null;
-
-/**
- * Bipe de emergência, feito na hora pelo próprio navegador.
- *
- * O arquivo de som falha em mais situação do que parece: aparelho no
- * silencioso, arquivo que não carregou, navegador que ainda não deixou
- * tocar. Quando isso acontece, três apitos curtos avisam do mesmo jeito —
- * é melhor um som feio do que pedido passando batido no balcão.
- */
-function bipeDeEmergencia() {
-  try {
-    const Contexto = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Contexto) return;
-    const ctx = new Contexto();
-    const agora = ctx.currentTime;
-    for (const [i, quando] of [0, 0.22, 0.44].entries()) {
-      const osc = ctx.createOscillator();
-      const vol = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = i === 2 ? 1320 : 880;
-      vol.gain.setValueAtTime(0.0001, agora + quando);
-      vol.gain.exponentialRampToValueAtTime(0.35, agora + quando + 0.02);
-      vol.gain.exponentialRampToValueAtTime(0.0001, agora + quando + 0.18);
-      osc.connect(vol).connect(ctx.destination);
-      osc.start(agora + quando);
-      osc.stop(agora + quando + 0.2);
-    }
-    setTimeout(() => void ctx.close().catch(() => {}), 1200);
-  } catch {
-    // sem áudio neste aparelho: resta o aviso na tela
-  }
-}
-
-function playSound(name: SoundName) {
-  const file = SOUNDS[name].file;
-  if (!player || !player.src.endsWith(file)) player = new Audio(file);
-  player.currentTime = 0;
-  player.volume = 1;
-  return player.play().catch((erro) => {
-    bipeDeEmergencia();
-    throw erro;
-  });
-}
 
 /** vale a partir de agora: os pedidos que já estão na tela não saem na impressora */
 function startNow() {
@@ -188,6 +98,7 @@ export function PrintSettings({
   pairAction,
   unpairAction,
   avisos,
+  recados,
 }: {
   base: string;
   panelUrl: string;
@@ -195,6 +106,12 @@ export function PrintSettings({
   orders: Order[];
   /** bloco dos avisos no celular; some sozinho onde o aparelho não aceita */
   avisos?: ReactNode;
+  /**
+   * Avisos que dividem o canto com o de pedido novo -- hoje, os recados da
+   * conversa. Entram aqui, e não num bloco fixo próprio, porque dois
+   * blocos presos ao mesmo canto se sobrepõem.
+   */
+  recados?: ReactNode;
   acceptAction: (formData: FormData) => Promise<void>;
   /** destrava a via para o computador do balcão tirar de novo */
   reprintAction: (formData: FormData) => Promise<void>;
@@ -376,12 +293,15 @@ export function PrintSettings({
   return (
     <>
       {/* avisos sobrepostos, no canto: não empurram a tela para baixo */}
-      {pending.length > 0 && (
+      {(pending.length > 0 || recados) && (
         <div
           role="status"
           aria-live="polite"
           className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96"
         >
+          {/* o recado fica em cima do pedido: pedido novo é dinheiro parado
+              esperando um toque, recado é recado */}
+          {recados}
           {pending.slice(0, 3).map((order) => (
             <div key={order.id} className="flex flex-col gap-2 rounded-card border border-brand/60 bg-surface p-4 shadow-2xl shadow-black/50">
               <p className="flex items-center gap-2 font-extrabold text-brand">

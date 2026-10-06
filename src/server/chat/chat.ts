@@ -3,6 +3,7 @@ import "server-only";
 import { after } from "next/server";
 
 import { db } from "@/lib/db";
+import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { avisarMensagemDoCliente } from "@/server/push/avisos";
 
 // Conversa do pedido, no 100% Delivery.
@@ -281,4 +282,68 @@ export async function contarNaoLidasDoRestaurante(restaurantId: string) {
     _count: { _all: true },
   });
   return { mensagens: r._sum.restaurantUnread ?? 0, conversas: r._count._all };
+}
+
+export type RecadoEsperando = {
+  /** muda a cada mensagem nova: é o que faz o aviso subir de novo */
+  chave: string;
+  orderId: string;
+  number: number;
+  cliente: string;
+  texto: string;
+  quantas: number;
+};
+
+/** recado comprido no aviso do canto vira uma linha de reticências */
+const LIMITE_DO_TRECHO = 120;
+
+/**
+ * Os recados que ainda esperam resposta, prontos para o aviso do canto.
+ *
+ * A contagem sozinha não bastava: "3 mensagens" obriga a abrir a conversa
+ * para saber se era "estou na portaria" ou "obrigado". O texto da última
+ * mensagem vem junto porque é ele que decide se o balcão larga a frigideira
+ * agora ou daqui a pouco.
+ *
+ * Só pedido aberto: recado em pedido entregue não é tarefa de ninguém, e
+ * subiria no canto da tela atrapalhando o movimento.
+ */
+export async function recadosEsperando(restaurantId: string): Promise<RecadoEsperando[]> {
+  const conversas = await db.chatConversation.findMany({
+    where: {
+      restaurantId,
+      restaurantUnread: { gt: 0 },
+      order: { status: { in: [...OPEN_ORDER_STATUSES] } },
+    },
+    orderBy: { lastMessageAt: "desc" },
+    take: 10,
+    select: {
+      restaurantUnread: true,
+      order: { select: { id: true, number: true, customerName: true } },
+      // a última do cliente: a do restaurante não é novidade para o balcão
+      messages: {
+        where: { author: "CUSTOMER" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, body: true },
+      },
+    },
+  });
+
+  return conversas
+    .filter((c) => c.messages.length > 0)
+    .map((c) => {
+      const ultima = c.messages[0];
+      const texto = ultima.body.trim();
+      return {
+        // o id da última mensagem: enquanto for o mesmo recado, o aviso
+        // dispensado fica dispensado; chegando outro, ele sobe de novo
+        chave: ultima.id,
+        orderId: c.order.id,
+        number: c.order.number,
+        cliente: c.order.customerName,
+        texto: texto.length > LIMITE_DO_TRECHO ? texto.slice(0, LIMITE_DO_TRECHO - 1).trimEnd() + "…" : texto,
+        quantas: c.restaurantUnread,
+      };
+    });
 }

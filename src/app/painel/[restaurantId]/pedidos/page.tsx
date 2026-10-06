@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, Recei
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AvisosDeMensagem } from "@/components/panel/avisos-de-mensagem";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
@@ -20,7 +21,7 @@ import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
-import { naoLidasPorPedido } from "@/server/chat/chat";
+import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
 import { listDevices } from "@/server/print/devices";
 import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
@@ -70,7 +71,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   const statuses = FILTERS[filter].statuses;
   const where = { restaurantId: restaurant.id, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
@@ -101,6 +102,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // dinheiro de cliente parado: o balcão vive nesta aba, então o aviso
     // nasce aqui mesmo, com o caminho para resolver
     restaurant.totemEnabled ? contarPagamentosSemPedido(restaurant.id) : Promise.resolve(0),
+    // só no 100% Delivery existe conversa: nos outros o cliente fala pelo
+    // WhatsApp, e o recado nunca passa por aqui
+    restaurant.fullDeliveryEnabled ? recadosEsperando(restaurant.id) : Promise.resolve([]),
   ]);
 
   // uma consulta só para a página inteira, em vez de uma por linha
@@ -141,6 +145,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
+        recados={recados.length > 0 ? <AvisosDeMensagem mensagens={recados} base={base} /> : null}
         avisos={
           <PushAvisos
             restaurantId={restaurant.id}
