@@ -84,3 +84,14 @@ export function startOfDaysAgo(days: number, now = new Date()) {
 export function weekdayShort(date: Date) {
   return date.toLocaleDateString("pt-BR", { weekday: "short", timeZone: TIME_ZONE }).replace(".", "");
 }
+
+/**
+ * "22 min", "1h05". Minutos até a hora cheia, porque é assim que se fala de
+ * tempo de cozinha -- "uns quarenta minutos", nunca "0,7 hora".
+ */
+export function formatMinutos(minutos: number) {
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  return resto === 0 ? `${horas}h` : `${horas}h${String(resto).padStart(2, "0")}`;
+}

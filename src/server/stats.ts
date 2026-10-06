@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
-import type { PaymentMethod } from "@/generated/prisma/enums";
+import type { OrderStatus, PaymentMethod } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
 import { inicioDaOperacao } from "@/lib/opening-hours";
@@ -248,5 +248,113 @@ export async function quemMaisPede(restaurantId: string, desde: Date, limite = 5
     clientes: clientes.slice(0, limite),
     deQuemVoltou: clientes.reduce((s, c) => (c.jaPediaAntes ? s + c.pedidos : s), 0),
     totalDePedidos: clientes.reduce((s, c) => s + c.pedidos, 0),
+  };
+}
+
+export type Etapa = { minutos: number; pedidos: number };
+
+export type TemposDoAtendimento = {
+  /** do pedido pago até alguém no balcão aceitar */
+  aceite: Etapa | null;
+  /** do aceite até o prato sair (ou ficar pronto, na retirada) */
+  cozinha: Etapa | null;
+  /** do entregador sair até o cliente receber */
+  entrega: Etapa | null;
+  /** o caminho inteiro, do pedido pago à entrega */
+  total: Etapa | null;
+  /** quantos pedidos concluídos entraram na conta */
+  base: number;
+};
+
+/** menos que isto é anedota, não média: dois pedidos ruins viram "o normal" */
+const MINIMO_PARA_MEDIR = 5;
+
+/**
+ * A mediana, não a média.
+ *
+ * Um pedido esquecido aberto a noite toda não é o atendimento normal do
+ * restaurante, mas estraga qualquer média: seis pedidos de 20 minutos e um
+ * de oito horas dão "média de 1h08", que não aconteceu nenhuma vez. A
+ * mediana responde a pergunta certa -- quanto leva um pedido comum.
+ */
+function mediana(valores: number[]) {
+  if (valores.length === 0) return null;
+  const ordem = [...valores].sort((a, b) => a - b);
+  const meio = Math.floor(ordem.length / 2);
+  return ordem.length % 2 ? ordem[meio] : Math.round((ordem[meio - 1] + ordem[meio]) / 2);
+}
+
+const etapa = (valores: number[]): Etapa | null => {
+  const m = valores.length >= MINIMO_PARA_MEDIR ? mediana(valores) : null;
+  return m === null ? null : { minutos: m, pedidos: valores.length };
+};
+
+/**
+ * Quanto tempo o atendimento leva, etapa por etapa.
+ *
+ * Cada mudança de status já era carimbada com a hora desde sempre, e nunca
+ * ninguém leu. Era o dado mais valioso parado no banco: ele responde a
+ * pergunta que o cliente faz em todo pedido -- "quanto tempo demora?" --,
+ * que até hoje o restaurante respondia por chute.
+ *
+ * O relógio começa quando o pedido está pago, não quando nasce. No 100%
+ * Delivery o pedido existe desde que o cliente confirmou, e os minutos que
+ * ele leva para abrir o Pix e pagar não são demora do restaurante: contar
+ * dali diria que o balcão demora 12 minutos para aceitar quando ele aceitou
+ * em 1.
+ *
+ * Na retirada a cozinha termina em "pronto para retirar", e não há etapa de
+ * entrega -- o que vem depois é o cliente decidir vir buscar, que não é
+ * tempo do restaurante.
+ */
+export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, desde: Date): Promise<TemposDoAtendimento> {
+  const pedidos = await db.order.findMany({
+    where: { ...escopo, status: "COMPLETED", createdAt: { gte: desde } },
+    select: {
+      createdAt: true,
+      type: true,
+      statusEvents: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  const aceites: number[] = [];
+  const cozinhas: number[] = [];
+  const entregas: number[] = [];
+  const totais: number[] = [];
+
+  for (const p of pedidos) {
+    // o primeiro de cada status: reabrir um pedido não deve reescrever a
+    // hora em que ele foi aceito pela primeira vez
+    const quando = (...status: OrderStatus[]) => p.statusEvents.find((e) => status.includes(e.status))?.createdAt ?? null;
+
+    const pago = quando("PAID", "PAYMENT_SENT") ?? p.createdAt;
+    const aceito = quando("CONFIRMED", "PREPARING");
+    const saiu = p.type === "DELIVERY" ? quando("OUT_FOR_DELIVERY") : quando("READY");
+    const fim = quando("COMPLETED");
+
+    // minutos entre dois instantes, ou nada quando falta um deles ou quando
+    // a conta sai negativa -- pedido antigo pode ter evento fora de ordem
+    const entre = (de: Date | null, ate: Date | null) => {
+      if (!de || !ate) return null;
+      const min = Math.round((ate.getTime() - de.getTime()) / 60000);
+      return min >= 0 ? min : null;
+    };
+
+    const guarda = (lista: number[], valor: number | null) => {
+      if (valor !== null) lista.push(valor);
+    };
+
+    guarda(aceites, entre(pago, aceito));
+    guarda(cozinhas, entre(aceito, saiu));
+    if (p.type === "DELIVERY") guarda(entregas, entre(saiu, fim));
+    guarda(totais, entre(pago, fim));
+  }
+
+  return {
+    aceite: etapa(aceites),
+    cozinha: etapa(cozinhas),
+    entrega: etapa(entregas),
+    total: etapa(totais),
+    base: pedidos.length,
   };
 }

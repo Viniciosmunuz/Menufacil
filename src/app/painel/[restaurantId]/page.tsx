@@ -2,6 +2,7 @@ import { ChevronRight, PackageX, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { TemposCard } from "@/components/panel/tempos-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDePedidos } from "@/server/stats";
+import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
 import { ClientesCard } from "./clientes-card";
@@ -40,11 +41,12 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const hoje = startOfToday();
   const todayWhere = { ...escopo, createdAt: { gte: hoje } };
 
-  const [dia, semana, fila, clientes, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
+  const [dia, semana, fila, clientes, tempos, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
     semanaDePedidos(escopo),
     filaDeEspera(escopo),
     quemMaisPede(restaurant.id, startOfDaysAgo(30)),
+    temposDoAtendimento(escopo, startOfDaysAgo(30)),
     db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
     // o esquecimento mais comum do balcão: marcar esgotado e nunca religar.
     // Os nomes vêm junto: "1 produto esgotado" obrigava a ir até o cardápio
@@ -118,6 +120,8 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
       <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
 
       <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
+
+      <TemposCard tempos={tempos} />
 
       {/* Esgotado com nome e botão: dizer "1 produto esgotado" obrigava a ir
           até o cardápio e procurar qual era, para uma coisa de um segundo.

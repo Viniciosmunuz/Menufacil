@@ -56,6 +56,9 @@ const FILTERS = {
 type FilterKey = keyof typeof FILTERS;
 const isFilter = (v: unknown): v is FilterKey => typeof v === "string" && v in FILTERS;
 
+/** saiu do restaurante: o que falta é o entregador chegar */
+const emRota = (o?: { status: OrderStatus }) => o?.status === "OUT_FOR_DELIVERY";
+
 // Pedidos do restaurante: cada um abre como gaveta, com o próximo passo do
 // atendimento à mão. A página se atualiza sozinha para mostrar pedido novo.
 export default async function RestaurantOrdersPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/pedidos">) {
@@ -116,6 +119,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     return s ? `${base}?${s}` : base;
   };
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Em andamento, quem já saiu com o entregador desce para o fim da lista.
+  // Sem isto a divisória cairia no meio, com pedido do restaurante depois
+  // dela. Nas outras abas a ordem é a de sempre: ali é histórico.
+  const lista = filter === "andamento" ? [...orders].sort((a, b) => Number(emRota(a)) - Number(emRota(b))) : orders;
   const hidden = { restaurantId: restaurant.id };
 
   return (
@@ -190,8 +197,23 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       ) : (
         <>
           <ul className="flex flex-col gap-2">
-            {orders.map((o) => (
+            {lista.map((o, i) => (
               <li key={o.id}>
+                {/* Uma linha fina separa o que ainda está aqui dentro do que
+                    já está na rua: em cima o que a cozinha e o balcão têm de
+                    fazer, embaixo o que só espera o entregador chegar. Sem
+                    ela, quem olha a lista às 20h lê o selo de cada pedido
+                    para saber qual é qual.
+
+                    Discreta de propósito: é uma arrumação da lista, não um
+                    aviso. Quem precisa chamar atenção aqui é o pedido parado. */}
+                {emRota(o) && !emRota(lista[i - 1]) && (
+                  <p className="mt-5 mb-2 flex items-center gap-3 text-xs font-bold tracking-widest text-faint uppercase">
+                    <span className="h-px flex-1 bg-line" />
+                    em rota
+                    <span className="h-px flex-1 bg-line" />
+                  </p>
+                )}
                 <OrderDrawer order={o} naoLidas={naoLidas.get(o.id) ?? 0}>
                   <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
                   <div className="flex flex-wrap items-center justify-between gap-2">

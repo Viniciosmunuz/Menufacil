@@ -12,6 +12,11 @@ import { cn } from "@/lib/cn";
 //
 // A variação existe porque número sozinho não diz se o dia está bom: 12
 // pedidos é ótimo para quem fez 6 ontem e ruim para quem fez 30.
+//
+// No celular o ícone sobe para cima do texto e tudo encolhe um ponto, para
+// cabes dois cartões lado a lado. Empilhado um por linha, ver os quatro
+// números da visão geral custava três rolagens -- e eles existem justamente
+// para serem lidos de uma vez.
 
 export function StatCard({
   label,
@@ -34,15 +39,23 @@ export function StatCard({
 
   const miolo = (
     <>
-      <span className="grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand [&_svg]:size-5">{icon}</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-control bg-brand-soft text-brand sm:size-11 [&_svg]:size-5">{icon}</span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-muted">{label}</p>
-        <p className="mt-0.5 text-2xl font-extrabold tabular-nums">{value}</p>
+        <p className="min-h-10 text-sm font-semibold text-muted sm:min-h-0">{label}</p>
+        <p className="mt-0.5 text-xl font-extrabold tabular-nums sm:text-2xl">{value}</p>
         {(subiu || desceu) && (
-          <p className={cn("mt-0.5 flex items-center gap-1 text-xs font-bold", subiu ? "text-success" : "text-danger")}>
-            {subiu ? <TrendingUp className="size-3.5" aria-hidden="true" /> : <TrendingDown className="size-3.5" aria-hidden="true" />}
-            {subiu ? "+" : ""}
-            {variacao}% que ontem a esta hora
+          <p className={cn("mt-0.5 flex items-start gap-1 text-xs font-bold", subiu ? "text-success" : "text-danger")}>
+            {subiu ? (
+              <TrendingUp className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <TrendingDown className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            )}
+            {/* a metade final só aparece com espaço: numa coluna de meia tela,
+                "que ontem" já diz contra o que se está comparando */}
+            <span>
+              {subiu ? "+" : ""}
+              {variacao}% que ontem<span className="hidden sm:inline"> a esta hora</span>
+            </span>
           </p>
         )}
         {hint && <p className="mt-0.5 text-xs text-faint">{hint}</p>}
@@ -50,13 +63,12 @@ export function StatCard({
     </>
   );
 
-  if (!href) return <Card className="flex items-start gap-4">{miolo}</Card>;
+  const fora = "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4";
+
+  if (!href) return <Card className={fora}>{miolo}</Card>;
 
   return (
-    <Link
-      href={href}
-      className="flex items-start gap-4 rounded-card border border-line bg-surface p-5 transition-colors hover:border-line-strong sm:p-6"
-    >
+    <Link href={href} className={cn(fora, "rounded-card border border-line bg-surface p-5 transition-colors hover:border-line-strong sm:p-6")}>
       {miolo}
     </Link>
   );

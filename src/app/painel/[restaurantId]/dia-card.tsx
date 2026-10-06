@@ -72,25 +72,25 @@ export function DiaCard({
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <div>
+      <div className="grid grid-cols-2 gap-4 sm:gap-5">
+        <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
-            <span className="text-3xl font-extrabold tabular-nums">{formatCents(centavos)}</span>
+            <span className="text-2xl font-extrabold tabular-nums sm:text-3xl">{formatCents(centavos)}</span>
             <Variacao atual={centavos} anterior={centavosOntem} />
           </p>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-xs text-muted sm:text-sm">
             {pedidos} {pedidos === 1 ? "pedido" : "pedidos"}
             {concluidos > 0 && ` · ${concluidos} ${concluidos === 1 ? "concluído" : "concluídos"}`}
             {pedidosOntem > 0 && ` · ontem ${pedidosOntem}`}
           </p>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
-            <span className="text-3xl font-extrabold tabular-nums">{ticket > 0 ? formatCents(ticket) : "—"}</span>
+            <span className="text-2xl font-extrabold tabular-nums sm:text-3xl">{ticket > 0 ? formatCents(ticket) : "—"}</span>
             <Variacao atual={ticket} anterior={ticketOntem} />
           </p>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-xs text-muted sm:text-sm">
             Ticket médio
             {ticketOntem > 0 && ` · ontem ${formatCents(ticketOntem)}`}
           </p>

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { SectionTitle } from "@/components/panel/page-header";
 import { StatCard } from "@/components/panel/stat-card";
+import { TemposCard } from "@/components/panel/tempos-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { formatCents, formatWhen, startOfDaysAgo } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
-import { hojeContraOntem, semanaDePedidos, variacao } from "@/server/stats";
+import { hojeContraOntem, semanaDePedidos, temposDoAtendimento, variacao } from "@/server/stats";
 
 export const metadata: Metadata = { title: "Visão geral" };
 
@@ -24,9 +25,11 @@ export default async function AdminOverviewPage() {
   await requireAdmin();
   const mes = startOfDaysAgo(30);
 
-  const [dia, semana, active, inSetup, openLeads, attention, ranking, ativos, comPlano] = await Promise.all([
+  const [dia, semana, tempos, active, inSetup, openLeads, attention, ranking, ativos, comPlano] = await Promise.all([
     hojeContraOntem(),
     semanaDePedidos(),
+    // sem escopo: o atendimento de toda a plataforma
+    temposDoAtendimento({}, mes),
     db.restaurant.count({ where: { status: "ACTIVE" } }),
     db.restaurant.count({ where: { status: { in: ["DRAFT", "PENDING_REVIEW"] } } }),
     db.restaurantLead.count({ where: { handled: false } }),
@@ -100,7 +103,7 @@ export default async function AdminOverviewPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Restaurantes ativos" value={active} icon={<Store />} href="/admin/restaurantes?status=ACTIVE" hint={`${inSetup} em implantação`} />
         <StatCard
           label="Pedidos hoje"
@@ -169,6 +172,8 @@ export default async function AdminOverviewPage() {
       )}
 
       <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Pedidos de toda a plataforma, dia a dia." />
+
+      <TemposCard tempos={tempos} />
 
       {attention.length > 0 && (
         <section>
