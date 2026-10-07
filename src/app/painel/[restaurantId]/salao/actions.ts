@@ -14,7 +14,7 @@ import { abrirTurno, fecharTurno, turnoAberto } from "@/server/salao/turno";
 // Ações do salão. Toda uma delas passa por requireSalao: esconder o botão
 // não impede ninguém de chamar a ação direto, e aqui se mexe com dinheiro.
 
-export type SalaoFormState = { ok?: boolean; error?: string; message?: string };
+export type SalaoFormState = { ok?: boolean; error?: string; message?: string; fechamentoId?: string };
 
 /** ninguém tem mil mesas; o teto existe para um dedo escorregado não criar um salão inteiro */
 const MAXIMO = 120;
@@ -150,13 +150,13 @@ export async function fecharCaixa(_prev: SalaoFormState, formData: FormData): Pr
   const acesso = await requireSalao(restaurantId);
   if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para fechar o caixa." };
 
-  const cents = parseMoneyToCents(String(formData.get("fechamento") ?? "0")) ?? 0;
-  const r = await fecharTurno(restaurantId, acesso.user.id, cents);
+  const r = await fecharTurno(restaurantId, acesso.user.id);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.caixa_fechou", { fechamentoCents: cents });
+  await panelAudit(acesso, "salao.caixa_fechou", { caixaId: r.caixaId ?? null });
   refresh();
-  return { ok: true, message: "Caixa fechado. As mesas voltaram a ficar livres." };
+  // o papel do fechamento abre numa aba: é a via que o dono guarda
+  return { ok: true, message: "Caixa fechado. As mesas voltaram a ficar livres.", fechamentoId: r.caixaId };
 }
 
 /**

@@ -47,6 +47,7 @@ export function SalaoComBusca({
   base,
   cols,
   caixa,
+  acao,
 }: {
   mesas: LugarNoMapa[];
   balcoes: LugarNoMapa[];
@@ -54,6 +55,8 @@ export function SalaoComBusca({
   cols: string;
   /** só o painel do dono passa o caixa; o garçom não tem essa aba */
   caixa?: React.ReactNode;
+  /** o botão de configuração, que fica na linha da busca */
+  acao?: React.ReactNode;
 }) {
   const [texto, setTexto] = useState("");
   const procurando = limpo(texto).length > 0;
@@ -79,8 +82,14 @@ export function SalaoComBusca({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-faint" aria-hidden="true" />
+      {/* a engrenagem divide a linha com a busca, e só com ela.
+          
+          Estava num flex por fora do bloco inteiro, e aí os cinquenta e
+          poucos pixels dela saíam da largura de tudo que vinha abaixo --
+          num celular, isso é meia mesa a menos por linha. */}
+      <div className="flex items-start gap-3">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-faint" aria-hidden="true" />
         <input
           type="search"
           value={texto}
@@ -90,16 +99,18 @@ export function SalaoComBusca({
           inputMode="numeric"
           className="h-12 w-full rounded-control border border-line bg-surface pr-12 pl-12 font-bold outline-none placeholder:font-normal placeholder:text-faint focus:border-brand [&::-webkit-search-cancel-button]:hidden"
         />
-        {procurando && (
-          <button
-            type="button"
-            onClick={() => setTexto("")}
-            aria-label="Limpar a busca"
-            className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        )}
+          {procurando && (
+            <button
+              type="button"
+              onClick={() => setTexto("")}
+              aria-label="Limpar a busca"
+              className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {acao}
       </div>
 
       {procurando ? (

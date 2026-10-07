@@ -71,31 +71,46 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
     );
   }
 
+  // Caixa fechado: a tela inteira diz isso, e não só a aba Caixa.
+  //
+  // Quem abre o salão às seis da tarde quer saber de uma coisa: dá para
+  // começar. Mostrar o mapa com todas as mesas livres e esconder o aviso
+  // atrás de uma aba faria o dono tocar numa mesa, tentar lançar e só aí
+  // descobrir que o salão não abriu.
+  if (!turno) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start justify-end">{engrenagem}</div>
+        <CaixaDoSalaoPanel
+          caixa={caixa}
+          turno={null}
+          abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
+          fechar={null}
+        />
+      </div>
+    );
+  }
   const cols = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 
   return (
     <div className="flex flex-col gap-5">
       {/* a busca tomou o lugar do título: "toque numa mesa para ver a
           comanda" se lê uma vez na vida e ocupava a tela todo dia */}
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <SalaoComBusca
-            mesas={salao.mesas}
-            balcoes={salao.balcoes}
-            base={base}
-            cols={cols}
-            caixa={
-              <CaixaDoSalaoPanel
-                caixa={caixa}
-                turno={turno}
-                abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
-                fechar={<FecharCaixaForm restaurantId={restaurant.id} podeFechar />}
-              />
-            }
+      <SalaoComBusca
+        mesas={salao.mesas}
+        balcoes={salao.balcoes}
+        base={base}
+        cols={cols}
+        acao={engrenagem}
+        caixa={
+          <CaixaDoSalaoPanel
+            caixa={caixa}
+            turno={turno}
+            abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
+            fechar={<FecharCaixaForm restaurantId={restaurant.id} podeFechar />}
           />
-        </div>
-        {engrenagem}
-      </div>
+        }
+      />
     </div>
   );
 }
