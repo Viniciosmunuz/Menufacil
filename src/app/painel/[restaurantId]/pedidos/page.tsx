@@ -69,18 +69,25 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   const filter: FilterKey = isFilter(sp.ver) ? sp.ver : "andamento";
   const page = Math.max(1, Number.parseInt(typeof sp.pagina === "string" ? sp.pagina : "1", 10) || 1);
   const statuses = FILTERS[filter].statuses;
-  const where = { restaurantId: restaurant.id, ...(statuses ? { status: { in: [...statuses] } } : {}) };
+  // O salão fica de fora desta tela.
+  //
+  // O pedido da mesa usa o mesmo Order e a mesma impressora -- é assim que
+  // o salão não virou um segundo sistema --, mas ele não pertence a esta
+  // lista: aqui se acompanha entrega, e "Mesa 7" no meio dos pedidos de
+  // delivery faria o balcão procurar endereço onde não há. O salão tem a
+  // tela dele, com o mapa das mesas.
+  const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
   const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
-    db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id }, _count: { _all: true } }),
+    db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
     // Pedidos esperando atendimento: são eles que a impressora tira sozinha
     // e que tocam o sino. O pedido do 100% Delivery que ainda está esperando
     // o Pix fica fora desta lista -- ele aparece na lista de baixo, para o
     // balcão saber que existe, mas não imprime nem apita.
     db.order.findMany({
-      where: { restaurantId: restaurant.id, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
+      where: { restaurantId: restaurant.id, origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: {

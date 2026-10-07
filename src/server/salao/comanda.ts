@@ -40,12 +40,25 @@ export type ComandaAberta = {
   totalCents: number;
 };
 
+export type OpcaoDoProduto = { id: string; nome: string; centavos: number; disponivel: boolean };
+export type GrupoDoProduto = {
+  id: string;
+  nome: string;
+  /** escolher é obrigatório (tamanho) ou não (adicionais) */
+  obrigatorio: boolean;
+  /** quantas opções o garçom pode marcar */
+  maximo: number;
+  opcoes: OpcaoDoProduto[];
+};
+
 export type ProdutoDoCardapio = {
   id: string;
   nome: string;
   centavos: number;
   imagem: string | null;
   disponivel: boolean;
+  /** tamanho, sabor, adicionais: os mesmos do cardápio do cliente */
+  grupos: GrupoDoProduto[];
 };
 
 export type CategoriaDoCardapio = { id: string; nome: string; produtos: ProdutoDoCardapio[] };
@@ -175,7 +188,27 @@ export async function cardapioDoSalao(restaurantId: string): Promise<CategoriaDo
       name: true,
       products: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, name: true, priceCents: true, promoPriceCents: true, imageUrl: true, available: true },
+        select: {
+          id: true,
+          name: true,
+          priceCents: true,
+          promoPriceCents: true,
+          imageUrl: true,
+          available: true,
+          // as mesmas opções do cardápio do cliente: um produto só, vários
+          // canais -- o garçom escolhe o tamanho e os adicionais iguais a
+          // quem pede pelo link
+          optionGroups: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              id: true,
+              name: true,
+              minSelect: true,
+              maxSelect: true,
+              options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
+            },
+          },
+        },
       },
     },
   });
@@ -191,6 +224,15 @@ export async function cardapioDoSalao(restaurantId: string): Promise<CategoriaDo
         centavos: p.promoPriceCents ?? p.priceCents,
         imagem: p.imageUrl,
         disponivel: p.available,
+        grupos: p.optionGroups
+          .filter((g) => g.options.length > 0)
+          .map((g) => ({
+            id: g.id,
+            nome: g.name,
+            obrigatorio: g.minSelect > 0,
+            maximo: Math.max(1, g.maxSelect),
+            opcoes: g.options.map((o) => ({ id: o.id, nome: o.name, centavos: o.priceCents, disponivel: o.available })),
+          })),
       })),
     }));
 }

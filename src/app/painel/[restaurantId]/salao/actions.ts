@@ -174,13 +174,18 @@ export async function lancarItens(_prev: SalaoFormState, formData: FormData): Pr
   if (!turno) return { error: "O salão está fechado. O caixa precisa ser aberto antes." };
 
   const mesaId = String(formData.get("mesaId") ?? "");
-  let itens: { produtoId: string; quantidade: number }[] = [];
+  let itens: { produtoId: string; quantidade: number; observacao?: string | null; opcoes?: string[] }[] = [];
   try {
     const cru = JSON.parse(String(formData.get("itens") ?? "[]")) as unknown;
     if (Array.isArray(cru)) {
       itens = cru
-        .filter((i): i is { produtoId: string; quantidade: number } => !!i && typeof i === "object" && "produtoId" in i)
-        .map((i) => ({ produtoId: String(i.produtoId), quantidade: Number(i.quantidade) || 1 }));
+        .filter((i): i is Record<string, unknown> => !!i && typeof i === "object" && "produtoId" in i)
+        .map((i) => ({
+          produtoId: String(i.produtoId),
+          quantidade: Number(i.quantidade) || 1,
+          observacao: typeof i.observacao === "string" ? i.observacao : null,
+          opcoes: Array.isArray(i.opcoes) ? i.opcoes.map(String) : [],
+        }));
     }
   } catch {
     return { error: "Não consegui ler os itens. Tente de novo." };

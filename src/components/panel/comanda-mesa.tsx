@@ -8,6 +8,19 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
+import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
+
+type Escolhido = {
+  chave: string;
+  produtoId: string;
+  nome: string;
+  centavos: number;
+  quantidade: number;
+  observacao: string | null;
+  opcoes: string[];
+  rotulo: string | null;
+};
+
 import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
 // A mesa aberta: a conta de um lado, o cardápio do outro.
@@ -224,7 +237,8 @@ export function ComandaDaMesa({
   mesaId: string;
 }) {
   const [aba, setAba] = useState<"conta" | "cardapio">("cardapio");
-  const [sacola, setSacola] = useState<{ id: string; nome: string; centavos: number; quantidade: number }[]>([]);
+  const [sacola, setSacola] = useState<Escolhido[]>([]);
+  const [aberto, setAberto] = useState<ProdutoDoCardapio | null>(null);
   const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
 
   // o que foi salvo sai da sacola: deixá-lo ali faria lançar duas vezes
@@ -234,16 +248,30 @@ export function ComandaDaMesa({
     setSacola([]);
   }
 
-  const juntar = (p: ProdutoDoCardapio) =>
+  // duas unidades do mesmo prato com observações diferentes são duas
+  // linhas: "sem cebola" vale para uma e não para a outra
+  const juntar = (item: ItemEscolhido) =>
     setSacola((atual) => {
-      const tem = atual.find((i) => i.id === p.id);
-      return tem
-        ? atual.map((i) => (i.id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i))
-        : [...atual, { id: p.id, nome: p.nome, centavos: p.centavos, quantidade: 1 }];
+      const chave = item.produtoId + "|" + item.opcoes.map((o) => o.id).join(",") + "|" + (item.observacao ?? "");
+      const tem = atual.find((i) => i.chave === chave);
+      if (tem) return atual.map((i) => (i.chave === chave ? { ...i, quantidade: i.quantidade + item.quantidade } : i));
+      return [
+        ...atual,
+        {
+          chave,
+          produtoId: item.produtoId,
+          nome: item.nome,
+          centavos: item.centavos,
+          quantidade: item.quantidade,
+          observacao: item.observacao,
+          opcoes: item.opcoes.map((o) => o.id),
+          rotulo: item.opcoes.length ? item.opcoes.map((o) => o.nome).join(" · ") : null,
+        },
+      ];
     });
 
-  const tirar = (id: string) =>
-    setSacola((atual) => atual.flatMap((i) => (i.id === id ? (i.quantidade > 1 ? [{ ...i, quantidade: i.quantidade - 1 }] : []) : [i])));
+  const tirar = (chave: string) =>
+    setSacola((atual) => atual.flatMap((i) => (i.chave === chave ? (i.quantidade > 1 ? [{ ...i, quantidade: i.quantidade - 1 }] : []) : [i])));
 
   const novoItens = sacola.reduce((s, i) => s + i.quantidade, 0);
   const novoCents = sacola.reduce((s, i) => s + i.centavos * i.quantidade, 0);
@@ -283,14 +311,19 @@ export function ComandaDaMesa({
             <p className="text-xs font-bold tracking-wide text-brand uppercase">Novos</p>
             <ul className="flex flex-col gap-1">
               {sacola.map((i) => (
-                <li key={i.id} className="flex items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate font-semibold">
-                    {i.quantidade}x {i.nome}
+                <li key={i.chave} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">
+                      {i.quantidade}x {i.nome}
+                    </span>
+                    {(i.rotulo || i.observacao) && (
+                      <span className="block truncate text-xs text-muted">{[i.rotulo, i.observacao].filter(Boolean).join(" · ")}</span>
+                    )}
                   </span>
                   <span className="shrink-0 tabular-nums">{formatCents(i.centavos * i.quantidade)}</span>
                   <button
                     type="button"
-                    onClick={() => tirar(i.id)}
+                    onClick={() => tirar(i.chave)}
                     aria-label={"Tirar um " + i.nome}
                     className="grid size-7 shrink-0 place-items-center rounded-control text-muted hover:text-danger"
                   >
@@ -305,7 +338,11 @@ export function ComandaDaMesa({
         <form action={salvar}>
           <input type="hidden" name="restaurantId" value={restaurantId} />
           <input type="hidden" name="mesaId" value={mesaId} />
-          <input type="hidden" name="itens" value={JSON.stringify(sacola.map((i) => ({ produtoId: i.id, quantidade: i.quantidade })))} />
+          <input
+            type="hidden"
+            name="itens"
+            value={JSON.stringify(sacola.map((i) => ({ produtoId: i.produtoId, quantidade: i.quantidade, observacao: i.observacao, opcoes: i.opcoes })))}
+          />
           <button
             type="submit"
             disabled={novoItens === 0 || salvando}
@@ -325,8 +362,19 @@ export function ComandaDaMesa({
       </section>
 
       <section className={cn("flex min-h-0 min-w-0 flex-col", aba === "cardapio" ? "flex" : "hidden lg:flex")}>
-        <Cardapio categorias={categorias} onEscolher={juntar} />
+        <Cardapio categorias={categorias} onEscolher={setAberto} />
       </section>
+
+      {aberto && (
+        <FolhaDoItem
+          produto={aberto}
+          onFechar={() => setAberto(null)}
+          onAdicionar={(item) => {
+            juntar(item);
+            setAberto(null);
+          }}
+        />
+      )}
     </div>
   );
 }

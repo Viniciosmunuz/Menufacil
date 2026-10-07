@@ -7,7 +7,9 @@ import { useActionState, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
-import type { CategoriaDoCardapio, ComandaAberta } from "@/server/salao/comanda";
+import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
+
+import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
 
 import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
@@ -30,7 +32,7 @@ const limpo = (s: string) =>
     .toLowerCase()
     .trim();
 
-type Escolhido = { id: string; nome: string; centavos: number; quantidade: number };
+type Escolhido = { chave: string; produtoId: string; nome: string; centavos: number; quantidade: number; observacao: string | null; opcoes: string[]; rotulo: string | null };
 
 export function MesaDoGarcom({
   comanda,
@@ -51,6 +53,7 @@ export function MesaDoGarcom({
   const [categoria, setCategoria] = useState<string | null>(categorias[0]?.id ?? null);
   const [sacola, setSacola] = useState<Escolhido[]>([]);
   const [vendoConta, setVendoConta] = useState(false);
+  const [aberto, setAberto] = useState<ProdutoDoCardapio | null>(null);
   const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
 
   // Salvou: a sacola esvazia, porque o que estava nela agora está na
@@ -72,10 +75,26 @@ export function MesaDoGarcom({
   const novoCents = sacola.reduce((s, i) => s + i.centavos * i.quantidade, 0);
   const novoItens = sacola.reduce((s, i) => s + i.quantidade, 0);
 
-  const juntar = (p: { id: string; nome: string; centavos: number }) =>
+  // duas unidades do mesmo prato com observações diferentes são duas
+  // linhas: "sem cebola" vale para uma e não para a outra
+  const juntar = (item: ItemEscolhido) =>
     setSacola((atual) => {
-      const tem = atual.find((i) => i.id === p.id);
-      return tem ? atual.map((i) => (i.id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i)) : [...atual, { ...p, quantidade: 1 }];
+      const chave = item.produtoId + "|" + item.opcoes.join(",") + "|" + (item.observacao ?? "");
+      const tem = atual.find((i) => i.chave === chave);
+      if (tem) return atual.map((i) => (i.chave === chave ? { ...i, quantidade: i.quantidade + item.quantidade } : i));
+      return [
+        ...atual,
+        {
+          chave,
+          produtoId: item.produtoId,
+          nome: item.nome,
+          centavos: item.centavos,
+          quantidade: item.quantidade,
+          observacao: item.observacao,
+          opcoes: item.opcoes.map((o) => o.id),
+          rotulo: item.opcoes.length ? item.opcoes.map((o) => o.nome).join(" · ") : null,
+        },
+      ];
     });
 
 
@@ -138,23 +157,23 @@ export function MesaDoGarcom({
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {produtos.map((p) => {
-              const naSacola = sacola.find((i) => i.id === p.id);
+              const naSacola = sacola.filter((i) => i.produtoId === p.id).reduce((s, i) => s + i.quantidade, 0);
               return (
                 <button
                   key={p.id}
                   type="button"
                   disabled={!p.disponivel}
-                  onClick={() => juntar(p)}
+                  onClick={() => setAberto(p)}
                   className={cn(
                     "relative flex flex-col overflow-hidden rounded-card border bg-surface text-left transition-colors active:brightness-95 disabled:opacity-40",
-                    naSacola ? "border-brand" : "border-line",
+                    naSacola > 0 ? "border-brand" : "border-line",
                   )}
                 >
                   <span className="relative grid aspect-square w-full place-items-center bg-surface-2 text-faint">
                     {p.imagem ? <Image src={p.imagem} alt="" fill sizes="120px" className="object-cover" /> : <ImageOff className="size-5" aria-hidden="true" />}
-                    {naSacola && (
+                    {naSacola > 0 && (
                       <span className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-brand text-xs font-extrabold text-brand-ink">
-                        {naSacola.quantidade}
+                        {naSacola}
                       </span>
                     )}
                   </span>
@@ -193,7 +212,7 @@ export function MesaDoGarcom({
           <input
             type="hidden"
             name="itens"
-            value={JSON.stringify(sacola.map((i) => ({ produtoId: i.id, quantidade: i.quantidade })))}
+            value={JSON.stringify(sacola.map((i) => ({ produtoId: i.produtoId, quantidade: i.quantidade, observacao: i.observacao, opcoes: i.opcoes })))}
           />
           <button
             type="submit"
@@ -295,6 +314,16 @@ export function MesaDoGarcom({
         </div>
       )}
 
+      {aberto && (
+        <FolhaDoItem
+          produto={aberto}
+          onFechar={() => setAberto(null)}
+          onAdicionar={(item) => {
+            juntar(item);
+            setAberto(null);
+          }}
+        />
+      )}
       {/* o ticket entra quando a divisão de conta existir */}
       <span hidden>
         <Ticket aria-hidden="true" />

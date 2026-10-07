@@ -17,7 +17,7 @@ import { todayKey } from "@/lib/format";
 // agora tem pedido nela. Um botão de abrir antes de lançar seria um toque
 // a mais para dizer o que o lançamento já disse.
 
-export type ItemParaLancar = { produtoId: string; quantidade: number; observacao?: string | null };
+export type ItemParaLancar = { produtoId: string; quantidade: number; observacao?: string | null; opcoes?: string[] };
 
 export type ResultadoDoLancamento = { ok: true; orderId: string; numero: number } | { ok: false; error: string };
 
@@ -43,10 +43,25 @@ export async function lancarNaMesa(
   });
   const porId = new Map(produtos.map((p) => [p.id, p]));
 
+  // as opções escolhidas, com preço lido do banco pelo mesmo motivo dos
+  // produtos: a tela diz o que a pessoa marcou, nunca quanto custa
+  const idsDeOpcao = itens.flatMap((i) => i.opcoes ?? []);
+  const opcoes = idsDeOpcao.length
+    ? await db.productOption.findMany({
+        where: { id: { in: idsDeOpcao }, group: { product: { restaurantId } } },
+        select: { id: true, name: true, priceCents: true, group: { select: { name: true } } },
+      })
+    : [];
+  const opcaoPorId = new Map(opcoes.map((o) => [o.id, o]));
+
   const linhas = itens.map((i) => {
     const p = porId.get(i.produtoId);
     if (!p) throw new Error("produto fora deste restaurante");
-    const unit = p.promoPriceCents ?? p.priceCents;
+    const escolhidas = (i.opcoes ?? []).flatMap((id) => {
+      const o = opcaoPorId.get(id);
+      return o ? [o] : [];
+    });
+    const unit = (p.promoPriceCents ?? p.priceCents) + escolhidas.reduce((s, o) => s + o.priceCents, 0);
     const quantidade = Math.max(1, Math.min(99, Math.floor(i.quantidade)));
     return {
       productId: p.id,
@@ -55,6 +70,8 @@ export async function lancarNaMesa(
       quantity: quantidade,
       totalCents: unit * quantidade,
       notes: i.observacao?.trim() || null,
+      // o mesmo retrato que o delivery guarda: "Tamanho: Grande · Sabor: Calabresa"
+      optionsText: escolhidas.length ? escolhidas.map((o) => o.group.name + ": " + o.name).join(" · ") : null,
     };
   });
 
