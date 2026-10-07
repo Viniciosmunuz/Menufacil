@@ -32,6 +32,9 @@ export default async function RestaurantPanelLayout({
 
   return (
     <PanelShell
+      // só o salão usa a tela toda: lá o mapa e o cardápio disputam cada
+      // centímetro. As outras seções seguem iguais
+      larga="/salao"
       homeHref={base}
       context={context}
       userName={user.name}

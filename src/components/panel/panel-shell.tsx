@@ -1,14 +1,24 @@
+"use client";
+
 import { LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Logo } from "@/components/brand/logo";
+import { Logo, LogoIcon } from "@/components/brand/logo";
+import { cn } from "@/lib/cn";
 import { logout } from "@/server/auth/actions";
 
 import { SidebarNav, TabsNav, type NavItem } from "./nav-link";
 
 // Casca dos dois painéis (admin e restaurante): menu lateral no
 // computador, cabeçalho com abas no celular.
+//
+// Em algumas telas o menu encolhe para só os ícones e o conteúdo perde o
+// limite de largura. É o caso do salão: o mapa de mesas e o cardápio lado
+// a lado disputam cada centímetro, e dezessete rem de rótulos repetidos
+// custam uma coluna inteira de mesas. Quem entra ali está trabalhando
+// naquilo, não navegando entre seções.
 export function PanelShell({
   homeHref,
   context,
@@ -16,6 +26,7 @@ export function PanelShell({
   userName,
   banner,
   children,
+  larga,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -24,7 +35,12 @@ export function PanelShell({
   userName: string;
   banner?: ReactNode;
   children: ReactNode;
+  /** trecho do endereço que faz a tela usar a largura toda, com o menu em ícones */
+  larga?: string;
 }) {
+  const pathname = usePathname();
+  const compacto = !!larga && pathname.includes(larga);
+
   const logoutButton = (
     <form action={logout}>
       <button
@@ -38,15 +54,21 @@ export function PanelShell({
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface/40 px-4 py-6 lg:flex">
-        <Link href={homeHref} className="mb-2 px-2">
-          <Logo />
+    <div className={cn("min-h-dvh lg:grid", compacto ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17rem_minmax(0,1fr)]")}>
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface/40 py-6 lg:flex",
+          compacto ? "items-stretch px-3" : "px-4",
+        )}
+      >
+        <Link href={homeHref} className={cn("mb-2", compacto ? "grid place-items-center" : "px-2")} aria-label="Início">
+          {compacto ? <LogoIcon className="size-8 text-brand" /> : <Logo />}
         </Link>
-        <div className="mb-6 px-2 text-sm font-semibold text-faint">{context}</div>
-        <SidebarNav items={nav} />
+        {!compacto && <div className="mb-6 px-2 text-sm font-semibold text-faint">{context}</div>}
+        {compacto && <div className="mb-6" />}
+        <SidebarNav items={nav} compacto={compacto} />
         <div className="mt-auto border-t border-line pt-4">
-          <p className="truncate px-3 pb-2 text-sm text-faint">{userName}</p>
+          {!compacto && <p className="truncate px-3 pb-2 text-sm text-faint">{userName}</p>}
           {logoutButton}
         </div>
       </aside>
@@ -63,7 +85,7 @@ export function PanelShell({
           <div className="mb-3 truncate text-sm font-semibold text-faint">{context}</div>
           <TabsNav items={nav} />
         </header>
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</main>
+        <main className={cn("w-full px-4 py-6 sm:px-6", compacto ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10")}>{children}</main>
       </div>
     </div>
   );

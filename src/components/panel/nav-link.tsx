@@ -18,7 +18,15 @@ function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-export function SidebarNav({ items }: { items: NavItem[] }) {
+/**
+ * O menu lateral. Compacto, fica só com os ícones.
+ *
+ * O salão pede a tela inteira: o mapa de mesas e o cardápio lado a lado
+ * disputam cada centímetro, e dezessete rem de rótulos repetidos custam
+ * uma coluna de mesas. Os ícones ficam, porque sair dali tem de continuar
+ * sendo um toque.
+ */
+export function SidebarNav({ items, compacto = false }: { items: NavItem[]; compacto?: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="flex flex-col gap-1" aria-label="Menu do painel">
@@ -29,15 +37,15 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            title={compacto ? item.label : undefined}
             className={cn(
-              "flex h-11 items-center gap-3 rounded-control px-3.5 font-semibold transition-colors [&_svg]:size-5",
-              active
-                ? "bg-brand-soft text-brand"
-                : "text-muted hover:bg-surface-2 hover:text-ink",
+              "flex h-11 items-center rounded-control font-semibold transition-colors [&_svg]:size-5",
+              compacto ? "justify-center px-0" : "gap-3 px-3.5",
+              active ? "bg-brand-soft text-brand" : "text-muted hover:bg-surface-2 hover:text-ink",
             )}
           >
             {item.icon}
-            {item.label}
+            {compacto ? <span className="sr-only">{item.label}</span> : item.label}
           </Link>
         );
       })}

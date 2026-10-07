@@ -17,16 +17,21 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
 
-      <Field label="E-mail" htmlFor="email">
+      {/* Texto, e não type="email".
+
+          O garçom entra com o CPF, e um campo de e-mail faz o próprio
+          navegador recusar qualquer coisa sem arroba -- o valor nem chega
+          ao servidor, e a pessoa fica olhando para um formulário que não
+          envia e não explica por quê. */}
+      <Field label="E-mail ou CPF" htmlFor="email">
         <Input
           id="email"
           name="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
+          type="text"
+          autoComplete="username"
           required
           defaultValue={state.email}
-          placeholder="voce@restaurante.com"
+          placeholder="voce@restaurante.com ou seu CPF"
         />
       </Field>
 
