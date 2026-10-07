@@ -9,7 +9,10 @@ import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
+
+import { AbrirCaixaForm, FecharCaixaForm } from "./caixa-form";
 import { caixaDoSalao } from "@/server/salao/caixa";
+import { turnoAberto } from "@/server/salao/turno";
 import { mapaDoSalao } from "@/server/salao/mesas";
 
 export const metadata: Metadata = { title: "Salão" };
@@ -35,7 +38,11 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
     where: { restaurantId: restaurant.id },
     select: { weekday: true, opensAt: true, closesAt: true, closed: true },
   });
-  const [salao, caixa] = await Promise.all([mapaDoSalao(restaurant.id), caixaDoSalao(restaurant.id, horarios)]);
+  const [salao, caixa, turno] = await Promise.all([
+    mapaDoSalao(restaurant.id),
+    caixaDoSalao(restaurant.id, horarios),
+    turnoAberto(restaurant.id),
+  ]);
 
   const engrenagem = (
     <Link
@@ -77,7 +84,14 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
             balcoes={salao.balcoes}
             base={base}
             cols={cols}
-            caixa={<CaixaDoSalaoPanel caixa={caixa} />}
+            caixa={
+              <CaixaDoSalaoPanel
+                caixa={caixa}
+                turno={turno}
+                abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
+                fechar={<FecharCaixaForm restaurantId={restaurant.id} podeFechar />}
+              />
+            }
           />
         </div>
         {engrenagem}

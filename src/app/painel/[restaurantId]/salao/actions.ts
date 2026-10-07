@@ -4,9 +4,11 @@ import { refresh } from "next/cache";
 
 import type { LugarTipo } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
+import { parseMoneyToCents } from "@/lib/validation";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
 import { criarGarcom } from "@/server/salao/garcons";
+import { abrirTurno, fecharTurno } from "@/server/salao/turno";
 
 // Ações do salão. Toda uma delas passa por requireSalao: esconder o botão
 // não impede ninguém de chamar a ação direto, e aqui se mexe com dinheiro.
@@ -124,4 +126,34 @@ export async function renomearMesa(_prev: SalaoFormState, formData: FormData): P
   await panelAudit(acesso, "salao.mesa_nome", { numero: mesa.numero, nome: nome || null });
   refresh();
   return { ok: true, message: nome ? `Agora é "${nome}".` : "Nome removido." };
+}
+
+/** Abre o caixa do salão. Só o dono: é ele que conta o dinheiro da gaveta. */
+export async function abrirCaixa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante abre o caixa." };
+
+  const cents = parseMoneyToCents(String(formData.get("abertura") ?? "0")) ?? 0;
+  const r = await abrirTurno(restaurantId, acesso.user.id, cents);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.caixa_abriu", { aberturaCents: cents });
+  refresh();
+  return { ok: true, message: "Caixa aberto. O salão já pode receber pedidos." };
+}
+
+/** Fecha o caixa da noite, com o que sobrou na gaveta. */
+export async function fecharCaixa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para fechar o caixa." };
+
+  const cents = parseMoneyToCents(String(formData.get("fechamento") ?? "0")) ?? 0;
+  const r = await fecharTurno(restaurantId, acesso.user.id, cents);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.caixa_fechou", { fechamentoCents: cents });
+  refresh();
+  return { ok: true, message: "Caixa fechado. As mesas voltaram a ficar livres." };
 }

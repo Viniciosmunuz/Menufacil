@@ -48,6 +48,8 @@ model User {
   statusChanges OrderStatusEvent[]
   pushDevices   PushDevice[]
   comandas      Comanda[]
+  caixasAbertos CaixaSalao[] @relation("CaixaAberto")
+  caixasFechados CaixaSalao[] @relation("CaixaFechado")
 
   @@index([role])
 }
@@ -267,6 +269,7 @@ model Restaurant {
   totemPayments       TotemPayment[]
   mesas               Mesa[]
   comandas            Comanda[]
+  caixas              CaixaSalao[]
   mercadoPago         MercadoPagoAccount?
   chats               ChatConversation[]
   payments            RestaurantPayment[]
@@ -1212,4 +1215,36 @@ model Comanda {
 
   @@index([restaurantId, status])
   @@index([mesaId, abertaAt])
+}
+
+/// O turno do salao.
+///
+/// Enquanto nao ha caixa aberto, o salao nao opera: o garcom entra e ve que
+/// esta fechado, em vez de lancar pedido num turno que ninguem conferiu.
+///
+/// O valor de abertura e o dinheiro que ja esta na gaveta quando o dia
+/// comeca -- sem ele, a conferencia do fim da noite nao fecha, porque o
+/// que esta na gaveta e o troco inicial mais o que foi recebido.
+model CaixaSalao {
+  id           String @id @default(cuid())
+  restaurantId String
+
+  abertoPorId   String?
+  aberturaCents Int      @default(0)
+  abertoAt      DateTime @default(now())
+
+  fechadoPorId    String?
+  fechamentoCents Int?
+  fechadoAt       DateTime?
+
+  observacao String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  abertoPor  User?      @relation("CaixaAberto", fields: [abertoPorId], references: [id], onDelete: SetNull)
+  fechadoPor User?      @relation("CaixaFechado", fields: [fechadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, abertoAt])
 }

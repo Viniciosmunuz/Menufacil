@@ -2,7 +2,7 @@ import { Banknote, CreditCard, QrCode, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
-import { formatCents } from "@/lib/format";
+import { formatCents, formatWhen } from "@/lib/format";
 import type { CaixaDoSalao } from "@/server/salao/caixa";
 
 // O caixa do salão, no fim da noite.
@@ -28,15 +28,47 @@ const NOME: Record<string, string> = {
   CARD: "Cartão",
 };
 
-export function CaixaDoSalaoPanel({ caixa }: { caixa: CaixaDoSalao }) {
+export function CaixaDoSalaoPanel({
+  caixa,
+  turno,
+  abrir,
+  fechar,
+}: {
+  caixa: CaixaDoSalao;
+  /** o turno aberto agora; sem ele, o salão não opera */
+  turno: { abertoAt: Date; aberturaCents: number; abertoPor: string | null } | null;
+  abrir: ReactNode;
+  fechar: ReactNode;
+}) {
   const podeFechar = caixa.abertas.length === 0;
+
+  // Sem turno aberto, a única coisa que esta aba oferece é abrir.
+  //
+  // Mostrar aqui o movimento do turno anterior faria o dono conferir
+  // números de ontem achando que são de hoje.
+  if (!turno) {
+    return (
+      <Card className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-extrabold">O salão está fechado</h2>
+          <p className="text-sm text-muted">
+            Enquanto o caixa não abrir, os garçons veem o salão fechado e não conseguem lançar pedido.
+          </p>
+        </div>
+        {abrir}
+      </Card>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-4">
         <div>
           <h2 className="text-lg font-extrabold">Caixa do salão</h2>
-          <p className="text-sm text-muted">O que as mesas receberam neste turno.</p>
+          <p className="text-sm text-muted">
+            Aberto {formatWhen(turno.abertoAt)}
+            {turno.abertoPor ? " por " + turno.abertoPor : ""} · a gaveta começou com {formatCents(turno.aberturaCents)}
+          </p>
         </div>
 
         <p className="text-3xl font-extrabold tabular-nums">{formatCents(caixa.totalCents)}</p>
@@ -73,7 +105,9 @@ export function CaixaDoSalaoPanel({ caixa }: { caixa: CaixaDoSalao }) {
           </p>
         </div>
 
-        {!podeFechar && (
+        {podeFechar ? (
+          fechar
+        ) : (
           <>
             <ul className="flex flex-col divide-y divide-line">
               {caixa.abertas.map((m) => (
