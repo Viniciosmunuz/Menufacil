@@ -68,16 +68,35 @@ export async function readSession() {
   const jaUsou = session.expiresAt.getTime() - agora.getTime() < (SESSION_DAYS - RENOVAR_APOS_DIAS) * 24 * 60 * 60 * 1000;
   if (jaUsou) {
     await db.session.update({ where: { id: session.id }, data: { expiresAt: novoFim }, select: { id: true } });
-    // o cookie acompanha o banco; sem isto o navegador esqueceria o token
+
+    // O cookie acompanha o banco; sem isto o navegador esqueceria o token
     // antes de a linha expirar, e a pessoa cairia na tela de login com uma
-    // sessão ainda válida do outro lado
-    (await cookies()).set(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      expires: novoFim,
-    });
+    // sessão ainda válida do outro lado.
+    //
+    // Mas o Next só deixa escrever cookie em Server Action ou Route
+    // Handler, e esta função também roda no meio do desenho de uma página
+    // -- ali o `set` lança, e a página inteira morre com "erro do
+    // servidor". Era uma bomba de relógio: só começa a disparar dez dias
+    // depois do login, então passou pelos testes e pela primeira semana
+    // inteira de uso.
+    //
+    // Aqui a gravação do cookie é um extra, não a renovação em si: quem
+    // renova é a linha no banco, que já foi salva acima. O painel dispara
+    // ação de servidor o tempo todo (aceitar pedido, mudar status, abrir e
+    // fechar a loja), e na primeira delas o cookie se acerta -- com vinte
+    // dias de folga até ele vencer.
+    try {
+      (await cookies()).set(SESSION_COOKIE, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        expires: novoFim,
+      });
+    } catch {
+      // desenho de página: o cookie espera a próxima ação
+    }
+
     return { ...session, expiresAt: novoFim };
   }
 
