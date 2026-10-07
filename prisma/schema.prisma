@@ -50,6 +50,7 @@ model User {
   comandas      Comanda[]
   caixasAbertos CaixaSalao[] @relation("CaixaAberto")
   caixasFechados CaixaSalao[] @relation("CaixaFechado")
+  recebimentos   PagamentoComanda[]
 
   @@index([role])
 }
@@ -1212,6 +1213,7 @@ model Comanda {
   mesa       Mesa       @relation(fields: [mesaId], references: [id], onDelete: Cascade)
   garcom     User?      @relation(fields: [garcomUserId], references: [id], onDelete: SetNull)
   orders     Order[]
+  pagamentos PagamentoComanda[]
 
   @@index([restaurantId, status])
   @@index([mesaId, abertaAt])
@@ -1247,4 +1249,37 @@ model CaixaSalao {
   fechadoPor User?      @relation("CaixaFechado", fields: [fechadoPorId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId, abertoAt])
+}
+
+/// Por onde o dinheiro da mesa entrou.
+enum FormaNaMesa {
+  DINHEIRO
+  PIX
+  CARTAO
+  /// anotado: sai sem pagar, a casa confia e cobra depois
+  ANOTADO
+}
+
+/// Um pagamento lancado numa comanda.
+///
+/// Sao varios por mesa, de proposito: quatro pessoas dividindo a conta
+/// pagam duas no cartao, uma no pix e uma em dinheiro, e a mesa so fecha
+/// quando a soma cobre o total. Guardar uma forma unica no pedido -- como
+/// o delivery faz, onde quem pede e um -- apagaria a divisao e faria o
+/// fechamento da noite mentir sobre quanto entrou em cada forma.
+model PagamentoComanda {
+  id        String      @id @default(cuid())
+  comandaId String
+  forma     FormaNaMesa
+  centavos  Int
+
+  /// quem recebeu: o garcom na mesa ou o proprio dono no balcao
+  recebidoPorId String?
+
+  createdAt DateTime @default(now())
+
+  comanda     Comanda @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+  recebidoPor User?   @relation(fields: [recebidoPorId], references: [id], onDelete: SetNull)
+
+  @@index([comandaId, createdAt])
 }

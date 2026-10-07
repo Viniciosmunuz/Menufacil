@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { formatCents, formatDateTime } from "@/lib/format";
@@ -53,6 +54,15 @@ export default async function FechamentoPage({ params }: PageProps<"/painel/[res
         <span>{formatCents(n.recebidoCents)}</span>
       </p>
 
+      {/* o que saiu anotado não entrou em lugar nenhum: é a conta que a
+          casa ainda vai cobrar, e por isso fica fora do total recebido */}
+      {n.anotadoCents > 0 && (
+        <p className={`flex justify-between ${linha}`}>
+          <span>Anotado (a receber)</span>
+          <span>{formatCents(n.anotadoCents)}</span>
+        </p>
+      )}
+
       <p className="mt-3 mb-1 font-bold uppercase">Gaveta</p>
       <p className={`flex justify-between ${linha}`}>
         <span>Abertura</span>
@@ -91,6 +101,17 @@ export default async function FechamentoPage({ params }: PageProps<"/painel/[res
       )}
 
       <p className="mt-6 text-center text-xs">MenuFácil</p>
+
+      {/* a volta ao salão, que não sai no papel: é a última tela da noite, e
+          daqui o dono abre o caixa do dia seguinte */}
+      <div className="mt-6 print:hidden">
+        <Link
+          href={`/painel/${restaurant.id}/salao`}
+          className="flex min-h-12 items-center justify-center rounded-lg border border-black/20 font-bold text-black"
+        >
+          Voltar ao salão
+        </Link>
+      </div>
 
       {/* a via sai sozinha ao abrir, como as outras do sistema */}
       <script dangerouslySetInnerHTML={{ __html: "window.onload = function(){ window.print(); }" }} />

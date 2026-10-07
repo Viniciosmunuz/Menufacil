@@ -95,3 +95,33 @@ export async function listarGarcons(restaurantId: string) {
     podeFinalizarMesa: v.podeFinalizarMesa,
   }));
 }
+
+/**
+ * Muda o que um garçom pode fazer.
+ *
+ * As duas permissões se ligam e desligam a qualquer momento, sem recriar a
+ * conta: a confiança do dono num garçom muda com o tempo, e refazer o
+ * cadastro para isso perderia o histórico de quem atendeu qual mesa.
+ *
+ * O CPF e a senha não se editam aqui. O CPF é a identidade do login, e
+ * trocá-lo é cadastrar outra pessoa; senha nova é conversa de quem esqueceu
+ * a dela, não de permissão.
+ */
+export async function mudarPermissoes(
+  restaurantId: string,
+  vinculoId: string,
+  permissoes: { podeExcluirItem: boolean; podeFinalizarMesa: boolean },
+): Promise<{ ok: true; nome: string | null } | { ok: false; error: string }> {
+  const vinculo = await db.restaurantOwner.findFirst({
+    where: { id: vinculoId, restaurantId, role: "STAFF" },
+    select: { id: true, user: { select: { name: true } } },
+  });
+  if (!vinculo) return { ok: false, error: "Garçom não encontrado." };
+
+  await db.restaurantOwner.update({
+    where: { id: vinculo.id },
+    data: { podeExcluirItem: permissoes.podeExcluirItem, podeFinalizarMesa: permissoes.podeFinalizarMesa },
+    select: { id: true },
+  });
+  return { ok: true, nome: vinculo.user.name };
+}

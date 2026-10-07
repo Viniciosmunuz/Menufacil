@@ -44,16 +44,10 @@ export function FecharCaixaForm({ restaurantId, podeFechar }: { restaurantId: st
   const [state, action] = useActionState<SalaoFormState, FormData>(fecharCaixa, {});
   const [confirmando, setConfirmando] = useState(false);
 
-  // Fechou: o papel abre numa aba e sai na impressora sozinho, como as
-  // outras vias do sistema. O ajuste acontece no render porque é reação a
-  // um dado novo que chegou, não efeito colateral.
-  const [jaAbriu, setJaAbriu] = useState<string | undefined>(undefined);
-  if (state.fechamentoId && state.fechamentoId !== jaAbriu) {
-    setJaAbriu(state.fechamentoId);
-    setConfirmando(false);
-    window.open("/painel/" + restaurantId + "/salao/fechamento/" + state.fechamentoId, "_blank", "noopener");
-  }
-
+  // Fechou: a própria ação leva para a via da noite, que sai sozinha na
+  // impressora. Era uma aba aberta daqui, e não funcionava -- fechar o
+  // caixa faz esta tela virar o pedido de abrir, e o formulário some antes
+  // de chegar a abrir a aba.
   if (!confirmando) {
     return (
       <div className="flex flex-col gap-3">

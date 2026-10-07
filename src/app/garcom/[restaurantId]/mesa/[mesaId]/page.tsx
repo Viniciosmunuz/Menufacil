@@ -10,12 +10,14 @@ export const metadata: Metadata = { title: "Mesa" };
 // A mesa na mão do garçom.
 //
 // A mesma comanda e o mesmo cardápio do painel do dono, num componente só:
-// um código, dois tamanhos de tela. O que muda é o que ele pode fazer --
-// desconto e cancelamento ficam fora até as permissões existirem.
+// um código, dois tamanhos de tela. O que muda é o que ele pode fazer:
+// lançar e receber todo garçom faz, porque é disso que o trabalho dele é
+// feito; liberar a mesa, dar desconto e apagar item o dono libera um a um,
+// para quem ele confia.
 
 export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[restaurantId]/mesa/[mesaId]">) {
   const { restaurantId, mesaId } = await params;
-  const { restaurant } = await requireSalao(restaurantId);
+  const { restaurant, pode } = await requireSalao(restaurantId);
 
   const [achado, categorias] = await Promise.all([verMesa(restaurant.id, mesaId), cardapioDoSalao(restaurant.id)]);
   if (!achado) notFound();
@@ -32,6 +34,8 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
       voltarHref={base}
       restaurantId={restaurant.id}
       mesaId={mesa.id}
+      podeFinanceiro={pode.finalizarMesa}
+      podeApagarItem={pode.excluirItem}
     />
   );
 }

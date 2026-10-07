@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageOff, Minus, Percent, Printer, Search, Trash2, Wallet } from "lucide-react";
+import { Check, ImageOff, Minus, Percent, Printer, Search, Trash2, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useActionState, useState } from "react";
 
@@ -8,7 +8,9 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
+import { FolhaDoDesconto } from "./folha-do-desconto";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
+import { FolhaDoPagamento } from "./folha-do-pagamento";
 
 type Escolhido = {
   chave: string;
@@ -21,7 +23,7 @@ type Escolhido = {
   rotulo: string | null;
 };
 
-import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
+import { apagarItem, finalizarMesa, lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
 // A mesa aberta: a conta de um lado, o cardápio do outro.
 //
@@ -40,7 +42,18 @@ const limpo = (s: string) =>
     .toLowerCase()
     .trim();
 
-function Linha({ item }: { item: ComandaAberta["itens"][number] }) {
+function Linha({
+  item,
+  restaurantId,
+  podeApagar,
+}: {
+  item: ComandaAberta["itens"][number];
+  restaurantId: string;
+  /** apagar item da conta mexe no que entra no caixa: permissão por garçom */
+  podeApagar: boolean;
+}) {
+  const [apagado, apagar, apagando] = useActionState<SalaoFormState, FormData>(apagarItem, {});
+
   return (
     <li className="flex items-start gap-3 py-2.5">
       <span className="grid size-6 shrink-0 place-items-center rounded bg-surface-3 text-xs font-extrabold tabular-nums">{item.quantidade}</span>
@@ -48,13 +61,28 @@ function Linha({ item }: { item: ComandaAberta["itens"][number] }) {
         <span className="block truncate font-semibold">{item.nome}</span>
         {item.opcoes && <span className="block truncate text-xs text-muted">{item.opcoes}</span>}
         {item.observacao && <span className="block truncate text-xs text-warning">{item.observacao}</span>}
+        {apagado.error && <span className="block text-xs font-bold text-danger">{apagado.error}</span>}
       </span>
       <span className="shrink-0 text-sm font-bold tabular-nums">{formatCents(item.centavos)}</span>
+      {podeApagar && (
+        <form action={apagar} className="shrink-0">
+          <input type="hidden" name="restaurantId" value={restaurantId} />
+          <input type="hidden" name="itemId" value={item.id} />
+          <button
+            type="submit"
+            disabled={apagando}
+            aria-label={"Apagar " + item.nome + " da conta"}
+            className="grid size-7 place-items-center rounded-control text-faint hover:text-danger disabled:opacity-40"
+          >
+            <Trash2 className="size-3.5" aria-hidden="true" />
+          </button>
+        </form>
+      )}
     </li>
   );
 }
 
-function Conta({ comanda }: { comanda: ComandaAberta }) {
+function Conta({ comanda, restaurantId, podeApagarItem }: { comanda: ComandaAberta; restaurantId: string; podeApagarItem: boolean }) {
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -63,7 +91,7 @@ function Conta({ comanda }: { comanda: ComandaAberta }) {
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {comanda.itens.map((i) => (
-              <Linha key={i.id} item={i} />
+              <Linha key={i.id} item={i} restaurantId={restaurantId} podeApagar={podeApagarItem} />
             ))}
           </ul>
         )}
@@ -90,36 +118,131 @@ function Conta({ comanda }: { comanda: ComandaAberta }) {
           <span>Total</span>
           <span className="tabular-nums">{formatCents(comanda.totalCents)}</span>
         </p>
+
+        {/* o que já entrou e o que falta só aparecem depois do primeiro
+            recebimento: numa mesa que ninguém pagou, "falta tudo" é o
+            total, e repetir o número duas vezes não informa nada */}
+        {comanda.pagoCents > 0 && (
+          <>
+            <p className="flex items-baseline justify-between text-sm text-success">
+              <span>
+                Recebido
+                <span className="pl-1.5 text-xs font-semibold text-faint">
+                  {comanda.pagamentos.map((p) => p.nomeDaForma).join(", ")}
+                </span>
+              </span>
+              <span className="tabular-nums">{formatCents(comanda.pagoCents)}</span>
+            </p>
+            <p
+              className={cn(
+                "flex items-baseline justify-between font-extrabold",
+                comanda.faltaCents === 0 ? "text-success" : "text-warning",
+              )}
+            >
+              <span>{comanda.faltaCents === 0 ? "Conta paga" : "Falta"}</span>
+              {comanda.faltaCents > 0 && <span className="tabular-nums">{formatCents(comanda.faltaCents)}</span>}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function Acoes({ podeFinanceiro }: { podeFinanceiro: boolean }) {
+/**
+ * O rodapé da conta: a via, o ajuste, o recebimento e a liberação.
+ *
+ * Liberar a mesa só aparece com a conta coberta, e é o único botão que
+ * troca de lugar com o de receber. Os dois juntos na mesma tela, um
+ * cinza e um verde, faziam o garçom liberar a mesa achando que estava
+ * recebendo -- e mesa liberada sem pagar é venda que ninguém encontra
+ * depois.
+ */
+function Acoes({
+  comanda,
+  restaurantId,
+  podeFinanceiro,
+  onReceber,
+  onAjustar,
+}: {
+  comanda: ComandaAberta;
+  restaurantId: string;
+  podeFinanceiro: boolean;
+  onReceber: () => void;
+  onAjustar: () => void;
+}) {
+  const [liberado, liberar, liberando] = useActionState<SalaoFormState, FormData>(finalizarMesa, {});
+
+  const temConta = comanda.id !== "" && comanda.totalCents > 0;
+  const quitada = temConta && comanda.faltaCents === 0;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <button type="button" aria-label="Imprimir a conta" className="grid h-11 flex-1 place-items-center rounded-control border border-line text-muted hover:text-ink">
+        <a
+          href={temConta ? "/painel/" + restaurantId + "/salao/conta/" + comanda.id : undefined}
+          target="_blank"
+          rel="noopener"
+          aria-disabled={!temConta}
+          aria-label="Imprimir a conta"
+          className={cn(
+            "grid h-11 flex-1 place-items-center rounded-control border border-line text-muted",
+            temConta ? "hover:text-ink" : "pointer-events-none opacity-40",
+          )}
+        >
           <Printer className="size-4" aria-hidden="true" />
-        </button>
+        </a>
         {podeFinanceiro && (
-          <>
-            <button type="button" aria-label="Aplicar desconto" className="grid h-11 flex-1 place-items-center rounded-control border border-line text-muted hover:text-ink">
-              <Percent className="size-4" aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Cancelar a mesa" className="grid h-11 flex-1 place-items-center rounded-control border border-line text-muted hover:text-danger">
-              <Trash2 className="size-4" aria-hidden="true" />
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onAjustar}
+            disabled={!temConta}
+            aria-label="Desconto e acréscimo"
+            className="grid h-11 flex-1 place-items-center rounded-control border border-line text-muted hover:text-ink disabled:opacity-40"
+          >
+            <Percent className="size-4" aria-hidden="true" />
+          </button>
         )}
       </div>
-      <button
-        type="button"
-        className="flex min-h-12 items-center justify-center gap-2 rounded-control bg-brand font-extrabold text-brand-ink hover:brightness-105"
-      >
-        <Wallet className="size-5" aria-hidden="true" />
-        Adicionar pagamento
-      </button>
+
+      {quitada && podeFinanceiro ? (
+        <form action={liberar}>
+          <input type="hidden" name="restaurantId" value={restaurantId} />
+          <input type="hidden" name="comandaId" value={comanda.id} />
+          <button
+            type="submit"
+            disabled={liberando}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-success font-extrabold text-white disabled:opacity-40"
+          >
+            <Check className="size-5" aria-hidden="true" />
+            {liberando ? "Liberando..." : "Liberar a mesa"}
+          </button>
+        </form>
+      ) : quitada ? (
+        /* conta paga e sem permissão de finalizar: o botão de receber
+           dizia "Receber o resto · R$ 0,00", que não é coisa que se peça a
+           ninguém. Quem libera é o balcão. */
+        <p className="flex min-h-12 items-center justify-center gap-2 rounded-control bg-success/15 px-4 text-center font-bold text-success">
+          <Check className="size-5 shrink-0" aria-hidden="true" />
+          Conta paga. O balcão libera a mesa.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={onReceber}
+          disabled={!temConta}
+          className="flex min-h-12 items-center justify-center gap-2 rounded-control bg-brand font-extrabold text-brand-ink hover:brightness-105 disabled:opacity-40"
+        >
+          <Wallet className="size-5" aria-hidden="true" />
+          {comanda.pagoCents > 0 ? "Receber o resto · " + formatCents(comanda.faltaCents) : "Adicionar pagamento"}
+        </button>
+      )}
+
+      {liberado.error && (
+        <p className="rounded-control bg-danger/15 px-3 py-2 text-sm font-bold text-danger" role="status">
+          {liberado.error}
+        </p>
+      )}
     </div>
   );
 }
@@ -226,19 +349,23 @@ export function ComandaDaMesa({
   comanda,
   categorias,
   podeFinanceiro = true,
+  podeApagarItem = true,
   restaurantId,
   mesaId,
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
-  /** o garçom sem permissão não vê desconto nem cancelamento */
+  /** o garçom sem permissão não vê desconto nem liberação de mesa */
   podeFinanceiro?: boolean;
+  /** nem a lixeira ao lado do item que já foi para a cozinha */
+  podeApagarItem?: boolean;
   restaurantId: string;
   mesaId: string;
 }) {
   const [aba, setAba] = useState<"conta" | "cardapio">("cardapio");
   const [sacola, setSacola] = useState<Escolhido[]>([]);
   const [aberto, setAberto] = useState<ProdutoDoCardapio | null>(null);
+  const [folha, setFolha] = useState<"pagamento" | "desconto" | null>(null);
   const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
 
   // o que foi salvo sai da sacola: deixá-lo ali faria lançar duas vezes
@@ -302,7 +429,7 @@ export function ComandaDaMesa({
           aba === "conta" ? "flex" : "hidden lg:flex",
         )}
       >
-        <Conta comanda={comanda} />
+        <Conta comanda={comanda} restaurantId={restaurantId} podeApagarItem={podeApagarItem} />
 
         {/* o que ainda não foi enviado fica separado do que já está na
             cozinha: são duas coisas diferentes para quem olha a conta */}
@@ -358,7 +485,13 @@ export function ComandaDaMesa({
           </p>
         )}
 
-        <Acoes podeFinanceiro={podeFinanceiro} />
+        <Acoes
+          comanda={comanda}
+          restaurantId={restaurantId}
+          podeFinanceiro={podeFinanceiro}
+          onReceber={() => setFolha("pagamento")}
+          onAjustar={() => setFolha("desconto")}
+        />
       </section>
 
       <section className={cn("flex min-h-0 min-w-0 flex-col", aba === "cardapio" ? "flex" : "hidden lg:flex")}>
@@ -375,6 +508,12 @@ export function ComandaDaMesa({
           }}
         />
       )}
+
+      {folha === "pagamento" && (
+        <FolhaDoPagamento comanda={comanda} restaurantId={restaurantId} podeDesfazer={podeFinanceiro} onFechar={() => setFolha(null)} />
+      )}
+
+      {folha === "desconto" && <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} onFechar={() => setFolha(null)} />}
     </div>
   );
 }

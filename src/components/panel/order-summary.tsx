@@ -48,6 +48,9 @@ export const orderSummarySelect = {
     },
   },
   payment: { select: { status: true, cardType: true, changeForCents: true } },
+  // a mesa e o garçom, quando o pedido veio do salão: é o que vai no topo
+  // da comanda, no lugar do nome e do endereço de quem pede pelo link
+  comanda: { select: { mesa: { select: { numero: true, tipo: true, nome: true } }, garcom: { select: { name: true } } } },
 } satisfies Prisma.OrderSelect;
 
 export type OrderSummaryData = Prisma.OrderGetPayload<{ select: typeof orderSummarySelect }>;

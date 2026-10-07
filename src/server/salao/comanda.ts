@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { NOME_DA_FORMA, type FormaNaMesa, type PagamentoNaMesa } from "@/server/salao/pagamento";
 
 // A comanda de uma mesa, e o cardápio para lançar nela.
 //
@@ -38,6 +39,11 @@ export type ComandaAberta = {
   descontoCents: number;
   servicoCents: number;
   totalCents: number;
+  /** cada recebimento, com a forma de quem pagou */
+  pagamentos: PagamentoNaMesa[];
+  pagoCents: number;
+  /** quanto ainda falta receber; zero quer dizer mesa pronta para liberar */
+  faltaCents: number;
 };
 
 export type OpcaoDoProduto = { id: string; nome: string; centavos: number; disponivel: boolean };
@@ -85,6 +91,10 @@ export async function verMesa(restaurantId: string, mesaId: string, agora = new 
           descontoCents: true,
           servicoCents: true,
           garcom: { select: { name: true } },
+          pagamentos: {
+            orderBy: { createdAt: "asc" },
+            select: { id: true, forma: true, centavos: true, createdAt: true, recebidoPor: { select: { name: true } } },
+          },
           orders: {
             where: { status: { not: "CANCELED" } },
             orderBy: { createdAt: "asc" },
@@ -130,6 +140,9 @@ export async function verMesa(restaurantId: string, mesaId: string, agora = new 
         descontoCents: 0,
         servicoCents: 0,
         totalCents: 0,
+        pagamentos: [],
+        pagoCents: 0,
+        faltaCents: 0,
       },
     };
   }
@@ -147,6 +160,17 @@ export async function verMesa(restaurantId: string, mesaId: string, agora = new 
   );
 
   const subtotal = itens.reduce((s, i) => s + i.centavos, 0);
+  const total = subtotal + c.servicoCents - c.descontoCents;
+
+  const pagamentos: PagamentoNaMesa[] = c.pagamentos.map((p) => ({
+    id: p.id,
+    forma: p.forma as FormaNaMesa,
+    nomeDaForma: NOME_DA_FORMA[p.forma as FormaNaMesa],
+    centavos: p.centavos,
+    recebidoPor: p.recebidoPor?.name ?? null,
+    createdAt: p.createdAt,
+  }));
+  const pago = pagamentos.reduce((s, p) => s + p.centavos, 0);
 
   const comanda: ComandaAberta = {
     id: c.id,
@@ -163,7 +187,10 @@ export async function verMesa(restaurantId: string, mesaId: string, agora = new 
     subtotalCents: subtotal,
     descontoCents: c.descontoCents,
     servicoCents: c.servicoCents,
-    totalCents: subtotal + c.servicoCents - c.descontoCents,
+    totalCents: total,
+    pagamentos,
+    pagoCents: pago,
+    faltaCents: Math.max(0, total - pago),
   };
 
   return { mesa: { id: mesa.id, numero: mesa.numero, tipo: mesa.tipo, nome: mesa.nome, lugares: mesa.lugares }, comanda };
@@ -235,4 +262,69 @@ export async function cardapioDoSalao(restaurantId: string): Promise<CategoriaDo
           })),
       })),
     }));
+}
+
+/**
+ * A conta da mesa, pelo id da comanda, para sair no papel.
+ *
+ * É a mesma soma da tela -- os itens dos pedidos que já foram para a
+ * cozinha --, lida por outro caminho porque quem imprime tem o número da
+ * comanda na mão, não o da mesa. O cliente pede "a conta", e o que ele
+ * confere é esta folha.
+ */
+export async function verConta(restaurantId: string, comandaId: string) {
+  const c = await db.comanda.findFirst({
+    where: { id: comandaId, restaurantId },
+    select: {
+      id: true,
+      abertaAt: true,
+      fechadaAt: true,
+      pessoas: true,
+      servicoCents: true,
+      descontoCents: true,
+      garcom: { select: { name: true } },
+      mesa: { select: { numero: true, tipo: true, nome: true } },
+      pagamentos: { orderBy: { createdAt: "asc" }, select: { forma: true, centavos: true } },
+      orders: {
+        where: { status: { not: "CANCELED" } },
+        orderBy: { createdAt: "asc" },
+        select: {
+          number: true,
+          items: { orderBy: { id: "asc" }, select: { productName: true, optionsText: true, notes: true, quantity: true, totalCents: true } },
+        },
+      },
+    },
+  });
+  if (!c) return null;
+
+  const itens = c.orders.flatMap((o) =>
+    o.items.map((i) => ({
+      nome: i.productName,
+      opcoes: i.optionsText,
+      observacao: i.notes,
+      quantidade: i.quantity,
+      centavos: i.totalCents,
+    })),
+  );
+
+  const subtotal = itens.reduce((s, i) => s + i.centavos, 0);
+  const total = subtotal + c.servicoCents - c.descontoCents;
+  const pago = c.pagamentos.reduce((s, p) => s + p.centavos, 0);
+
+  return {
+    abertaAt: c.abertaAt,
+    fechadaAt: c.fechadaAt,
+    pessoas: c.pessoas,
+    garcom: c.garcom?.name ?? null,
+    rotulo: (c.mesa.tipo === "BALCAO" ? "Balcão" : "Mesa") + " " + c.mesa.numero,
+    nomeDaMesa: c.mesa.nome,
+    itens,
+    subtotalCents: subtotal,
+    servicoCents: c.servicoCents,
+    descontoCents: c.descontoCents,
+    totalCents: total,
+    pagamentos: c.pagamentos.map((p) => ({ forma: NOME_DA_FORMA[p.forma as FormaNaMesa], centavos: p.centavos })),
+    pagoCents: pago,
+    faltaCents: Math.max(0, total - pago),
+  };
 }

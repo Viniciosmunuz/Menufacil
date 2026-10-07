@@ -1,14 +1,26 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 
 import type { LugarTipo } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
+import { formatCents } from "@/lib/format";
 import { parseMoneyToCents } from "@/lib/validation";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
-import { criarGarcom } from "@/server/salao/garcons";
+import { criarGarcom, mudarPermissoes } from "@/server/salao/garcons";
 import { lancarNaMesa } from "@/server/salao/lancar";
+import {
+  ajustarConta,
+  apagarItemDaComanda,
+  desfazerRecebimento,
+  liberarMesa,
+  receberNaMesa,
+  FORMAS,
+  NOME_DA_FORMA,
+  type FormaNaMesa,
+} from "@/server/salao/pagamento";
 import { abrirTurno, fecharTurno, turnoAberto } from "@/server/salao/turno";
 
 // Ações do salão. Toda uma delas passa por requireSalao: esconder o botão
@@ -155,8 +167,15 @@ export async function fecharCaixa(_prev: SalaoFormState, formData: FormData): Pr
 
   await panelAudit(acesso, "salao.caixa_fechou", { caixaId: r.caixaId ?? null });
   refresh();
-  // o papel do fechamento abre numa aba: é a via que o dono guarda
-  return { ok: true, message: "Caixa fechado. As mesas voltaram a ficar livres.", fechamentoId: r.caixaId };
+
+  // Fechou: a tela vira a via da noite, que sai sozinha na impressora.
+  //
+  // Era uma aba nova aberta pelo formulário, e não funcionava: fechar o
+  // caixa faz a página do salão voltar a ser o pedido de abrir, e o
+  // formulário some antes de chegar a abrir a aba. O caminho que não
+  // depende de nada sobreviver é este -- o papel é a última coisa da
+  // noite, e de lá se volta ao salão por um botão.
+  redirect(`/painel/${restaurantId}/salao/fechamento/${r.caixaId}`);
 }
 
 /**
@@ -197,4 +216,114 @@ export async function lancarItens(_prev: SalaoFormState, formData: FormData): Pr
   await panelAudit(acesso, "salao.lancou", { mesaId, pedido: r.numero, itens: itens.length });
   refresh();
   return { ok: true, message: `Pedido #${r.numero} enviado para a cozinha.` };
+}
+
+/**
+ * Lança um recebimento na mesa.
+ *
+ * Garçom recebe: é disso que o trabalho dele é feito, e é ele que está com
+ * a maquininha na mão. O que ele não faz sem permissão é liberar a mesa e
+ * apagar item -- as duas ações que mexem no que já entrou no caixa.
+ */
+export async function receberPagamento(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const forma = String(formData.get("forma") ?? "");
+  if (!FORMAS.some((f) => f.chave === forma)) return { error: "Escolha a forma de pagamento." };
+
+  const cents = parseMoneyToCents(String(formData.get("valor") ?? ""));
+  if (cents === null) return { error: "Diga quanto está recebendo." };
+
+  const r = await receberNaMesa(restaurantId, comandaId, acesso.user.id, forma as FormaNaMesa, cents);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.recebeu", { comandaId, forma, centavos: cents });
+  refresh();
+  return { ok: true, message: `${NOME_DA_FORMA[forma as FormaNaMesa]}: ${formatCents(cents)} recebido.` };
+}
+
+/** Desfaz um recebimento digitado errado. */
+export async function desfazerPagamento(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  // tirar dinheiro lançado é o avesso de finalizar a mesa: mesma confiança
+  if (!acesso.pode.finalizarMesa) return { error: "Só quem pode finalizar a mesa desfaz um recebimento." };
+
+  const r = await desfazerRecebimento(restaurantId, String(formData.get("pagamentoId") ?? ""));
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.desfez_recebimento", { pagamentoId: String(formData.get("pagamentoId") ?? "") });
+  refresh();
+  return { ok: true, message: "Recebimento desfeito." };
+}
+
+/** Libera a mesa para a próxima pessoa. Só com a conta coberta. */
+export async function finalizarMesa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para finalizar a mesa." };
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const r = await liberarMesa(restaurantId, comandaId);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.finalizou_mesa", { comandaId });
+  refresh();
+  return { ok: true, message: "Mesa liberada." };
+}
+
+/** Apaga um item da comanda. Permissão por garçom, desligada de nascença. */
+export async function apagarItem(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.excluirItem) return { error: "Você não tem permissão para apagar item da comanda." };
+
+  const itemId = String(formData.get("itemId") ?? "");
+  const r = await apagarItemDaComanda(restaurantId, itemId, acesso.user.id);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.apagou_item", { itemId });
+  refresh();
+  return { ok: true, message: "Item apagado da conta." };
+}
+
+/** Desconto e acréscimo da mesa. Mesma confiança de finalizar. */
+export async function ajustarAConta(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para dar desconto." };
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const desconto = parseMoneyToCents(String(formData.get("desconto") ?? "0")) ?? 0;
+  const servico = parseMoneyToCents(String(formData.get("servico") ?? "0")) ?? 0;
+
+  const r = await ajustarConta(restaurantId, comandaId, desconto, servico);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.ajustou_conta", { comandaId, desconto, servico });
+  refresh();
+  return { ok: true, message: "Conta ajustada." };
+}
+
+/** Liga e desliga as permissões de um garçom já cadastrado. */
+export async function editarGarcom(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  // mexer em permissão é coisa de dono; garçom nenhum muda a própria
+  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante muda as permissões." };
+
+  const vinculoId = String(formData.get("vinculoId") ?? "");
+  const permissoes = {
+    podeExcluirItem: formData.get("podeExcluirItem") === "on",
+    podeFinalizarMesa: formData.get("podeFinalizarMesa") === "on",
+  };
+
+  const r = await mudarPermissoes(restaurantId, vinculoId, permissoes);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.garcom_permissoes", { vinculoId, ...permissoes });
+  refresh();
+  return { ok: true, message: `Permissões de ${r.nome ?? "o garçom"} salvas.` };
 }

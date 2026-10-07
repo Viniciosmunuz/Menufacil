@@ -1,4 +1,4 @@
-import { Banknote, CreditCard, QrCode, Wallet } from "lucide-react";
+import { Banknote, CreditCard, NotebookPen, QrCode, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
@@ -17,15 +17,10 @@ import type { CaixaDoSalao } from "@/server/salao/caixa";
 // papel de dono no servidor.
 
 const ICONE: Record<string, ReactNode> = {
-  CASH: <Banknote className="size-5" aria-hidden="true" />,
+  DINHEIRO: <Banknote className="size-5" aria-hidden="true" />,
   PIX: <QrCode className="size-5" aria-hidden="true" />,
-  CARD: <CreditCard className="size-5" aria-hidden="true" />,
-};
-
-const NOME: Record<string, string> = {
-  CASH: "Dinheiro",
-  PIX: "Pix",
-  CARD: "Cartão",
+  CARTAO: <CreditCard className="size-5" aria-hidden="true" />,
+  ANOTADO: <NotebookPen className="size-5" aria-hidden="true" />,
 };
 
 export function CaixaDoSalaoPanel({
@@ -78,12 +73,12 @@ export function CaixaDoSalaoPanel({
         ) : (
           <ul className="flex flex-col divide-y divide-line">
             {caixa.linhas.map((l) => (
-              <li key={l.method} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <li key={l.forma} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <span className="grid size-10 shrink-0 place-items-center rounded-control bg-surface-3 text-muted">
-                  {ICONE[l.method] ?? <Wallet className="size-5" aria-hidden="true" />}
+                  {ICONE[l.forma] ?? <Wallet className="size-5" aria-hidden="true" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-bold">{NOME[l.method] ?? l.method}</span>
+                  <span className="block font-bold">{l.nome}</span>
                   <span className="block text-sm text-muted">
                     {l.pedidos} {l.pedidos === 1 ? "pedido" : "pedidos"}
                   </span>
@@ -92,6 +87,18 @@ export function CaixaDoSalaoPanel({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* o anotado não está na gaveta nem na máquina: é conta que a casa
+            ainda vai cobrar, e somá-la ao que entrou faria o caixa não bater */}
+        {caixa.anotadoCents > 0 && (
+          <p className="flex items-center justify-between gap-3 rounded-control bg-warning/10 px-4 py-3 text-sm font-bold text-warning">
+            <span className="flex items-center gap-2">
+              <NotebookPen className="size-4" aria-hidden="true" />
+              Anotado, a receber
+            </span>
+            <span className="tabular-nums">{formatCents(caixa.anotadoCents)}</span>
+          </p>
         )}
       </Card>
 

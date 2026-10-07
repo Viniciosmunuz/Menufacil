@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { NOME_DA_FORMA, type FormaNaMesa } from "@/server/salao/pagamento";
 
 // O turno do salão: aberto por alguém, fechado por alguém.
 //
@@ -62,14 +63,14 @@ export type FechamentoDaNoite = {
   aberturaCents: number;
   porForma: { forma: string; pedidos: number; centavos: number }[];
   recebidoCents: number;
+  /** anotado: saiu sem pagar, a casa cobra depois -- fora do que entrou */
+  anotadoCents: number;
   naGavetaCents: number;
   mesas: number;
   ticketCents: number;
   garcom: { nome: string; mesas: number } | null;
   prato: { nome: string; quantidade: number } | null;
 };
-
-const NOME_DA_FORMA: Record<string, string> = { CASH: "Dinheiro", PIX: "Pix", CARD: "Cartao" };
 
 /**
  * Os números da noite, para o papel do fechamento.
@@ -90,33 +91,40 @@ export async function numerosDaNoite(restaurantId: string, caixaId: string): Pro
     where: { restaurantId, abertaAt: { gte: caixa.abertoAt }, status: "PAGO" },
     select: {
       garcom: { select: { name: true } },
+      // a forma sai daqui, não do pedido: o pedido do salão nasce antes de
+      // alguém saber como a mesa vai pagar, e uma conta dividida tem três
+      pagamentos: { select: { forma: true, centavos: true } },
       orders: {
         where: { status: { not: "CANCELED" } },
-        select: { totalCents: true, paymentMethod: true, items: { select: { productName: true, quantity: true } } },
+        select: { items: { select: { productName: true, quantity: true } } },
       },
     },
   });
 
-  const porForma = new Map<string, { forma: string; pedidos: number; centavos: number }>();
+  const porForma = new Map<FormaNaMesa, { forma: string; pedidos: number; centavos: number }>();
   const porGarcom = new Map<string, number>();
   const porPrato = new Map<string, number>();
 
   for (const c of comandas) {
     const nome = c.garcom?.name ?? "Sem garçom";
     porGarcom.set(nome, (porGarcom.get(nome) ?? 0) + 1);
-    for (const o of c.orders) {
-      const chave = NOME_DA_FORMA[o.paymentMethod] ?? o.paymentMethod;
-      const linha = porForma.get(chave) ?? { forma: chave, pedidos: 0, centavos: 0 };
+    for (const p of c.pagamentos) {
+      const forma = p.forma as FormaNaMesa;
+      const linha = porForma.get(forma) ?? { forma: NOME_DA_FORMA[forma], pedidos: 0, centavos: 0 };
       linha.pedidos += 1;
-      linha.centavos += o.totalCents;
-      porForma.set(chave, linha);
+      linha.centavos += p.centavos;
+      porForma.set(forma, linha);
+    }
+    for (const o of c.orders) {
       for (const i of o.items) porPrato.set(i.productName, (porPrato.get(i.productName) ?? 0) + i.quantity);
     }
   }
 
-  const linhas = [...porForma.values()].sort((a, b) => b.centavos - a.centavos);
+  const pagas = [...porForma.entries()].filter(([f]) => f !== "ANOTADO");
+  const linhas = pagas.map(([, l]) => l).sort((a, b) => b.centavos - a.centavos);
   const recebido = linhas.reduce((s, l) => s + l.centavos, 0);
-  const dinheiro = porForma.get("Dinheiro")?.centavos ?? 0;
+  const anotado = porForma.get("ANOTADO")?.centavos ?? 0;
+  const dinheiro = porForma.get("DINHEIRO")?.centavos ?? 0;
 
   const topGarcom = [...porGarcom.entries()].sort((a, b) => b[1] - a[1])[0];
   const topPrato = [...porPrato.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -127,10 +135,13 @@ export async function numerosDaNoite(restaurantId: string, caixaId: string): Pro
     aberturaCents: caixa.aberturaCents,
     porForma: linhas,
     recebidoCents: recebido,
+    anotadoCents: anotado,
     // só o dinheiro soma com o troco inicial: Pix e cartão não passam pela gaveta
     naGavetaCents: caixa.aberturaCents + dinheiro,
     mesas: comandas.length,
-    ticketCents: comandas.length > 0 ? Math.round(recebido / comandas.length) : 0,
+    // o ticket é por mesa, e o que ficou anotado também foi consumido:
+    // tirá-lo da conta faria a noite parecer mais magra do que foi
+    ticketCents: comandas.length > 0 ? Math.round((recebido + anotado) / comandas.length) : 0,
     garcom: topGarcom ? { nome: topGarcom[0], mesas: topGarcom[1] } : null,
     prato: topPrato ? { nome: topPrato[0], quantidade: topPrato[1] } : null,
   };

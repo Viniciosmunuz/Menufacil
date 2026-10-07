@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ImageOff, Info, Minus, Percent, Plus, Printer, Search, Ticket, Trash2, Wallet, X } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, Info, Percent, Printer, Search, Trash2, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState } from "react";
@@ -9,9 +9,11 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
+import { FolhaDoDesconto } from "./folha-do-desconto";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
+import { FolhaDoPagamento } from "./folha-do-pagamento";
 
-import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
+import { apagarItem, finalizarMesa, lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
 // A mesa na mão do garçom.
 //
@@ -41,6 +43,8 @@ export function MesaDoGarcom({
   voltarHref,
   restaurantId,
   mesaId,
+  podeFinanceiro = false,
+  podeApagarItem = false,
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
@@ -48,13 +52,23 @@ export function MesaDoGarcom({
   voltarHref: string;
   restaurantId: string;
   mesaId: string;
+  /** liberar a mesa, dar desconto, desfazer recebimento: o dono liga por garçom */
+  podeFinanceiro?: boolean;
+  /** tirar da conta o que já foi para a cozinha */
+  podeApagarItem?: boolean;
 }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(categorias[0]?.id ?? null);
   const [sacola, setSacola] = useState<Escolhido[]>([]);
   const [vendoConta, setVendoConta] = useState(false);
   const [aberto, setAberto] = useState<ProdutoDoCardapio | null>(null);
+  const [folha, setFolha] = useState<"pagamento" | "desconto" | null>(null);
   const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
+  const [liberado, liberar, liberando] = useActionState<SalaoFormState, FormData>(finalizarMesa, {});
+  const [apagado, apagar] = useActionState<SalaoFormState, FormData>(apagarItem, {});
+
+  const temConta = comanda.id !== "" && comanda.totalCents > 0;
+  const quitada = temConta && comanda.faltaCents === 0;
 
   // Salvou: a sacola esvazia, porque o que estava nela agora está na
   // comanda -- deixá-la cheia faria o garçom lançar o mesmo pedido duas
@@ -252,6 +266,11 @@ export function MesaDoGarcom({
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4">
+            {apagado.error && (
+              <p className="mt-3 rounded-control bg-danger/15 px-3 py-2 text-sm font-bold text-danger" role="status">
+                {apagado.error}
+              </p>
+            )}
             {comanda.itens.length === 0 ? (
               <p className="py-12 text-center text-muted">Nada lançado ainda.</p>
             ) : (
@@ -262,8 +281,22 @@ export function MesaDoGarcom({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{i.nome}</span>
                       {i.opcoes && <span className="block truncate text-xs text-muted">{i.opcoes}</span>}
+                      {i.observacao && <span className="block truncate text-xs text-warning">{i.observacao}</span>}
                     </span>
                     <span className="shrink-0 text-sm font-bold tabular-nums">{formatCents(i.centavos)}</span>
+                    {podeApagarItem && (
+                      <form action={apagar} className="shrink-0">
+                        <input type="hidden" name="restaurantId" value={restaurantId} />
+                        <input type="hidden" name="itemId" value={i.id} />
+                        <button
+                          type="submit"
+                          aria-label={"Apagar " + i.nome + " da conta"}
+                          className="grid size-8 place-items-center rounded-control text-faint active:text-danger"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </button>
+                      </form>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -275,44 +308,111 @@ export function MesaDoGarcom({
               <span>Subtotal</span>
               <span className="tabular-nums">{formatCents(comanda.subtotalCents)}</span>
             </p>
+            {comanda.servicoCents > 0 && (
+              <p className="flex items-baseline justify-between text-sm text-muted">
+                <span>Serviço</span>
+                <span className="tabular-nums">{formatCents(comanda.servicoCents)}</span>
+              </p>
+            )}
+            {comanda.descontoCents > 0 && (
+              <p className="flex items-baseline justify-between text-sm text-success">
+                <span>Desconto</span>
+                <span className="tabular-nums">−{formatCents(comanda.descontoCents)}</span>
+              </p>
+            )}
             <p className="flex items-baseline justify-between text-xl font-extrabold">
               <span>Total</span>
               <span className="tabular-nums">{formatCents(comanda.totalCents)}</span>
             </p>
-            <p className="flex items-baseline justify-between text-sm text-muted">
-              <span>Restante</span>
-              <span className="tabular-nums">{formatCents(comanda.totalCents)}</span>
-            </p>
+            {/* o que falta só aparece depois do primeiro recebimento: numa
+                mesa que ninguém pagou, "restante" é o total repetido */}
+            {comanda.pagoCents > 0 && (
+              <>
+                <p className="flex items-baseline justify-between text-sm text-success">
+                  <span>Recebido</span>
+                  <span className="tabular-nums">{formatCents(comanda.pagoCents)}</span>
+                </p>
+                <p className={cn("flex items-baseline justify-between font-extrabold", comanda.faltaCents === 0 ? "text-success" : "text-warning")}>
+                  <span>{comanda.faltaCents === 0 ? "Conta paga" : "Falta"}</span>
+                  {comanda.faltaCents > 0 && <span className="tabular-nums">{formatCents(comanda.faltaCents)}</span>}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex gap-2 border-t border-line px-4 py-3">
-            {[
-              { icone: Trash2, titulo: "Cancelar a mesa", cor: "text-danger" },
-              { icone: Minus, titulo: "Tirar valor da conta", cor: "text-warning" },
-              { icone: Plus, titulo: "Acrescentar valor", cor: "text-success" },
-              { icone: Percent, titulo: "Dar desconto", cor: "text-muted" },
-              { icone: Printer, titulo: "Imprimir a conta", cor: "text-muted" },
-            ].map(({ icone: Icone, titulo, cor }) => (
+            <a
+              href={temConta ? "/painel/" + restaurantId + "/salao/conta/" + comanda.id : undefined}
+              target="_blank"
+              rel="noopener"
+              aria-label="Imprimir a conta"
+              className={cn(
+                "grid h-12 flex-1 place-items-center rounded-control bg-surface-3 text-muted",
+                temConta ? "" : "pointer-events-none opacity-40",
+              )}
+            >
+              <Printer className="size-5" aria-hidden="true" />
+            </a>
+            {podeFinanceiro && (
               <button
-                key={titulo}
                 type="button"
-                title={titulo}
-                aria-label={titulo}
-                className={cn("grid h-12 flex-1 place-items-center rounded-control bg-surface-3", cor)}
+                onClick={() => setFolha("desconto")}
+                disabled={!temConta}
+                aria-label="Desconto e acréscimo"
+                className="grid h-12 flex-1 place-items-center rounded-control bg-surface-3 text-muted disabled:opacity-40"
               >
-                <Icone className="size-5" aria-hidden="true" />
+                <Percent className="size-5" aria-hidden="true" />
               </button>
-            ))}
+            )}
           </div>
 
           <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <button type="button" className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-brand font-extrabold text-brand-ink">
-              <Wallet className="size-5" aria-hidden="true" />
-              Adicionar pagamento
-            </button>
+            {quitada && podeFinanceiro ? (
+              <form action={liberar}>
+                <input type="hidden" name="restaurantId" value={restaurantId} />
+                <input type="hidden" name="comandaId" value={comanda.id} />
+                <button
+                  type="submit"
+                  disabled={liberando}
+                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-success font-extrabold text-white disabled:opacity-40"
+                >
+                  <Check className="size-5" aria-hidden="true" />
+                  {liberando ? "Liberando..." : "Liberar a mesa"}
+                </button>
+              </form>
+            ) : quitada ? (
+              /* conta paga e sem permissão de finalizar: o botão de receber
+                 dizia "Receber o resto · R$ 0,00", que não é coisa que se
+                 peça a ninguém. Quem libera é o balcão. */
+              <p className="flex min-h-14 items-center justify-center gap-2 rounded-control bg-success/15 px-4 text-center font-bold text-success">
+                <Check className="size-5 shrink-0" aria-hidden="true" />
+                Conta paga. O balcão libera a mesa.
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setFolha("pagamento")}
+                disabled={!temConta}
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-brand font-extrabold text-brand-ink disabled:opacity-40"
+              >
+                <Wallet className="size-5" aria-hidden="true" />
+                {comanda.pagoCents > 0 ? "Receber o resto · " + formatCents(comanda.faltaCents) : "Adicionar pagamento"}
+              </button>
+            )}
+            {liberado.error && (
+              <p className="mt-2 rounded-control bg-danger/15 px-3 py-2 text-center text-sm font-bold text-danger" role="status">
+                {liberado.error}
+              </p>
+            )}
           </div>
         </div>
       )}
+
+      {folha === "pagamento" && (
+        <FolhaDoPagamento comanda={comanda} restaurantId={restaurantId} podeDesfazer={podeFinanceiro} onFechar={() => setFolha(null)} />
+      )}
+
+      {folha === "desconto" && <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} onFechar={() => setFolha(null)} />}
 
       {aberto && (
         <FolhaDoItem
@@ -324,10 +424,6 @@ export function MesaDoGarcom({
           }}
         />
       )}
-      {/* o ticket entra quando a divisão de conta existir */}
-      <span hidden>
-        <Ticket aria-hidden="true" />
-      </span>
     </div>
   );
 }

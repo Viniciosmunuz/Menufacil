@@ -43,6 +43,8 @@ export type TicketOrder = {
   totalCents: number;
   paymentMethod: PaymentMethod;
   payment: { cardType: CardType | null; changeForCents: number | null } | null;
+  /** a mesa e o garçom, quando o pedido veio do salão */
+  comanda?: { mesa: { numero: number; tipo: string; nome: string | null }; garcom: { name: string | null } | null } | null;
   items: {
     productName: string;
     optionsText: string | null;
@@ -150,11 +152,55 @@ function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>, secoes?: Set<st
   return lines;
 }
 
+/**
+ * A comanda de uma mesa.
+ *
+ * O que a cozinha precisa saber de um pedido de salão é para qual mesa ele
+ * vai e quem o anotou. Nome de cliente, telefone, endereço e forma de
+ * pagamento são perguntas de quem pede pelo link, e no salão não têm
+ * resposta: o cliente está sentado ali, e como ele vai pagar ninguém sabe
+ * ainda -- se sabe, é assunto do caixa, não do fogão.
+ *
+ * O número da mesa vai sozinho e grande no topo porque é por ele que o
+ * prato encontra a pessoa.
+ */
+function salaoLines(o: TicketOrder, restaurantName: string, p: ReturnType<typeof pincel>, secoes?: Set<string>): string[] {
+  const { forte, fraco, meio, entre, texto, titulo } = p;
+  const lines: string[] = [];
+  const mesa = o.comanda?.mesa;
+  const rotulo = mesa ? (mesa.tipo === "BALCAO" ? "BALCAO" : "MESA") + " " + mesa.numero : "SALAO";
+
+  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
+  lines.push("", meio(rotulo), "");
+  if (mesa?.nome) lines.push(meio(mesa.nome.toUpperCase()), "");
+  lines.push(forte);
+
+  lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
+  if (o.comanda?.garcom?.name) lines.push(...texto(`Garçom: ${o.comanda.garcom.name}`));
+  lines.push(forte);
+
+  lines.push(...itemLines(o, p, secoes));
+
+  lines.push(fraco, entre("TOTAL", formatCents(o.totalCents)), forte);
+
+  if (o.notes) {
+    lines.push(...titulo("OBSERVAÇÃO DO PEDIDO"));
+    lines.push(...texto(o.notes));
+    lines.push(forte);
+  }
+
+  // sem bloco de pagamento de propósito: a mesa paga no fim, no caixa, e a
+  // via da conta é outro papel
+  return lines;
+}
+
 export function ticketLines(o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER, secoes?: Set<string>): string[] {
   const p = pincel(paper);
   const { forte, fraco, margem, meio, entre, texto, titulo } = p;
   const delivery = o.type === "DELIVERY";
   const lines: string[] = [];
+
+  if (o.origin === "SALAO") return salaoLines(o, restaurantName, p, secoes);
 
   // cabeçalho: o restaurante, o número e como o cliente recebe
   const noTotem = o.origin === "TOTEM";

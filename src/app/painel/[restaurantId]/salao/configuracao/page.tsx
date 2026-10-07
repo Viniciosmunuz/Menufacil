@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { requireSalao } from "@/server/auth/dal";
+import { PermissoesDoGarcom } from "@/components/panel/permissoes-garcom";
 import { listarGarcons } from "@/server/salao/garcons";
 
 import { GarcomForm } from "../garcom-form";
@@ -72,6 +73,13 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
                 )}
               </span>
               <span className="shrink-0 text-sm text-faint">{g.ultimoAcesso ? `entrou ${formatWhen(g.ultimoAcesso)}` : "nunca entrou"}</span>
+              <PermissoesDoGarcom
+                restaurantId={restaurant.id}
+                vinculoId={g.vinculoId}
+                nome={g.nome}
+                podeExcluirItem={g.podeExcluirItem}
+                podeFinalizarMesa={g.podeFinalizarMesa}
+              />
             </li>
           ))}
         </ul>

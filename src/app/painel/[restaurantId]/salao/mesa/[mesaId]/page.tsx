@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComandaDaMesa } from "@/components/panel/comanda-mesa";
+import { NomeDaMesa } from "@/components/panel/nome-da-mesa";
 import { Badge } from "@/components/ui/badge";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
@@ -12,13 +13,15 @@ export const metadata: Metadata = { title: "Mesa" };
 
 export default async function MesaPage({ params }: PageProps<"/painel/[restaurantId]/salao/mesa/[mesaId]">) {
   const { restaurantId, mesaId } = await params;
-  const { restaurant } = await requireSalao(restaurantId);
+  const { restaurant, pode } = await requireSalao(restaurantId);
 
   const [achado, categorias] = await Promise.all([verMesa(restaurant.id, mesaId), cardapioDoSalao(restaurant.id)]);
   if (!achado) notFound();
 
   const { mesa, comanda } = achado;
   const rotulo = mesa.tipo === "BALCAO" ? "Balcão" : "Mesa";
+  // comanda sem id é a mesa livre: ela existe para o toque cair no cardápio
+  const aberta = comanda.id !== "";
   const base = `/painel/${restaurant.id}/salao`;
 
   return (
@@ -27,17 +30,21 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         <Link href={base} className="grid size-10 shrink-0 place-items-center rounded-control border border-line text-muted hover:text-ink" aria-label="Voltar ao salão">
           <ArrowLeft className="size-5" aria-hidden="true" />
         </Link>
-        <h1 className="text-2xl font-extrabold">
-          {rotulo} {mesa.numero}
-        </h1>
-        {comanda && (
+        <NomeDaMesa restaurantId={restaurant.id} mesaId={mesa.id} rotulo={rotulo} numero={mesa.numero} nome={mesa.nome} />
+        {/* Mesa sem nada lançado é mesa livre, e aqui ela chega como uma
+            comanda vazia -- é o que faz o toque cair direto no cardápio.
+            Sem este teste o cabeçalho anunciava "Ocupada · 0 pessoas · 0
+            min" numa mesa em que ninguém sentou. */}
+        {aberta ? (
           <>
             <Badge tone={comanda.status === "PAGO" ? "success" : "brand"}>{comanda.status === "PAGO" ? "Pago" : "Ocupada"}</Badge>
             <span className="flex items-center gap-3 text-sm text-muted">
-              <span className="flex items-center gap-1">
-                <Users className="size-4" aria-hidden="true" />
-                {comanda.pessoas}
-              </span>
+              {comanda.pessoas > 0 && (
+                <span className="flex items-center gap-1">
+                  <Users className="size-4" aria-hidden="true" />
+                  {comanda.pessoas}
+                </span>
+              )}
               <span className="flex items-center gap-1">
                 <Clock className="size-4" aria-hidden="true" />
                 {comanda.minutos} min
@@ -45,10 +52,19 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
               {comanda.garcom && <span className="truncate">{comanda.garcom}</span>}
             </span>
           </>
+        ) : (
+          <Badge tone="neutral">Livre</Badge>
         )}
       </header>
 
-      <ComandaDaMesa comanda={comanda} categorias={categorias} restaurantId={restaurant.id} mesaId={mesa.id} />
+      <ComandaDaMesa
+        comanda={comanda}
+        categorias={categorias}
+        podeFinanceiro={pode.finalizarMesa}
+        podeApagarItem={pode.excluirItem}
+        restaurantId={restaurant.id}
+        mesaId={mesa.id}
+      />
     </div>
   );
 }
