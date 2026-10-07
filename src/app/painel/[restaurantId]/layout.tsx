@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
+import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireDono } from "@/server/auth/dal";
 
@@ -57,6 +58,8 @@ export default async function RestaurantPanelLayout({
         ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Entrega", icon: <Bike /> }] : []),
       ]}
     >
+      {/* anota a seção, para o atalho da tela inicial voltar aqui */}
+      <LembraATela />
       {children}
     </PanelShell>
   );

@@ -1,17 +1,40 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { LogoIcon } from "@/components/brand/logo";
 import { RestaurantMiniCard } from "@/components/public/restaurant-mini-card";
 import { FeaturedCarousel } from "@/components/site/featured-carousel";
 import { CategoryStrip, Hero, HowItWorks, PlaceholderCard, SectionHeading, WhyMenuFacil } from "@/components/site/home-sections";
 import { OwnerCta } from "@/components/site/owner-cta";
+import { getCurrentUser } from "@/server/auth/dal";
 import { selectedCity } from "@/server/public/city";
 import { listPublicCategories, listRestaurants } from "@/server/public/restaurants";
 
 const placeholders = ["Lanches • Pizzas • Bebidas", "Comida caseira • Marmitex", "Sushi • Japonesa", "Self service • Marmitex"];
 
-export default async function HomePage() {
+/**
+ * Quem trabalha no sistema cai no trabalho, não na vitrine.
+ *
+ * O atalho que o dono salva na tela inicial do celular aponta para a raiz
+ * do site, e abri-lo o deixava na lista de restaurantes da cidade -- a
+ * página de quem vai pedir comida, com o botão "Entrar" à mostra, como se
+ * a sessão tivesse caído. Ele estava logado o tempo todo; só tinha chegado
+ * na porta errada.
+ *
+ * Só existem duas contas no sistema, a do admin e a do restaurante: cliente
+ * pede pelo link, sem cadastro. Então toda sessão que chega aqui é de
+ * alguém que tem para onde ir.
+ *
+ * `/?site` abre a vitrine mesmo logado, para quando o dono quiser ver o
+ * MenuFácil como o cliente vê.
+ */
+export default async function HomePage({ searchParams }: PageProps<"/">) {
+  const [{ site }, user] = await Promise.all([searchParams, getCurrentUser()]);
+  if (user && site === undefined) {
+    redirect(user.role === "ADMIN" ? "/admin" : "/painel");
+  }
+
   const city = await selectedCity();
   // Os três juntos, e não a lista cheia só depois de ver que não há
   // destaque: a segunda consulta esperando a primeira custava uma ida ao

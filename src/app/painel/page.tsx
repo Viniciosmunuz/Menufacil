@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/brand/logo";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
+import { COOKIE_DA_TELA, telaDeVolta } from "@/lib/ultima-tela";
 import { requireUser } from "@/server/auth/dal";
 import { logout } from "@/server/auth/actions";
 
@@ -24,7 +26,13 @@ export default async function PanelIndexPage() {
   });
   const available = ownerships.filter((o) => o.restaurant.status !== "BLOCKED");
 
-  if (available.length === 1) redirect(`/painel/${available[0].restaurant.id}`);
+  // Um restaurante só: vai direto para ele, e na seção em que a pessoa
+  // estava. É o que faz o atalho da tela inicial devolver o dono em
+  // Pedidos, em vez de no Início toda vez.
+  if (available.length === 1) {
+    const ultima = (await cookies()).get(COOKIE_DA_TELA)?.value;
+    redirect(telaDeVolta(ultima, available[0].restaurant.id));
+  }
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
