@@ -13,6 +13,22 @@ import { db } from "@/lib/db";
 export const SESSION_COOKIE = "mf_sessao";
 const SESSION_DAYS = 30;
 
+/**
+ * A sessão se renova sozinha enquanto a pessoa usa.
+ *
+ * Trinta dias contados do login derrubariam o garçom no meio de um
+ * expediente, um mês depois de ele ter entrado -- e o celular dele fica no
+ * bolso do avental, com o atalho do MenuFácil na tela inicial, justamente
+ * para ele não digitar senha em hora de movimento. Cada visita empurra o
+ * prazo para trinta dias à frente: quem usa toda semana nunca mais vê a
+ * tela de login, e quem sumiu por um mês inteiro ainda cai dela, que é o
+ * que se espera de um aparelho esquecido em algum lugar.
+ *
+ * A gravação só acontece depois que um terço do prazo passou, para não
+ * escrever no banco a cada tela aberta.
+ */
+const RENOVAR_APOS_DIAS = 10;
+
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -43,7 +59,28 @@ export async function readSession() {
     where: { tokenHash: hashToken(token) },
     include: { user: true },
   });
-  if (!session || session.expiresAt < new Date()) return null;
+  if (!session) return null;
+
+  const agora = new Date();
+  if (session.expiresAt < agora) return null;
+
+  const novoFim = new Date(agora.getTime() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const jaUsou = session.expiresAt.getTime() - agora.getTime() < (SESSION_DAYS - RENOVAR_APOS_DIAS) * 24 * 60 * 60 * 1000;
+  if (jaUsou) {
+    await db.session.update({ where: { id: session.id }, data: { expiresAt: novoFim }, select: { id: true } });
+    // o cookie acompanha o banco; sem isto o navegador esqueceria o token
+    // antes de a linha expirar, e a pessoa cairia na tela de login com uma
+    // sessão ainda válida do outro lado
+    (await cookies()).set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: novoFim,
+    });
+    return { ...session, expiresAt: novoFim };
+  }
+
   return session;
 }
 

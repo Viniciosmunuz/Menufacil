@@ -66,11 +66,29 @@ export type RestaurantAccess = {
     printEnabled: boolean;
     totemEnabled: boolean;
     fullDeliveryEnabled: boolean;
+    salaoEnabled: boolean;
     /// fluxo escolhido pelo dono; só vale com fullDeliveryEnabled ligado
     deliveryMode: OrderFlowMode;
   };
   /** true quando quem está no painel é o admin da plataforma */
   viaAdmin: boolean;
+  /**
+   * O papel desta pessoa neste restaurante.
+   *
+   * Todo vínculo que existia até aqui é OWNER, então nada muda para quem já
+   * usa o sistema. STAFF nasce com o Salão: é o garçom, que entra pelo
+   * mesmo login e vai para a tela dele, sem passar pelo painel do dono.
+   */
+  papel: "OWNER" | "STAFF";
+  /**
+   * O que esta pessoa pode fazer na mesa.
+   *
+   * O dono pode tudo. O garçom lança e recebe sempre; apagar item já
+   * enviado e finalizar a mesa dependem do que o dono liberou para ele --
+   * e a conferência é aqui, no servidor, porque esconder o botão não
+   * impede ninguém de chamar a ação direto.
+   */
+  pode: { excluirItem: boolean; finalizarMesa: boolean };
 };
 
 export const getRestaurantAccess = cache(
@@ -96,17 +114,29 @@ export const getRestaurantAccess = cache(
         printEnabled: true,
         totemEnabled: true,
         fullDeliveryEnabled: true,
+        salaoEnabled: true,
         deliveryMode: true,
-        owners: { where: { userId: user.id }, select: { id: true }, take: 1 },
+        owners: { where: { userId: user.id }, select: { id: true, role: true, podeExcluirItem: true, podeFinalizarMesa: true }, take: 1 },
       },
     });
     if (!linha) return null;
     const { owners, ...restaurant } = linha;
 
-    if (user.role === "ADMIN") return { user, restaurant, viaAdmin: true };
+    const tudo = { excluirItem: true, finalizarMesa: true };
+    if (user.role === "ADMIN") return { user, restaurant, viaAdmin: true, papel: "OWNER", pode: tudo };
     if (owners.length === 0 || restaurant.status === "BLOCKED") return null;
 
-    return { user, restaurant, viaAdmin: false };
+    const vinculo = owners[0];
+    return {
+      user,
+      restaurant,
+      viaAdmin: false,
+      papel: vinculo.role,
+      pode:
+        vinculo.role === "OWNER"
+          ? tudo
+          : { excluirItem: vinculo.podeExcluirItem, finalizarMesa: vinculo.podeFinalizarMesa },
+    };
   },
 );
 
@@ -119,4 +149,33 @@ export async function requireRestaurantAccess(restaurantId: string): Promise<Res
     notFound();
   }
   return access;
+}
+
+/**
+ * Acesso a uma tela ou ação do Salão.
+ *
+ * Esconder a aba no menu não impede ninguém de digitar o endereço na mão, e
+ * o que se faz no salão mexe com dinheiro: desconto, pagamento, fechar
+ * mesa. Todo caminho do módulo passa por aqui, e um restaurante sem o
+ * recurso liberado recebe a mesma resposta de um endereço que não existe --
+ * a página não está lá.
+ */
+export async function requireSalao(restaurantId: string): Promise<RestaurantAccess> {
+  const acesso = await requireRestaurantAccess(restaurantId);
+  if (!acesso.restaurant.salaoEnabled) notFound();
+  return acesso;
+}
+
+/**
+ * Uma tela do painel do dono.
+ *
+ * O garçom entra pelo mesmo login de todo mundo -- é um login só, como o
+ * resto do sistema --, mas o painel do dono não é lugar dele: ali estão o
+ * caixa, o cardápio e os relatórios. Em vez de um erro, ele vai para a
+ * tela em que tem o que fazer.
+ */
+export async function requireDono(restaurantId: string): Promise<RestaurantAccess> {
+  const acesso = await requireRestaurantAccess(restaurantId);
+  if (acesso.papel === "STAFF") redirect(`/garcom/${restaurantId}`);
+  return acesso;
 }

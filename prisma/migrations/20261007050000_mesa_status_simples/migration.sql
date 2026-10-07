@@ -1,0 +1,11 @@
+-- Tres estados, nao cinco.
+--
+-- "Pediu a conta" e "pagando" eram passos que o sistema inventava e alguem
+-- tinha de manter em dia na tela. No balcao o caminho e outro: a mesa esta
+-- ocupada ate alguem lancar o pagamento, e dali em diante esta paga,
+-- esperando o administrador finalizar -- e aí ela volta a ficar livre.
+--
+-- FECHANDO e PAGANDO continuam existindo no tipo porque o Postgres nao
+-- remove valor de enum sem recriar a coluna inteira. Nenhuma linha fica
+-- apontando para eles, e o codigo nao os conhece mais.
+ALTER TYPE "MesaStatus" ADD VALUE IF NOT EXISTS 'PAGO';

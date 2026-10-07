@@ -1,10 +1,10 @@
-import { BookOpen, Bike, LayoutDashboard, MonitorCheck, ReceiptText, Store } from "lucide-react";
+import { BookOpen, Bike, LayoutDashboard, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
 import { PanelShell } from "@/components/panel/panel-shell";
-import { requireRestaurantAccess } from "@/server/auth/dal";
+import { requireDono } from "@/server/auth/dal";
 
 // salvo na tela inicial do celular, o atalho do painel abre no painel
 export const metadata: Metadata = { manifest: "/painel/manifest" };
@@ -14,7 +14,7 @@ export default async function RestaurantPanelLayout({
   params,
 }: LayoutProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
-  const { user, restaurant, viaAdmin } = await requireRestaurantAccess(restaurantId);
+  const { user, restaurant, viaAdmin } = await requireDono(restaurantId);
 
   const base = `/painel/${restaurant.id}`;
 
@@ -38,6 +38,9 @@ export default async function RestaurantPanelLayout({
       nav={[
         { href: base, label: "Início", icon: <LayoutDashboard />, exact: true },
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
+        // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
+        // acontecendo agora --, só que nas mesas em vez da entrega
+        ...(restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
         // o admin da plataforma pode ter desligado o recurso para este restaurante

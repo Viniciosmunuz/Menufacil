@@ -47,6 +47,7 @@ model User {
   auditLogs     AuditLog[]
   statusChanges OrderStatusEvent[]
   pushDevices   PushDevice[]
+  comandas      Comanda[]
 
   @@index([role])
 }
@@ -214,6 +215,9 @@ model Restaurant {
   deliveryMode OrderFlowMode @default(WHATSAPP)
   // totem de autoatendimento: modulo isolado, nasce desligado para todo mundo
   totemEnabled Boolean       @default(false)
+  // atendimento no salao: mesas, comandas e garcons. Mesmo catalogo de
+  // produtos dos outros canais -- o que muda e por onde o pedido entra.
+  salaoEnabled Boolean       @default(false)
   // cartaz que fica na tela do totem parado; sem ele entra a capa
   totemIdleUrl String?
 
@@ -261,6 +265,8 @@ model Restaurant {
   totemConfig         TotemConfig?
   totemDevices        TotemDevice[]
   totemPayments       TotemPayment[]
+  mesas               Mesa[]
+  comandas            Comanda[]
   mercadoPago         MercadoPagoAccount?
   chats               ChatConversation[]
   payments            RestaurantPayment[]
@@ -279,6 +285,15 @@ model RestaurantOwner {
   restaurantId String
   userId       String
   role         OwnerRole @default(OWNER)
+
+  /// O que este garcom pode fazer na mesa, alem de lancar e receber.
+  ///
+  /// Todo garcom lanca pedido e adiciona pagamento -- e disso que o
+  /// trabalho dele e feito. Apagar item ja enviado e finalizar a mesa
+  /// mexem no que a cozinha produziu e no que entra no caixa, entao
+  /// nascem desligados: o dono liga um por um, para quem ele confia.
+  podeExcluirItem   Boolean @default(false)
+  podeFinalizarMesa Boolean @default(false)
   createdAt    DateTime  @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -439,6 +454,8 @@ enum OrderOrigin {
   TOTEM // balcao, pago na maquininha do proprio totem
   /// 100% Delivery: fechado e pago dentro do MenuFacil, sem passar pela conversa
   FULL_DELIVERY
+  /// lancado pelo garcom numa mesa do salao
+  SALAO
 }
 
 enum PaymentMethod {
@@ -513,10 +530,14 @@ model Order {
    */
   printRuns      Int       @default(0)
 
+  /// a comanda da mesa, quando o pedido veio do salao
+  comandaId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  comanda      Comanda?           @relation(fields: [comandaId], references: [id], onDelete: SetNull)
   customer     Customer           @relation(fields: [customerId], references: [id])
   address      Address?           @relation(fields: [addressId], references: [id])
   items        OrderItem[]
@@ -530,6 +551,7 @@ model Order {
   @@index([restaurantId, number])
   @@index([restaurantId, status, createdAt])
   @@index([customerId])
+  @@index([comandaId])
 }
 
 model OrderItem {
@@ -1096,4 +1118,98 @@ model RestaurantPayment {
 
   @@unique([restaurantId, competencia])
   @@index([restaurantId, paidAt])
+}
+
+// ============================================================
+// Salao: mesas e comandas
+// ============================================================
+
+/// Em que pe esta a mesa, do ponto de vista de quem olha o salao.
+/// Tres estados, e nao cinco.
+///
+/// "Pediu a conta" e "pagando" eram passos que o sistema inventava e alguem
+/// tinha de manter em dia na tela. No balcao o caminho e mais curto: a mesa
+/// fica ocupada ate alguem lancar o pagamento, e dali em diante esta paga,
+/// esperando o administrador finalizar -- e entao ela volta a ficar livre.
+enum MesaStatus {
+  LIVRE
+  OCUPADA
+  /// pagamento lancado; falta o administrador finalizar a mesa
+  PAGO
+}
+
+/// Uma mesa do salao.
+///
+/// O numero e o que o garcom fala em voz alta ("mesa 8"), entao ele e unico
+/// dentro do restaurante e nao muda de dono. O nome e opcional e serve para
+/// as que tem apelido: "varanda", "balcao 2".
+/// Mesa ou lugar de balcao: o mesmo atendimento, em dois lugares.
+///
+/// Quem senta no balcao abre comanda, pede, paga e sai igual a quem senta
+/// na mesa. Uma segunda tabela duplicaria comanda, pedido e fechamento
+/// inteiros -- um tipo aqui resolve, e o mapa agrupa cada um na sua faixa.
+enum LugarTipo {
+  MESA
+  BALCAO
+}
+
+model Mesa {
+  id           String     @id @default(cuid())
+  restaurantId String
+  tipo         LugarTipo  @default(MESA)
+  numero       Int
+  nome         String?
+  lugares      Int        @default(4)
+  /// mesa fora de uso (quebrada, guardada) some do mapa sem perder historico
+  ativa        Boolean    @default(true)
+  sortOrder    Int        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  comandas   Comanda[]
+
+  @@unique([restaurantId, tipo, numero])
+  @@index([restaurantId, sortOrder])
+}
+
+/// A conta aberta de uma mesa.
+///
+/// Uma comanda por vez em cada mesa: quando fecha, nasce outra na proxima
+/// vez que alguem senta. O historico fica, porque e dele que saem os
+/// relatorios de tempo de mesa e de venda por garcom.
+///
+/// Os produtos NAO vivem aqui. Cada envio para a cozinha vira um Order com
+/// origin SALAO, e a comanda e o que amarra esses pedidos a mesa -- assim o
+/// salao usa o mesmo caminho de pedido, de impressao e de relatorio que o
+/// delivery ja usa, em vez de um segundo sistema paralelo.
+model Comanda {
+  id           String  @id @default(cuid())
+  restaurantId String
+  mesaId       String
+  /// quem abriu; o garcom responsavel pode mudar com a transferencia
+  garcomUserId String?
+
+  status      MesaStatus @default(OCUPADA)
+  pessoas     Int        @default(1)
+  observacao  String?
+
+  /// cobrado a mais (taxa de servico) e abatido, em centavos
+  servicoCents  Int @default(0)
+  descontoCents Int @default(0)
+
+  abertaAt  DateTime  @default(now())
+  fechadaAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  mesa       Mesa       @relation(fields: [mesaId], references: [id], onDelete: Cascade)
+  garcom     User?      @relation(fields: [garcomUserId], references: [id], onDelete: SetNull)
+  orders     Order[]
+
+  @@index([restaurantId, status])
+  @@index([mesaId, abertaAt])
 }
