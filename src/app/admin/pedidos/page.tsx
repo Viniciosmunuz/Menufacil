@@ -31,7 +31,11 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
   const status = isOrderStatus(sp.status) ? sp.status : null;
   const page = Math.max(1, Number.parseInt(typeof sp.pagina === "string" ? sp.pagina : "1", 10) || 1);
 
+  // esta lista é a do delivery, como a do painel do dono: pedido de mesa se
+  // acompanha no salão, e misturado aqui ele só empurra o delivery para a
+  // página seguinte
   const where: Prisma.OrderWhereInput = {
+    origin: { not: "SALAO" },
     ...(restaurantId ? { restaurantId } : {}),
     ...(status ? { status } : {}),
   };

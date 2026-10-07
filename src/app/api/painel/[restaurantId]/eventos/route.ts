@@ -29,16 +29,22 @@ const PING_MS = 15_000;
  * WhatsApp fazia: o cliente escreve "estou na portaria" e isso tem de
  * aparecer no balcão sem ninguém recarregar a tela. Sem a conversa no
  * retrato, a mensagem só surgiria no próximo pedido que mudasse de status.
+ *
+ * O pedido de mesa fica de fora. Ele nasce em preparo -- um status aberto
+ * --, e sem este filtro cada lançamento de garçom tocava o sino do balcão e
+ * entrava na conta de "pedidos esperando", como se alguém tivesse pedido
+ * pelo link. Quem lançou foi o próprio restaurante, e a comanda já saiu na
+ * cozinha: não há nada para avisar.
  */
 async function retrato(restaurantId: string) {
   const [pedidos, conversas] = await Promise.all([
     db.order.aggregate({
-      where: { restaurantId, status: { in: [...OPEN_ORDER_STATUSES] } },
+      where: { restaurantId, origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] } },
       _count: { _all: true },
       _max: { updatedAt: true, createdAt: true },
     }),
     db.chatConversation.aggregate({
-      where: { restaurantId, order: { status: { in: [...OPEN_ORDER_STATUSES] } } },
+      where: { restaurantId, order: { origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] } } },
       _sum: { restaurantUnread: true },
       _max: { lastMessageAt: true },
     }),

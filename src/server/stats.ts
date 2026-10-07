@@ -15,8 +15,26 @@ import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 // sábado cairia no domingo se o banco cortasse o dia sozinho. São poucos
 // pedidos numa semana, então buscar e contar aqui sai barato e certo.
 
+/**
+ * Só o delivery.
+ *
+ * O pedido da mesa usa o mesmo Order -- é o que fez o salão não virar um
+ * segundo sistema --, mas ele não pertence a esta tela. Aqui se olha o
+ * movimento do link: quantos pedidos entraram, quanto tempo levaram da
+ * aceitação à entrega, quem está esperando. Uma mesa não é aceita nem
+ * entregue, e somá-la fazia o faturamento do dia e o ticket médio
+ * misturarem dois negócios que o dono conta separados.
+ *
+ * O salão tem os números dele, no caixa do próprio salão.
+ *
+ * Fica junto de VALE, e não no `where` de cada tela, para que a próxima
+ * conta a ser escrita já nasça certa: foi espalhado assim que a aba
+ * Pedidos esqueceu uma consulta.
+ */
+const SO_DELIVERY = { origin: { not: "SALAO" } } satisfies Prisma.OrderWhereInput;
+
 /** pedido que conta como venda: cancelado não entra em nada */
-const VALE = { status: { not: "CANCELED" } } satisfies Prisma.OrderWhereInput;
+const VALE = { ...SO_DELIVERY, status: { not: "CANCELED" } } satisfies Prisma.OrderWhereInput;
 
 export type DiaDaSemana = { key: string; label: string; pedidos: number; centavos: number; hoje: boolean };
 
@@ -102,7 +120,7 @@ export type FilaDeEspera = {
  * mesmo motivo de sempre: carrinho abandonado não é fila.
  */
 export async function filaDeEspera(escopo: Prisma.OrderWhereInput = {}): Promise<FilaDeEspera> {
-  const where = { ...escopo, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID };
+  const where = { ...escopo, ...SO_DELIVERY, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID };
   const [quantos, maisAntigo] = await Promise.all([
     db.order.count({ where }),
     db.order.findFirst({ where, orderBy: { createdAt: "asc" }, select: { number: true, createdAt: true } }),
@@ -150,7 +168,7 @@ export async function fechamentoDoDia(
     // os dois status num `notIn` só: espalhar VALE aqui e pôr outro `status`
     // ao lado apagaria o primeiro, e o cancelado voltaria para a conta do
     // caixa sem ninguém perceber
-    where: { ...escopo, status: { notIn: ["CANCELED", "AWAITING_PAYMENT"] }, createdAt: { gte: inicioDaOperacao(horarios) } },
+    where: { ...escopo, ...SO_DELIVERY, status: { notIn: ["CANCELED", "AWAITING_PAYMENT"] }, createdAt: { gte: inicioDaOperacao(horarios) } },
     select: { totalCents: true, paymentMethod: true, payment: { select: { status: true } } },
   });
 
@@ -386,7 +404,7 @@ function medir(pedidos: PedidoMedido[]): Etapas {
  */
 export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, desde: Date): Promise<TemposDoAtendimento> {
   const pedidos = await db.order.findMany({
-    where: { ...escopo, status: "COMPLETED", createdAt: { gte: desde } },
+    where: { ...escopo, ...SO_DELIVERY, status: "COMPLETED", createdAt: { gte: desde } },
     orderBy: { createdAt: "desc" },
     take: TETO_DA_REGUA,
     select: {

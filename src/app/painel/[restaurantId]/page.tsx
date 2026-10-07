@@ -39,7 +39,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   const escopo = { restaurantId: restaurant.id };
   const hoje = startOfToday();
-  const todayWhere = { ...escopo, createdAt: { gte: hoje } };
+  // Esta tela é do delivery. O pedido da mesa usa o mesmo Order, mas não
+  // entra em nenhum número daqui: o salão tem o caixa dele. As funções de
+  // stats.ts já filtram por dentro; estas duas consultas são as da própria
+  // tela, e precisam dizer o mesmo.
+  const todayWhere = { ...escopo, origin: { not: "SALAO" as const }, createdAt: { gte: hoje } };
 
   const [dia, semana, fila, clientes, tempos, completedToday, esgotados, topProducts, checklist, details] = await Promise.all([
     hojeContraOntem(escopo),
@@ -55,7 +59,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
     // os campeões do mês, não de sempre: é o mês que diz o que comprar amanhã
     db.orderItem.groupBy({
       by: ["productName"],
-      where: { order: { ...escopo, status: { not: "CANCELED" }, createdAt: { gte: startOfDaysAgo(30) } } },
+      where: { order: { ...escopo, origin: { not: "SALAO" }, status: { not: "CANCELED" }, createdAt: { gte: startOfDaysAgo(30) } } },
       _sum: { quantity: true, totalCents: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,

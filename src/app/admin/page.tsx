@@ -41,16 +41,25 @@ export default async function AdminOverviewPage() {
       take: 6,
       select: { id: true, name: true, city: true, status: true, _count: { select: { products: true } } },
     }),
-    // quem mais vendeu no mês: é isso que diz onde a plataforma está de pé
+    // Quem mais vendeu no mês: é isso que diz onde a plataforma está de pé.
+    //
+    // Só o delivery. O pedido de mesa usa o mesmo Order, mas é dinheiro que
+    // nunca passou pelo link -- somá-lo aqui faria um restaurante de salão
+    // cheio parecer um campeão de delivery.
     db.order.groupBy({
       by: ["restaurantId"],
-      where: { status: { not: "CANCELED" }, createdAt: { gte: mes } },
+      where: { origin: { not: "SALAO" }, status: { not: "CANCELED" }, createdAt: { gte: mes } },
       _count: { _all: true },
       _sum: { totalCents: true },
       orderBy: { _sum: { totalCents: "desc" } },
       take: 5,
     }),
-    // no ar, com a data do último pedido: quem parou precisa de uma ligação
+    // No ar, com a data do último pedido: quem parou precisa de uma ligação.
+    //
+    // Aqui o pedido de mesa conta, ao contrário do ranking acima. A pergunta
+    // é outra: lá é "quem vendeu mais pelo link", aqui é "quem parou de usar
+    // o sistema" -- e um restaurante de salão cheio não parou. Filtrá-lo
+    // poria na lista de ligações quem está usando todo dia.
     db.restaurant.findMany({
       where: { status: "ACTIVE" },
       select: {
