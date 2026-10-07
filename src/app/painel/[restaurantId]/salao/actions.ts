@@ -8,7 +8,8 @@ import { parseMoneyToCents } from "@/lib/validation";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
 import { criarGarcom } from "@/server/salao/garcons";
-import { abrirTurno, fecharTurno } from "@/server/salao/turno";
+import { lancarNaMesa } from "@/server/salao/lancar";
+import { abrirTurno, fecharTurno, turnoAberto } from "@/server/salao/turno";
 
 // Ações do salão. Toda uma delas passa por requireSalao: esconder o botão
 // não impede ninguém de chamar a ação direto, e aqui se mexe com dinheiro.
@@ -156,4 +157,39 @@ export async function fecharCaixa(_prev: SalaoFormState, formData: FormData): Pr
   await panelAudit(acesso, "salao.caixa_fechou", { fechamentoCents: cents });
   refresh();
   return { ok: true, message: "Caixa fechado. As mesas voltaram a ficar livres." };
+}
+
+/**
+ * Salva o que o garçom escolheu: vira pedido e vai para a cozinha.
+ *
+ * Os itens chegam como JSON num campo escondido porque são uma lista de
+ * tamanho variável, e o preço de cada um é lido do banco aqui dentro -- o
+ * que a tela manda é o que a pessoa escolheu, nunca quanto custa.
+ */
+export async function lancarItens(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+
+  const turno = await turnoAberto(restaurantId);
+  if (!turno) return { error: "O salão está fechado. O caixa precisa ser aberto antes." };
+
+  const mesaId = String(formData.get("mesaId") ?? "");
+  let itens: { produtoId: string; quantidade: number }[] = [];
+  try {
+    const cru = JSON.parse(String(formData.get("itens") ?? "[]")) as unknown;
+    if (Array.isArray(cru)) {
+      itens = cru
+        .filter((i): i is { produtoId: string; quantidade: number } => !!i && typeof i === "object" && "produtoId" in i)
+        .map((i) => ({ produtoId: String(i.produtoId), quantidade: Number(i.quantidade) || 1 }));
+    }
+  } catch {
+    return { error: "Não consegui ler os itens. Tente de novo." };
+  }
+
+  const r = await lancarNaMesa(restaurantId, mesaId, acesso.user.id, itens);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.lancou", { mesaId, pedido: r.numero, itens: itens.length });
+  refresh();
+  return { ok: true, message: `Pedido #${r.numero} enviado para a cozinha.` };
 }

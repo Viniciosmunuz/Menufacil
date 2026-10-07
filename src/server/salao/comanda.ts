@@ -89,9 +89,36 @@ export async function verMesa(restaurantId: string, mesaId: string, agora = new 
   });
   if (!mesa) return null;
 
+  const dadosDaMesa = { id: mesa.id, numero: mesa.numero, tipo: mesa.tipo, nome: mesa.nome, lugares: mesa.lugares };
   const c = mesa.comandas[0];
+
+  // Mesa livre devolve uma comanda vazia, não nada.
+  //
+  // Ninguém "abre mesa" como passo separado: o garçom toca na mesa, cai no
+  // cardápio e lança -- e a comanda de verdade nasce no banco nesse
+  // momento. Uma tela de "abrir mesa" no meio seria um toque para dizer o
+  // que o próximo toque já diz.
   if (!c) {
-    return { mesa: { id: mesa.id, numero: mesa.numero, tipo: mesa.tipo, nome: mesa.nome, lugares: mesa.lugares }, comanda: null };
+    return {
+      mesa: dadosDaMesa,
+      comanda: {
+        id: "",
+        mesaId: mesa.id,
+        numero: mesa.numero,
+        tipo: mesa.tipo,
+        nome: mesa.nome,
+        status: "LIVRE" as const,
+        pessoas: 0,
+        garcom: null,
+        abertaAt: agora,
+        minutos: 0,
+        itens: [],
+        subtotalCents: 0,
+        descontoCents: 0,
+        servicoCents: 0,
+        totalCents: 0,
+      },
+    };
   }
 
   const itens: ItemDaComanda[] = c.orders.flatMap((o) =>

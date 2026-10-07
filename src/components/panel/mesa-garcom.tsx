@@ -3,11 +3,13 @@
 import { ArrowLeft, ImageOff, Info, Minus, Percent, Plus, Printer, Search, Ticket, Trash2, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta } from "@/server/salao/comanda";
+
+import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
 // A mesa na mão do garçom.
 //
@@ -35,16 +37,32 @@ export function MesaDoGarcom({
   categorias,
   mesaRotulo,
   voltarHref,
+  restaurantId,
+  mesaId,
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
   mesaRotulo: string;
   voltarHref: string;
+  restaurantId: string;
+  mesaId: string;
 }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(categorias[0]?.id ?? null);
   const [sacola, setSacola] = useState<Escolhido[]>([]);
   const [vendoConta, setVendoConta] = useState(false);
+  const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
+
+  // Salvou: a sacola esvazia, porque o que estava nela agora está na
+  // comanda -- deixá-la cheia faria o garçom lançar o mesmo pedido duas
+  // vezes. O ajuste acontece durante o render, e não num efeito: é uma
+  // reação a um dado novo que chegou, não um efeito colateral, e assim a
+  // tela nunca chega a pintar a sacola já salva.
+  const [ultimoSalvo, setUltimoSalvo] = useState<string | undefined>(undefined);
+  if (estado.ok && estado.message !== ultimoSalvo) {
+    setUltimoSalvo(estado.message);
+    setSacola([]);
+  }
 
   const procurando = limpo(busca).length > 0;
   const produtos = procurando
@@ -167,14 +185,42 @@ export function MesaDoGarcom({
           )}
         </button>
 
-        <button
-          type="button"
-          disabled={novoItens === 0}
-          className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-control bg-brand text-base font-extrabold text-brand-ink disabled:opacity-40"
-        >
-          {novoItens === 0 ? "Salvar" : `Salvar · ${novoItens} ${novoItens === 1 ? "item" : "itens"} · ${formatCents(novoCents)}`}
-        </button>
+        <form action={salvar} className="flex-1">
+          <input type="hidden" name="restaurantId" value={restaurantId} />
+          <input type="hidden" name="mesaId" value={mesaId} />
+          {/* a lista inteira num campo só: são itens de tamanho variável, e
+              o preço de cada um o servidor lê do banco */}
+          <input
+            type="hidden"
+            name="itens"
+            value={JSON.stringify(sacola.map((i) => ({ produtoId: i.id, quantidade: i.quantidade })))}
+          />
+          <button
+            type="submit"
+            disabled={novoItens === 0 || salvando}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-brand text-base font-extrabold text-brand-ink disabled:opacity-40"
+          >
+            {salvando
+              ? "Enviando..."
+              : novoItens === 0
+                ? "Salvar"
+                : `Salvar · ${novoItens} ${novoItens === 1 ? "item" : "itens"} · ${formatCents(novoCents)}`}
+          </button>
+        </form>
       </div>
+
+      {/* o retorno do envio, fora do rodapé para não empurrar os botões */}
+      {(estado.error || estado.message) && (
+        <p
+          className={cn(
+            "fixed inset-x-3 bottom-24 z-30 rounded-control px-4 py-3 text-center text-sm font-bold shadow-xl",
+            estado.error ? "bg-danger text-white" : "bg-success text-white",
+          )}
+          role="status"
+        >
+          {estado.error ?? estado.message}
+        </p>
+      )}
 
       {/* a comanda inteira, atrás do botão de informação */}
       {vendoConta && (

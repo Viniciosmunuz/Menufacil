@@ -1,12 +1,14 @@
 "use client";
 
-import { ImageOff, Percent, Printer, Search, Trash2, Wallet } from "lucide-react";
+import { ImageOff, Minus, Percent, Printer, Search, Trash2, Wallet } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
-import type { CategoriaDoCardapio, ComandaAberta } from "@/server/salao/comanda";
+import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
+
+import { lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
 // A mesa aberta: a conta de um lado, o cardápio do outro.
 //
@@ -109,7 +111,7 @@ function Acoes({ podeFinanceiro }: { podeFinanceiro: boolean }) {
   );
 }
 
-function Cardapio({ categorias }: { categorias: CategoriaDoCardapio[] }) {
+function Cardapio({ categorias, onEscolher }: { categorias: CategoriaDoCardapio[]; onEscolher: (p: ProdutoDoCardapio) => void }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(null);
 
@@ -178,6 +180,7 @@ function Cardapio({ categorias }: { categorias: CategoriaDoCardapio[] }) {
                       key={p.id}
                       type="button"
                       disabled={!p.disponivel}
+                      onClick={() => onEscolher(p)}
                       className={cn(
                         "flex flex-col overflow-hidden rounded-card border border-line bg-surface text-left transition-colors hover:border-brand disabled:opacity-40",
                       )}
@@ -210,13 +213,40 @@ export function ComandaDaMesa({
   comanda,
   categorias,
   podeFinanceiro = true,
+  restaurantId,
+  mesaId,
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
   /** o garçom sem permissão não vê desconto nem cancelamento */
   podeFinanceiro?: boolean;
+  restaurantId: string;
+  mesaId: string;
 }) {
   const [aba, setAba] = useState<"conta" | "cardapio">("cardapio");
+  const [sacola, setSacola] = useState<{ id: string; nome: string; centavos: number; quantidade: number }[]>([]);
+  const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(lancarItens, {});
+
+  // o que foi salvo sai da sacola: deixá-lo ali faria lançar duas vezes
+  const [ultimoSalvo, setUltimoSalvo] = useState<string | undefined>(undefined);
+  if (estado.ok && estado.message !== ultimoSalvo) {
+    setUltimoSalvo(estado.message);
+    setSacola([]);
+  }
+
+  const juntar = (p: ProdutoDoCardapio) =>
+    setSacola((atual) => {
+      const tem = atual.find((i) => i.id === p.id);
+      return tem
+        ? atual.map((i) => (i.id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i))
+        : [...atual, { id: p.id, nome: p.nome, centavos: p.centavos, quantidade: 1 }];
+    });
+
+  const tirar = (id: string) =>
+    setSacola((atual) => atual.flatMap((i) => (i.id === id ? (i.quantidade > 1 ? [{ ...i, quantidade: i.quantidade - 1 }] : []) : [i])));
+
+  const novoItens = sacola.reduce((s, i) => s + i.quantidade, 0);
+  const novoCents = sacola.reduce((s, i) => s + i.centavos * i.quantidade, 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[22rem_1fr] lg:items-stretch">
@@ -245,11 +275,57 @@ export function ComandaDaMesa({
         )}
       >
         <Conta comanda={comanda} />
+
+        {/* o que ainda não foi enviado fica separado do que já está na
+            cozinha: são duas coisas diferentes para quem olha a conta */}
+        {sacola.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-control border border-brand/50 bg-brand-soft p-3">
+            <p className="text-xs font-bold tracking-wide text-brand uppercase">Novos</p>
+            <ul className="flex flex-col gap-1">
+              {sacola.map((i) => (
+                <li key={i.id} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate font-semibold">
+                    {i.quantidade}x {i.nome}
+                  </span>
+                  <span className="shrink-0 tabular-nums">{formatCents(i.centavos * i.quantidade)}</span>
+                  <button
+                    type="button"
+                    onClick={() => tirar(i.id)}
+                    aria-label={"Tirar um " + i.nome}
+                    className="grid size-7 shrink-0 place-items-center rounded-control text-muted hover:text-danger"
+                  >
+                    <Minus className="size-4" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <form action={salvar}>
+          <input type="hidden" name="restaurantId" value={restaurantId} />
+          <input type="hidden" name="mesaId" value={mesaId} />
+          <input type="hidden" name="itens" value={JSON.stringify(sacola.map((i) => ({ produtoId: i.id, quantidade: i.quantidade })))} />
+          <button
+            type="submit"
+            disabled={novoItens === 0 || salvando}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-brand font-extrabold text-brand-ink disabled:opacity-40"
+          >
+            {salvando ? "Enviando..." : novoItens === 0 ? "Salvar" : "Salvar · " + novoItens + " · " + formatCents(novoCents)}
+          </button>
+        </form>
+
+        {(estado.error || estado.message) && (
+          <p className={cn("rounded-control px-3 py-2 text-sm font-bold", estado.error ? "bg-danger/15 text-danger" : "bg-success/15 text-success")} role="status">
+            {estado.error ?? estado.message}
+          </p>
+        )}
+
         <Acoes podeFinanceiro={podeFinanceiro} />
       </section>
 
       <section className={cn("flex min-h-0 min-w-0 flex-col", aba === "cardapio" ? "flex" : "hidden lg:flex")}>
-        <Cardapio categorias={categorias} />
+        <Cardapio categorias={categorias} onEscolher={juntar} />
       </section>
     </div>
   );

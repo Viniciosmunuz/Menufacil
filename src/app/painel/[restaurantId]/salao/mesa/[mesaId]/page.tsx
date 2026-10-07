@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 
 import { ComandaDaMesa } from "@/components/panel/comanda-mesa";
 import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
 
@@ -49,19 +48,7 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         )}
       </header>
 
-      {comanda ? (
-        <ComandaDaMesa comanda={comanda} categorias={categorias} />
-      ) : (
-        <div className="rounded-card border border-line bg-surface px-5 py-10 text-center">
-          <p className="text-lg font-extrabold">
-            {rotulo} {mesa.numero} está livre
-          </p>
-          <p className="mt-1 text-muted">{mesa.lugares} lugares. Abra a mesa para começar a lançar.</p>
-          <p className="mt-5">
-            <span className={buttonClasses("primary")}>Abrir {rotulo.toLowerCase()}</span>
-          </p>
-        </div>
-      )}
+      <ComandaDaMesa comanda={comanda} categorias={categorias} restaurantId={restaurant.id} mesaId={mesa.id} />
     </div>
   );
 }
