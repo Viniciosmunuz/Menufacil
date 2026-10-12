@@ -1,13 +1,11 @@
-import { ChevronRight, PackageX, TrendingUp } from "lucide-react";
+import { ChevronRight, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TemposCard } from "@/components/panel/tempos-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { db } from "@/lib/db";
 import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
@@ -19,6 +17,7 @@ import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDeP
 import { toggleProduct } from "./cardapio/actions";
 import { ClientesCard } from "./clientes-card";
 import { DiaCard } from "./dia-card";
+import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { EsperandoCard } from "./esperando-card";
 import { FechamentoCard } from "./fechamento-card";
 import { OpenNowCard } from "./open-now-card";
@@ -55,7 +54,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
     // o esquecimento mais comum do balcão: marcar esgotado e nunca religar.
     // Os nomes vêm junto: "1 produto esgotado" obrigava a ir até o cardápio
     // só para descobrir qual era.
-    db.product.findMany({ where: { ...escopo, available: false }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 4 }),
+    db.product.findMany({
+      where: { ...escopo, available: false },
+      select: { id: true, name: true, category: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    }),
     // os campeões do mês, não de sempre: é o mês que diz o que comprar amanhã
     db.orderItem.groupBy({
       by: ["productName"],
@@ -125,46 +128,16 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
           <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
 
-          {/* Esgotado com nome e botão: dizer "1 produto esgotado" obrigava a ir
-              até o cardápio e procurar qual era, para uma coisa de um segundo.
-              Com um só, religar acontece aqui mesmo. */}
-          {esgotados.length > 0 && (
-            <Card className="flex flex-wrap items-center gap-4 border-warning/40">
-              <span className="grid size-11 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
-                <PackageX className="size-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-extrabold">
-                  {esgotados.length === 1 ? (
-                    <>
-                      <span>{esgotados[0].name}</span> <span className="font-semibold text-muted">está esgotado</span>
-                    </>
-                  ) : (
-                    `${esgotados.length} produtos esgotados`
-                  )}
-                </p>
-                <p className="truncate text-sm text-muted">
-                  {esgotados.length === 1
-                    ? "Não aparece para o cliente. Chegou mercadoria?"
-                    : `${esgotados.map((p) => p.name).join(", ")} — não aparecem para o cliente.`}
-                </p>
-              </div>
-              {esgotados.length === 1 ? (
-                <form action={toggleProduct}>
-                  <input type="hidden" name="restaurantId" value={restaurant.id} />
-                  <input type="hidden" name="id" value={esgotados[0].id} />
-                  <input type="hidden" name="field" value="available" />
-                  <SubmitButton size="sm" variant="secondary" pendingText="Religando...">
-                    Religar
-                  </SubmitButton>
-                </form>
-              ) : (
-                <Link href={`${base}/cardapio`} className={buttonClasses("secondary", "sm")}>
-                  Ver cardápio
-                </Link>
-              )}
-            </Card>
-          )}
+          {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
+              obrigava a ir até o cardápio e procurar quais eram, para uma
+              coisa de um segundo. A lista inteira abre na seta, e religar
+              acontece aqui mesmo. */}
+          <EsgotadosCard
+            esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
+            cardapioHref={`${base}/cardapio`}
+            toggleAction={toggleProduct}
+            restaurantId={restaurant.id}
+          />
 
           <DiaCard
             href={`${base}/pedidos?ver=todos`}

@@ -33,8 +33,11 @@ export default async function RestaurantPanelLayout({
 
   return (
     <PanelShell
-      // só o salão usa a tela toda: lá o mapa e o cardápio disputam cada
-      // centímetro. As outras seções seguem iguais
+      // o menu com os nomes fica na tela inicial; das outras em diante ele
+      // vira ícones e devolve a largura para o trabalho
+      menuAberto={base}
+      // o salão é o único que usa a tela inteira: ali o mapa e o cardápio
+      // disputam cada centímetro
       larga="/salao"
       homeHref={base}
       context={context}

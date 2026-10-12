@@ -41,12 +41,12 @@ export function MesaCard({ lugar, href }: { lugar: LugarNoMapa; href: string }) 
     <Link
       href={href}
       aria-label={`${rotulo} ${lugar.numero}: ${PALAVRA[lugar.status].toLowerCase()}${livre ? "" : `, ${formatCents(lugar.centavos)}`}`}
-      className={cn("flex min-h-24 flex-col justify-between gap-2 rounded-card border p-3 transition-colors", CORES[lugar.status])}
+      className={cn("flex min-h-24 flex-col justify-between gap-2 rounded-card border p-3 transition-colors lg:min-h-32 lg:p-4", CORES[lugar.status])}
     >
       <span className={cn("text-xs font-bold tracking-wide uppercase", COR_DA_PALAVRA[lugar.status])}>{PALAVRA[lugar.status]}</span>
 
       <span>
-        <span className="block font-extrabold text-ink">
+        <span className="block font-extrabold text-ink lg:text-lg">
           {rotulo} {lugar.numero}
         </span>
         {/* a mesa livre não mostra R$ 0,00: zero não é informação, é ruído

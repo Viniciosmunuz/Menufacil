@@ -90,7 +90,10 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
       </div>
     );
   }
-  const cols = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
+  // quatro por linha no computador, e não seis: com seis, o cartão ficava
+  // do tamanho de um botão e o número da mesa -- que é o que se procura
+  // atravessando o salão -- virava letra miúda. No celular seguem dois.
+  const cols = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4";
 
   return (
     <div className="flex flex-col gap-5">

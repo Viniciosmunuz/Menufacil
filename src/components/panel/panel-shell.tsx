@@ -26,6 +26,7 @@ export function PanelShell({
   userName,
   banner,
   children,
+  menuAberto,
   larga,
 }: {
   homeHref: string;
@@ -35,11 +36,23 @@ export function PanelShell({
   userName: string;
   banner?: ReactNode;
   children: ReactNode;
-  /** trecho do endereço que faz a tela usar a largura toda, com o menu em ícones */
+  /**
+   * A tela em que o menu fica aberto, com os nomes das seções.
+   *
+   * É a inicial, e só ela: ali a pessoa está escolhendo para onde ir. Nas
+   * outras ela já está trabalhando naquilo, e o menu de 17rem levava um
+   * terço da tela do balcão -- no salão, uma coluna inteira de mesas.
+   * Passando nada, o menu fica aberto em todas, como era antes.
+   */
+  menuAberto?: string;
+  /** trecho do endereço em que o conteúdo usa a largura toda (o salão) */
   larga?: string;
 }) {
   const pathname = usePathname();
-  const compacto = !!larga && pathname.includes(larga);
+  const compacto = !!menuAberto && pathname !== menuAberto;
+  // o menu em ícones devolve largura para o conteúdo, mas quem usa a tela
+  // inteira é só o salão: num formulário, linha de 1600px não se lê
+  const larguraToda = !!larga && pathname.includes(larga);
 
   const logoutButton = (
     <form action={logout}>
@@ -85,7 +98,7 @@ export function PanelShell({
           <div className="mb-3 truncate text-sm font-semibold text-faint">{context}</div>
           <TabsNav items={nav} />
         </header>
-        <main className={cn("w-full px-4 py-6 sm:px-6", compacto ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10")}>{children}</main>
+        <main className={cn("w-full px-4 py-6 sm:px-6", larguraToda ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10")}>{children}</main>
       </div>
     </div>
   );
