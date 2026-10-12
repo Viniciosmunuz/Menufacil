@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MesaDoGarcom } from "@/components/panel/mesa-garcom";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
+import { mesasParaDestino } from "@/server/salao/mexer";
 
 export const metadata: Metadata = { title: "Mesa" };
 
@@ -19,23 +20,29 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
   const { restaurantId, mesaId } = await params;
   const { restaurant, pode } = await requireSalao(restaurantId);
 
-  const [achado, categorias] = await Promise.all([verMesa(restaurant.id, mesaId), cardapioDoSalao(restaurant.id)]);
+  const [achado, categorias, mesas] = await Promise.all([
+    verMesa(restaurant.id, mesaId),
+    cardapioDoSalao(restaurant.id),
+    mesasParaDestino(restaurant.id, mesaId),
+  ]);
   if (!achado) notFound();
 
   const { mesa, comanda } = achado;
-  const rotulo = mesa.tipo === "BALCAO" ? "Balcão" : "Mesa";
+  const rotulo = mesa.nome ?? (mesa.tipo === "BALCAO" ? "Balcão" : "Mesa") + " " + mesa.numero;
   const base = `/garcom/${restaurant.id}`;
 
   return (
     <MesaDoGarcom
       comanda={comanda}
       categorias={categorias}
-      mesaRotulo={rotulo + " " + mesa.numero}
+      mesaRotulo={rotulo}
       voltarHref={base}
       restaurantId={restaurant.id}
       mesaId={mesa.id}
       podeFinanceiro={pode.finalizarMesa}
       podeApagarItem={pode.excluirItem}
+      podeMexer={pode.mexerNaMesa}
+      mesas={mesas}
     />
   );
 }

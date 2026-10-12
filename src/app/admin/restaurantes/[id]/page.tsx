@@ -101,10 +101,18 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               <Settings2 className="size-4" aria-hidden="true" />
               Gerenciar restaurante
             </Link>
+            {/* só o ícone, ao lado de gerenciar: é um atalho para conferir a
+                página, não uma segunda decisão -- escrito e numa linha
+                própria ele pesava tanto quanto o botão principal */}
             {restaurant.status === "ACTIVE" && (
-              <Link href={`/restaurante/${restaurant.slug}`} target="_blank" className={buttonClasses("secondary")}>
+              <Link
+                href={`/restaurante/${restaurant.slug}`}
+                target="_blank"
+                aria-label="Ver no site"
+                title="Ver no site"
+                className="grid size-11 shrink-0 place-items-center rounded-control border border-line bg-surface-2 text-ink hover:bg-surface-3"
+              >
                 <ExternalLink className="size-4" aria-hidden="true" />
-                Ver no site
               </Link>
             )}
           </>

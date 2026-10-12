@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, ImageOff, Info, Percent, Printer, Search, Trash2, Wallet, X } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, Info, Minus, Percent, Printer, Search, Trash2, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState } from "react";
@@ -8,10 +8,12 @@ import { useActionState, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
+import type { MesaDestino } from "@/server/salao/mexer";
 
 import { FolhaDoDesconto } from "./folha-do-desconto";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
 import { FolhaDoPagamento } from "./folha-do-pagamento";
+import { ApagarAMesa, MexerNaMesa } from "./mexer-na-mesa";
 
 import { apagarItem, finalizarMesa, lancarItens, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
 
@@ -45,6 +47,8 @@ export function MesaDoGarcom({
   mesaId,
   podeFinanceiro = false,
   podeApagarItem = false,
+  podeMexer = false,
+  mesas = [],
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
@@ -56,6 +60,9 @@ export function MesaDoGarcom({
   podeFinanceiro?: boolean;
   /** tirar da conta o que já foi para a cozinha */
   podeApagarItem?: boolean;
+  /** trocar a mesa de lugar, mover itens e apagar a comanda: Garçom II */
+  podeMexer?: boolean;
+  mesas?: MesaDestino[];
 }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(categorias[0]?.id ?? null);
@@ -67,7 +74,8 @@ export function MesaDoGarcom({
   const [liberado, liberar, liberando] = useActionState<SalaoFormState, FormData>(finalizarMesa, {});
   const [apagado, apagar] = useActionState<SalaoFormState, FormData>(apagarItem, {});
 
-  const temConta = comanda.id !== "" && comanda.totalCents > 0;
+  const temComanda = comanda.id !== "";
+  const temConta = temComanda && comanda.totalCents > 0;
   const quitada = temConta && comanda.faltaCents === 0;
 
   // Salvou: a sacola esvazia, porque o que estava nela agora está na
@@ -112,6 +120,9 @@ export function MesaDoGarcom({
     });
 
 
+  const tirar = (chave: string) =>
+    setSacola((atual) => atual.flatMap((i) => (i.chave === chave ? (i.quantidade > 1 ? [{ ...i, quantidade: i.quantidade - 1 }] : []) : [i])));
+
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-bg/95 px-3 py-2.5 backdrop-blur">
@@ -131,7 +142,14 @@ export function MesaDoGarcom({
         </div>
       </header>
 
-      <p className="bg-brand py-2 text-center font-extrabold text-brand-ink">{mesaRotulo}</p>
+      {/* a faixa com o nome da mesa; as setas aparecem ao lado dele quando
+          a mesa está aberta, que é quando há comanda para mudar de lugar */}
+      <div className="flex items-center justify-center gap-2 bg-brand py-2 font-extrabold text-brand-ink">
+        <span>{mesaRotulo}</span>
+        {temComanda && podeMexer && (
+          <MexerNaMesa comanda={comanda} restaurantId={restaurantId} mesas={mesas} rotulo={mesaRotulo} />
+        )}
+      </div>
 
       {/* as seções em círculo, rolando de lado: a foto identifica mais
           rápido que o nome quando se procura "aquele prato ali" */}
@@ -271,7 +289,42 @@ export function MesaDoGarcom({
                 {apagado.error}
               </p>
             )}
-            {comanda.itens.length === 0 ? (
+            {/* o que ainda não foi enviado aparece no alto da comanda, em
+                amarelo: o garçom abre a conta no meio do pedido para
+                conferir o que já marcou, e sem isto o que estava na sacola
+                não existia em lugar nenhum da tela. Separado do resto
+                porque são duas coisas diferentes -- uma a cozinha já está
+                fazendo, a outra ainda não saiu daqui. */}
+            {sacola.length > 0 && (
+              <div className="mt-3 flex flex-col gap-1.5 rounded-control border border-warning/50 bg-warning/10 p-3">
+                <p className="text-xs font-bold tracking-wide text-warning uppercase">Novos · ainda não enviados</p>
+                <ul className="flex flex-col gap-1">
+                  {sacola.map((i) => (
+                    <li key={i.chave} className="flex items-start gap-2 text-sm">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">
+                          {i.quantidade}x {i.nome}
+                        </span>
+                        {(i.rotulo || i.observacao) && (
+                          <span className="block truncate text-xs text-muted">{[i.rotulo, i.observacao].filter(Boolean).join(" · ")}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 tabular-nums">{formatCents(i.centavos * i.quantidade)}</span>
+                      <button
+                        type="button"
+                        onClick={() => tirar(i.chave)}
+                        aria-label={"Tirar um " + i.nome}
+                        className="grid size-7 shrink-0 place-items-center rounded-control text-muted active:text-danger"
+                      >
+                        <Minus className="size-4" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {comanda.itens.length === 0 && sacola.length === 0 ? (
               <p className="py-12 text-center text-muted">Nada lançado ainda.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-line">
@@ -363,6 +416,9 @@ export function MesaDoGarcom({
               >
                 <Percent className="size-5" aria-hidden="true" />
               </button>
+            )}
+            {podeMexer && temComanda && (
+              <ApagarAMesa comanda={comanda} restaurantId={restaurantId} rotulo={mesaRotulo} className="h-12 w-auto flex-1" />
             )}
           </div>
 

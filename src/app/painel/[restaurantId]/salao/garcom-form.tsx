@@ -3,10 +3,12 @@
 import { useActionState, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
+import type { NivelGarcom } from "@/generated/prisma/enums";
+import { cn } from "@/lib/cn";
 import { formatCpf } from "@/lib/cpf";
+import { NIVEIS } from "@/lib/niveis";
 
 import { adicionarGarcom, type SalaoFormState } from "./actions";
 
@@ -23,6 +25,7 @@ import { adicionarGarcom, type SalaoFormState } from "./actions";
 export function GarcomForm({ restaurantId }: { restaurantId: string }) {
   const [state, action] = useActionState<SalaoFormState, FormData>(adicionarGarcom, {});
   const [cpf, setCpf] = useState("");
+  const [nivel, setNivel] = useState<NivelGarcom>("GARCOM");
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -51,13 +54,31 @@ export function GarcomForm({ restaurantId }: { restaurantId: string }) {
       </Field>
 
       {/* Todo garçom lança pedido e recebe pagamento -- é disso que o
-          trabalho dele é feito. Estas duas mexem no que a cozinha já
-          produziu e no que entra no caixa, então ficam desmarcadas até o
-          dono confiar em alguém para elas. */}
+          trabalho dele é feito. O nível diz quem também mexe no que já
+          aconteceu, e nasce no de baixo: subir é um toque, e o contrário
+          de subir é descobrir no fim da noite que uma conta foi zerada. */}
       <fieldset className="flex flex-col gap-2 rounded-control border border-line p-4">
-        <legend className="px-1 text-sm font-bold text-muted">O que ele pode fazer além de lançar e receber</legend>
-        <Checkbox name="podeExcluirItem" label="Apagar item da comanda" hint="Item já enviado para a cozinha." />
-        <Checkbox name="podeFinalizarMesa" label="Finalizar a mesa" hint="Sem isto, quem fecha a mesa é o balcão, pelo painel." />
+        <legend className="px-1 text-sm font-bold text-muted">Nível</legend>
+        <input type="hidden" name="nivel" value={nivel} />
+        {NIVEIS.map((n) => {
+          const aceso = nivel === n.chave;
+          return (
+            <button
+              key={n.chave}
+              type="button"
+              role="radio"
+              aria-checked={aceso}
+              onClick={() => setNivel(n.chave)}
+              className={cn(
+                "rounded-control border p-3 text-left transition-colors",
+                aceso ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+              )}
+            >
+              <span className={aceso ? "block font-extrabold text-brand" : "block font-extrabold"}>{n.nome}</span>
+              <span className="block text-sm text-muted">{n.resumo}</span>
+            </button>
+          );
+        })}
       </fieldset>
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}

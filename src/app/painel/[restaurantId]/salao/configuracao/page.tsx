@@ -64,22 +64,12 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-bold">{g.nome}</span>
                 <span className="block truncate text-sm tabular-nums text-muted">{g.cpf}</span>
-                {/* o que ele pode fazer além de lançar e receber; sem nada
-                    marcado, a linha some em vez de dizer "nenhuma" */}
-                {(g.podeExcluirItem || g.podeFinalizarMesa) && (
-                  <span className="block text-xs text-brand">
-                    {[g.podeExcluirItem && "apaga item", g.podeFinalizarMesa && "finaliza mesa"].filter(Boolean).join(" · ")}
-                  </span>
-                )}
+                {/* o nível só aparece escrito quando é o de cima: "Garçom"
+                    embaixo do nome de um garçom não informa nada */}
+                {g.nivel === "GARCOM_II" && <span className="block text-xs font-bold text-brand">Garçom II</span>}
               </span>
               <span className="shrink-0 text-sm text-faint">{g.ultimoAcesso ? `entrou ${formatWhen(g.ultimoAcesso)}` : "nunca entrou"}</span>
-              <PermissoesDoGarcom
-                restaurantId={restaurant.id}
-                vinculoId={g.vinculoId}
-                nome={g.nome}
-                podeExcluirItem={g.podeExcluirItem}
-                podeFinalizarMesa={g.podeFinalizarMesa}
-              />
+              <PermissoesDoGarcom restaurantId={restaurant.id} vinculoId={g.vinculoId} nome={g.nome} nivel={g.nivel} />
             </li>
           ))}
         </ul>

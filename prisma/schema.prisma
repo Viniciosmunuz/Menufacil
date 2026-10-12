@@ -284,6 +284,18 @@ enum OwnerRole {
   STAFF // preparado para funcionarios no futuro
 }
 
+/// Ate onde vai a mao do garcom na mesa.
+///
+/// GARCOM lanca pedido e recebe pagamento -- a mesa continua aberta com o
+/// que ele recebeu, e quem fecha e o balcao. GARCOM_II faz na mesa tudo o
+/// que o dono faz: apaga item ja impresso, da desconto, acrescenta valor,
+/// troca a mesa de lugar, move item de uma mesa para outra, finaliza e
+/// apaga a comanda.
+enum NivelGarcom {
+  GARCOM
+  GARCOM_II
+}
+
 model RestaurantOwner {
   id           String    @id @default(cuid())
   restaurantId String
@@ -298,6 +310,10 @@ model RestaurantOwner {
   /// nascem desligados: o dono liga um por um, para quem ele confia.
   podeExcluirItem   Boolean @default(false)
   podeFinalizarMesa Boolean @default(false)
+
+  /// O nivel manda: as duas colunas acima ficam como estavam, para o
+  /// historico, mas quem decide o que o garcom pode fazer e este campo.
+  nivel NivelGarcom @default(GARCOM)
   createdAt    DateTime  @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)

@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { NivelGarcom } from "@/generated/prisma/enums";
 import { cpfValido, formatCpf, soDigitos } from "@/lib/cpf";
 import { db } from "@/lib/db";
 
@@ -19,7 +20,7 @@ import { hashPassword } from "../auth/password";
 // recurso. A conta não vê caixa, relatório nem cardápio -- o que ela faz é
 // lançar pedido em mesa.
 
-export type NovoGarcom = { nome: string; cpf: string; senha: string; podeExcluirItem: boolean; podeFinalizarMesa: boolean };
+export type NovoGarcom = { nome: string; cpf: string; senha: string; nivel: NivelGarcom };
 export type ResultadoDoGarcom = { ok: true; login: string; cpf: string; devolta: boolean } | { ok: false; error: string };
 
 /**
@@ -55,12 +56,16 @@ export async function criarGarcom(restaurantId: string, slug: string, dados: Nov
   if (conta && conta.ownerships.length > 0) return { ok: false, error: "Esse CPF já está cadastrado neste restaurante." };
 
   const passwordHash = await hashPassword(senha);
+  const segundo = dados.nivel === "GARCOM_II";
   const vinculo = {
     restaurantId,
     // STAFF é o que mantém o garçom fora do painel do dono
     role: "STAFF" as const,
-    podeExcluirItem: dados.podeExcluirItem,
-    podeFinalizarMesa: dados.podeFinalizarMesa,
+    nivel: dados.nivel,
+    // as colunas antigas acompanham o nível: elas continuam no banco, e
+    // deixá-las defasadas confundiria quem for ler a tabela amanhã
+    podeExcluirItem: segundo,
+    podeFinalizarMesa: segundo,
   };
 
   if (conta) {
@@ -129,8 +134,7 @@ export async function listarGarcons(restaurantId: string) {
     select: {
       id: true,
       createdAt: true,
-      podeExcluirItem: true,
-      podeFinalizarMesa: true,
+      nivel: true,
       user: { select: { id: true, name: true, email: true, status: true, lastLoginAt: true } },
     },
   });
@@ -142,26 +146,26 @@ export async function listarGarcons(restaurantId: string) {
     cpf: formatCpf(v.user.email.split("@")[0]),
     ativo: v.user.status === "ACTIVE",
     ultimoAcesso: v.user.lastLoginAt,
-    podeExcluirItem: v.podeExcluirItem,
-    podeFinalizarMesa: v.podeFinalizarMesa,
+    nivel: v.nivel,
   }));
 }
 
+
 /**
- * Muda o que um garçom pode fazer.
+ * Muda o nível de um garçom.
  *
- * As duas permissões se ligam e desligam a qualquer momento, sem recriar a
- * conta: a confiança do dono num garçom muda com o tempo, e refazer o
- * cadastro para isso perderia o histórico de quem atendeu qual mesa.
+ * Sobe e desce a qualquer momento, sem recriar a conta: a confiança do dono
+ * num garçom muda com o tempo, e refazer o cadastro para isso perderia o
+ * histórico de quem atendeu qual mesa.
  *
  * O CPF e a senha não se editam aqui. O CPF é a identidade do login, e
  * trocá-lo é cadastrar outra pessoa; senha nova é conversa de quem esqueceu
- * a dela, não de permissão.
+ * a dela, não de nível.
  */
-export async function mudarPermissoes(
+export async function mudarNivel(
   restaurantId: string,
   vinculoId: string,
-  permissoes: { podeExcluirItem: boolean; podeFinalizarMesa: boolean },
+  nivel: NivelGarcom,
 ): Promise<{ ok: true; nome: string | null } | { ok: false; error: string }> {
   const vinculo = await db.restaurantOwner.findFirst({
     where: { id: vinculoId, restaurantId, role: "STAFF" },
@@ -169,9 +173,10 @@ export async function mudarPermissoes(
   });
   if (!vinculo) return { ok: false, error: "Garçom não encontrado." };
 
+  const segundo = nivel === "GARCOM_II";
   await db.restaurantOwner.update({
     where: { id: vinculo.id },
-    data: { podeExcluirItem: permissoes.podeExcluirItem, podeFinalizarMesa: permissoes.podeFinalizarMesa },
+    data: { nivel, podeExcluirItem: segundo, podeFinalizarMesa: segundo },
     select: { id: true },
   });
   return { ok: true, nome: vinculo.user.name };

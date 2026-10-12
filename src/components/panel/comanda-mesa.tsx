@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ImageOff, Minus, Percent, Printer, Search, Trash2, Wallet } from "lucide-react";
+import { Check, ImageOff, Info, Minus, Percent, Printer, Search, Trash2, UtensilsCrossed, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useActionState, useState } from "react";
 
@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
 import { FolhaDoDesconto } from "./folha-do-desconto";
+import { ApagarAMesa } from "./mexer-na-mesa";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
 import { FolhaDoPagamento } from "./folha-do-pagamento";
 
@@ -162,12 +163,17 @@ function Acoes({
   comanda,
   restaurantId,
   podeFinanceiro,
+  podeMexer,
+  mesaRotulo,
   onReceber,
   onAjustar,
 }: {
   comanda: ComandaAberta;
   restaurantId: string;
   podeFinanceiro: boolean;
+  /** apagar a comanda inteira: dono e Garçom II */
+  podeMexer: boolean;
+  mesaRotulo: string;
   onReceber: () => void;
   onAjustar: () => void;
 }) {
@@ -202,6 +208,9 @@ function Acoes({
           >
             <Percent className="size-4" aria-hidden="true" />
           </button>
+        )}
+        {podeMexer && temConta && (
+          <ApagarAMesa comanda={comanda} restaurantId={restaurantId} rotulo={mesaRotulo} className="h-11 w-auto flex-1 border border-line bg-transparent" />
         )}
       </div>
 
@@ -350,6 +359,8 @@ export function ComandaDaMesa({
   categorias,
   podeFinanceiro = true,
   podeApagarItem = true,
+  podeMexer = true,
+  mesaRotulo = "mesa",
   restaurantId,
   mesaId,
 }: {
@@ -359,6 +370,9 @@ export function ComandaDaMesa({
   podeFinanceiro?: boolean;
   /** nem a lixeira ao lado do item que já foi para a cozinha */
   podeApagarItem?: boolean;
+  /** trocar a mesa de lugar, mover itens e apagar a comanda */
+  podeMexer?: boolean;
+  mesaRotulo?: string;
   restaurantId: string;
   mesaId: string;
 }) {
@@ -404,23 +418,29 @@ export function ComandaDaMesa({
   const novoCents = sacola.reduce((s, i) => s + i.centavos * i.quantidade, 0);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[22rem_1fr] lg:items-stretch">
-      {/* no celular, duas abas; no computador, as duas colunas ao mesmo tempo */}
-      <div className="flex gap-1 border-b border-line lg:hidden">
-        {(["conta", "cardapio"] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setAba(k)}
-            aria-current={aba === k ? "page" : undefined}
-            className={cn(
-              "-mb-px flex-1 border-b-2 py-3 text-sm font-extrabold transition-colors",
-              aba === k ? "border-brand text-ink" : "border-transparent text-muted",
-            )}
-          >
-            {k === "conta" ? `Comanda (${comanda.itens.length})` : "Cardápio"}
-          </button>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col gap-4 pb-20 lg:grid lg:grid-cols-[22rem_1fr] lg:items-stretch lg:pb-0">
+      {/* No celular, a comanda fica atrás de um botão no rodapé, como na
+          tela do garçom: é o mesmo gesto nos dois aparelhos, e no alcance
+          do polegar de quem está de pé. No computador as duas colunas
+          aparecem juntas e este rodapé some. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t border-line bg-bg/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <button
+          type="button"
+          onClick={() => setAba(aba === "conta" ? "cardapio" : "conta")}
+          aria-label={aba === "conta" ? "Ver o cardápio" : "Ver a comanda da mesa"}
+          className="relative grid size-12 shrink-0 place-items-center rounded-control bg-surface-3 text-ink"
+        >
+          {aba === "conta" ? <UtensilsCrossed className="size-5" aria-hidden="true" /> : <Info className="size-5" aria-hidden="true" />}
+          {aba !== "conta" && comanda.itens.length > 0 && (
+            <span className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full bg-brand text-[11px] font-extrabold text-brand-ink">
+              {comanda.itens.length}
+            </span>
+          )}
+        </button>
+        <p className="flex min-w-0 flex-1 items-center justify-between rounded-control bg-surface-2 px-4 text-sm font-extrabold">
+          <span className="truncate">{aba === "conta" ? "Comanda" : "Cardápio"}</span>
+          <span className="shrink-0 tabular-nums">{formatCents(comanda.totalCents + novoCents)}</span>
+        </p>
       </div>
 
       <section
@@ -489,6 +509,8 @@ export function ComandaDaMesa({
           comanda={comanda}
           restaurantId={restaurantId}
           podeFinanceiro={podeFinanceiro}
+          podeMexer={podeMexer}
+          mesaRotulo={mesaRotulo}
           onReceber={() => setFolha("pagamento")}
           onAjustar={() => setFolha("desconto")}
         />

@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 
-import type { OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
+import type { NivelGarcom, OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 import { readSession } from "./session";
@@ -80,15 +80,20 @@ export type RestaurantAccess = {
    * mesmo login e vai para a tela dele, sem passar pelo painel do dono.
    */
   papel: "OWNER" | "STAFF";
+  /** o nível do garçom; o dono não tem nível, porque pode tudo */
+  nivel?: NivelGarcom;
   /**
    * O que esta pessoa pode fazer na mesa.
    *
-   * O dono pode tudo. O garçom lança e recebe sempre; apagar item já
-   * enviado e finalizar a mesa dependem do que o dono liberou para ele --
-   * e a conferência é aqui, no servidor, porque esconder o botão não
-   * impede ninguém de chamar a ação direto.
+   * O dono pode tudo. O garçom lança pedido e recebe pagamento sempre --
+   * é o trabalho dele. O resto depende do nível: o Garçom II mexe no que
+   * já aconteceu (apaga item impresso, dá desconto, troca a mesa de
+   * lugar, finaliza e apaga a comanda), o Garçom não.
+   *
+   * A conferência é aqui, no servidor, porque esconder o botão não impede
+   * ninguém de chamar a ação direto.
    */
-  pode: { excluirItem: boolean; finalizarMesa: boolean };
+  pode: { excluirItem: boolean; finalizarMesa: boolean; mexerNaMesa: boolean };
 };
 
 export const getRestaurantAccess = cache(
@@ -116,13 +121,15 @@ export const getRestaurantAccess = cache(
         fullDeliveryEnabled: true,
         salaoEnabled: true,
         deliveryMode: true,
-        owners: { where: { userId: user.id }, select: { id: true, role: true, podeExcluirItem: true, podeFinalizarMesa: true }, take: 1 },
+        owners: { where: { userId: user.id }, select: { id: true, role: true, nivel: true }, take: 1 },
       },
     });
     if (!linha) return null;
     const { owners, ...restaurant } = linha;
 
-    const tudo = { excluirItem: true, finalizarMesa: true };
+    // o dono pode tudo; o garçom depende do nível, e o Garçom II faz na
+    // mesa o mesmo que o dono -- é o que o nível quer dizer
+    const tudo = { excluirItem: true, finalizarMesa: true, mexerNaMesa: true };
     if (user.role === "ADMIN") return { user, restaurant, viaAdmin: true, papel: "OWNER", pode: tudo };
     if (owners.length === 0 || restaurant.status === "BLOCKED") return null;
 
@@ -132,10 +139,8 @@ export const getRestaurantAccess = cache(
       restaurant,
       viaAdmin: false,
       papel: vinculo.role,
-      pode:
-        vinculo.role === "OWNER"
-          ? tudo
-          : { excluirItem: vinculo.podeExcluirItem, finalizarMesa: vinculo.podeFinalizarMesa },
+      nivel: vinculo.nivel,
+      pode: vinculo.role === "OWNER" || vinculo.nivel === "GARCOM_II" ? tudo : { excluirItem: false, finalizarMesa: false, mexerNaMesa: false },
     };
   },
 );

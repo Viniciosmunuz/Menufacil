@@ -1,8 +1,9 @@
-import { Lock, Trash2, UserRound, Wallet } from "lucide-react";
+import { ArrowDownUp, Lock, Trash2, UserRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 
 import { GarcomNav } from "@/components/panel/garcom-nav";
 import { formatCpf } from "@/lib/cpf";
+import { NOME_DO_NIVEL } from "@/lib/niveis";
 import { requireSalao } from "@/server/auth/dal";
 
 import { BotaoSair } from "./sair";
@@ -22,7 +23,7 @@ export const metadata: Metadata = { title: "Ajustes" };
 
 export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom/[restaurantId]/ajustes">) {
   const { restaurantId } = await params;
-  const { user, restaurant, papel, pode } = await requireSalao(restaurantId);
+  const { user, restaurant, papel, pode, nivel } = await requireSalao(restaurantId);
   const base = `/garcom/${restaurant.id}`;
 
   // o login do garçom é o CPF; o do dono é um e-mail de verdade
@@ -32,6 +33,7 @@ export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom
   const permissoes = [
     { ligada: pode.excluirItem, icone: Trash2, titulo: "Apagar item da comanda", nao: "Só o balcão apaga item já enviado." },
     { ligada: pode.finalizarMesa, icone: Wallet, titulo: "Finalizar a mesa", nao: "Quem libera a mesa e dá desconto é o balcão." },
+    { ligada: pode.mexerNaMesa, icone: ArrowDownUp, titulo: "Trocar a mesa e mover itens", nao: "Quem muda mesa de lugar é o balcão." },
   ];
 
   return (
@@ -46,6 +48,7 @@ export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom
           <span className="block truncate text-lg font-extrabold">{user.name ?? "Garçom"}</span>
           <span className="block truncate text-sm tabular-nums text-muted">{entra}</span>
           <span className="block truncate text-sm text-faint">{restaurant.name}</span>
+          {nivel && <span className="mt-1 inline-block rounded-full bg-surface-3 px-2 py-0.5 text-xs font-bold text-muted">{NOME_DO_NIVEL[nivel]}</span>}
         </span>
       </section>
 

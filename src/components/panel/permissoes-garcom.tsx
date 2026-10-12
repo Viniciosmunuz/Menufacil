@@ -4,17 +4,20 @@ import { Pencil, UserMinus, X } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { editarGarcom, tirarGarcomDaEquipe, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
-import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/ui/submit-button";
+import type { NivelGarcom } from "@/generated/prisma/enums";
+import { NIVEIS } from "@/lib/niveis";
 
-// O que um garçom pode fazer, mudado pelo lápis da linha dele.
+// O nível de um garçom, mudado pelo lápis da linha dele.
 //
-// Lançar pedido e receber pagamento todo garçom faz -- é o trabalho. As
-// duas permissões daqui são as que mexem no que já aconteceu: apagar da
-// conta um prato que a cozinha fez, e liberar a mesa. Nascem desligadas e o
-// dono liga para quem ele confia, a qualquer momento: confiança muda com o
-// tempo, e refazer o cadastro para isso perderia o histórico de quem
-// atendeu qual mesa.
+// São dois: Garçom lança pedido e recebe pagamento -- o trabalho --, e a
+// mesa continua aberta com o que ele recebeu. Garçom II mexe no que já
+// aconteceu: apaga item que a cozinha fez, dá desconto, troca a mesa de
+// lugar, finaliza e apaga a comanda. Era isso que as duas caixas de marcar
+// tentavam dizer separadamente, e na prática andavam sempre juntas.
+//
+// Sobe e desce a qualquer momento: confiança muda com o tempo, e refazer o
+// cadastro para isso perderia o histórico de quem atendeu qual mesa.
 //
 // Tirar da equipe fica aqui dentro, e não como um segundo ícone na linha:
 // são dois gestos para a mesma pessoa, e um X ao lado do lápis, num celular
@@ -24,22 +27,21 @@ export function PermissoesDoGarcom({
   restaurantId,
   vinculoId,
   nome,
-  podeExcluirItem,
-  podeFinalizarMesa,
+  nivel,
 }: {
   restaurantId: string;
   vinculoId: string;
   nome: string | null;
-  podeExcluirItem: boolean;
-  podeFinalizarMesa: boolean;
+  nivel: NivelGarcom;
 }) {
   const [abrindo, setAbrindo] = useState(false);
   const [tirando, setTirando] = useState(false);
+  const [escolhido, setEscolhido] = useState<NivelGarcom>(nivel);
   const [estado, salvar] = useActionState<SalaoFormState, FormData>(editarGarcom, {});
   const [saida, tirar] = useActionState<SalaoFormState, FormData>(tirarGarcomDaEquipe, {});
 
-  // salvou: o painel fecha e a linha volta a mostrar as permissões novas,
-  // porque a ação revalida a página
+  // salvou: o painel fecha e a linha volta a mostrar o nível novo, porque a
+  // ação revalida a página
   const [ultimo, setUltimo] = useState<string | undefined>(undefined);
   if (estado.ok && estado.message !== ultimo) {
     setUltimo(estado.message);
@@ -51,7 +53,7 @@ export function PermissoesDoGarcom({
       <button
         type="button"
         onClick={() => setAbrindo(true)}
-        aria-label={"Mudar o que " + (nome ?? "este garçom") + " pode fazer"}
+        aria-label={"Mudar o nível de " + (nome ?? "este garçom")}
         className="grid size-9 shrink-0 place-items-center rounded-control text-faint hover:text-ink"
       >
         <Pencil className="size-4" aria-hidden="true" />
@@ -64,6 +66,7 @@ export function PermissoesDoGarcom({
       <form action={salvar} className="flex flex-col gap-3">
         <input type="hidden" name="restaurantId" value={restaurantId} />
         <input type="hidden" name="vinculoId" value={vinculoId} />
+        <input type="hidden" name="nivel" value={escolhido} />
 
         <div className="flex items-start justify-between gap-3">
           <p className="font-extrabold">O que {nome ?? "este garçom"} pode fazer</p>
@@ -77,18 +80,27 @@ export function PermissoesDoGarcom({
           </button>
         </div>
 
-        <Checkbox
-          name="podeExcluirItem"
-          defaultChecked={podeExcluirItem}
-          label="Apagar item da comanda"
-          hint="Item já enviado para a cozinha."
-        />
-        <Checkbox
-          name="podeFinalizarMesa"
-          defaultChecked={podeFinalizarMesa}
-          label="Finalizar a mesa"
-          hint="Liberar a mesa, dar desconto e desfazer um recebimento."
-        />
+        <div className="flex flex-col gap-2" role="radiogroup" aria-label="Nível">
+          {NIVEIS.map((n) => {
+            const aceso = escolhido === n.chave;
+            return (
+              <button
+                key={n.chave}
+                type="button"
+                role="radio"
+                aria-checked={aceso}
+                onClick={() => setEscolhido(n.chave)}
+                className={
+                  "rounded-control border p-3 text-left transition-colors " +
+                  (aceso ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong")
+                }
+              >
+                <span className={aceso ? "block font-extrabold text-brand" : "block font-extrabold"}>{n.nome}</span>
+                <span className="block text-sm text-muted">{n.resumo}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {estado.error && (
           <p className="rounded-control bg-danger/15 px-3 py-2 text-sm font-bold text-danger" role="status">

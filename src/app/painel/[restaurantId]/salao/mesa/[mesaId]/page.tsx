@@ -4,10 +4,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComandaDaMesa } from "@/components/panel/comanda-mesa";
+import { MexerNaMesa } from "@/components/panel/mexer-na-mesa";
 import { NomeDaMesa } from "@/components/panel/nome-da-mesa";
 import { Badge } from "@/components/ui/badge";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
+import { mesasParaDestino } from "@/server/salao/mexer";
 
 export const metadata: Metadata = { title: "Mesa" };
 
@@ -15,7 +17,11 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
   const { restaurantId, mesaId } = await params;
   const { restaurant, pode } = await requireSalao(restaurantId);
 
-  const [achado, categorias] = await Promise.all([verMesa(restaurant.id, mesaId), cardapioDoSalao(restaurant.id)]);
+  const [achado, categorias, mesas] = await Promise.all([
+    verMesa(restaurant.id, mesaId),
+    cardapioDoSalao(restaurant.id),
+    mesasParaDestino(restaurant.id, mesaId),
+  ]);
   if (!achado) notFound();
 
   const { mesa, comanda } = achado;
@@ -31,6 +37,11 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
           <ArrowLeft className="size-5" aria-hidden="true" />
         </Link>
         <NomeDaMesa restaurantId={restaurant.id} mesaId={mesa.id} rotulo={rotulo} numero={mesa.numero} nome={mesa.nome} />
+        {/* as setas só existem com a mesa aberta: é a comanda que muda de
+            lugar, e mesa livre não tem comanda */}
+        {aberta && pode.mexerNaMesa && (
+          <MexerNaMesa comanda={comanda} restaurantId={restaurant.id} mesas={mesas} rotulo={mesa.nome ?? rotulo + " " + mesa.numero} />
+        )}
         {/* Mesa sem nada lançado é mesa livre, e aqui ela chega como uma
             comanda vazia -- é o que faz o toque cair direto no cardápio.
             Sem este teste o cabeçalho anunciava "Ocupada · 0 pessoas · 0
@@ -62,6 +73,8 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         categorias={categorias}
         podeFinanceiro={pode.finalizarMesa}
         podeApagarItem={pode.excluirItem}
+        podeMexer={pode.mexerNaMesa}
+        mesaRotulo={mesa.nome ?? rotulo + " " + mesa.numero}
         restaurantId={restaurant.id}
         mesaId={mesa.id}
       />

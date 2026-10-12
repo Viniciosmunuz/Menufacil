@@ -9,7 +9,8 @@ import { formatCents } from "@/lib/format";
 import { parseMoneyToCents } from "@/lib/validation";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
-import { criarGarcom, mudarPermissoes, tirarGarcom } from "@/server/salao/garcons";
+import { criarGarcom, mudarNivel, tirarGarcom } from "@/server/salao/garcons";
+import { apagarComanda, moverItens, trocarDeMesa } from "@/server/salao/mexer";
 import { lancarNaMesa } from "@/server/salao/lancar";
 import {
   ajustarConta,
@@ -105,9 +106,9 @@ export async function adicionarGarcom(_prev: SalaoFormState, formData: FormData)
     nome: String(formData.get("nome") ?? ""),
     cpf: String(formData.get("cpf") ?? ""),
     senha: String(formData.get("senha") ?? ""),
-    // nascem desligadas: o dono marca uma a uma para quem ele confia
-    podeExcluirItem: formData.get("podeExcluirItem") === "on",
-    podeFinalizarMesa: formData.get("podeFinalizarMesa") === "on",
+    // nasce no nível de baixo: subir é um toque, e o contrário de subir
+    // é descobrir no fim da noite que a conta foi zerada por engano
+    nivel: formData.get("nivel") === "GARCOM_II" ? "GARCOM_II" : "GARCOM",
   });
   if (!r.ok) return { error: r.error };
 
@@ -334,23 +335,74 @@ export async function ajustarAConta(_prev: SalaoFormState, formData: FormData): 
   return { ok: true, message: "Conta ajustada." };
 }
 
-/** Liga e desliga as permissões de um garçom já cadastrado. */
+/** Sobe e desce o nível de um garçom já cadastrado. */
 export async function editarGarcom(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  // mexer em permissão é coisa de dono; garçom nenhum muda a própria
-  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante muda as permissões." };
+  // mexer em nível é coisa de dono; garçom nenhum muda o próprio
+  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante muda o nível do garçom." };
 
   const vinculoId = String(formData.get("vinculoId") ?? "");
-  const permissoes = {
-    podeExcluirItem: formData.get("podeExcluirItem") === "on",
-    podeFinalizarMesa: formData.get("podeFinalizarMesa") === "on",
-  };
+  const nivel = formData.get("nivel") === "GARCOM_II" ? "GARCOM_II" : "GARCOM";
 
-  const r = await mudarPermissoes(restaurantId, vinculoId, permissoes);
+  const r = await mudarNivel(restaurantId, vinculoId, nivel);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.garcom_permissoes", { vinculoId, ...permissoes });
+  await panelAudit(acesso, "salao.garcom_nivel", { vinculoId, nivel });
   refresh();
-  return { ok: true, message: `Permissões de ${r.nome ?? "o garçom"} salvas.` };
+  return { ok: true, message: `${r.nome ?? "O garçom"} agora é ${nivel === "GARCOM_II" ? "Garçom II" : "Garçom"}.` };
+}
+
+/**
+ * Apaga a comanda inteira e devolve a mesa.
+ *
+ * Mesma confiança de finalizar a mesa, e por um motivo mais forte: aqui a
+ * conta vai embora com os pagamentos que já tinham entrado nela.
+ */
+export async function apagarAComanda(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para apagar a mesa." };
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const r = await apagarComanda(restaurantId, comandaId, acesso.user.id);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.apagou_comanda", { comandaId });
+  refresh();
+  return { ok: true, message: "Mesa apagada e liberada." };
+}
+
+/** Leva a comanda inteira para outra mesa. */
+export async function trocarAMesa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para trocar a mesa." };
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
+  const r = await trocarDeMesa(restaurantId, comandaId, mesaDestinoId);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.trocou_de_mesa", { comandaId, mesaDestinoId });
+  refresh();
+  return { ok: true, message: "Comanda na mesa nova." };
+}
+
+/** Manda itens desta mesa para outra. */
+export async function moverOsItens(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para mudar itens de mesa." };
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
+  const itemIds = formData.getAll("itemId").map(String).filter(Boolean);
+
+  const r = await moverItens(restaurantId, comandaId, itemIds, mesaDestinoId, acesso.user.id);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.moveu_itens", { comandaId, mesaDestinoId, itens: itemIds.length });
+  refresh();
+  return { ok: true, message: itemIds.length === 1 ? "Item na mesa nova." : "Itens na mesa nova." };
 }
