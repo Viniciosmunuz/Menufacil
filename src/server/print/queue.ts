@@ -8,6 +8,7 @@ import { pedeSecao } from "@/lib/nomes-parecidos";
 import { EXCLUDE_UNPAID } from "@/lib/order-flow";
 import { receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
 
+import { divisaoDaImpressora, filtroDeItem, meuItem } from "./divisao";
 import { secoesQuePedemDestaque } from "./secoes";
 
 // A fila do Print Fácil: os pedidos que ainda não saíram no papel daquele
@@ -59,7 +60,7 @@ const ticketSelect = {
       quantity: true,
       totalCents: true,
       notes: true,
-      product: { select: { category: { select: { name: true } } } },
+      product: { select: { category: { select: { id: true, name: true } } } },
     },
   },
 } as const;
@@ -72,29 +73,57 @@ const aindaNaoSaiu = (role: PrintRole) =>
       { origin: "TOTEM" as const, senhaPrintedAt: null }
     : { printedAt: null };
 
-export function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA") {
+export async function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA", deviceId?: string) {
+  const comum = {
+    restaurantId,
+    status: { in: [...OPEN_ORDER_STATUSES] },
+    // 100% Delivery: a via só sai depois que o Mercado Pago confirmou
+    ...EXCLUDE_UNPAID,
+    createdAt: { gte: new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000) },
+  };
+  const escolha = { orderBy: { createdAt: "asc" }, take: BATCH, select: { id: true, number: true, createdAt: true, printRuns: true } } as const;
+
+  // o recibo do cliente não se divide: ele é o pedido inteiro, e sai na
+  // impressora do próprio tablet
+  const divisao = role === "SENHA" || !deviceId ? null : await divisaoDaImpressora(restaurantId, deviceId);
+
+  if (!divisao?.dividido) {
+    return db.order.findMany({ where: { ...comum, ...aindaNaoSaiu(role) }, ...escolha });
+  }
+
+  // no modo dividido a trava é por impressora, e o pedido só entra na fila
+  // de quem tem algo para imprimir dele
   return db.order.findMany({
     where: {
-      restaurantId,
-      ...aindaNaoSaiu(role),
-      status: { in: [...OPEN_ORDER_STATUSES] },
-      // 100% Delivery: a via só sai depois que o Mercado Pago confirmou
-      ...EXCLUDE_UNPAID,
-      createdAt: { gte: new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000) },
+      ...comum,
+      impressoes: { none: { deviceId } },
+      items: { some: filtroDeItem(divisao) },
     },
-    orderBy: { createdAt: "asc" },
-    take: BATCH,
-    select: { id: true, number: true, createdAt: true, printRuns: true },
+    ...escolha,
   });
 }
 
 /** a via pronta: o mesmo texto que sai pela impressão do navegador */
-export async function orderTicket(restaurantId: string, orderId: string, role: PrintRole = "COMANDA") {
-  const order = await db.order.findFirst({
+export async function orderTicket(restaurantId: string, orderId: string, role: PrintRole = "COMANDA", deviceId?: string) {
+  const achado = await db.order.findFirst({
     where: { id: orderId, restaurantId },
     select: { ...ticketSelect, restaurant: { select: { name: true, receiptWidth: true } } },
   });
-  if (!order) return null;
+  if (!achado) return null;
+
+  // no modo dividido, esta impressora leva só o que é dela. Sobrando nada,
+  // não há via: o pedido era todo da outra impressora.
+  const divisao = role === "SENHA" || !deviceId ? null : await divisaoDaImpressora(restaurantId, deviceId);
+
+  // A via parcial soma só o que está nela: dizer "total R$ 36,90" num papel
+  // que tem uma água de R$ 4,00 confunde quem confere, e a taxa de entrega
+  // não cabe nos dois papéis.
+  const meus = divisao?.dividido ? achado.items.filter((i) => meuItem(divisao, i.product?.category?.id)) : achado.items;
+  const soma = meus.reduce((s, i) => s + i.totalCents, 0);
+  const order = divisao?.dividido
+    ? { ...achado, items: meus, subtotalCents: soma, deliveryFeeCents: 0, totalCents: soma }
+    : achado;
+  if (order.items.length === 0) return null;
 
   const paper = order.restaurant.receiptWidth;
   // só pedido de totem tem recibo de cliente; se a impressora de senha
@@ -164,8 +193,24 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
 }
 
 /** só marca quem ainda não estava marcado: dois programas não duplicam a via */
-export async function markOrderPrinted(restaurantId: string, orderId: string, role: PrintRole = "COMANDA") {
+export async function markOrderPrinted(restaurantId: string, orderId: string, role: PrintRole = "COMANDA", deviceId?: string) {
   const agora = new Date();
+  const divisao = role === "SENHA" || !deviceId ? null : await divisaoDaImpressora(restaurantId, deviceId);
+
+  if (divisao?.dividido && deviceId) {
+    // a trava desta impressora. O createMany ignora repetição por causa do
+    // índice único, então dois programas apontando para o mesmo papel não
+    // duplicam a via nem derrubam um ao outro.
+    const { count } = await db.orderPrint.createMany({ data: [{ orderId, deviceId }], skipDuplicates: true });
+    // o painel continua dizendo "impresso" na primeira via que sai: quem
+    // olha a lista quer saber se o papel chegou na cozinha, não em quantas
+    // impressoras ele passou
+    if (count > 0) {
+      await db.order.updateMany({ where: { id: orderId, restaurantId, printedAt: null }, data: { printedAt: agora } });
+    }
+    return { marcado: count > 0 };
+  }
+
   const { count } = await db.order.updateMany({
     where: { id: orderId, restaurantId, ...aindaNaoSaiu(role) },
     data: role === "SENHA" ? { senhaPrintedAt: agora } : { printedAt: agora },

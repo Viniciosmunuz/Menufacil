@@ -1,4 +1,4 @@
-import { UserPlus } from "lucide-react";
+import { Printer, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/panel/page-header";
@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { requireSalao } from "@/server/auth/dal";
+import { ImpressoraDaSecao } from "@/components/panel/impressora-da-secao";
 import { PermissoesDoGarcom } from "@/components/panel/permissoes-garcom";
 import { listarGarcons } from "@/server/salao/garcons";
 
@@ -27,10 +28,22 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
   const { restaurantId } = await params;
   const { restaurant } = await requireSalao(restaurantId);
 
-  const [mesas, balcoes, garcons] = await Promise.all([
+  const [mesas, balcoes, garcons, impressoras, secoes] = await Promise.all([
     db.mesa.count({ where: { restaurantId: restaurant.id, tipo: "MESA" } }),
     db.mesa.count({ where: { restaurantId: restaurant.id, tipo: "BALCAO" } }),
     listarGarcons(restaurant.id),
+    // só as de comanda: a impressora de senha é do tablet do totem, e o
+    // recibo do cliente é o pedido inteiro, não se divide
+    db.printDevice.findMany({
+      where: { restaurantId: restaurant.id, role: "COMANDA" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, printerName: true },
+    }),
+    db.menuCategory.findMany({
+      where: { restaurantId: restaurant.id, active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true, printDeviceId: true },
+    }),
   ]);
 
   const lugares = (
@@ -85,6 +98,46 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
     </Card>
   );
 
+  // De onde sai cada coisa. Com uma impressora só não há o que decidir, e a
+  // tela diz isso em vez de oferecer uma escolha que não existe.
+  const papel = (
+    <Card className="flex flex-col gap-5">
+      <div>
+        <p className="flex items-center gap-2 font-extrabold">
+          <Printer className="size-5 text-brand" aria-hidden="true" />
+          De onde sai cada coisa
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          Com duas impressoras, a bebida pode sair no bar e o prato na cozinha. O que você não escolher continua saindo na
+          impressora do balcão.
+        </p>
+      </div>
+
+      {impressoras.length < 2 ? (
+        <p className="rounded-control border border-line bg-surface-2 px-4 py-3 text-sm text-muted">
+          {impressoras.length === 0
+            ? "Nenhuma impressora ligada ainda. Pareie o Menu Fácil PC no computador do balcão."
+            : `Você tem uma impressora (${impressoras[0].printerName ?? impressoras[0].name}). Ligue a segunda no Menu Fácil PC para dividir o cardápio entre elas.`}
+        </p>
+      ) : secoes.length === 0 ? (
+        <p className="text-sm text-muted">Seu cardápio ainda não tem seções.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line">
+          {secoes.map((s) => (
+            <ImpressoraDaSecao
+              key={s.id}
+              restaurantId={restaurant.id}
+              categoriaId={s.id}
+              nome={s.name}
+              atual={s.printDeviceId}
+              impressoras={impressoras.map((i) => ({ id: i.id, nome: i.printerName ?? i.name }))}
+            />
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
@@ -97,6 +150,7 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
         abas={[
           { chave: "lugares", titulo: "Mesas e balcão", conteudo: lugares },
           { chave: "garcons", titulo: "Garçons", conteudo: equipe },
+          { chave: "impressoras", titulo: "Impressoras", conteudo: papel },
         ]}
       />
     </div>

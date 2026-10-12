@@ -406,3 +406,32 @@ export async function moverOsItens(_prev: SalaoFormState, formData: FormData): P
   refresh();
   return { ok: true, message: itemIds.length === 1 ? "Item na mesa nova." : "Itens na mesa nova." };
 }
+
+/**
+ * Em qual impressora sai o que foi pedido de uma seção do cardápio.
+ *
+ * Vazio devolve a seção ao padrão: ela sai na impressora do balcão, junto
+ * com tudo que ninguém reivindicou. Enquanto nenhuma seção tiver destino,
+ * a impressão do restaurante inteiro continua como sempre foi.
+ */
+export async function definirImpressoraDaSecao(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  // de onde sai o papel é decisão de dono; garçom nenhum muda impressora
+  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante muda as impressoras." };
+
+  const categoriaId = String(formData.get("categoriaId") ?? "");
+  const impressoraId = String(formData.get("impressoraId") ?? "") || null;
+
+  if (impressoraId) {
+    const dela = await db.printDevice.findFirst({ where: { id: impressoraId, restaurantId }, select: { id: true } });
+    if (!dela) return { error: "Impressora não encontrada." };
+  }
+
+  const { count } = await db.menuCategory.updateMany({ where: { id: categoriaId, restaurantId }, data: { printDeviceId: impressoraId } });
+  if (count === 0) return { error: "Seção não encontrada." };
+
+  await panelAudit(acesso, "salao.impressora_da_secao", { categoriaId, impressoraId });
+  refresh();
+  return { ok: true, message: "Pronto." };
+}

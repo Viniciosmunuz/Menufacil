@@ -19,9 +19,11 @@ export async function GET(request: Request) {
     return Response.json({ pareado: false, codigo_pareamento: device.pairingCode, pedidos: [] });
   }
 
-  // cada impressora pede a sua fila: a da cozinha vê tudo, a do tablet
-  // só o recibo de cliente que ainda não saiu
-  const orders = await pendingOrders(device.restaurantId, device.role);
+  // cada impressora pede a sua fila: a da cozinha vê tudo, a do tablet só
+  // o recibo de cliente que ainda não saiu -- e, quando o cardápio está
+  // dividido entre impressoras, cada uma vê só os pedidos que têm algo
+  // dela, com a própria trava de já impresso
+  const orders = await pendingOrders(device.restaurantId, device.role, device.id);
   return Response.json({
     pareado: true,
     papel_mm: device.restaurant?.receiptWidth ?? DEFAULT_PAPER,

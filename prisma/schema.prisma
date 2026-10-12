@@ -359,10 +359,20 @@ model MenuCategory {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  products   Product[]
+  /// Em qual impressora sai o que foi pedido desta secao.
+  ///
+  /// Vazio e o de sempre: o pedido inteiro sai na impressora do balcao.
+  /// Preenchido em alguma secao, o restaurante entra no modo dividido --
+  /// bebida na impressora do bar, prato na da cozinha -- e cada impressora
+  /// passa a ter a propria fila e a propria via.
+  printDeviceId String?
+
+  restaurant  Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products    Product[]
+  printDevice PrintDevice? @relation(fields: [printDeviceId], references: [id], onDelete: SetNull)
 
   @@index([restaurantId, sortOrder])
+  @@index([printDeviceId])
 }
 
 model Product {
@@ -563,6 +573,7 @@ model Order {
   items        OrderItem[]
   statusEvents OrderStatusEvent[]
   payment      Payment?
+  impressoes   OrderPrint[]
   messages     WhatsAppMessage[]
   chat         ChatConversation?
 
@@ -806,9 +817,30 @@ model PrintDevice {
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
 
-  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant Restaurant?     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categories MenuCategory[]
+  impressoes OrderPrint[]
 
   @@index([restaurantId])
+}
+
+/// Uma via que ja saiu numa impressora.
+///
+/// So existe no modo dividido, quando alguma secao do cardapio tem
+/// impressora propria. Ali o "printedAt" do pedido nao serve de trava: ele
+/// e um so, e a primeira impressora que marcasse tiraria o pedido da fila
+/// da outra -- a bebida sairia no bar e a cozinha nunca receberia o prato.
+model OrderPrint {
+  id       String   @id @default(cuid())
+  orderId  String
+  deviceId String
+  printedAt DateTime @default(now())
+
+  order  Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  device PrintDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, deviceId])
+  @@index([deviceId])
 }
 
 // Celular (ou computador) que pediu para ser avisado quando entrar pedido

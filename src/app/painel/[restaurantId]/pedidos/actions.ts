@@ -135,6 +135,10 @@ export async function reprintOrder(formData: FormData) {
   });
   if (count === 0) return;
 
+  // com o cardápio dividido entre impressoras, cada uma tem a própria
+  // trava: tirar de novo é tirar em todas, senão só a primeira responderia
+  await db.orderPrint.deleteMany({ where: { orderId, order: { restaurantId } } });
+
   await audit({ actorUserId: actor.userId, restaurantId, action: "order.print.again", details: { orderId } });
   refresh();
 }
