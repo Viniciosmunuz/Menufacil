@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { MesaDoGarcom } from "@/components/panel/mesa-garcom";
+import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
 import { mesasParaDestino } from "@/server/salao/mexer";
@@ -20,10 +21,12 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
   const { restaurantId, mesaId } = await params;
   const { restaurant, pode } = await requireSalao(restaurantId);
 
-  const [achado, categorias, mesas] = await Promise.all([
+  const [achado, categorias, mesas, impressoras] = await Promise.all([
     verMesa(restaurant.id, mesaId),
     cardapioDoSalao(restaurant.id),
     mesasParaDestino(restaurant.id, mesaId),
+    // com o Menu Fácil PC ligado, a conta vai para a impressora do balcão
+    db.printDevice.count({ where: { restaurantId: restaurant.id, role: "COMANDA", pairedAt: { not: null } } }),
   ]);
   if (!achado) notFound();
 
@@ -43,6 +46,7 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
       podeApagarItem={pode.excluirItem}
       podeMexer={pode.mexerNaMesa}
       mesas={mesas}
+      temImpressora={impressoras > 0}
     />
   );
 }

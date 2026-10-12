@@ -321,3 +321,70 @@ export function receiptLines(o: TicketOrder, restaurantName: string, paper: numb
 /** o recibo em texto puro */
 export const receiptText = (o: TicketOrder, restaurantName: string, paper: number = DEFAULT_PAPER) =>
   `${receiptLines(o, restaurantName, paper).join("\n")}\n\n\n`;
+
+/** a conta da mesa, do jeito que ela vai para a mão do cliente */
+export type ContaDaMesa = {
+  rotulo: string;
+  nomeDaMesa: string | null;
+  abertaAt: Date | string;
+  garcom: string | null;
+  pessoas: number;
+  itens: { nome: string; opcoes: string | null; observacao: string | null; quantidade: number; centavos: number }[];
+  subtotalCents: number;
+  servicoCents: number;
+  descontoCents: number;
+  totalCents: number;
+  pagamentos: { forma: string; centavos: number }[];
+  pagoCents: number;
+  faltaCents: number;
+};
+
+/**
+ * A conta da mesa, em papel.
+ *
+ * É o que o cliente pede antes de pagar, e não a comanda da cozinha: aqui
+ * tem preço em toda linha, porque é por ele que a pessoa confere. O que já
+ * foi recebido aparece embaixo, e o que falta em destaque -- numa mesa que
+ * dividiu a conta, é a única pergunta que importa.
+ *
+ * Sai sempre na impressora principal, a do balcão: é lá que o garçom busca
+ * o papel para levar à mesa.
+ */
+export function contaLines(c: ContaDaMesa, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
+  const { forte, fraco, meio, entre, texto, titulo } = pincel(paper);
+  const lines: string[] = [];
+
+  lines.push(forte, meio(restaurantName.toUpperCase()), meio("CONTA - NAO E DOCUMENTO FISCAL"), forte);
+  lines.push("", meio(c.rotulo.toUpperCase()), "");
+  if (c.nomeDaMesa) lines.push(meio(c.nomeDaMesa.toUpperCase()), "");
+
+  lines.push(forte);
+  lines.push(entre("Aberta", clock(c.abertaAt)));
+  if (c.garcom) lines.push(...texto(`Garçom: ${c.garcom}`));
+  if (c.pessoas > 0) lines.push(...texto(`Pessoas: ${c.pessoas}`));
+  lines.push(forte);
+
+  lines.push(...titulo("CONSUMO"));
+  for (const i of c.itens) {
+    lines.push(entre(`${i.quantidade}x ${i.nome}`, formatCents(i.centavos)));
+    if (i.opcoes) lines.push(...texto(i.opcoes, 4, 2));
+    if (i.observacao) lines.push(...texto(`Obs.: ${i.observacao}`, 4, 2));
+  }
+  lines.push(fraco);
+
+  lines.push(entre("Subtotal", formatCents(c.subtotalCents)));
+  if (c.servicoCents > 0) lines.push(entre("Serviço", formatCents(c.servicoCents)));
+  if (c.descontoCents > 0) lines.push(entre("Desconto", "-" + formatCents(c.descontoCents)));
+  lines.push(forte, entre("TOTAL", formatCents(c.totalCents)), forte);
+
+  if (c.pagamentos.length > 0) {
+    lines.push(...titulo("JÁ RECEBIDO"));
+    for (const p of c.pagamentos) lines.push(entre(p.forma, formatCents(p.centavos)));
+    lines.push(fraco, entre(c.faltaCents === 0 ? "CONTA PAGA" : "FALTA", c.faltaCents === 0 ? "" : formatCents(c.faltaCents)), forte);
+  }
+
+  return lines;
+}
+
+export const contaText = (c: ContaDaMesa, restaurantName: string, paper: number = DEFAULT_PAPER) =>
+  `${contaLines(c, restaurantName, paper).join("\n")}\n\n\n`;

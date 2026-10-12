@@ -60,3 +60,26 @@ export function meuItem(d: Divisao, categoriaId: string | null | undefined) {
   if (d.souDestino) return categoriaId !== null && categoriaId !== undefined && d.minhas.includes(categoriaId);
   return categoriaId === null || categoriaId === undefined || !d.deOutros.includes(categoriaId);
 }
+
+/**
+ * A impressora principal: a do balcão.
+ *
+ * É a que não foi escolhida para nenhuma seção -- a que já recebe tudo que
+ * ninguém reivindicou. Num restaurante que não dividiu nada, é a primeira
+ * que foi pareada. É nela que sai a conta da mesa, porque é de lá que o
+ * garçom busca o papel para levar ao cliente.
+ */
+export async function impressoraPrincipal(restaurantId: string) {
+  const [devices, atribuidas] = await Promise.all([
+    db.printDevice.findMany({
+      where: { restaurantId, role: "COMANDA" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    }),
+    db.menuCategory.findMany({ where: { restaurantId, printDeviceId: { not: null } }, select: { printDeviceId: true } }),
+  ]);
+  if (devices.length === 0) return null;
+
+  const destinos = new Set(atribuidas.map((c) => c.printDeviceId));
+  return devices.find((d) => !destinos.has(d.id))?.id ?? devices[0].id;
+}

@@ -6,9 +6,11 @@ import { db } from "@/lib/db";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { pedeSecao } from "@/lib/nomes-parecidos";
 import { EXCLUDE_UNPAID } from "@/lib/order-flow";
-import { receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
+import { contaLines, contaText, receiptLines, receiptText, ticketLines, ticketText } from "@/lib/ticket";
 
-import { divisaoDaImpressora, filtroDeItem, meuItem } from "./divisao";
+import { verConta } from "@/server/salao/comanda";
+
+import { divisaoDaImpressora, filtroDeItem, impressoraPrincipal, meuItem } from "./divisao";
 import { secoesQuePedemDestaque } from "./secoes";
 
 // A fila do Print Fácil: os pedidos que ainda não saíram no papel daquele
@@ -87,24 +89,61 @@ export async function pendingOrders(restaurantId: string, role: PrintRole = "COM
   // impressora do próprio tablet
   const divisao = role === "SENHA" || !deviceId ? null : await divisaoDaImpressora(restaurantId, deviceId);
 
-  if (!divisao?.dividido) {
-    return db.order.findMany({ where: { ...comum, ...aindaNaoSaiu(role) }, ...escolha });
-  }
+  const pedidos = !divisao?.dividido
+    ? await db.order.findMany({ where: { ...comum, ...aindaNaoSaiu(role) }, ...escolha })
+    : // no modo dividido a trava é por impressora, e o pedido só entra na
+      // fila de quem tem algo para imprimir dele
+      await db.order.findMany({
+        where: { ...comum, impressoes: { none: { deviceId } }, items: { some: filtroDeItem(divisao) } },
+        ...escolha,
+      });
 
-  // no modo dividido a trava é por impressora, e o pedido só entra na fila
-  // de quem tem algo para imprimir dele
-  return db.order.findMany({
+  const contas = role === "SENHA" || !deviceId ? [] : await contasPedidas(restaurantId, deviceId);
+  return [...contas, ...pedidos];
+}
+
+/** o prefixo que distingue a conta de uma mesa de um pedido, na mesma fila */
+const CONTA = "conta_";
+export const ehConta = (id: string) => id.startsWith(CONTA);
+const comandaDe = (id: string) => id.slice(CONTA.length);
+
+/**
+ * As contas de mesa que o garçom pediu e ainda não saíram.
+ *
+ * Entram na mesma fila dos pedidos, com um id marcado, porque assim o
+ * programa do balcão imprime a conta sem precisar aprender nada novo: ele
+ * continua pedindo a via daquele id e mandando o texto para a impressora.
+ *
+ * Só na impressora principal: a conta é um papel só, e sai onde o garçom
+ * vai buscá-lo.
+ */
+async function contasPedidas(restaurantId: string, deviceId: string) {
+  const principal = await impressoraPrincipal(restaurantId);
+  if (principal !== deviceId) return [];
+
+  const comandas = await db.comanda.findMany({
     where: {
-      ...comum,
-      impressoes: { none: { deviceId } },
-      items: { some: filtroDeItem(divisao) },
+      restaurantId,
+      contaPedidaAt: { not: null, gte: new Date(Date.now() - WINDOW_HOURS * 60 * 60 * 1000) },
+      contaPrintedAt: null,
     },
-    ...escolha,
+    orderBy: { contaPedidaAt: "asc" },
+    take: BATCH,
+    select: { id: true, contaPedidaAt: true, mesa: { select: { numero: true } } },
   });
+
+  return comandas.map((c) => ({
+    id: CONTA + c.id,
+    number: c.mesa.numero,
+    createdAt: c.contaPedidaAt ?? new Date(),
+    printRuns: 0,
+  }));
 }
 
 /** a via pronta: o mesmo texto que sai pela impressão do navegador */
 export async function orderTicket(restaurantId: string, orderId: string, role: PrintRole = "COMANDA", deviceId?: string) {
+  if (ehConta(orderId)) return contaTicket(restaurantId, comandaDe(orderId));
+
   const achado = await db.order.findFirst({
     where: { id: orderId, restaurantId },
     select: { ...ticketSelect, restaurant: { select: { name: true, receiptWidth: true } } },
@@ -195,6 +234,15 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
 /** só marca quem ainda não estava marcado: dois programas não duplicam a via */
 export async function markOrderPrinted(restaurantId: string, orderId: string, role: PrintRole = "COMANDA", deviceId?: string) {
   const agora = new Date();
+
+  if (ehConta(orderId)) {
+    const { count } = await db.comanda.updateMany({
+      where: { id: comandaDe(orderId), restaurantId, contaPrintedAt: null },
+      data: { contaPrintedAt: agora },
+    });
+    return { marcado: count > 0 };
+  }
+
   const divisao = role === "SENHA" || !deviceId ? null : await divisaoDaImpressora(restaurantId, deviceId);
 
   if (divisao?.dividido && deviceId) {
@@ -216,4 +264,58 @@ export async function markOrderPrinted(restaurantId: string, orderId: string, ro
     data: role === "SENHA" ? { senhaPrintedAt: agora } : { printedAt: agora },
   });
   return { marcado: count > 0 };
+}
+
+/**
+ * A via da conta de uma mesa, no mesmo formato do pedido.
+ *
+ * O programa do balcão não sabe que isto é uma conta, e não precisa saber:
+ * ele recebe texto e linhas como sempre, e manda para a impressora.
+ */
+async function contaTicket(restaurantId: string, comandaId: string) {
+  const [conta, restaurant] = await Promise.all([
+    verConta(restaurantId, comandaId),
+    db.restaurant.findUnique({ where: { id: restaurantId }, select: { name: true, receiptWidth: true } }),
+  ]);
+  if (!conta || !restaurant) return null;
+
+  const paper = restaurant.receiptWidth;
+  const linhas = contaLines(conta, restaurant.name, paper);
+
+  return {
+    id: CONTA + comandaId,
+    numero: 0,
+    codigo: conta.rotulo,
+    criadoEm: new Date().toISOString(),
+    papel_mm: paper,
+    papel: "comanda" as const,
+    texto: contaText(conta, restaurant.name, paper),
+    linhas,
+    // a térmica recebe a conta já montada em linhas; os campos separados
+    // existem para o destaque do número e do total, e numa conta o destaque
+    // é o total, que já está no texto
+    dados: {
+      papel: "comanda" as const,
+      restaurante: restaurant.name,
+      numero: 0,
+      criado_em: new Date().toISOString(),
+      tipo: "PICKUP" as const,
+      origem: "SALAO" as const,
+      comer_aqui: true,
+      cliente: { nome: conta.rotulo, whatsapp: "" },
+      endereco: { rua: null, numero: null, complemento: null, bairro: null, referencia: null },
+      itens: conta.itens.map((i) => ({
+        quantidade: i.quantidade,
+        nome: i.nome,
+        opcoes: (i.opcoes ?? "").split(" · ").filter(Boolean),
+        observacao: i.observacao,
+        total_centavos: i.centavos,
+      })),
+      subtotal_centavos: conta.subtotalCents,
+      entrega_centavos: 0,
+      total_centavos: conta.totalCents,
+      pagamento: { forma: "CASH" as const, cartao: null, troco_para_centavos: null },
+      observacao: null,
+    },
+  };
 }

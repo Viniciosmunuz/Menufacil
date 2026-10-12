@@ -1254,6 +1254,14 @@ model Comanda {
   abertaAt  DateTime  @default(now())
   fechadaAt DateTime?
 
+  /// Quando o garcom pediu a conta no papel, e quando ela saiu.
+  ///
+  /// A via da conta sai na impressora principal, a do balcao: e de la que
+  /// o garcom busca o papel para levar a mesa. Pedir de novo e so marcar
+  /// outra vez -- a conta muda enquanto a mesa come.
+  contaPedidaAt  DateTime?
+  contaPrintedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

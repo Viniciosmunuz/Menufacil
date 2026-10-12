@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ImageOff, Info, Minus, Percent, Printer, Search, Trash2, UtensilsCrossed, Wallet } from "lucide-react";
+import { Check, ImageOff, Info, Minus, Percent, Search, Trash2, UtensilsCrossed, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useActionState, useState } from "react";
 
@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
+import { ContaNoPapel } from "./conta-no-papel";
 import { FolhaDoDesconto } from "./folha-do-desconto";
 import { ApagarAMesa } from "./mexer-na-mesa";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
@@ -165,6 +166,7 @@ function Acoes({
   podeFinanceiro,
   podeMexer,
   mesaRotulo,
+  temImpressora,
   onReceber,
   onAjustar,
 }: {
@@ -174,6 +176,7 @@ function Acoes({
   /** apagar a comanda inteira: dono e Garçom II */
   podeMexer: boolean;
   mesaRotulo: string;
+  temImpressora: boolean;
   onReceber: () => void;
   onAjustar: () => void;
 }) {
@@ -185,19 +188,13 @@ function Acoes({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <a
-          href={temConta ? "/painel/" + restaurantId + "/salao/conta/" + comanda.id : undefined}
-          target="_blank"
-          rel="noopener"
-          aria-disabled={!temConta}
-          aria-label="Imprimir a conta"
-          className={cn(
-            "grid h-11 flex-1 place-items-center rounded-control border border-line text-muted",
-            temConta ? "hover:text-ink" : "pointer-events-none opacity-40",
-          )}
-        >
-          <Printer className="size-4" aria-hidden="true" />
-        </a>
+        <ContaNoPapel
+          restaurantId={restaurantId}
+          comandaId={comanda.id}
+          temConta={temConta}
+          temImpressora={temImpressora}
+          className="grid h-11 flex-1 place-items-center rounded-control border border-line text-muted hover:text-ink"
+        />
         {podeFinanceiro && (
           <button
             type="button"
@@ -361,6 +358,7 @@ export function ComandaDaMesa({
   podeApagarItem = true,
   podeMexer = true,
   mesaRotulo = "mesa",
+  temImpressora = false,
   restaurantId,
   mesaId,
 }: {
@@ -373,6 +371,8 @@ export function ComandaDaMesa({
   /** trocar a mesa de lugar, mover itens e apagar a comanda */
   podeMexer?: boolean;
   mesaRotulo?: string;
+  /** com o Menu Fácil PC ligado, a conta sai no balcão em vez de abrir na tela */
+  temImpressora?: boolean;
   restaurantId: string;
   mesaId: string;
 }) {
@@ -511,6 +511,7 @@ export function ComandaDaMesa({
           podeFinanceiro={podeFinanceiro}
           podeMexer={podeMexer}
           mesaRotulo={mesaRotulo}
+          temImpressora={temImpressora}
           onReceber={() => setFolha("pagamento")}
           onAjustar={() => setFolha("desconto")}
         />

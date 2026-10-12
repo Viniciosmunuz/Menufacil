@@ -7,6 +7,7 @@ import { ComandaDaMesa } from "@/components/panel/comanda-mesa";
 import { MexerNaMesa } from "@/components/panel/mexer-na-mesa";
 import { NomeDaMesa } from "@/components/panel/nome-da-mesa";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
 import { mesasParaDestino } from "@/server/salao/mexer";
@@ -17,10 +18,12 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
   const { restaurantId, mesaId } = await params;
   const { restaurant, pode } = await requireSalao(restaurantId);
 
-  const [achado, categorias, mesas] = await Promise.all([
+  const [achado, categorias, mesas, impressoras] = await Promise.all([
     verMesa(restaurant.id, mesaId),
     cardapioDoSalao(restaurant.id),
     mesasParaDestino(restaurant.id, mesaId),
+    // com o Menu Fácil PC ligado, a conta vai para a impressora do balcão
+    db.printDevice.count({ where: { restaurantId: restaurant.id, role: "COMANDA", pairedAt: { not: null } } }),
   ]);
   if (!achado) notFound();
 
@@ -75,6 +78,7 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         podeApagarItem={pode.excluirItem}
         podeMexer={pode.mexerNaMesa}
         mesaRotulo={mesa.nome ?? rotulo + " " + mesa.numero}
+        temImpressora={impressoras > 0}
         restaurantId={restaurant.id}
         mesaId={mesa.id}
       />

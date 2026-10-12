@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, ImageOff, Info, Minus, Percent, Printer, Search, Trash2, Wallet, X } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, Info, Minus, Percent, Search, Trash2, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState } from "react";
@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/format";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 import type { MesaDestino } from "@/server/salao/mexer";
 
+import { ContaNoPapel } from "./conta-no-papel";
 import { FolhaDoDesconto } from "./folha-do-desconto";
 import { FolhaDoItem, type ItemEscolhido } from "./folha-do-item";
 import { FolhaDoPagamento } from "./folha-do-pagamento";
@@ -49,6 +50,7 @@ export function MesaDoGarcom({
   podeApagarItem = false,
   podeMexer = false,
   mesas = [],
+  temImpressora = false,
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
@@ -63,6 +65,8 @@ export function MesaDoGarcom({
   /** trocar a mesa de lugar, mover itens e apagar a comanda: Garçom II */
   podeMexer?: boolean;
   mesas?: MesaDestino[];
+  /** com o Menu Fácil PC ligado, a conta sai no balcão em vez de abrir na tela */
+  temImpressora?: boolean;
 }) {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState<string | null>(categorias[0]?.id ?? null);
@@ -394,18 +398,13 @@ export function MesaDoGarcom({
           </div>
 
           <div className="flex gap-2 border-t border-line px-4 py-3">
-            <a
-              href={temConta ? "/painel/" + restaurantId + "/salao/conta/" + comanda.id : undefined}
-              target="_blank"
-              rel="noopener"
-              aria-label="Imprimir a conta"
-              className={cn(
-                "grid h-12 flex-1 place-items-center rounded-control bg-surface-3 text-muted",
-                temConta ? "" : "pointer-events-none opacity-40",
-              )}
-            >
-              <Printer className="size-5" aria-hidden="true" />
-            </a>
+            <ContaNoPapel
+              restaurantId={restaurantId}
+              comandaId={comanda.id}
+              temConta={temConta}
+              temImpressora={temImpressora}
+              className="grid h-12 flex-1 place-items-center rounded-control bg-surface-3 text-muted"
+            />
             {podeFinanceiro && (
               <button
                 type="button"

@@ -435,3 +435,29 @@ export async function definirImpressoraDaSecao(_prev: SalaoFormState, formData: 
   refresh();
   return { ok: true, message: "Pronto." };
 }
+
+/**
+ * Manda a conta da mesa para a impressora principal.
+ *
+ * O garçom aperta no celular e o papel sai no balcão, que é de onde ele vai
+ * buscá-lo -- no celular não há impressora, e abrir a via na tela só servia
+ * para quem estava no computador.
+ *
+ * Pedir de novo é marcar outra vez: a conta muda enquanto a mesa come, e a
+ * segunda via tem de sair com o que foi lançado depois.
+ */
+export async function pedirAContaNoPapel(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+
+  const comandaId = String(formData.get("comandaId") ?? "");
+  const { count } = await db.comanda.updateMany({
+    where: { id: comandaId, restaurantId, fechadaAt: null },
+    data: { contaPedidaAt: new Date(), contaPrintedAt: null },
+  });
+  if (count === 0) return { error: "Mesa não encontrada." };
+
+  await panelAudit(acesso, "salao.pediu_conta", { comandaId });
+  refresh();
+  return { ok: true, message: "Conta indo para a impressora do balcão." };
+}
