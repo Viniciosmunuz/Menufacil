@@ -12,10 +12,11 @@ import { cn } from "@/lib/cn";
 // celular com uma mão só, atravessando o salão, não leva o dedo até o topo
 // da tela para trocar de seção.
 //
-// Histórico e ajustes ainda não fazem nada -- entram nas próximas rodadas.
-// Aparecem desde agora porque o lugar de cada coisa é parte do que se
-// aprende usando: mudar a barra de três para quatro ícones depois custa
-// mais ao garçom do que mostrar dois destinos que ainda estão chegando.
+// Em Ajustes fica a conta aberta neste aparelho, o que o garçom pode fazer
+// e a saída. Histórico ainda não faz nada -- entra numa próxima rodada, e
+// aparece desde agora porque o lugar de cada coisa é parte do que se aprende
+// usando: mudar a barra de três para quatro ícones depois custa mais ao
+// garçom do que mostrar um destino que ainda está chegando.
 
 const ITENS = [
   { chave: "inicio", titulo: "Mesas", icone: House },
