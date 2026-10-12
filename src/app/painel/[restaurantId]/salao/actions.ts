@@ -9,7 +9,7 @@ import { formatCents } from "@/lib/format";
 import { parseMoneyToCents } from "@/lib/validation";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
-import { criarGarcom, mudarPermissoes } from "@/server/salao/garcons";
+import { criarGarcom, mudarPermissoes, tirarGarcom } from "@/server/salao/garcons";
 import { lancarNaMesa } from "@/server/salao/lancar";
 import {
   ajustarConta,
@@ -111,9 +111,36 @@ export async function adicionarGarcom(_prev: SalaoFormState, formData: FormData)
   });
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.garcom_novo", { nome: String(formData.get("nome") ?? ""), cpf: r.cpf });
+  await panelAudit(acesso, "salao.garcom_novo", { nome: String(formData.get("nome") ?? ""), cpf: r.cpf, devolta: r.devolta });
   refresh();
-  return { ok: true, message: `Garçom cadastrado. Ele entra com o CPF ${r.cpf} e a senha que você definiu.` };
+  return {
+    ok: true,
+    message: r.devolta
+      ? `Garçom de volta à equipe. Ele entra com o CPF ${r.cpf} e a senha que você acabou de definir.`
+      : `Garçom cadastrado. Ele entra com o CPF ${r.cpf} e a senha que você definiu.`,
+  };
+}
+
+/**
+ * Tira o garçom da equipe.
+ *
+ * Fim de contrato acontece, e até então o dono não tinha como desfazer um
+ * cadastro: o celular do garçom continuava lançando pedido, e o CPF dele
+ * ficava preso, sem deixar nem cadastrá-lo de novo com outra senha.
+ */
+export async function tirarGarcomDaEquipe(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  // mexer na equipe é coisa de dono; garçom nenhum tira outro
+  if (acesso.papel === "STAFF") return { error: "Só o dono do restaurante mexe na equipe." };
+
+  const vinculoId = String(formData.get("vinculoId") ?? "");
+  const r = await tirarGarcom(restaurantId, vinculoId);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.garcom_removido", { vinculoId, nome: r.nome });
+  refresh();
+  return { ok: true, message: `${r.nome ?? "O garçom"} saiu da equipe. O aparelho perde o acesso na hora.` };
 }
 
 /**

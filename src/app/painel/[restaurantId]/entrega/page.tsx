@@ -117,7 +117,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
 
         {conta.conectada ? (
           <div className="flex flex-col gap-4">
-            <dl className="grid grid-cols-1 gap-3 rounded-control border border-line bg-surface-2 p-4 text-sm sm:grid-cols-2">
+            <dl className="grid grid-cols-2 gap-3 rounded-control border border-line bg-surface-2 p-4 text-sm">
               <div>
                 <dt className="text-faint">Conta</dt>
                 <dd className="font-bold">{conta.mpUserId ? `Mercado Pago ${conta.mpUserId}` : "Conectada"}</dd>

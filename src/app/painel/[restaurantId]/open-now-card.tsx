@@ -51,7 +51,10 @@ export function OpenNowCard({
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Abrir ou fechar">
+      {/* no celular os três ficam lado a lado, do mesmo tamanho: soltos, as
+          larguras diferentes quebravam em duas linhas tortas, e são três
+          faces da mesma escolha -- vale mostrá-las juntas */}
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="Abrir ou fechar">
         {modes.map((m) => (
           <form key={m.value} action={setOpenMode}>
             <input type="hidden" name="restaurantId" value={restaurantId} />
@@ -60,7 +63,7 @@ export function OpenNowCard({
               type="submit"
               aria-pressed={openMode === m.value}
               className={cn(
-                "h-10 rounded-full border px-4 text-sm font-bold",
+                "min-h-10 w-full rounded-full border px-3 py-1.5 text-sm leading-tight font-bold sm:w-auto sm:px-4",
                 openMode === m.value ? "border-brand bg-brand-soft text-brand" : "border-line bg-surface-2 text-muted hover:text-ink",
               )}
             >

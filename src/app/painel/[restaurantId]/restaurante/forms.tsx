@@ -104,17 +104,19 @@ export function ContactSection({ r }: { r: RestaurantFormData }) {
       restaurantId={r.id}
     >
       {(s) => (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        /* os dois telefones dividem a linha no celular; e-mail e Instagram
+           ficam inteiros, que é onde se digita texto longo */
+        <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
           <Field label="WhatsApp dos pedidos" htmlFor="whatsapp" error={s.fieldErrors?.whatsapp}>
             <Input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" defaultValue={pick(s.values, "whatsapp", formatPhone(r.whatsapp))} placeholder="(92) 99999-0000" aria-invalid={!!s.fieldErrors?.whatsapp} />
           </Field>
           <Field label="Telefone fixo" htmlFor="phone" error={s.fieldErrors?.phone} hint="Opcional.">
             <Input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={pick(s.values, "phone", formatPhone(r.phone))} placeholder="(92) 3000-0000" aria-invalid={!!s.fieldErrors?.phone} />
           </Field>
-          <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} hint="Opcional.">
+          <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} hint="Opcional." className="col-span-2 sm:col-span-1">
             <Input id="email" name="email" type="email" inputMode="email" defaultValue={pick(s.values, "email", r.email)} aria-invalid={!!s.fieldErrors?.email} />
           </Field>
-          <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} hint="Opcional.">
+          <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} hint="Opcional." className="col-span-2 sm:col-span-1">
             <Input id="instagram" name="instagram" defaultValue={pick(s.values, "instagram", r.instagram ? `@${r.instagram}` : "")} placeholder="@seurestaurante" aria-invalid={!!s.fieldErrors?.instagram} />
           </Field>
         </div>
@@ -127,26 +129,30 @@ export function AddressSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm id="endereco" title="Endereço" action={saveAddress} restaurantId={r.id}>
       {(s) => (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-6">
-          <Field label="Rua / avenida" htmlFor="street" error={s.fieldErrors?.street} className="sm:col-span-4">
+        /* A mesma grade de seis no celular: o que é curto por natureza
+           divide a linha (número com complemento, estado com CEP), e o que
+           é nome escrito fica inteiro -- rua, bairro e cidade em meia tela
+           de celular dão um campo em que não se lê o que se digitou. */
+        <div className="grid grid-cols-6 gap-x-3 gap-y-5 sm:gap-x-5">
+          <Field label="Rua / avenida" htmlFor="street" error={s.fieldErrors?.street} className="col-span-6 sm:col-span-4">
             <Input id="street" name="street" maxLength={120} defaultValue={pick(s.values, "street", r.street)} autoComplete="address-line1" />
           </Field>
-          <Field label="Número" htmlFor="number" error={s.fieldErrors?.number} className="sm:col-span-2">
+          <Field label="Número" htmlFor="number" error={s.fieldErrors?.number} className="col-span-2">
             <Input id="number" name="number" maxLength={20} defaultValue={pick(s.values, "number", r.number)} />
           </Field>
-          <Field label="Bairro" htmlFor="neighborhood" error={s.fieldErrors?.neighborhood} className="sm:col-span-3">
-            <Input id="neighborhood" name="neighborhood" maxLength={80} defaultValue={pick(s.values, "neighborhood", r.neighborhood)} />
-          </Field>
-          <Field label="Complemento" htmlFor="complement" error={s.fieldErrors?.complement} hint="Opcional." className="sm:col-span-3">
+          <Field label="Complemento" htmlFor="complement" error={s.fieldErrors?.complement} hint="Opcional." className="col-span-4 sm:col-span-3">
             <Input id="complement" name="complement" maxLength={80} defaultValue={pick(s.values, "complement", r.complement)} />
           </Field>
-          <Field label="Cidade" htmlFor="city" error={s.fieldErrors?.city} className="sm:col-span-3">
+          <Field label="Bairro" htmlFor="neighborhood" error={s.fieldErrors?.neighborhood} className="col-span-6 sm:col-span-3">
+            <Input id="neighborhood" name="neighborhood" maxLength={80} defaultValue={pick(s.values, "neighborhood", r.neighborhood)} />
+          </Field>
+          <Field label="Cidade" htmlFor="city" error={s.fieldErrors?.city} className="col-span-6 sm:col-span-3">
             <Input id="city" name="city" required maxLength={80} defaultValue={pick(s.values, "city", r.city)} aria-invalid={!!s.fieldErrors?.city} />
           </Field>
-          <Field label="Estado" htmlFor="state" error={s.fieldErrors?.state} className="sm:col-span-1">
+          <Field label="Estado" htmlFor="state" error={s.fieldErrors?.state} className="col-span-2 sm:col-span-1">
             <Input id="state" name="state" maxLength={2} defaultValue={pick(s.values, "state", r.state)} className="uppercase" aria-invalid={!!s.fieldErrors?.state} />
           </Field>
-          <Field label="CEP" htmlFor="zipCode" error={s.fieldErrors?.zipCode} hint="Opcional." className="sm:col-span-2">
+          <Field label="CEP" htmlFor="zipCode" error={s.fieldErrors?.zipCode} hint="Opcional." className="col-span-4 sm:col-span-2">
             <Input id="zipCode" name="zipCode" inputMode="numeric" maxLength={9} defaultValue={pick(s.values, "zipCode", r.zipCode)} aria-invalid={!!s.fieldErrors?.zipCode} />
           </Field>
         </div>
@@ -271,22 +277,22 @@ export function DeliverySection({ r }: { r: RestaurantFormData }) {
     <SectionForm id="entrega" title="Entrega e retirada" action={saveDelivery} restaurantId={r.id}>
       {(s) => (
         <>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <Checkbox name="deliveryEnabled" defaultChecked={s.values ? s.values.deliveryEnabled === "on" : r.deliveryEnabled} label="Faz entrega" hint="O cliente informa o endereço." />
             <Checkbox name="pickupEnabled" defaultChecked={s.values ? s.values.pickupEnabled === "on" : r.pickupEnabled} label="Retirada no local" hint="O cliente busca no restaurante." />
           </div>
           {s.fieldErrors?.pickupEnabled && <p className="text-sm text-danger">{s.fieldErrors.pickupEnabled}</p>}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
             <Field label="Taxa de entrega" htmlFor="deliveryFee" error={s.fieldErrors?.deliveryFee} hint="Deixe 0,00 para entrega grátis.">
               <MoneyInput id="deliveryFee" name="deliveryFee" defaultValue={pick(s.values, "deliveryFee", centsToInput(r.deliveryFeeCents))} aria-invalid={!!s.fieldErrors?.deliveryFee} />
             </Field>
             <Field label="Pedido mínimo" htmlFor="minOrder" error={s.fieldErrors?.minOrder} hint="Opcional. 0,00 = sem mínimo.">
               <MoneyInput id="minOrder" name="minOrder" defaultValue={pick(s.values, "minOrder", centsToInput(r.minOrderCents))} aria-invalid={!!s.fieldErrors?.minOrder} />
             </Field>
-            <Field label="Tempo de entrega: de (minutos)" htmlFor="deliveryTimeMin" error={s.fieldErrors?.deliveryTimeMin}>
+            <Field label="Tempo de entrega: de (minutos)" htmlFor="deliveryTimeMin" error={s.fieldErrors?.deliveryTimeMin} className="self-end">
               <Input id="deliveryTimeMin" name="deliveryTimeMin" inputMode="numeric" defaultValue={pick(s.values, "deliveryTimeMin", r.deliveryTimeMin?.toString())} placeholder="30" aria-invalid={!!s.fieldErrors?.deliveryTimeMin} />
             </Field>
-            <Field label="até (minutos)" htmlFor="deliveryTimeMax" error={s.fieldErrors?.deliveryTimeMax}>
+            <Field label="até (minutos)" htmlFor="deliveryTimeMax" error={s.fieldErrors?.deliveryTimeMax} className="self-end">
               <Input id="deliveryTimeMax" name="deliveryTimeMax" inputMode="numeric" defaultValue={pick(s.values, "deliveryTimeMax", r.deliveryTimeMax?.toString())} placeholder="50" aria-invalid={!!s.fieldErrors?.deliveryTimeMax} />
             </Field>
           </div>
@@ -306,7 +312,7 @@ export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
       restaurantId={r.id}
     >
       {(s) => (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           <Checkbox
             name="acceptsCard"
             defaultChecked={s.values ? s.values.acceptsCard === "on" : r.acceptsCard}
@@ -429,7 +435,7 @@ export function PizzaSection({ r }: { r: RestaurantFormData }) {
             {r.menuCategories.length === 0 ? (
               <p className="text-sm text-muted">Você ainda não tem categorias no cardápio.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 {r.menuCategories.map((c) => (
                   <Checkbox
                     key={c.id}

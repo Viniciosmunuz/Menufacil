@@ -108,7 +108,7 @@ export function ProductForm({
           <Field label="Descrição" htmlFor="description" error={err.description} hint="Opcional. O que vem, tamanho, se serve quantas pessoas.">
             <Textarea id="description" name="description" maxLength={400} rows={3} defaultValue={pick("description", product.description ?? "")} placeholder="Ex.: Molho de tomate, muçarela, calabresa e cebola. 8 fatias." />
           </Field>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
             <Field
               label="Preço"
               htmlFor="price"
@@ -160,7 +160,7 @@ export function ProductForm({
           />
         </Card>
 
-        <Card className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Card className="grid grid-cols-2 gap-x-3 gap-y-2">
           <Checkbox
             name="available"
             defaultChecked={v ? v.available === "on" : product.available}

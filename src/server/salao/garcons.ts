@@ -20,7 +20,7 @@ import { hashPassword } from "../auth/password";
 // lançar pedido em mesa.
 
 export type NovoGarcom = { nome: string; cpf: string; senha: string; podeExcluirItem: boolean; podeFinalizarMesa: boolean };
-export type ResultadoDoGarcom = { ok: true; login: string; cpf: string } | { ok: false; error: string };
+export type ResultadoDoGarcom = { ok: true; login: string; cpf: string; devolta: boolean } | { ok: false; error: string };
 
 /**
  * O identificador interno a partir do CPF.
@@ -45,30 +45,81 @@ export async function criarGarcom(restaurantId: string, slug: string, dados: Nov
   if (senha.length < 4) return { ok: false, error: "A senha precisa de pelo menos 4 caracteres." };
 
   const login = loginDoGarcom(cpf, slug);
-  const existe = await db.user.findUnique({ where: { email: login }, select: { id: true } });
-  if (existe) return { ok: false, error: "Esse CPF já está cadastrado neste restaurante." };
+  const conta = await db.user.findUnique({
+    where: { email: login },
+    select: { id: true, ownerships: { where: { restaurantId }, select: { id: true } } },
+  });
+
+  // só é "já cadastrado" quem ainda está na equipe; a conta de quem saiu
+  // continua existindo apenas para as comandas antigas não perderem o nome
+  if (conta && conta.ownerships.length > 0) return { ok: false, error: "Esse CPF já está cadastrado neste restaurante." };
+
+  const passwordHash = await hashPassword(senha);
+  const vinculo = {
+    restaurantId,
+    // STAFF é o que mantém o garçom fora do painel do dono
+    role: "STAFF" as const,
+    podeExcluirItem: dados.podeExcluirItem,
+    podeFinalizarMesa: dados.podeFinalizarMesa,
+  };
+
+  if (conta) {
+    // garçom que saiu e voltou. A conta é a mesma, com o nome, a senha e as
+    // permissões de agora -- e as mesas que ele atendeu continuam no nome
+    // dele, que é o motivo de não apagarmos a conta na saída.
+    await db.user.update({
+      where: { id: conta.id },
+      data: { name: nome, passwordHash, status: "ACTIVE", mustChangePassword: false, ownerships: { create: vinculo } },
+      select: { id: true },
+    });
+    return { ok: true, login, cpf: formatCpf(cpf), devolta: true };
+  }
 
   await db.user.create({
     data: {
       name: nome,
       email: login,
-      passwordHash: await hashPassword(senha),
+      passwordHash,
       role: "RESTAURANT_OWNER",
       mustChangePassword: false,
-      // STAFF é o que mantém o garçom fora do painel do dono
-      ownerships: {
-        create: {
-          restaurantId,
-          role: "STAFF",
-          podeExcluirItem: dados.podeExcluirItem,
-          podeFinalizarMesa: dados.podeFinalizarMesa,
-        },
-      },
+      ownerships: { create: vinculo },
     },
     select: { id: true },
   });
 
-  return { ok: true, login, cpf: formatCpf(cpf) };
+  return { ok: true, login, cpf: formatCpf(cpf), devolta: false };
+}
+
+/**
+ * Tira o garçom da equipe.
+ *
+ * O vínculo com o restaurante some e as sessões caem na hora: o aparelho
+ * que estiver com a conta aberta para de lançar pedido no mesmo instante, que
+ * é a razão de o dono ter vindo até aqui.
+ *
+ * A conta de usuário fica, desativada. Apagá-la levaria junto o nome do
+ * garçom nas comandas que ele atendeu -- o banco limpa a referência quando
+ * o usuário some --, e o fechamento do mês passado passaria a dizer que
+ * ninguém atendeu aquelas mesas. Como o login é o CPF, recontratar a mesma
+ * pessoa reaproveita esta conta e devolve o histórico junto.
+ */
+export async function tirarGarcom(
+  restaurantId: string,
+  vinculoId: string,
+): Promise<{ ok: true; nome: string | null } | { ok: false; error: string }> {
+  const vinculo = await db.restaurantOwner.findFirst({
+    where: { id: vinculoId, restaurantId, role: "STAFF" },
+    select: { id: true, userId: true, user: { select: { name: true } } },
+  });
+  if (!vinculo) return { ok: false, error: "Garçom não encontrado." };
+
+  await db.$transaction([
+    db.restaurantOwner.delete({ where: { id: vinculo.id } }),
+    db.user.update({ where: { id: vinculo.userId }, data: { status: "DISABLED" }, select: { id: true } }),
+    db.session.deleteMany({ where: { userId: vinculo.userId } }),
+  ]);
+
+  return { ok: true, nome: vinculo.user.name };
 }
 
 export async function listarGarcons(restaurantId: string) {

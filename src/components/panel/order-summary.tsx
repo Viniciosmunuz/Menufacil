@@ -110,7 +110,9 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
         </dl>
       </div>
 
-      <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+      {/* duas colunas já no celular: são quatro informações curtas, e uma
+          embaixo da outra elas sozinhas enchiam a tela do balcão */}
+      <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-1 lg:grid-cols-2">
         <div>
           <dt className="font-bold text-muted">Cliente</dt>
           <dd className="font-bold">{o.customerName}</dd>

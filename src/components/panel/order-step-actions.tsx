@@ -38,14 +38,22 @@ export function OrderStepActions({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // No celular os dois ficam lado a lado, cada um na metade da linha: um
+    // embaixo do outro empurrava o resto do pedido para fora da tela, e o
+    // balcão rola para achar o botão que usa o tempo todo. Da largura de
+    // tablet em diante voltam a ter o tamanho do próprio texto.
+    //
+    // Quando o cancelar pede confirmação ele passa a ocupar a linha inteira
+    // (é aí que nasce o <span> com os dois botões), senão "Sim, cancelar
+    // pedido" não caberia em meia tela -- botão aqui não quebra linha.
+    <div className="grid grid-cols-2 items-start gap-2 [&>form>button]:w-full sm:flex sm:flex-wrap sm:items-center sm:[&>form>button]:w-auto">
       {step && (
         <form action={action}>
           {fields(step.to)}
           <StepButton label={step.label} notify={notify} size={size} />
         </form>
       )}
-      <form action={action}>
+      <form action={action} className={step ? "has-[span]:col-span-2 sm:col-auto" : "col-span-2 sm:col-auto"}>
         {fields("CANCELED")}
         <ConfirmButton size={size} confirmText="Sim, cancelar pedido" cancelText="Voltar">
           Cancelar pedido
