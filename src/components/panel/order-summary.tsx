@@ -74,7 +74,7 @@ export function editableOrder(o: OrderSummaryData): EditableOrder {
 
 export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
   const delivery = o.type === "DELIVERY";
-  const choice = { method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: o.payment?.changeForCents };
+  const choice = { method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: o.payment?.changeForCents, status: o.payment?.status };
   const hint = paymentHint(choice, o.type, o.totalCents, o.origin);
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

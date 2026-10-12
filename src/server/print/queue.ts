@@ -53,7 +53,7 @@ const ticketSelect = {
   deliveryFeeCents: true,
   totalCents: true,
   paymentMethod: true,
-  payment: { select: { cardType: true, changeForCents: true } },
+  payment: { select: { status: true, cardType: true, changeForCents: true } },
   items: {
     orderBy: { id: "asc" },
     select: {

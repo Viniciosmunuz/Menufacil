@@ -1,4 +1,4 @@
-import type { CardType, OrderOrigin, OrderType, PaymentMethod } from "@/generated/prisma/enums";
+import type { CardType, OrderOrigin, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
 
 import { formatCents, formatPhone } from "./format";
 import { isFullDelivery } from "./order-flow";
@@ -42,7 +42,7 @@ export type TicketOrder = {
   deliveryFeeCents: number;
   totalCents: number;
   paymentMethod: PaymentMethod;
-  payment: { cardType: CardType | null; changeForCents: number | null } | null;
+  payment: { cardType: CardType | null; changeForCents: number | null; status?: PaymentStatus | null } | null;
   /** a mesa e o garçom, quando o pedido veio do salão */
   comanda?: { mesa: { numero: number; tipo: string; nome: string | null }; garcom: { name: string | null } | null } | null;
   items: {
@@ -235,8 +235,10 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
   // faz o balcão procurar no WhatsApp uma mensagem que nunca vai chegar.
   //
   // - totem: passou na máquina do balcão, ali na frente.
-  // - 100% Delivery: o Mercado Pago cobrou e avisou; a comanda só sai depois
-  //   disso (ver EXCLUDE_UNPAID), então todo Pix que chega aqui está pago.
+  // - 100% Delivery: o Mercado Pago cobrou e avisou; a comanda só sai
+  //   depois disso (ver EXCLUDE_UNPAID), então o Pix que chega aqui está
+  //   pago -- menos quando alguém manda imprimir à mão um pedido que ainda
+  //   não foi pago, e aí o papel precisa dizer isso.
   // - WhatsApp: é o único em que o cliente paga por fora e manda o
   //   comprovante na conversa.
   if (o.paymentMethod === "PIX") {
@@ -245,7 +247,9 @@ export function ticketLines(o: TicketOrder, restaurantName: string, paper: numbe
         o.origin === "TOTEM"
           ? "Pago por Pix no totem"
           : isFullDelivery(o.origin)
-            ? "Pago por Pix, confirmado pelo Mercado Pago"
+            ? o.payment?.status === "CONFIRMED"
+              ? "Pago por Pix, confirmado pelo Mercado Pago"
+              : "PIX NAO PAGO - NAO ENTREGAR SEM CONFERIR"
             : "Conferir o comprovante no WhatsApp",
       ),
     );
