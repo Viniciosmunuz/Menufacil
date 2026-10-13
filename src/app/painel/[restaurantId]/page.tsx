@@ -6,6 +6,7 @@ import { TemposCard } from "@/components/panel/tempos-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
@@ -17,6 +18,7 @@ import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDeP
 import { toggleProduct } from "./cardapio/actions";
 import { ClientesCard } from "./clientes-card";
 import { DiaCard } from "./dia-card";
+import { MensalidadeCard } from "@/components/panel/mensalidade-card";
 import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { EsperandoCard } from "./esperando-card";
 import { FechamentoCard } from "./fechamento-card";
@@ -75,6 +77,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         deliveryEnabled: true,
         pickupOnlyUntil: true,
         openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+        // a mensalidade do mês: o dono só descobria que estava devendo
+        // quando alguém ligava
+        plan: true,
+        billingDay: true,
+        payments: { where: { competencia: competenciaDe() }, take: 1, select: { amountCents: true, paidAt: true } },
       },
     }),
   ]);
@@ -82,6 +89,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   // o caixa é do turno, e o turno vem do horário: por isso depois do
   // Promise.all, que é quando os horários chegam
   const fechamento = await fechamentoDoDia(escopo, details.openingHours);
+  const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
 
   return (
@@ -125,6 +133,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           celular continua uma coluna só -- lá empilhar é o certo. */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
+          {/* o atraso vem antes de tudo: é o único aviso aqui que não é
+              sobre o movimento de hoje, e some sozinho quando o pagamento
+              for registrado */}
+          <MensalidadeCard situacao={mensalidade} />
+
           {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
           <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
 
