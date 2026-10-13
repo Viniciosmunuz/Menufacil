@@ -136,7 +136,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           {/* o atraso vem antes de tudo: é o único aviso aqui que não é
               sobre o movimento de hoje, e some sozinho quando o pagamento
               for registrado */}
-          <MensalidadeCard situacao={mensalidade} />
+          <MensalidadeCard situacao={mensalidade} restaurante={restaurant.name} />
 
           {/* a fila primeiro: é a única coisa desta tela que pede ação agora */}
           <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />

@@ -1,3 +1,5 @@
+import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
+
 import { BellRing, Link2, ListChecks, Percent, Printer, ToggleLeft, type LucideIcon } from "lucide-react";
 
 // ============================================================
@@ -25,16 +27,11 @@ export const DEMO_URL = "/restaurante/papaleguas";
  *
  * Vazio = o botão não aparece na página.
  */
-export const WHATSAPP = "5592999130838"; // (92) 99913-0838
+export const WHATSAPP = WHATSAPP_MENUFACIL;
 export const WHATSAPP_MSG = "Olá! Quero saber mais sobre o MenuFácil para o meu restaurante.";
 
 /** endereço do botão "Prefiro falar no WhatsApp"; null quando não há contato */
-export function linkDoWhatsapp() {
-  const contato = WHATSAPP.trim();
-  if (!contato) return null;
-  if (contato.startsWith("http")) return contato;
-  return `https://wa.me/${contato.replace(/\D/g, "")}?text=${encodeURIComponent(WHATSAPP_MSG)}`;
-}
+export const linkDoWhatsapp = () => linkWhatsappMenuFacil(WHATSAPP_MSG);
 
 export type Plano = {
   nome: string;
