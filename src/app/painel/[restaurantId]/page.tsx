@@ -13,7 +13,8 @@ import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, filaDeEspera, hojeContraOntem, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import { fechamentoDoDia, filaDeEspera, hojeContraOntem, mesAteAgora, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import { MesCard } from "@/components/panel/mes-card";
 
 import { toggleProduct } from "./cardapio/actions";
 import { ClientesCard } from "./clientes-card";
@@ -88,7 +89,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   // o caixa é do turno, e o turno vem do horário: por isso depois do
   // Promise.all, que é quando os horários chegam
-  const fechamento = await fechamentoDoDia(escopo, details.openingHours);
+  const [fechamento, mes] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), mesAteAgora(escopo)]);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
 
@@ -168,6 +169,9 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
         <div className="flex flex-col gap-6">
           <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Quantos pedidos entraram em cada dia." />
+
+          {/* o mês: quanto entrou e os dois dias que se destacaram */}
+          <MesCard mes={mes} />
 
           <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
 

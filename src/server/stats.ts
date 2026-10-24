@@ -460,3 +460,60 @@ export async function temposPorRestaurante(desde: Date): Promise<TemposDeUmResta
       .sort((a, b) => (b.tempos.total?.minutos ?? 0) - (a.tempos.total?.minutos ?? 0))
   );
 }
+
+export type DiaDoMes = { key: string; pedidos: number; centavos: number };
+
+export type MesAteAgora = {
+  /** "2026-10" */
+  competencia: string;
+  pedidos: number;
+  centavos: number;
+  /** o dia que mais saiu pedido; null num mês sem venda */
+  maisPedidos: DiaDoMes | null;
+  /** o dia que mais entrou dinheiro; null num mês sem venda */
+  maisVendido: DiaDoMes | null;
+};
+
+/**
+ * O mês até agora, e os dois dias que se destacaram nele.
+ *
+ * "Que dia saiu mais?" e "que dia mais vendeu?" são perguntas diferentes,
+ * e o dono faz as duas: o dia de muito pedido pequeno pede mais entregador,
+ * o dia de pedido grande pede mais cozinha. Por isso os dois aparecem, e
+ * às vezes são o mesmo dia.
+ *
+ * O mês é o do calendário, e não "os últimos 30 dias": é assim que o dono
+ * pensa a conta, e é como o mês fecha.
+ *
+ * Fala em venda, e não em lucro: o MenuFácil sabe quanto entrou, não quanto
+ * custou fazer.
+ */
+export async function mesAteAgora(escopo: Prisma.OrderWhereInput = {}): Promise<MesAteAgora> {
+  const hoje = todayKey();
+  const diaDoMes = Number(hoje.slice(8, 10));
+  const pedidos = await db.order.findMany({
+    where: { ...escopo, ...VALE, ...EXCLUDE_UNPAID, createdAt: { gte: startOfDaysAgo(diaDoMes - 1) } },
+    select: { createdAt: true, totalCents: true },
+  });
+
+  const porDia = new Map<string, DiaDoMes>();
+  for (const p of pedidos) {
+    const key = todayKey(p.createdAt);
+    const dia = porDia.get(key) ?? { key, pedidos: 0, centavos: 0 };
+    dia.pedidos += 1;
+    dia.centavos += p.totalCents;
+    porDia.set(key, dia);
+  }
+
+  const dias = [...porDia.values()];
+  const maior = (campo: "pedidos" | "centavos") =>
+    dias.length === 0 ? null : dias.reduce((a, b) => (b[campo] > a[campo] ? b : a));
+
+  return {
+    competencia: hoje.slice(0, 7),
+    pedidos: pedidos.length,
+    centavos: pedidos.reduce((s, p) => s + p.totalCents, 0),
+    maisPedidos: maior("pedidos"),
+    maisVendido: maior("centavos"),
+  };
+}

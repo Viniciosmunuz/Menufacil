@@ -15,6 +15,7 @@ import { requireAdmin } from "@/server/auth/dal";
 import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
 import { hojeContraOntem, semanaDePedidos, temposPorRestaurante, variacao } from "@/server/stats";
 
+import { SuporteCard } from "./suporte-card";
 import { TemposPorRestaurante } from "./tempos-restaurantes";
 
 export const metadata: Metadata = { title: "Visão geral" };
@@ -82,6 +83,14 @@ export default async function AdminOverviewPage() {
     }),
   ]);
 
+  // quem está esperando ajuda: o cartão do suporte mostra o número e, no
+  // computador, quem são os mais antigos
+  const chamados = await db.supportTicket.findMany({
+    where: { status: "ABERTO" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, assunto: true, createdAt: true, restaurant: { select: { name: true } } },
+  });
+
   // quem já pagou, quem ainda vai vencer e quem passou do dia
   const cobrancas = comPlano.map((r) => ({ ...r, situacao: situacaoDaCobranca(r, r.payments[0] ?? null) }));
   const emAtraso = cobrancas.filter((c) => c.situacao.estado === "vencido");
@@ -143,6 +152,12 @@ export default async function AdminOverviewPage() {
           icon={<Wallet />}
           href="/admin/restaurantes"
           hint={previsto > recebido ? `de ${formatCents(previsto)} previstos` : "tudo recebido"}
+        />
+        {/* no celular completa a linha das mensalidades; no computador ocupa
+            as três colunas que sobravam ao lado delas */}
+        <SuporteCard
+          className="xl:col-span-3"
+          abertos={chamados.map((c) => ({ id: c.id, restaurante: c.restaurant.name, assunto: c.assunto, createdAt: c.createdAt }))}
         />
       </div>
 
