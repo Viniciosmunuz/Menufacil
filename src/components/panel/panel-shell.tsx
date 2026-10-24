@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -31,6 +32,7 @@ export function PanelShell({
   larga,
   atalho,
   barraDeBaixo,
+  foto,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -67,12 +69,29 @@ export function PanelShell({
   menuAberto?: string;
   /** trecho do endereço em que o conteúdo usa a largura toda (o salão) */
   larga?: string;
+  /**
+   * A foto de perfil do restaurante, no lugar do logo do Menu Fácil.
+   *
+   * O painel é dele: ver a própria marca ao lado do nome é o que faz a
+   * tela parecer do restaurante, e não de um sistema emprestado. Sem foto
+   * cadastrada, fica o logo de sempre.
+   */
+  foto?: string | null;
 }) {
   const pathname = usePathname();
   const compacto = !!menuAberto && pathname !== menuAberto;
   // o menu em ícones devolve largura para o conteúdo, mas quem usa a tela
   // inteira é só o salão: num formulário, linha de 1600px não se lê
   const larguraToda = !!larga && pathname.includes(larga);
+
+  // a foto redonda, do tamanho do ícone que ela substitui
+  const marca = foto ? (
+    <span className="relative block size-9 shrink-0 overflow-hidden rounded-full border border-line bg-surface-2">
+      <Image src={foto} alt="" fill sizes="36px" className="object-cover" />
+    </span>
+  ) : (
+    <LogoIcon className="size-8 text-brand" />
+  );
 
   const atalhoButton = atalho ? (
     <Link
@@ -105,11 +124,23 @@ export function PanelShell({
           compacto ? "items-stretch px-3" : "px-4",
         )}
       >
-        <Link href={homeHref} className={cn("mb-2", compacto ? "grid place-items-center" : "px-2")} aria-label="Início">
-          {compacto ? <LogoIcon className="size-8 text-brand" /> : <Logo />}
-        </Link>
-        {!compacto && <div className="mb-6 px-2 text-sm font-semibold text-faint">{context}</div>}
-        {compacto && <div className="mb-6" />}
+        {foto && !compacto ? (
+          // com foto, ela e o nome lado a lado tomam o lugar do logo
+          <div className="mb-6 flex items-center gap-3 px-2">
+            <Link href={homeHref} aria-label="Início" className="shrink-0">
+              {marca}
+            </Link>
+            <div className="min-w-0 text-sm font-bold">{context}</div>
+          </div>
+        ) : (
+          <>
+            <Link href={homeHref} className={cn("mb-2", compacto ? "grid place-items-center" : "px-2")} aria-label="Início">
+              {compacto ? marca : <Logo />}
+            </Link>
+            {!compacto && <div className="mb-6 px-2 text-sm font-semibold text-faint">{context}</div>}
+            {compacto && <div className="mb-6" />}
+          </>
+        )}
         <SidebarNav items={nav} compacto={compacto} />
         <div className="mt-auto border-t border-line pt-4">
           {!compacto && <p className="truncate px-3 pb-2 text-sm text-faint">{userName}</p>}
@@ -127,7 +158,7 @@ export function PanelShell({
           // do menu desceu para onde o polegar alcança.
           <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur lg:hidden">
             <Link href={homeHref} aria-label="Início" className="shrink-0">
-              <LogoIcon className="size-8 text-brand" />
+              {marca}
             </Link>
             <p className="min-w-0 flex-1 truncate font-extrabold">{barraDeBaixo.nome}</p>
             {barraDeBaixo.topo}

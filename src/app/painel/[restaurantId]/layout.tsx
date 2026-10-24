@@ -27,7 +27,7 @@ export default async function RestaurantPanelLayout({
   const [horario, esperando] = await Promise.all([
     db.restaurant.findUnique({
       where: { id: restaurant.id },
-      select: { openMode: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
+      select: { logoUrl: true, openMode: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
     }),
     pedidosEsperando(restaurant.id),
   ]);
@@ -54,6 +54,8 @@ export default async function RestaurantPanelLayout({
       larga="/salao"
       homeHref={base}
       context={context}
+      // a foto de perfil do restaurante no lugar do logo do Menu Fácil
+      foto={horario?.logoUrl}
       userName={user.name}
       nav={[
         { href: base, label: "Início", icon: <LayoutDashboard />, exact: true },

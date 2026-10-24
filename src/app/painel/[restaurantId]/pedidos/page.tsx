@@ -44,12 +44,8 @@ export const metadata: Metadata = { title: "Pedidos" };
 const PAGE_SIZE = 30;
 
 const FILTERS = {
-  // quem termina um pedido some daqui: vale dizer para onde ele foi
-  andamento: {
-    label: "Em andamento",
-    statuses: OPEN_ORDER_STATUSES,
-    empty: "Nenhum pedido esperando você agora. Os que já foram entregues estão em Concluídos.",
-  },
+  // vazio, o "Nada por aqui" basta: as abas do lado já dizem onde estão os outros
+  andamento: { label: "Em andamento", statuses: OPEN_ORDER_STATUSES, empty: null },
   concluidos: { label: "Concluídos", statuses: ["COMPLETED"] as OrderStatus[], empty: "Nenhum pedido concluído ainda." },
   cancelados: { label: "Cancelados", statuses: ["CANCELED"] as OrderStatus[], empty: "Nenhum pedido cancelado." },
   todos: { label: "Todos", statuses: null, empty: "Os pedidos feitos pelos clientes aparecem aqui." },
@@ -141,7 +137,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       <OrdersLive restaurantId={restaurant.id} />
       {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
       <AutoRefresh seconds={45} background />
-      <PageHeader title="Pedidos" description="Toque em um pedido para ver os detalhes e seguir o atendimento." />
+      <PageHeader title="Pedidos" />
       <AvisoDePagosSemPedido quantos={pagosSemPedido} href={`/painel/${restaurant.id}/totem`} />
       <PrintSettings
         base={base}
