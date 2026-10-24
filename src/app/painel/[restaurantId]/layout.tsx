@@ -1,4 +1,4 @@
-import { BookOpen, Download, Handshake, LayoutDashboard, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
+import { BookOpen, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -56,6 +56,8 @@ export default async function RestaurantPanelLayout({
         // conta dele, e era isso que ninguém achava procurando por uma
         // bicicleta
         ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Mercado Pago", icon: <Handshake /> }] : []),
+        // por último, e para todos: é a porta de quando algo não vai bem
+        { href: `${base}/suporte`, label: "Suporte", icon: <LifeBuoy /> },
       ]}
       // baixar o programa do balcão é coisa de uma vez só: vira um ícone ao
       // lado do Sair, e não uma seção do mesmo peso que Pedidos. O admin da

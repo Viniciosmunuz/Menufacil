@@ -274,6 +274,7 @@ model Restaurant {
   mercadoPago         MercadoPagoAccount?
   chats               ChatConversation[]
   payments            RestaurantPayment[]
+  chamados            SupportTicket[]
 
   @@index([status])
   @@index([city])
@@ -1338,4 +1339,36 @@ model PagamentoComanda {
   recebidoPor User?   @relation(fields: [recebidoPorId], references: [id], onDelete: SetNull)
 
   @@index([comandaId, createdAt])
+}
+
+
+/// Um pedido de ajuda do dono do restaurante.
+///
+/// O dono escreve o que esta acontecendo, a conversa abre no WhatsApp do
+/// MenuFacil com tudo escrito, e o chamado fica aqui para o admin nao
+/// depender da memoria do celular: tres mensagens no meio do dia e uma
+/// delas se perde.
+model SupportTicket {
+  id           String @id @default(cuid())
+  restaurantId String
+
+  /// quem escreveu, pelo nome: a conta pode sair da equipe depois
+  abertoPor String
+  /// do que se trata, em uma palavra (Pedido, Impressora, Cardapio...)
+  assunto   String
+  mensagem  String
+
+  status     SupportStatus @default(ABERTO)
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([restaurantId, createdAt])
+}
+
+enum SupportStatus {
+  ABERTO
+  RESOLVIDO
 }

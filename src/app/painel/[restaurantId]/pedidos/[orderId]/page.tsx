@@ -1,4 +1,4 @@
-import { ExternalLink, MessagesSquare, Printer } from "lucide-react";
+import { ExternalLink, MessagesSquare, Phone, Printer } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,6 +26,8 @@ export const metadata: Metadata = { title: "Pedido", robots: { index: false, fol
 
 // Um pedido do restaurante: é para cá que aponta o "Ver no painel" da
 // mensagem de WhatsApp de pedido novo.
+const SEM_TELEFONE = "00000000000"; // o "cliente" de uma mesa do salão
+
 export default async function RestaurantOrderPage({ params }: PageProps<"/painel/[restaurantId]/pedidos/[orderId]">) {
   const { restaurantId, orderId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
@@ -133,6 +135,23 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
       <div className="flex flex-wrap items-center justify-between gap-2">
         <OrderActions order={editableOrder(order)} updateAction={updateRestaurantOrder} hidden={hidden} />
         <span className="flex flex-wrap items-center gap-2">
+          {/* o WhatsApp do cliente a um toque: é o que o balcão faz quando
+              precisa avisar algo que não cabe no fluxo ("acabou a coca, pode
+              ser guaraná?"). O número já estava na tela, mas como texto no
+              meio do resumo -- aqui ele fica onde a mão procura, junto das
+              outras ações do pedido. */}
+          {order.customerWhatsapp && order.customerWhatsapp !== SEM_TELEFONE && (
+            <a
+              href={`https://wa.me/${order.customerWhatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Falar com ${order.customerName} no WhatsApp`}
+              title={`Falar com ${order.customerName} no WhatsApp`}
+              className="grid size-9 shrink-0 place-items-center rounded-control border border-line bg-surface-2 text-ink hover:bg-surface-3"
+            >
+              <Phone className="size-4" aria-hidden="true" />
+            </a>
+          )}
           <a
             href={`/painel/${restaurant.id}/pedidos/${order.id}/via`}
             target="_blank"

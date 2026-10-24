@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquareText, ReceiptText, Store, Tags } from "lucide-react";
+import { LayoutDashboard, LifeBuoy, MessageSquareText, ReceiptText, Store, Tags } from "lucide-react";
 
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireAdmin } from "@/server/auth/dal";
@@ -17,6 +17,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         { href: "/admin/pedidos", label: "Pedidos", icon: <ReceiptText /> },
         { href: "/admin/categorias", label: "Categorias", icon: <Tags /> },
         { href: "/admin/contatos", label: "Contatos", icon: <MessageSquareText /> },
+        // quem está esperando ajuda agora
+        { href: "/admin/suporte", label: "Suporte", icon: <LifeBuoy /> },
       ]}
     >
       {children}
