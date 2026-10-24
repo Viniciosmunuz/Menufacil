@@ -576,7 +576,7 @@ export function PrintFacilPanel({
             </p>
             <ol className="ml-5 flex list-decimal flex-col gap-1">
               <li>
-                No <strong className="text-ink">tablet</strong>, abra o Menu Fácil Print. Ele mostra um código parecido com
+                No <strong className="text-ink">tablet</strong>, abra o Menu Fácil Totem. Ele mostra um código parecido com
                 MF-8K29-XP4.
               </li>
               <li>Digite esse código no campo abaixo e toque em Conectar.</li>

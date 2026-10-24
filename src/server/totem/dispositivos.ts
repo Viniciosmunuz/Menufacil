@@ -147,7 +147,16 @@ export function listarTotens(restaurantId: string) {
   return db.totemDevice.findMany({
     where: { restaurantId },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, printerName: true, appVersion: true, pairingCode: true, pairedAt: true, lastSeenAt: true },
+    select: {
+      id: true,
+      name: true,
+      printerName: true,
+      appVersion: true,
+      pairingCode: true,
+      pairedAt: true,
+      lastSeenAt: true,
+      printDeviceId: true,
+    },
   });
 }
 

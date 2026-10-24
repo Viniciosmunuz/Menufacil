@@ -1,4 +1,4 @@
-import { ChevronDown, CircleCheck, CreditCard, Download, ExternalLink, ImageIcon, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
+import { ChevronDown, CircleCheck, CreditCard, Download, ExternalLink, Globe, ImageIcon, KeyRound, MonitorSmartphone, Printer, Tv } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -52,11 +52,11 @@ const RECADOS: Record<string, { tom: "success" | "danger" | "warning"; texto: st
   erro: { tom: "danger", texto: "Não consegui concluir a conexão com o Mercado Pago. Tente de novo." },
 };
 
-// A aba Totem, em três blocos na ordem em que o dono precisa deles:
+// A aba Totem, em dois blocos na ordem em que o dono precisa deles:
 //
-//   1. TOTEM      o link que vira o terminal, e os tablets ativados
-//   2. IMPRESSÃO  o Menu Fácil Print e as impressoras ligadas
-//   3. PAGAMENTOS a conta do Mercado Pago
+//   1. TOTEM      o aplicativo, as impressoras, as senhas e o cartaz -- e,
+//                 numa gaveta, o link pelo navegador
+//   2. PAGAMENTOS a conta do Mercado Pago e a maquininha
 //
 // O que é configuração técnica (credencial, webhook, aparelhos) fica em
 // gaveta fechada: ocupa uma linha quando não está em uso, e nada some.
@@ -126,158 +126,40 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Totem</h2>
 
+        {/* O caminho de todo restaurante é o aplicativo: ele abre o totem,
+            imprime a senha e se ativa sozinho pelo código da impressora.
+            O link no navegador ficou de reserva, na gaveta lá embaixo. */}
         <Card className="flex flex-col gap-4 border-brand/50">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
             <MonitorSmartphone className="size-12 shrink-0 text-brand" aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <h3 className="text-lg font-extrabold">O link do seu totem</h3>
+              <h3 className="text-lg font-extrabold">Menu Fácil Totem</h3>
               <p className="text-sm text-muted">
-                Abra este endereço no navegador do tablet e deixe em tela cheia. Não precisa instalar nada e não precisa de
-                senha: o link já diz qual é o restaurante.
+                O aplicativo do tablet: abre o seu totem em tela cheia e imprime a senha do cliente sozinho.
               </p>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Link href={`/totem/${restaurant.slug}`} target="_blank" rel="noopener" className={buttonClasses("primary")}>
-                <ExternalLink className="size-4" aria-hidden="true" />
-                Abrir Totem
-              </Link>
-              <CopyLinkButton url={linkDoTotem} />
-            </div>
+            {PRINT_APK_DISPONIVEL ? (
+              <a href={PRINT_APK_URL} download className={buttonClasses("primary")}>
+                <Download className="size-4" aria-hidden="true" />
+                Baixar (versão {PRINT_APK_VERSION})
+              </a>
+            ) : (
+              <Badge tone="warning">Em preparo</Badge>
+            )}
           </div>
-
-          {/* O link abre o cardápio e não pergunta nada -- é ele que o cliente
-              vai usar. Ativar é outro endereço, e é por onde o dono passa uma
-              vez em cada tablet para aquele aparelho poder cobrar. */}
-          <div className="flex flex-col items-start gap-3 rounded-control border border-dashed border-brand/50 bg-brand/5 p-4 sm:flex-row sm:items-center">
-            <KeyRound className="size-6 shrink-0 text-brand" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold">Primeira vez neste tablet? Ative o aparelho</p>
-              <p className="text-sm text-muted">
-                O link acima só mostra o cardápio: ele não pede código nenhum, de propósito, para o cliente nunca ver essa
-                tela. Para o tablet conseguir <strong className="text-ink">cobrar</strong>, abra o endereço de ativação nele
-                e digite um código gerado aqui embaixo, em Tablets ativados.
-              </p>
-            </div>
-            <Link
-              href={`/totem/${restaurant.slug}?ativar=1`}
-              target="_blank"
-              rel="noopener"
-              className={buttonClasses("secondary")}
-            >
-              <KeyRound className="size-4" aria-hidden="true" />
-              Ativar aparelho
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface-2 p-3">
-            <code className="min-w-0 flex-1 truncate text-sm">{linkDoTotem}</code>
-            <CopyButton text={linkDoTotem} />
-          </div>
-        </Card>
-
-        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <Tv className="size-10 shrink-0 text-faint" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <h3 className="font-extrabold">Painel de senhas</h3>
-            <p className="text-sm text-muted">
-              A tela virada para o salão, com as senhas em preparo e as que já podem ser retiradas. Abra numa TV ou num
-              segundo monitor.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Link href={`/painel/senhas/${restaurant.id}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
-              <ExternalLink className="size-4" aria-hidden="true" />
-              Abrir
-            </Link>
-            <CopyLinkButton url={linkDasSenhas} />
-          </div>
-        </Card>
-
-        <Gaveta
-          titulo="Tablets ativados"
-          resumo={
-            ativados.length === 0
-              ? "Nenhum tablet ativado para cobrar ainda"
-              : `${ativados.length} ativado${ativados.length === 1 ? "" : "s"}`
-          }
-          icone={<Settings2 />}
-          selo={esperando.length > 0 ? <Badge tone="warning">código em aberto</Badge> : undefined}
-        >
-          <p className="text-sm text-muted">
-            O cardápio abre em qualquer aparelho, mas <strong className="text-ink">cobrar exige ativação</strong> — é o que
-            impede alguém de fora cobrar em nome do seu restaurante. Gere um código aqui e digite no tablet, uma vez por
-            aparelho, em <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{linkDoTotem}?ativar=1</code>.
-          </p>
-
-          {ativados.length === 0 && esperando.length === 0 ? (
-            <p className="text-muted">Nenhum aparelho ligado ainda.</p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-line">
-              {ativados.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <span className="min-w-0">
-                    <span className="block truncate font-bold">{t.name}</span>
-                    <span className="block truncate text-sm text-muted">
-                      {t.appVersion ? `versão ${t.appVersion} · ` : ""}
-                      {t.lastSeenAt ? `visto ${formatWhen(t.lastSeenAt)}` : "nunca abriu"}
-                    </span>
-                  </span>
-                  <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
-                </li>
-              ))}
-              {esperando.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-2 font-bold">
-                      Aguardando o tablet
-                      <Badge tone="warning">código {t.pairingCode}</Badge>
-                    </span>
-                    <span className="block text-sm text-muted">Digite este código no tablet para ativá-lo.</span>
-                  </span>
-                  <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <NovoTotemForm restaurantId={restaurant.id} />
-        </Gaveta>
-
-        <Gaveta
-          titulo="Tela de descanso"
-          resumo={cartazUrl ? "Cartaz próprio cadastrado" : "Montada com a sua capa"}
-          icone={<ImageIcon />}
-          selo={cartazUrl ? <Badge tone="success">Cartaz próprio</Badge> : undefined}
-        >
-          <p className="text-sm text-muted">
-            Sem ninguém tocar no tablet por um minuto, o totem vira um cartaz chamando quem passa — e some no primeiro
-            toque, abrindo o cardápio. Com comida na sacola o cartaz não entra: quem está escolhendo não é interrompido.
-          </p>
-          <CartazForm restaurantId={restaurant.id} cartazUrl={cartazUrl} />
-        </Gaveta>
-      </section>
-
-      {/* ---- 2. IMPRESSÃO ------------------------------------------------ */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Impressão</h2>
-
-        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <Printer className="size-12 shrink-0 text-brand" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-lg font-extrabold">Menu Fácil Totem</h3>
-            <p className="text-sm text-muted">
-              O aplicativo do tablet: abre o seu totem em tela cheia e imprime a senha do cliente sozinho. Instale, digite
-              em Impressoras ligadas o código que aparecer nele, e o totem abre — sem ativar o tablet à parte.
-            </p>
-          </div>
-          {PRINT_APK_DISPONIVEL ? (
-            <a href={PRINT_APK_URL} download className={buttonClasses("primary")}>
-              <Download className="size-4" aria-hidden="true" />
-              Baixar (versão {PRINT_APK_VERSION})
-            </a>
-          ) : (
-            <Badge tone="warning">Em preparo</Badge>
-          )}
+          <ol className="flex flex-col gap-2 text-sm text-muted">
+            <li>
+              <strong className="text-ink">1.</strong> Baixe e instale no tablet.
+            </li>
+            <li>
+              <strong className="text-ink">2.</strong> Digite em <strong className="text-ink">Impressoras ligadas</strong>,
+              logo abaixo, o código que aparecer nele, e marque essa impressora como Senha.
+            </li>
+            <li>
+              <strong className="text-ink">3.</strong> Pronto: o totem abre sozinho no tablet, já cobrando. Não precisa
+              ativar o tablet à parte.
+            </li>
+          </ol>
         </Card>
 
         <Gaveta
@@ -288,6 +170,8 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
               : `${impressoras.length} aparelho${impressoras.length === 1 ? "" : "s"} imprimindo`
           }
           icone={<Printer />}
+          // sem nenhuma impressora, é aqui que o dono vai digitar o código
+          aberta={impressoras.length === 0}
         >
           <p className="text-sm text-muted">
             Um pedido de totem rende <strong className="text-ink">dois papéis</strong>, e os dois trazem a senha:
@@ -321,9 +205,121 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
             roleAction={setPrintDeviceRole}
           />
         </Gaveta>
+
+        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Tv className="size-10 shrink-0 text-faint" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-extrabold">Painel de senhas</h3>
+            <p className="text-sm text-muted">
+              A tela virada para o salão, com as senhas em preparo e as que já podem ser retiradas. Abra numa TV ou num
+              segundo monitor.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link href={`/painel/senhas/${restaurant.id}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              Abrir
+            </Link>
+            <CopyLinkButton url={linkDasSenhas} />
+          </div>
+        </Card>
+
+        <Gaveta
+          titulo="Tela de descanso"
+          resumo={cartazUrl ? "Cartaz próprio cadastrado" : "Montada com a sua capa"}
+          icone={<ImageIcon />}
+          selo={cartazUrl ? <Badge tone="success">Cartaz próprio</Badge> : undefined}
+        >
+          <p className="text-sm text-muted">
+            Sem ninguém tocar no tablet por um minuto, o totem vira um cartaz chamando quem passa — e some no primeiro
+            toque, abrindo o cardápio. Com comida na sacola o cartaz não entra: quem está escolhendo não é interrompido.
+          </p>
+          <CartazForm restaurantId={restaurant.id} cartazUrl={cartazUrl} />
+        </Gaveta>
+
+        {/* O jeito de antes, sem o aplicativo: o link aberto no navegador do
+            tablet e a ativação à parte. Continua valendo -- é a reserva se o
+            aplicativo der problema --, só não é mais o caminho principal. A
+            lista mostra também os tablets do aplicativo, para o dono ver
+            quando cada um falou com o servidor. */}
+        <Gaveta
+          titulo="Usar pelo navegador, sem o aplicativo"
+          resumo={
+            ativados.length === 0
+              ? "O link do totem e a ativação do tablet à parte"
+              : `${ativados.length} aparelho${ativados.length === 1 ? "" : "s"} cobrando`
+          }
+          icone={<Globe />}
+          selo={esperando.length > 0 ? <Badge tone="warning">código em aberto</Badge> : undefined}
+        >
+          <p className="text-sm text-muted">
+            O link abre o totem no navegador de qualquer aparelho, sem instalar nada. Ele só mostra o cardápio: para{" "}
+            <strong className="text-ink">cobrar</strong>, o aparelho precisa ser ativado uma vez, com um código gerado aqui
+            embaixo e digitado no endereço de ativação.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-surface-2 p-3">
+            <code className="min-w-0 flex-1 truncate text-sm">{linkDoTotem}</code>
+            <CopyButton text={linkDoTotem} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/totem/${restaurant.slug}`} target="_blank" rel="noopener" className={buttonClasses("secondary")}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              Abrir Totem
+            </Link>
+            <Link
+              href={`/totem/${restaurant.slug}?ativar=1`}
+              target="_blank"
+              rel="noopener"
+              className={buttonClasses("secondary")}
+            >
+              <KeyRound className="size-4" aria-hidden="true" />
+              Ativar aparelho
+            </Link>
+          </div>
+
+          {ativados.length === 0 && esperando.length === 0 ? (
+            <p className="text-muted">Nenhum aparelho cobrando ainda.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line">
+              {ativados.map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold">{t.name}</span>
+                    <span className="block truncate text-sm text-muted">
+                      {t.appVersion ? `versão ${t.appVersion} · ` : ""}
+                      {t.lastSeenAt ? `visto ${formatWhen(t.lastSeenAt)}` : "nunca abriu"}
+                    </span>
+                  </span>
+                  {/* o do aplicativo se refaz sozinho ao abrir: quem tira é
+                      desligar a impressora dele, em Impressoras ligadas */}
+                  {t.printDeviceId ? (
+                    <span className="text-sm text-muted">Pelo aplicativo</span>
+                  ) : (
+                    <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
+                  )}
+                </li>
+              ))}
+              {esperando.map((t) => (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 font-bold">
+                      Aguardando o tablet
+                      <Badge tone="warning">código {t.pairingCode}</Badge>
+                    </span>
+                    <span className="block text-sm text-muted">Digite este código no endereço de ativação.</span>
+                  </span>
+                  <RemoverTotemForm restaurantId={restaurant.id} deviceId={t.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <NovoTotemForm restaurantId={restaurant.id} />
+        </Gaveta>
       </section>
 
-      {/* ---- 3. PAGAMENTOS ----------------------------------------------- */}
+      {/* ---- 2. PAGAMENTOS ----------------------------------------------- */}
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Pagamentos</h2>
 
