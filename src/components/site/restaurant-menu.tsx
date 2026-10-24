@@ -913,7 +913,15 @@ export function RestaurantMenu({
 
       {/* marca o começo do cardápio, para a busca voltar até aqui */}
       <div ref={topoRef} aria-hidden="true" />
-      <div className="sticky top-0 z-20 -mx-4 mt-4 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
+      {/* No site a busca fica fina e mais perto dos selos de entrega e
+          retirada, para o cardápio subir na primeira tela. No totem ela segue
+          alta, alinhada ao botão da gaveta e fácil de tocar de pé. */}
+      <div
+        className={cn(
+          "sticky top-0 z-20 -mx-4 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0",
+          categoriasNaLateral ? "mt-4" : "mt-1",
+        )}
+      >
         <div className={cn(categoriasNaLateral && "flex items-center gap-2")}>
         {categoriasNaLateral && visible.length > 1 && (
           <button
@@ -934,7 +942,10 @@ export function RestaurantMenu({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar no cardápio"
             aria-label="Buscar no cardápio"
-            className="h-11 w-full rounded-2xl border border-line bg-surface-2 pr-4 pl-10 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+            className={cn(
+              "w-full rounded-2xl border border-line bg-surface-2 pr-4 pl-10 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none",
+              categoriasNaLateral ? "h-11" : "h-9",
+            )}
           />
         </label>
         </div>
