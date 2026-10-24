@@ -5,6 +5,7 @@ import { connection } from "next/server";
 
 import type { RestaurantCardData } from "@/components/public/restaurant-card";
 import type { Prisma } from "@/generated/prisma/client";
+import { combina, normalizar, palavrasDaBusca } from "@/lib/busca";
 import { db } from "@/lib/db";
 import { isOpenNow } from "@/lib/opening-hours";
 import { getRestaurantAccess } from "@/server/auth/dal";
@@ -67,24 +68,45 @@ export async function listRestaurants(filters: {
   take?: number;
 }): Promise<PublicRestaurantCard[]> {
   await connection();
-  const q = filters.q?.trim();
+  const palavras = palavrasDaBusca(filters.q ?? "");
   const where: Prisma.RestaurantWhereInput = {
     status: "ACTIVE",
     ...(filters.featuredOnly ? { featured: true } : {}),
     ...(filters.slugs ? { slug: { in: filters.slugs } } : {}),
     ...(filters.city ? { city: { equals: filters.city, mode: "insensitive" } } : {}),
     ...(filters.category ? { categories: { some: { slug: filters.category, active: true } } } : {}),
-    // "pizza" acha a pizzaria pelo nome, pela categoria ou por um prato
-    ...(q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { categories: { some: { name: { contains: q, mode: "insensitive" }, active: true } } },
-            { products: { some: { name: { contains: q, mode: "insensitive" }, available: true, category: { active: true } } } },
-          ],
-        }
-      : {}),
   };
+
+  // Com busca, o filtro é feito aqui, e não no banco. O "contém" do banco
+  // não ignora acento ("hamburguer" não achava "Hambúrguer") e exige a
+  // frase exata ("pizza calabresa" não achava "Pizza de Calabresa"). A
+  // regra do site (src/lib/busca.ts) resolve os dois, e o número de
+  // restaurantes no ar é pequeno o bastante para olhar um por um.
+  //
+  // "pizza" acha a pizzaria pelo nome, pela categoria, por uma seção do
+  // cardápio ou por um prato.
+  if (palavras.length > 0) {
+    const candidatos = await db.restaurant.findMany({
+      where,
+      select: {
+        ...cardSelect,
+        menuCategories: { where: { active: true }, select: { name: true } },
+        products: { where: { available: true, category: { active: true } }, select: { name: true } },
+      },
+      orderBy: [{ featured: "desc" }, { name: "asc" }],
+      take: 300,
+    });
+    return candidatos
+      .filter((r) => {
+        const texto = normalizar(
+          [r.name, ...r.categories.map((c) => c.name), ...r.menuCategories.map((c) => c.name), ...r.products.map((p) => p.name)].join(" "),
+        );
+        return combina(texto, palavras);
+      })
+      .slice(0, filters.take ?? 60)
+      .map(toCard)
+      .sort((a, b) => Number(b.open) - Number(a.open));
+  }
 
   const rows = await db.restaurant.findMany({
     where,

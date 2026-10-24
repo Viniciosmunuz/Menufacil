@@ -16,6 +16,7 @@ import {
   type Addon,
   type AddonPick,
 } from "@/lib/addons";
+import { combina, normalizar, palavrasDaBusca } from "@/lib/busca";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import {
@@ -68,11 +69,6 @@ const unitPrice = (p: MenuProduct) => p.promoPriceCents ?? p.priceCents;
 /** preço do cardápio: o menor possível — com opções, ou com o sabor mais barato */
 const listPrice = (p: MenuProduct, flavors: PizzaFlavor[]) =>
   flavorSlots(p) ? cheapestFlavor(flavors) : startingPrice(unitPrice(p), p.optionGroups);
-const normalize = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
 
 function Price({ p, flavors, className }: { p: MenuProduct; flavors: PizzaFlavor[]; className?: string }) {
   const from = hasPricedOptions(p.optionGroups) || !!flavorSlots(p);
@@ -549,18 +545,46 @@ export function RestaurantMenu({
   const [gavetaAberta, setGavetaAberta] = useState(true);
   const cart = useCart();
 
-  const q = normalize(query.trim());
+  // O texto em que cada prato é procurado: nome, descrição, a seção dele
+  // ("bebidas" traz as bebidas) e, no montador de pizza, os sabores
+  // ("calabresa" traz a pizza). Montado uma vez, e não a cada letra.
+  const textos = useMemo(() => {
+    const sabores = pizzaFlavors.map((f) => f.name).join(" ");
+    const mapa = new Map<string, string>();
+    for (const c of categories) {
+      for (const p of c.products) {
+        mapa.set(p.id, normalizar(`${p.name} ${p.description ?? ""} ${c.name} ${flavorSlots(p) ? sabores : ""}`));
+      }
+    }
+    return mapa;
+  }, [categories, pizzaFlavors]);
+  const palavras = useMemo(() => palavrasDaBusca(query), [query]);
+  const buscando = palavras.length > 0;
   const visible = useMemo(
     () =>
       categories
         .map((c) => ({
           ...c,
-          products: q ? c.products.filter((p) => normalize(`${p.name} ${p.description ?? ""}`).includes(q)) : c.products,
+          products: buscando ? c.products.filter((p) => combina(textos.get(p.id) ?? "", palavras)) : c.products,
         }))
         .filter((c) => c.products.length > 0),
-    [categories, q],
+    [categories, textos, palavras, buscando],
   );
-  const featured = q ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
+  const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
+  const topoRef = useRef<HTMLDivElement>(null);
+  const chaveDaBusca = palavras.join(" ");
+
+  // Buscou lá no meio do cardápio: a lista encolhe e o resultado fica lá
+  // em cima, fora da tela -- a pessoa via um vazio e achava que não tinha
+  // nada. Volta para o começo do cardápio, onde o resultado aparece.
+  useEffect(() => {
+    const topo = topoRef.current;
+    if (!topo) return;
+    const { top } = topo.getBoundingClientRect();
+    // no computador o cabeçalho do site fica por cima do começo
+    const cabecalho = window.innerWidth >= 1024 ? 76 : 0;
+    if (top < cabecalho) window.scrollTo({ top: window.scrollY + top - cabecalho });
+  }, [chaveDaBusca]);
   const mineInCart = cart.restaurant?.id === restaurant.id ? cart : null;
   const sectionKey = visible.map((c) => c.id).join(",");
 
@@ -714,6 +738,8 @@ export function RestaurantMenu({
           baixo aparecia borrado atrás da busca, e o que se via era um
           cartão cortado no meio com um rastro laranja em cima -- parecia
           defeito de tela, não efeito. */}
+      {/* marca o começo do cardápio, para a busca voltar até aqui */}
+      <div ref={topoRef} aria-hidden="true" />
       <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
         <div className={cn(categoriasNaLateral && "flex items-center gap-2")}>
         {categoriasNaLateral && visible.length > 1 && (
@@ -838,9 +864,12 @@ export function RestaurantMenu({
         )}
 
         {visible.length === 0 && (
-          <p className="rounded-card border border-dashed border-line-strong px-4 py-10 text-center text-muted">
-            Nada encontrado para “{query}”.
-          </p>
+          <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line-strong px-4 py-10 text-center text-muted">
+            <p>Nada encontrado para “{query.trim()}”.</p>
+            <button type="button" onClick={() => setQuery("")} className="text-sm font-bold text-brand hover:underline">
+              Ver o cardápio inteiro
+            </button>
+          </div>
         )}
 
         {visible.map((c) => (
