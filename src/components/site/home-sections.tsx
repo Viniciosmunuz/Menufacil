@@ -34,7 +34,10 @@ function HeroCloche({ className }: { className?: string }) {
 export function Hero({ hasRestaurants, city }: { hasRestaurants: boolean; city: string | null }) {
   const script = hasRestaurants ? ["Feito na hora,", "pertinho", "de você!"] : ["Em breve,", "novos sabores", "por aqui!"];
   return (
-    <section className="relative isolate overflow-hidden rounded-card border border-line bg-surface">
+    // O banner continua escuro no tema claro: o texto fica sobre uma foto
+    // escurecida, e ali só letra clara se lê. As cores do tema são trocadas
+    // só aqui dentro, então o resto da página segue claro.
+    <section className="relative isolate overflow-hidden rounded-card border border-line bg-[#0e0e12] text-ink [--color-faint:#8f8f99] [--color-ink:#f4f4f6] [--color-line:#27272e] [--color-muted:#c4c4cc]">
       {/* foto escura de fundo, com o texto sempre legível à esquerda */}
       <Image
         src="/demo/home/destaque.webp"
