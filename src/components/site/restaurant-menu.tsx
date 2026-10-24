@@ -546,7 +546,7 @@ export function RestaurantMenu({
   canOrder,
   closedMessage,
   carrinhoHref = "/carrinho",
-  barraDoCarrinho = "bottom-[calc(4rem+env(safe-area-inset-bottom))]",
+  barraDoCarrinho = "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]",
   barraSempreVisivel = false,
   duasColunas = false,
   categoriasNaLateral = false,
@@ -1141,7 +1141,7 @@ export function RestaurantMenu({
         aria-live="polite"
         className={cn(
           "pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4 transition-all duration-300",
-          "bottom-[calc(8.5rem+env(safe-area-inset-bottom))] lg:bottom-8",
+          "bottom-[calc(8rem+env(safe-area-inset-bottom))] lg:bottom-8",
           toast ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
         )}
       >

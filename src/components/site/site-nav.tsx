@@ -172,7 +172,8 @@ export function BottomNav({ store }: { store?: { slug: string } | null }) {
     >
       <ul className="mx-auto grid max-w-lg auto-cols-fr grid-flow-col">
         {items.map(({ href, label, icon: Icon, active, badge, badgeLabel = "novas", external, aoTocar }) => {
-          const classes = cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold", active ? "text-brand" : "text-muted");
+          // 56px de altura: mais fina que antes (64), com o ícone e o nome do mesmo tamanho
+          const classes = cn("flex h-14 w-full flex-col items-center justify-center gap-0.5 text-xs font-bold", active ? "text-brand" : "text-muted");
           const dentro = (
             <>
               <span className="relative">
