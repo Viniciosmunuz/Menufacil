@@ -9,6 +9,9 @@
 // - ordem e palavras do meio: "pizza calabresa" acha "Pizza de Calabresa"
 //   (cada palavra digitada tem que aparecer, em qualquer ordem);
 // - plural: "pizzas" acha "Pizza".
+//
+// Letra sozinha só vale como palavra inteira: o "x" de "x salada" é o
+// do "X-Salada", e não qualquer palavra com x no meio ("abacaxi").
 
 /** sem acento, minúsculo, pontuação virando espaço, espaços juntos */
 export function normalizar(texto: string) {
@@ -30,12 +33,14 @@ export function palavrasDaBusca(consulta: string) {
  *
  * Cada palavra vale se aparecer no texto, se aparecer no texto sem os
  * espaços ("xsalada" em "x salada") ou, terminando em "s", se o singular
- * aparecer ("pizzas" em "pizza").
+ * aparecer ("pizzas" em "pizza"). Letra sozinha, só como palavra inteira.
  */
 export function combina(textoNormalizado: string, palavras: string[]) {
   if (palavras.length === 0) return true;
   const junto = textoNormalizado.replaceAll(" ", "");
+  const comBordas = ` ${textoNormalizado} `;
   return palavras.every((p) => {
+    if (p.length === 1) return comBordas.includes(` ${p} `);
     if (textoNormalizado.includes(p) || junto.includes(p)) return true;
     if (p.length > 3 && p.endsWith("s")) {
       const singular = p.slice(0, -1);

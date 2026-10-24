@@ -545,31 +545,35 @@ export function RestaurantMenu({
   const [gavetaAberta, setGavetaAberta] = useState(true);
   const cart = useCart();
 
-  // O texto em que cada prato é procurado: nome, descrição, a seção dele
-  // ("bebidas" traz as bebidas) e, no montador de pizza, os sabores
-  // ("calabresa" traz a pizza). Montado uma vez, e não a cada letra.
+  // Onde cada prato é procurado, em dois níveis. Primeiro o nome. Se
+  // nenhum nome tiver tudo o que foi digitado, vale o texto completo:
+  // descrição, a seção ("bebidas" traz as bebidas) e, no montador de
+  // pizza, os sabores ("calabresa" traz a pizza). Sem os dois níveis,
+  // "x salada" trazia todo sanduíche com salada na descrição. Montado uma
+  // vez, e não a cada letra.
   const textos = useMemo(() => {
     const sabores = pizzaFlavors.map((f) => f.name).join(" ");
-    const mapa = new Map<string, string>();
+    const mapa = new Map<string, { nome: string; completo: string }>();
     for (const c of categories) {
       for (const p of c.products) {
-        mapa.set(p.id, normalizar(`${p.name} ${p.description ?? ""} ${c.name} ${flavorSlots(p) ? sabores : ""}`));
+        mapa.set(p.id, {
+          nome: normalizar(p.name),
+          completo: normalizar(`${p.name} ${p.description ?? ""} ${c.name} ${flavorSlots(p) ? sabores : ""}`),
+        });
       }
     }
     return mapa;
   }, [categories, pizzaFlavors]);
   const palavras = useMemo(() => palavrasDaBusca(query), [query]);
   const buscando = palavras.length > 0;
-  const visible = useMemo(
-    () =>
-      categories
-        .map((c) => ({
-          ...c,
-          products: buscando ? c.products.filter((p) => combina(textos.get(p.id) ?? "", palavras)) : c.products,
-        }))
-        .filter((c) => c.products.length > 0),
-    [categories, textos, palavras, buscando],
-  );
+  const visible = useMemo(() => {
+    if (!buscando) return categories.filter((c) => c.products.length > 0);
+    const peloNome = categories.some((c) => c.products.some((p) => combina(textos.get(p.id)?.nome ?? "", palavras)));
+    const campo = peloNome ? "nome" : "completo";
+    return categories
+      .map((c) => ({ ...c, products: c.products.filter((p) => combina(textos.get(p.id)?.[campo] ?? "", palavras)) }))
+      .filter((c) => c.products.length > 0);
+  }, [categories, textos, palavras, buscando]);
   const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
