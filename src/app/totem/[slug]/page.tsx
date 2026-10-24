@@ -125,6 +125,8 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
             addons={acompanhamentos}
             canOrder={aberto}
             closedMessage={aberto ? null : "O restaurante está fechado agora. Chame um atendente."}
+            // no totem não há selo de aberto/fechado no topo: a faixa é o aviso
+            avisoDeFechado
             carrinhoHref={`/totem/${r.slug}/pedido`}
             // no totem não existe barra de navegação embaixo
             barraDoCarrinho="bottom-3"

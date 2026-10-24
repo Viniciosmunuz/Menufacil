@@ -551,6 +551,7 @@ export function RestaurantMenu({
   categoriasNaLateral = false,
   maisPedidos = [],
   pedirDeNovo = false,
+  avisoDeFechado = false,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -612,6 +613,13 @@ export function RestaurantMenu({
    * pedido é de outro cliente.
    */
   pedirDeNovo?: boolean;
+  /**
+   * A faixa "O restaurante está fechado agora..." acima do cardápio.
+   * Só no totem: no site o selo "Fechado · abre às..." do perfil já diz
+   * isso, e a faixa repetia a mesma coisa logo abaixo. A mensagem continua
+   * aparecendo no prato, na hora de tentar pedir.
+   */
+  avisoDeFechado?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -979,7 +987,7 @@ export function RestaurantMenu({
         )}
       </div>
 
-      {closedMessage && (
+      {avisoDeFechado && closedMessage && (
         <p className="mt-4 rounded-card border border-line bg-surface-2 px-4 py-3 text-sm font-semibold text-muted">
           {closedMessage} Dá para ver o cardápio à vontade.
         </p>
