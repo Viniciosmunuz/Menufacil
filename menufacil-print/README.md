@@ -1,13 +1,27 @@
-# Menu Fácil Print
+# Menu Fácil Totem (antes Menu Fácil Print)
 
-A ponte entre o Menu Fácil e a impressora térmica do balcão, em Android.
+O totem do restaurante e a impressora térmica do tablet, num aplicativo só.
 
-É o **Print Fácil do computador, em tablet**: mesma API, mesmo pareamento por
-código, mesma impressão automática. Ninguém toca em "imprimir" -- o aplicativo
-fica em segundo plano, pega o pedido na fila e manda para a impressora.
+Começou como o **Print Fácil do computador, em tablet** -- mesma API, mesmo
+pareamento por código, mesma impressão automática -- e cresceu do mesmo jeito
+que o Print Fácil virou o Menu Fácil para PC: desde a 0.2.0 ele também
+**abre o totem**.
 
-Ele **não tem cardápio**. O totem é a página `/totem/<slug>`, aberta no
-navegador do tablet em modo quiosque. Este aplicativo só imprime.
+- **A tela do totem é a página do link** (`/totem/<slug>`), mostrada em tela
+  cheia dentro do aplicativo (`TelaDoTotem.kt`). O aplicativo não desenha
+  nada do totem: o que mudar no site aparece aqui sem atualizar o APK.
+- **Um pareamento só.** Pareada a impressora (o código abaixo), o aplicativo
+  pede ao servidor o token do totem (`POST /api/totem/aplicativo`, com o
+  token da impressora) e o entrega à página no mesmo lugar em que a tela de
+  ativação guardaria. Desligar a impressora no painel derruba o totem junto.
+- **Sem totem liberado** para o restaurante, ele continua sendo só a
+  impressora, como antes.
+- **Saída para os ajustes:** o voltar do Android cinco vezes seguidas. Sem
+  mexer, volta sozinho ao totem em dois minutos. (Trava de quiosque com
+  senha e abrir ao ligar o tablet ainda não existem.)
+- **Atualizar** é instalar o APK novo. O APK é de depuração, com a chave de
+  teste do runner do GitHub, que muda a cada compilação: por enquanto, para
+  instalar uma versão nova é preciso desinstalar a anterior.
 
 ## Como funciona
 

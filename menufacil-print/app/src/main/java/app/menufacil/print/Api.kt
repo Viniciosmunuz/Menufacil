@@ -60,6 +60,14 @@ class Api(private val servidor: String, private val token: String?) {
   /** a via de um pedido: texto pronto e os dados soltos para o ESC/POS */
   fun via(pedidoId: String): Resposta = chamar("/api/impressao/pedidos/$pedidoId")
 
+  /**
+   * Abre o totem com esta impressora: devolve o token do totem, o
+   * restaurante e o endereço da página. Cada chamada troca o token, então
+   * o aplicativo chama ao abrir e usa o que voltou.
+   */
+  fun totem(versao: String): Resposta =
+    chamar("/api/totem/aplicativo", "POST", JSONObject().put("versao", versao))
+
   /** avisa que saiu no papel; o servidor ignora a segunda vez */
   fun marcarImpresso(pedidoId: String): Resposta =
     chamar("/api/impressao/pedidos/$pedidoId/impresso", "POST", JSONObject())

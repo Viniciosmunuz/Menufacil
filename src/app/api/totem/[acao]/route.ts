@@ -1,3 +1,4 @@
+import { aplicativo } from "@/server/totem/api/aplicativo";
 import { desbloquear } from "@/server/totem/api/desbloquear";
 import { login } from "@/server/totem/api/login";
 import { cancelar, cobrar, conferir } from "@/server/totem/api/pagamento";
@@ -34,6 +35,9 @@ export async function POST(request: Request, { params }: RouteContext<"/api/tote
       return cobrar(request);
     case "webhook":
       return webhook(request);
+    // o aplicativo Menu Fácil Totem abrindo o totem com a impressora dele
+    case "aplicativo":
+      return aplicativo(request);
     default:
       return naoExiste();
   }

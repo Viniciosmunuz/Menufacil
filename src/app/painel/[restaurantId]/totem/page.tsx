@@ -264,10 +264,10 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
         <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Printer className="size-12 shrink-0 text-brand" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-lg font-extrabold">Menu Fácil Print</h3>
+            <h3 className="text-lg font-extrabold">Menu Fácil Totem</h3>
             <p className="text-sm text-muted">
-              Instale no mesmo tablet do totem. Ele fica em segundo plano, recebe os pedidos sozinho e manda para a
-              impressora térmica — ninguém precisa tocar em nada.
+              O aplicativo do tablet: abre o seu totem em tela cheia e imprime a senha do cliente sozinho. Instale, digite
+              em Impressoras ligadas o código que aparecer nele, e o totem abre — sem ativar o tablet à parte.
             </p>
           </div>
           {PRINT_APK_DISPONIVEL ? (

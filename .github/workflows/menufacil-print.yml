@@ -25,7 +25,7 @@ permissions:
 env:
   # mesma versão de menufacil-print/app/build.gradle.kts e de
   # src/lib/totem-release.ts: é ela que forma o endereço de download
-  VERSAO: "0.1.0"
+  VERSAO: "0.2.0"
 
 jobs:
   apk:
@@ -85,6 +85,6 @@ jobs:
             gh release upload "$etiqueta" "menufacil-print-${VERSAO}.apk" --clobber
           else
             gh release create "$etiqueta" "menufacil-print-${VERSAO}.apk" \
-              --title "Menu Fácil Print $VERSAO" \
-              --notes "A ponte entre o Menu Fácil e a impressora térmica do tablet. Baixe o .apk no próprio tablet e libere a instalação de fontes desconhecidas."
+              --title "Menu Fácil Totem $VERSAO" \
+              --notes "O totem do restaurante e a impressora térmica do tablet, num aplicativo só. Baixe o .apk no próprio tablet e libere a instalação de fontes desconhecidas."
           fi

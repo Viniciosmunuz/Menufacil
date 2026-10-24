@@ -821,6 +821,8 @@ model PrintDevice {
   restaurant Restaurant?     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   categories MenuCategory[]
   impressoes OrderPrint[]
+  /// o totem que o aplicativo do tablet abriu com esta impressora
+  totem      TotemDevice?
 
   @@index([restaurantId])
 }
@@ -943,6 +945,14 @@ model TotemDevice {
   pairedAt   DateTime?
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
+
+  /**
+   * O aplicativo Menu Facil Totem: a impressora do tablet que abriu este
+   * totem. Um por impressora, e some junto quando a impressora e
+   * desligada no painel -- e o mesmo aparelho.
+   */
+  printDeviceId String?      @unique
+  printDevice   PrintDevice? @relation(fields: [printDeviceId], references: [id], onDelete: Cascade)
 
   restaurant Restaurant?    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   payments   TotemPayment[]

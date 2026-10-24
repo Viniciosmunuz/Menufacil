@@ -35,6 +35,9 @@ class Config(contexto: Context) {
 
   val registrado: Boolean get() = !token.isNullOrBlank()
 
+  /** registrado e com o código já digitado no painel */
+  val pareado: Boolean get() = registrado && codigo.isNullOrBlank()
+
   companion object {
     const val PADRAO = "https://menufacildelivery.com.br"
   }

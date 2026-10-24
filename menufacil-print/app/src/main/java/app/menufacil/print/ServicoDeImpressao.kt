@@ -79,6 +79,9 @@ class ServicoDeImpressao : Service() {
           delay(ESPERA_PARADO)
           continue
         }
+        // pareou: o código já cumpriu o papel, e é ele sumir que diz à tela
+        // que já dá para abrir o totem
+        if (config.codigo != null) config.codigo = null
 
         val pedidos = Api.pedidosDaFila(fila.corpo)
         if (pedidos.isEmpty()) {

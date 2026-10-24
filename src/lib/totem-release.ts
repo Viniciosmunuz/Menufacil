@@ -17,7 +17,7 @@
 // menufacil-print/app/build.gradle.kts e PRINT_APK_VERSION aqui. O GitHub
 // compila no push e troca o arquivo da release sozinho.
 
-export const PRINT_APK_VERSION = "0.1.0";
+export const PRINT_APK_VERSION = "0.2.0";
 
 const REPO = "https://github.com/Viniciosmunuz/Menufacil";
 
