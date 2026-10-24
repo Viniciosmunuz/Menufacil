@@ -72,7 +72,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
       {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui.
           Parado, vira o cartaz de descanso que chama quem passa. */}
-      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} capaUrl={r.coverUrl} />
+      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} />
       {/* pausado pelo dono no painel: cobre tudo até ele despausar */}
       <TotemPausa slug={r.slug} inicial={r.totemPaused} nome={r.name} logoUrl={r.logoUrl} />
 

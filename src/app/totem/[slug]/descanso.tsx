@@ -14,13 +14,12 @@ import { APAGADO, Cenario, MarcaDoRestaurante } from "./cenario";
 // anterior -- categoria aberta, rolagem no meio do cardápio.
 //
 // É um modelo só, o mesmo em todo totem, no cenário claro (ver cenario.tsx):
-// o que muda de um restaurante para outro é a logo, o nome e a foto de
-// capa. Antes cada dono podia mandar o próprio cartaz; o modelo único deixa
+// o que muda de um restaurante para outro é a logo e o nome. Antes cada dono podia mandar o próprio cartaz; o modelo único deixa
 // todos com o mesmo acabamento, e ninguém precisa desenhar nada.
 //
-// A foto é a capa do próprio restaurante, e não um prato bonito para todo
-// mundo: a açaiteria do centro não pode anunciar picanha. Sem capa, ou no
-// tablet deitado (onde não há altura para ela), a tela fica sem foto.
+// O prato embaixo é o mesmo para todos (public/totem/prato-descanso.webp), recortado
+// da arte de referência do Menu Fácil. No tablet deitado, onde não há
+// altura para ele, a tela fica sem o prato.
 //
 // Qualquer toque derruba a tela: não tem botão para procurar, porque quem
 // chega não sabe que é um totem até encostar nele.
@@ -28,13 +27,11 @@ import { APAGADO, Cenario, MarcaDoRestaurante } from "./cenario";
 export function TotemDescanso({
   nome,
   logoUrl,
-  capaUrl,
   aoTocar,
 }: {
   nome: string;
   /** a foto de perfil do restaurante, a mesma do cardápio do link */
   logoUrl: string | null;
-  capaUrl: string | null;
   aoTocar: () => void;
 }) {
   return (
@@ -57,17 +54,13 @@ export function TotemDescanso({
         Escolha seus pratos, pague no cartão ou no Pix e retire no balcão.
       </p>
 
-      {capaUrl && (
-        // só com altura de sobra: no tablet deitado a foto empurraria o resto
-        <div className="relative mt-[3vh] hidden min-h-0 w-full max-w-xl flex-1 [@media(min-height:700px)]:block">
-          <span aria-hidden="true" className="absolute top-[6%] -left-3 h-1 w-8 -rotate-[30deg] rounded-full bg-brand" />
-          <span aria-hidden="true" className="absolute top-[18%] -left-5 h-1 w-6 rotate-[10deg] rounded-full bg-brand" />
-          <span aria-hidden="true" className="absolute -right-3 bottom-[18%] h-1 w-8 rotate-[30deg] rounded-full bg-brand" />
-          <div className="relative size-full max-h-[34vh] overflow-hidden rounded-[2rem] border-4 border-white shadow-[0_14px_40px_rgb(29_32_38/0.18)]">
-            <Image src={capaUrl} alt="" fill priority sizes="(max-width: 768px) 100vw, 576px" className="object-cover" />
-          </div>
-        </div>
-      )}
+      {/* O prato com os risquinhos laranja e o vapor, o mesmo em todo totem.
+          Só com altura de sobra: no tablet deitado ele empurraria o resto.
+          As bordas da foto já vêm transparentes no arquivo, e somem no creme
+          sem a mesa virar um retângulo. */}
+      <div className="relative mt-[2vh] hidden min-h-0 w-full max-w-2xl flex-1 [@media(min-height:700px)]:block">
+        <Image src="/totem/prato-descanso.webp" alt="" fill priority sizes="(max-width: 768px) 100vw, 672px" className="object-contain" />
+      </div>
 
       {/* as três garantias do pé */}
       <ul

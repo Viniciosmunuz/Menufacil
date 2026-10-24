@@ -83,12 +83,10 @@ export function TotemOcioso({
   href,
   nome,
   logoUrl,
-  capaUrl,
 }: {
   href: string;
   nome: string;
   logoUrl: string | null;
-  capaUrl: string | null;
 }) {
   const cart = useCart();
   const temItens = cartCount(cart) > 0;
@@ -134,5 +132,5 @@ export function TotemOcioso({
   }, [href, temItens, dormindo]);
 
   if (!dormindo) return null;
-  return <TotemDescanso nome={nome} logoUrl={logoUrl} capaUrl={capaUrl} aoTocar={() => definirDescanso(false)} />;
+  return <TotemDescanso nome={nome} logoUrl={logoUrl} aoTocar={() => definirDescanso(false)} />;
 }
