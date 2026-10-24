@@ -16,7 +16,7 @@ import { formatCents } from "@/lib/format";
 import { soRetirada } from "@/lib/opening-hours";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
-import { getPublicRestaurant } from "@/server/public/restaurants";
+import { getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
 import { lockedStore } from "@/server/public/store";
 
 export async function generateMetadata({ params }: PageProps<"/restaurante/[slug]">): Promise<Metadata> {
@@ -52,6 +52,8 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   const data = await getPublicRestaurant(slug, sp.previa === "1");
   if (!data) notFound();
   const { restaurant: r, isPreview, open } = data;
+  // o selo "Mais pedido" dos pratos que mais saíram no mês
+  const campeoes = await maisPedidos(r.id);
   // entrou pelo link do restaurante: nada que leve aos outros (voltar, favoritos)
   const standalone = (await lockedStore())?.slug === r.slug;
 
@@ -230,6 +232,9 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 addons={addons}
                 canOrder={canOrder}
                 closedMessage={closedMessage}
+                maisPedidos={campeoes}
+                // o último pedido deste celular, de volta ao carrinho num toque
+                pedirDeNovo
               />
             )}
           </div>

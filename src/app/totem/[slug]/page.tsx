@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { LogoIcon } from "@/components/brand/logo";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { isOpenNow } from "@/lib/opening-hours";
-import { getPublicRestaurant } from "@/server/public/restaurants";
+import { getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
 
 import { AtivarTotem } from "./ativar";
 import { TotemOcioso } from "./ocioso";
@@ -40,6 +40,8 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
   if (sp.ativar === "1") return <AtivarTotem slug={r.slug} nome={r.name} />;
 
   const aberto = isOpenNow(r.openMode, r.openingHours);
+  // o selo "Mais pedido" dos pratos que mais saíram no mês
+  const campeoes = await maisPedidos(r.id);
   const categorias = r.menuCategories.filter((c) => c.products.length > 0 && !c.pizzaFlavors);
   const sabores = r.menuCategories
     .filter((c) => c.pizzaFlavors)
@@ -136,6 +138,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
             // arrastar uma faixa de abas de pé é pior do que correr os
             // olhos por uma lista parada
             categoriasNaLateral
+            maisPedidos={campeoes}
           />
         )}
       </div>

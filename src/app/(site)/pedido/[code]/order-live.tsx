@@ -5,15 +5,22 @@ import { useEffect, useState } from "react";
 
 import { clearCart, useCart } from "@/components/site/cart-store";
 import { markOrderOpened, markOrderSent, rememberOrder, useOrderOpened, useOrderSent } from "@/components/site/orders-store";
+import { guardarUltimoPedido } from "@/components/site/ultimo-pedido";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton, copyToClipboard } from "@/components/ui/copy-button";
 
-/** esvazia o carrinho depois que o pedido deste restaurante foi feito */
+/**
+ * Esvazia o carrinho depois que o pedido deste restaurante foi feito -- e,
+ * antes de esvaziar, guarda os itens como o "último pedido", que é o que o
+ * "Pedir de novo" do cardápio põe de volta.
+ */
 export function ClearCartAfterOrder({ restaurantId }: { restaurantId: string }) {
   const cart = useCart();
   useEffect(() => {
-    if (cart.restaurant?.id === restaurantId) clearCart();
-  }, [cart.restaurant?.id, restaurantId]);
+    if (cart.restaurant?.id !== restaurantId) return;
+    guardarUltimoPedido(restaurantId, cart.items);
+    clearCart();
+  }, [cart.restaurant?.id, cart.items, restaurantId]);
   return null;
 }
 

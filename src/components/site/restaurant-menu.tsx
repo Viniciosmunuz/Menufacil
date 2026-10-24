@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, ShoppingBag, Star, X } from "lucide-react";
+import { CircleCheck, Flame, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, Search, ShoppingBag, Star, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -44,8 +44,9 @@ import {
   type PizzaFlavor,
 } from "@/lib/pizza";
 
-import { addToCart, cartCount, cartSubtotal, useCart, type CartRestaurant } from "./cart-store";
+import { addToCart, cartCount, cartSubtotal, useCart, type CartItem, type CartRestaurant } from "./cart-store";
 import { QuantityStepper } from "./quantity-stepper";
+import { useUltimoPedido } from "./ultimo-pedido";
 
 export type MenuProduct = {
   id: string;
@@ -79,6 +80,77 @@ function Price({ p, flavors, className }: { p: MenuProduct; flavors: PizzaFlavor
       {!!p.promoPriceCents && !from && <s className="text-[0.8em] text-faint">{formatCents(p.priceCents)}</s>}
     </span>
   );
+}
+
+/** o selo dos pratos que mais saíram no mês, por cima da foto */
+function SeloMaisPedido({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[0.68rem] font-extrabold text-brand-ink shadow-sm",
+        className,
+      )}
+    >
+      <Flame className="size-3" aria-hidden="true" />
+      Mais pedido
+    </span>
+  );
+}
+
+/**
+ * Monta de novo um item do último pedido, com o cardápio de hoje.
+ *
+ * O preço é o de agora, e não o guardado. Volta null quando o item não dá
+ * mais para pedir do mesmo jeito: o prato, uma opção, um sabor ou um
+ * acompanhamento saiu do cardápio ou esgotou. Esse item fica de fora, e o
+ * resto do pedido vai.
+ */
+function remontarItem(
+  item: CartItem,
+  p: MenuProduct | undefined,
+  sabores: PizzaFlavor[],
+  acompanhamentos: Addon[],
+): Omit<CartItem, "key"> | null {
+  if (!p || !p.available) return null;
+  const groups = p.optionGroups;
+  const selected = item.optionIds ?? [];
+  const flavorIds = item.flavorIds ?? [];
+  const addonPicks = item.addons ?? [];
+
+  // o que sumiu do cardápio não aparece nas regras abaixo: confere antes
+  const opcoes = new Set(groups.flatMap((g) => g.options.map((o) => o.id)));
+  if (selected.some((id) => !opcoes.has(id))) return null;
+  if (flavorIds.some((id) => !sabores.some((f) => f.id === id))) return null;
+  const addonsDoPrato = acceptsAddons(p) ? acompanhamentos : [];
+  if (addonPicks.some((a) => !addonsDoPrato.some((x) => x.id === a.productId))) return null;
+
+  const slots = flavorSlots(p);
+  const sizeName = slots ? (groups[0]?.options.find((o) => selected.includes(o.id))?.name ?? null) : null;
+  const problemas = [
+    ...(slots ? pizzaProblems(sabores, flavorIds, slots, sizeName) : []),
+    ...selectionProblems(groups, selected),
+    ...addonProblems(addonsDoPrato, addonPicks),
+  ];
+  if (problemas.length > 0) return null;
+
+  return {
+    productId: p.id,
+    name: p.name,
+    unitPriceCents:
+      (slots ? pizzaPrice(sabores, flavorIds, sizeName) : unitPrice(p)) +
+      optionsPrice(groups, selected) +
+      addonsPrice(addonsDoPrato, addonPicks),
+    quantity: item.quantity,
+    notes: item.notes ?? "",
+    imageUrl: p.imageUrl,
+    optionIds: selected,
+    flavorIds,
+    addons: addonPicks,
+    optionsText:
+      [slots ? flavorsText(sabores, flavorIds, slots) : null, optionsText(groups, selected), addonsText(addonsDoPrato, addonPicks)]
+        .filter(Boolean)
+        .join(" · ") || null,
+  };
 }
 
 /** grupo de opções na janela do produto: escolha única vira "bolinha", múltipla vira "quadradinho" */
@@ -385,12 +457,15 @@ function ProductRow({
   flavors,
   onOpen,
   empilhado = false,
+  maisPedido = false,
 }: {
   p: MenuProduct;
   flavors: PizzaFlavor[];
   onOpen: (p: MenuProduct) => void;
   /** foto em cima do texto em qualquer largura; é o cartão do totem */
   empilhado?: boolean;
+  /** um dos pratos que mais saíram no mês */
+  maisPedido?: boolean;
 }) {
   return (
     // content-visibility: o navegador não gasta desenho com o cartão que
@@ -450,6 +525,7 @@ function ProductRow({
               <LogoIcon className="h-8 opacity-40" />
             </span>
           )}
+          {maisPedido && p.available && <SeloMaisPedido className="absolute top-1.5 left-1.5" />}
           {p.available ? (
             <AddBadge className="absolute right-1 bottom-1 sm:-right-1.5 sm:-bottom-1.5" />
           ) : (
@@ -473,6 +549,8 @@ export function RestaurantMenu({
   barraSempreVisivel = false,
   duasColunas = false,
   categoriasNaLateral = false,
+  maisPedidos = [],
+  pedirDeNovo = false,
 }: {
   restaurant: CartRestaurant;
   categories: MenuCategory[];
@@ -526,6 +604,14 @@ export function RestaurantMenu({
    * cardápio.
    */
   categoriasNaLateral?: boolean;
+  /** ids dos pratos que mais saíram no mês: ganham o selo "Mais pedido" */
+  maisPedidos?: string[];
+  /**
+   * O cartão "Pedir de novo" no topo, com o último pedido deste celular.
+   * Só no cardápio do link: no totem o aparelho é de todo mundo, e o último
+   * pedido é de outro cliente.
+   */
+  pedirDeNovo?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -577,6 +663,39 @@ export function RestaurantMenu({
   const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
+  const campeoes = useMemo(() => new Set(maisPedidos), [maisPedidos]);
+
+  // "Pedir de novo": o último pedido deste celular, remontado com o
+  // cardápio de hoje. O que acabou fica de fora e é contado, para avisar.
+  const ultimo = useUltimoPedido(restaurant.id);
+  const [trocarCarrinho, setTrocarCarrinho] = useState(false);
+  const deNovo = useMemo(() => {
+    if (!pedirDeNovo || !ultimo) return null;
+    const porId = new Map(categories.flatMap((c) => c.products).map((p) => [p.id, p]));
+    const linhas: Omit<CartItem, "key">[] = [];
+    let faltaram = 0;
+    for (const item of ultimo.itens) {
+      const linha = remontarItem(item, porId.get(item.productId), pizzaFlavors, addons);
+      if (linha) linhas.push(linha);
+      else faltaram++;
+    }
+    if (linhas.length === 0) return null;
+    const total = linhas.reduce((soma, l) => soma + l.unitPriceCents * l.quantity, 0);
+    return { linhas, faltaram, total };
+  }, [pedirDeNovo, ultimo, categories, pizzaFlavors, addons]);
+
+  function pedirOutraVez(trocar: boolean) {
+    if (!deNovo) return;
+    for (const [i, linha] of deNovo.linhas.entries()) {
+      // o carrinho de outro restaurante só é trocado depois de a pessoa dizer que sim
+      if (addToCart(restaurant, linha, { replace: trocar && i === 0 }) === "conflict") {
+        setTrocarCarrinho(true);
+        return;
+      }
+    }
+    setTrocarCarrinho(false);
+    setToast("Seu último pedido");
+  }
 
   // Buscou lá no meio do cardápio: a lista encolhe e o resultado fica lá
   // em cima, fora da tela -- a pessoa via um vazio e achava que não tinha
@@ -742,6 +861,48 @@ export function RestaurantMenu({
           baixo aparecia borrado atrás da busca, e o que se via era um
           cartão cortado no meio com um rastro laranja em cima -- parecia
           defeito de tela, não efeito. */}
+      {/* o último pedido deste celular, quando ainda não começou outro aqui */}
+      {deNovo && canOrder && !buscando && !mineInCart?.items.length && (
+        <section className="mt-6 rounded-card border border-brand/40 bg-brand-soft p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
+              <RotateCcw className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-extrabold">Pedir de novo</h2>
+              <p className="line-clamp-2 text-sm text-muted">
+                {deNovo.linhas.map((l) => `${l.quantity}x ${l.name}`).join(" · ")}
+              </p>
+              {deNovo.faltaram > 0 && (
+                <p className="mt-1 text-xs font-semibold text-faint">
+                  {deNovo.faltaram === 1
+                    ? "1 item do último pedido não está disponível hoje e ficou de fora."
+                    : `${deNovo.faltaram} itens do último pedido não estão disponíveis hoje e ficaram de fora.`}
+                </p>
+              )}
+            </div>
+          </div>
+          {trocarCarrinho ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="text-sm font-semibold">Seu carrinho tem itens de outro restaurante. Trocar pelo pedido anterior?</p>
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={() => pedirOutraVez(true)}>
+                  Trocar
+                </Button>
+                <Button variant="secondary" className="flex-1" onClick={() => setTrocarCarrinho(false)}>
+                  Manter o carrinho
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button className="mt-3 w-full" onClick={() => pedirOutraVez(false)}>
+              <ShoppingBag className="size-4" aria-hidden="true" />
+              Pôr no carrinho · {formatCents(deNovo.total)}
+            </Button>
+          )}
+        </section>
+      )}
+
       {/* marca o começo do cardápio, para a busca voltar até aqui */}
       <div ref={topoRef} aria-hidden="true" />
       <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
@@ -847,10 +1008,12 @@ export function RestaurantMenu({
                           <LogoIcon className="h-10 opacity-40" />
                         </span>
                       )}
-                      {!!p.promoPriceCents && (
+                      {p.promoPriceCents ? (
                         <span className="absolute top-2 left-2 rounded-full bg-brand px-2 py-0.5 text-[0.7rem] font-extrabold text-brand-ink">
                           Promoção
                         </span>
+                      ) : (
+                        campeoes.has(p.id) && <SeloMaisPedido className="absolute top-2 left-2" />
                       )}
                     </span>
                     <span className="flex flex-1 flex-col gap-1 p-3">
@@ -882,7 +1045,14 @@ export function RestaurantMenu({
             {c.description && <p className="text-sm text-muted">{c.description}</p>}
             <ul className={cn("mt-3 grid grid-cols-2 gap-3", !duasColunas && "sm:grid-cols-1 2xl:grid-cols-2")}>
               {c.products.map((p) => (
-                <ProductRow key={p.id} p={p} flavors={pizzaFlavors} onOpen={open} empilhado={duasColunas} />
+                <ProductRow
+                  key={p.id}
+                  p={p}
+                  flavors={pizzaFlavors}
+                  onOpen={open}
+                  empilhado={duasColunas}
+                  maisPedido={campeoes.has(p.id)}
+                />
               ))}
             </ul>
           </section>

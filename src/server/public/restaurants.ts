@@ -223,3 +223,26 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
     open: isOpenNow(restaurant.openMode, restaurant.openingHours),
   };
 });
+
+/**
+ * Os pratos que mais saíram nos últimos 30 dias, para o selo "Mais pedido"
+ * do cardápio. No máximo três, e só com pelo menos cinco unidades vendidas:
+ * com menos, o selo diria "mais pedido" de um prato que saiu duas vezes.
+ *
+ * Conta o delivery e o totem; a mesa do salão fica de fora, como em todo
+ * número do cardápio. Pedido cancelado não conta.
+ */
+export async function maisPedidos(restaurantId: string): Promise<string[]> {
+  const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const linhas = await db.orderItem.groupBy({
+    by: ["productId"],
+    where: {
+      productId: { not: null },
+      order: { restaurantId, origin: { not: "SALAO" }, status: { not: "CANCELED" }, createdAt: { gte: desde } },
+    },
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: 3,
+  });
+  return linhas.filter((l) => l.productId && (l._sum.quantity ?? 0) >= 5).map((l) => l.productId!);
+}
