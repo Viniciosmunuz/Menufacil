@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { AtSign, Bike, ChevronDown, Clock, Eye, MapPin, ShoppingBag, Wallet } from "lucide-react";
+import { Bike, Clock, Eye, ShoppingBag, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -10,6 +10,7 @@ import { deliveryTimeLabel } from "@/components/public/restaurant-card";
 import { CartPanel } from "@/components/site/cart-panel";
 import { FavoriteButton } from "@/components/site/favorites";
 import { BackButton, ShareButton } from "@/components/site/restaurant-actions";
+import { InfoDoRestaurante } from "@/components/site/info-do-restaurante";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
@@ -165,14 +166,33 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </p>
               )}
 
-              <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-                {time && <Chip icon={Clock}>{time}</Chip>}
-                {r.deliveryEnabled && !entregaPausada && (
-                  <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
-                )}
-                {r.pickupEnabled && <Chip icon={ShoppingBag}>Retirada</Chip>}
-                {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}
-              </div>
+              {/* os selos de entrega e, do lado, as bolinhas de endereço e horários */}
+              <InfoDoRestaurante
+                selos={
+                  <>
+                    {time && <Chip icon={Clock}>{time}</Chip>}
+                    {r.deliveryEnabled && !entregaPausada && (
+                      <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
+                    )}
+                    {r.pickupEnabled && <Chip icon={ShoppingBag}>Retirada</Chip>}
+                    {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}
+                  </>
+                }
+                descricao={r.description}
+                endereco={place || null}
+                pagamento={
+                  [r.pixKey && "Pix", r.acceptsCard && "cartão (crédito ou débito)", r.acceptsCash && "dinheiro"]
+                    .filter(Boolean)
+                    .join(", ")
+                    .replace(/, ([^,]*)$/, " ou $1") || "combine com o restaurante"
+                }
+                instagram={r.instagram}
+                horarios={r.openingHours.map((h) => ({
+                  dia: WEEKDAYS[h.weekday],
+                  texto: h.closed ? "Fechado" : `${h.opensAt} às ${h.closesAt}`,
+                  hoje: h.weekday === today,
+                }))}
+              />
 
               {/* junto do aberto/fechado, que é onde o cliente olha para
                   saber se dá para pedir agora */}
@@ -181,53 +201,6 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                   No momento só estamos aceitando pedidos para retirada no balcão.
                 </p>
               )}
-
-              <details className="group mt-3 rounded-card border border-line bg-surface">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <MapPin className="size-4 shrink-0 text-brand" aria-hidden="true" />
-                    <span className="truncate">Endereço, horários e pagamento</span>
-                  </span>
-                  <ChevronDown className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                </summary>
-                <div className="grid gap-4 border-t border-line px-4 py-4 text-sm sm:grid-cols-2">
-                  <div className="flex flex-col gap-3 text-muted">
-                    {r.description && <p className="text-ink/85 sm:hidden">{r.description}</p>}
-                    {place && <p>{place}</p>}
-                    <p>
-                      <span className="font-bold text-ink">Pagamento:</span>{" "}
-                      {[r.pixKey && "Pix", r.acceptsCard && "cartão (crédito ou débito)", r.acceptsCash && "dinheiro"]
-                        .filter(Boolean)
-                        .join(", ")
-                        .replace(/, ([^,]*)$/, " ou $1") || "combine com o restaurante"}
-                      .
-                    </p>
-                    {r.instagram && (
-                      <a
-                        href={`https://instagram.com/${r.instagram}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex w-fit items-center gap-2 font-bold text-ink hover:text-brand"
-                      >
-                        <AtSign className="size-4 text-faint" aria-hidden="true" />
-                        {r.instagram}
-                      </a>
-                    )}
-                  </div>
-                  {r.openingHours.length > 0 && (
-                    <table className="w-full">
-                      <tbody>
-                        {r.openingHours.map((h) => (
-                          <tr key={h.weekday} className={cn(h.weekday === today ? "font-extrabold text-ink" : "text-muted")}>
-                            <td className="py-0.5 pr-4">{WEEKDAYS[h.weekday]}</td>
-                            <td className="py-0.5 text-right tabular-nums">{h.closed ? "Fechado" : `${h.opensAt} às ${h.closesAt}`}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </details>
             </div>
           </section>
 
