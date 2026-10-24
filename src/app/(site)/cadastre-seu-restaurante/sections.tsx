@@ -41,7 +41,10 @@ function Titulo({ children, sub }: { children: ReactNode; sub?: string }) {
 
 export function Topo() {
   return (
-    <section className="relative isolate overflow-hidden rounded-card border border-line px-5 py-8 sm:px-10 sm:py-14">
+    // O banner continua escuro no tema claro: o texto fica por cima de uma
+    // foto escurecida, e ali só letra clara se lê. As cores do tema são
+    // trocadas só aqui dentro, então o resto da página segue claro.
+    <section className="relative isolate overflow-hidden rounded-card border border-line px-5 py-8 [--color-bg:#08080a] [--color-faint:#8f8f99] [--color-ink:#f4f4f6] [--color-line:#27272e] [--color-muted:#c4c4cc] text-ink sm:px-10 sm:py-14">
       {/* a mesa posta, ao fundo: é de comida que a página fala */}
       <Image
         src="/demo/burger/capa.webp"

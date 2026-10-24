@@ -2,35 +2,38 @@
 
 /* ============================================================
    Identidade MenuFácil
-   Preto neutro de fundo, laranja da marca como cor de ação, cartões com
-   borda fina e cantos bem arredondados. As duas cores vêm da logo: o
-   laranja é a face iluminada da cúpula, o fundo é o preto em que ela mora.
+   Fundo creme claro, cartões brancos com borda fina e cantos bem
+   arredondados, e o laranja da marca como cor de ação. É o mesmo clima das
+   telas de espera do totem: claro, de restaurante, e não de painel de
+   sistema. (Até 25/10/2026 o sistema inteiro era preto.)
    ============================================================ */
 @theme {
-  /* Cinzas neutros, sem o azul que havia antes: ao lado de um preto puro,
-     cartão azulado fica parecendo outro tom de tela, não outra camada. */
-  --color-bg: #08080a;
-  --color-surface: #121215;
-  --color-surface-2: #1a1a1e;
-  --color-surface-3: #232329;
-  --color-line: #27272e;
-  --color-line-strong: #3b3b45;
+  /* creme no fundo, branco nos cartões: cada camada um pouco mais clara
+     que a de baixo, do mesmo jeito que o preto ia clareando antes */
+  --color-bg: #f6f1ea;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8f4ee;
+  --color-surface-3: #eee6db;
+  --color-line: #e7ddd0;
+  --color-line-strong: #d3c6b5;
 
-  --color-ink: #f4f4f6;
-  --color-muted: #a6a6ae;
-  --color-faint: #73737d;
+  --color-ink: #1d2026;
+  --color-muted: #5b6168;
+  --color-faint: #8a8f96;
 
-  /* laranja da marca, tirado da logo; texto escuro por cima (6,3:1) */
   --color-brand: #f9680b;
-  --color-brand-hover: #ff7f2e;
-  --color-brand-press: #d8550a;
+  /* no claro, o toque escurece o laranja em vez de clarear */
+  --color-brand-hover: #e85d05;
+  --color-brand-press: #c94f08;
   --color-brand-ink: #1a0d03;
   --color-brand-soft: rgb(249 104 11 / 0.12);
 
-  --color-success: #34d27b;
-  --color-warning: #f5b53d;
-  --color-danger: #f26363;
-  --color-info: #5aa2ff;
+  /* tons mais fechados que os do escuro: em fundo claro, o verde e o
+     amarelo vivos somem como texto */
+  --color-success: #16a34a;
+  --color-warning: #b7791f;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
 
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-script: var(--font-caveat), "Segoe Script", cursive;
@@ -41,7 +44,7 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   html {
