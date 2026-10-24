@@ -55,7 +55,7 @@ export function PanelShell({
    * Os hrefs de `fixos` ficam na barra; o resto vai para "Mais". `topo`
    * entra na linha fina que sobra em cima (o aberto/fechado), `nome` é o
    * que aparece ao lado do logo, e `selos` ficam por cima dos ícones. Sem
-   * isto, o celular continua com as abas no alto -- é o caso do admin.
+   * isto, o celular continua com as abas no alto.
    */
   barraDeBaixo?: { fixos: string[]; nome: string; topo?: ReactNode; selos?: Record<string, ReactNode> };
   /**

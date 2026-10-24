@@ -18,6 +18,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         { href: "/admin/categorias", label: "Categorias", icon: <Tags /> },
         { href: "/admin/contatos", label: "Contatos", icon: <MessageSquareText /> },
       ]}
+      // no celular, o mesmo jeito do painel do dono: o dia a dia fica
+      // embaixo, e Categorias e Contatos vão para "Mais"
+      barraDeBaixo={{ fixos: ["/admin", "/admin/restaurantes", "/admin/pedidos"], nome: "Administração" }}
     >
       {children}
     </PanelShell>
