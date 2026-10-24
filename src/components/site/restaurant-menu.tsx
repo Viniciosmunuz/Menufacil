@@ -863,7 +863,7 @@ export function RestaurantMenu({
           defeito de tela, não efeito. */}
       {/* o último pedido deste celular, quando ainda não começou outro aqui */}
       {deNovo && canOrder && !buscando && !mineInCart?.items.length && (
-        <section className="mt-6 rounded-card border border-brand/40 bg-brand-soft p-4">
+        <section className="mt-4 rounded-card border border-brand/40 bg-brand-soft p-4">
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
               <RotateCcw className="size-5" aria-hidden="true" />
@@ -905,7 +905,7 @@ export function RestaurantMenu({
 
       {/* marca o começo do cardápio, para a busca voltar até aqui */}
       <div ref={topoRef} aria-hidden="true" />
-      <div className="sticky top-0 z-20 -mx-4 mt-6 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
+      <div className="sticky top-0 z-20 -mx-4 mt-4 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0">
         <div className={cn(categoriasNaLateral && "flex items-center gap-2")}>
         {categoriasNaLateral && visible.length > 1 && (
           <button

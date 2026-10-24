@@ -111,9 +111,12 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
-          {/* capa de ponta a ponta no celular */}
+          {/* Capa de ponta a ponta no celular, baixa como a de perfil do
+              LinkedIn: é moldura, não vitrine. Alta (240px), ela e o perfil
+              empurravam o cardápio para fora da primeira tela, e o cliente
+              tinha de rolar antes de ver um prato. */}
           <section className="-mx-4 -mt-4 lg:mx-0 lg:mt-0">
-            <div className="relative h-60 overflow-hidden bg-surface-2 sm:h-72 lg:rounded-card lg:border lg:border-line">
+            <div className="relative h-28 overflow-hidden bg-surface-2 sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
               {r.coverUrl ? (
                 <Image src={r.coverUrl} alt="" fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
               ) : (
@@ -121,8 +124,8 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                   <LogoIcon className="h-16 opacity-50" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-bg/40" aria-hidden="true" />
-              <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+              <div className="absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-bg/30" aria-hidden="true" />
+              <div className="absolute inset-x-3 top-3 flex items-center justify-between">
                 {standalone ? <span /> : <BackButton />}
                 <div className="flex gap-2">
                   <ShareButton title={r.name} />
@@ -131,9 +134,9 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               </div>
             </div>
 
-            <div className="relative -mt-16 px-4 lg:px-6">
+            <div className="relative -mt-10 px-4 lg:-mt-12 lg:px-6">
               <div className="flex items-end justify-between gap-3">
-                <span className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-2xl">
+                <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-lg lg:size-24">
                   {r.logoUrl ? (
                     <Image src={r.logoUrl} alt={`Logo de ${r.name}`} fill sizes="96px" className="object-cover" />
                   ) : (
@@ -142,7 +145,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </span>
                 <span
                   className={cn(
-                    "mb-2 inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[0.82rem] font-extrabold",
+                    "mb-1 inline-flex h-8 items-center gap-2 rounded-full px-3 text-[0.8rem] font-extrabold",
                     open ? "bg-success/15 text-success ring-1 ring-success/30" : "bg-surface-2 text-muted ring-1 ring-line",
                   )}
                 >
@@ -152,11 +155,17 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </span>
               </div>
 
-              <h1 className="mt-3 text-[1.75rem] leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
+              <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
               {r.categories.length > 0 && <p className="mt-0.5 text-sm font-semibold text-muted">{r.categories.map((c) => c.name).join(" • ")}</p>}
-              {r.description && <p className="mt-3 max-w-2xl text-[0.95rem] leading-relaxed text-ink/85">{r.description}</p>}
+              {/* no celular, duas linhas: o texto inteiro fica no "Endereço,
+                  horários e pagamento" logo abaixo */}
+              {r.description && (
+                <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-ink/85 sm:line-clamp-none sm:text-[0.95rem]">
+                  {r.description}
+                </p>
+              )}
 
-              <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+              <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
                 {time && <Chip icon={Clock}>{time}</Chip>}
                 {r.deliveryEnabled && !entregaPausada && (
                   <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
@@ -173,7 +182,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </p>
               )}
 
-              <details className="group mt-4 rounded-card border border-line bg-surface">
+              <details className="group mt-3 rounded-card border border-line bg-surface">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
                   <span className="flex min-w-0 items-center gap-2">
                     <MapPin className="size-4 shrink-0 text-brand" aria-hidden="true" />
@@ -183,6 +192,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </summary>
                 <div className="grid gap-4 border-t border-line px-4 py-4 text-sm sm:grid-cols-2">
                   <div className="flex flex-col gap-3 text-muted">
+                    {r.description && <p className="text-ink/85 sm:hidden">{r.description}</p>}
                     {place && <p>{place}</p>}
                     <p>
                       <span className="font-bold text-ink">Pagamento:</span>{" "}
