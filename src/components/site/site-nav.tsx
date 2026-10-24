@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 
 import { cartCount, useCart } from "./cart-store";
 import { abrirChat, useChat } from "./chat-store";
+import { useDigitando } from "./digitando";
 
 export type NavCategory = { slug: string; name: string; icon: string | null };
 
@@ -112,6 +113,8 @@ export function BottomNav({ store }: { store?: { slug: string } | null }) {
   // procura quando quer falar com o restaurante -- antes a conversa ficava
   // no meio da página do pedido, e quem queria falar tinha de ir caçar
   const chat = useChat();
+  // com o teclado aberto a barra sobe para o meio da tela no iPhone: sai
+  const teclado = useDigitando();
   // A página de venda é uma chegada de fora, do Instagram, e fala com o dono
   // do restaurante, não com quem vai pedir comida. Ali a barra só tiraria a
   // atenção do botão de contato.
@@ -160,7 +163,7 @@ export function BottomNav({ store }: { store?: { slug: string } | null }) {
         chat.ativo ? conversa : { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },
       ];
 
-  if (venda) return null;
+  if (venda || teclado) return null;
 
   return (
     <nav

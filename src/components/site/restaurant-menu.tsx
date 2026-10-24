@@ -45,6 +45,7 @@ import {
 } from "@/lib/pizza";
 
 import { addToCart, cartCount, cartSubtotal, useCart, type CartItem, type CartRestaurant } from "./cart-store";
+import { useDigitando } from "./digitando";
 import { QuantityStepper } from "./quantity-stepper";
 import { useUltimoPedido } from "./ultimo-pedido";
 
@@ -638,6 +639,8 @@ export function RestaurantMenu({
   // quem está de pé com gente atrás
   const [gavetaAberta, setGavetaAberta] = useState(true);
   const cart = useCart();
+  const teclado = useDigitando();
+  const buscaRef = useRef<HTMLInputElement>(null);
 
   // Onde cada prato é procurado, em dois níveis. Primeiro o nome. Se
   // nenhum nome tiver tudo o que foi digitado, vale o texto completo:
@@ -668,6 +671,7 @@ export function RestaurantMenu({
       .map((c) => ({ ...c, products: c.products.filter((p) => combina(textos.get(p.id)?.[campo] ?? "", palavras)) }))
       .filter((c) => c.products.length > 0);
   }, [categories, textos, palavras, buscando]);
+  const totalAchado = visible.reduce((soma, c) => soma + c.products.length, 0);
   const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
@@ -704,6 +708,18 @@ export function RestaurantMenu({
     setTrocarCarrinho(false);
     setToast("Seu último pedido");
   }
+
+  // Rolou a tela com o teclado aberto: é sinal de que já digitou o que
+  // queria e quer ver o resultado. O teclado fecha (a busca continua) e a
+  // tela inteira fica para os pratos achados -- antes ele ficava aberto,
+  // cobrindo metade da lista.
+  useEffect(() => {
+    const fecharTeclado = () => {
+      if (document.activeElement === buscaRef.current) buscaRef.current?.blur();
+    };
+    window.addEventListener("touchmove", fecharTeclado, { passive: true });
+    return () => window.removeEventListener("touchmove", fecharTeclado);
+  }, []);
 
   // Buscou lá no meio do cardápio: a lista encolhe e o resultado fica lá
   // em cima, fora da tela -- a pessoa via um vazio e achava que não tinha
@@ -937,7 +953,9 @@ export function RestaurantMenu({
         <label className="relative block w-full">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-faint" aria-hidden="true" />
           <input
+            ref={buscaRef}
             type="search"
+            enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar no cardápio"
@@ -949,7 +967,8 @@ export function RestaurantMenu({
           />
         </label>
         </div>
-        {visible.length > 1 && !categoriasNaLateral && (
+        {/* buscando, as abas de categoria saem: a tela mostra só o resultado */}
+        {visible.length > 1 && !categoriasNaLateral && !buscando && (
           <nav
             ref={tabsRef}
             className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
@@ -1049,6 +1068,18 @@ export function RestaurantMenu({
           </section>
         )}
 
+        {buscando && visible.length > 0 && (
+          <div className="-mt-2 flex items-center justify-between gap-3 text-sm">
+            <p className="text-muted">
+              {totalAchado === 1 ? "1 resultado" : `${totalAchado} resultados`} para{" "}
+              <span className="font-bold text-ink">“{query.trim()}”</span>
+            </p>
+            <button type="button" onClick={() => setQuery("")} className="shrink-0 font-bold text-brand hover:underline">
+              Limpar
+            </button>
+          </div>
+        )}
+
         {visible.length === 0 && (
           <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line-strong px-4 py-10 text-center text-muted">
             <p>Nada encontrado para “{query.trim()}”.</p>
@@ -1123,7 +1154,8 @@ export function RestaurantMenu({
       </div>
 
       {/* barra do carrinho no celular (a coluna da direita faz esse papel no computador) */}
-      {mineInCart && mineInCart.items.length > 0 && (
+      {/* com o teclado aberto ela subiria para o meio da tela: sai */}
+      {mineInCart && mineInCart.items.length > 0 && !teclado && (
         <div className={cn("fixed inset-x-0 z-30 px-4 pb-3", !barraSempreVisivel && "lg:hidden", barraDoCarrinho)}>
           <Link
             href={carrinhoHref}

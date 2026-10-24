@@ -38,10 +38,15 @@ export async function generateMetadata({ params }: PageProps<"/restaurante/[slug
   };
 }
 
+/**
+ * Uma informação da casa (tempo, entrega, retirada, mínimo): ícone e texto,
+ * sem contorno. Com a bolinha em volta parecia botão, e não é -- o contorno
+ * fica só para o que se toca, as bolinhas de endereço e horários.
+ */
 function Chip({ icon: Icon, children }: { icon: typeof Clock; children: React.ReactNode }) {
   return (
-    <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-[0.8rem] font-bold text-ink/90">
-      <Icon className="size-4 text-brand" aria-hidden="true" />
+    <span className="inline-flex h-7 shrink-0 items-center gap-1 text-[0.8rem] font-semibold text-ink/80">
+      <Icon className="size-3.5 text-brand" aria-hidden="true" />
       {children}
     </span>
   );

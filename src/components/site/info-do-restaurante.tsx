@@ -41,8 +41,8 @@ export function InfoDoRestaurante({
       aria-label={rotulo}
       title={rotulo}
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-full border transition-colors [&_svg]:size-4",
-        aberto === p ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface-2 text-brand hover:border-line-strong",
+        "grid size-7 shrink-0 place-items-center rounded-full border transition-colors [&_svg]:size-3.5",
+        aberto === p ? "border-brand bg-brand text-brand-ink" : "border-line-strong bg-transparent text-brand hover:border-brand/60",
       )}
     >
       {icone}
@@ -51,10 +51,13 @@ export function InfoDoRestaurante({
 
   return (
     <>
-      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+      <div className="-mx-4 mt-2 flex items-center gap-x-3 gap-y-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {selos}
-        {bolinha("endereco", "Endereço e pagamento", <MapPin aria-hidden="true" />)}
-        {horarios.length > 0 && bolinha("horarios", "Horários", <CalendarClock aria-hidden="true" />)}
+        {/* as bolinhas juntas, no fim da fileira: são as únicas que se tocam */}
+        <span className="ml-auto flex shrink-0 gap-1.5 pl-1">
+          {bolinha("endereco", "Endereço e pagamento", <MapPin aria-hidden="true" />)}
+          {horarios.length > 0 && bolinha("horarios", "Horários", <CalendarClock aria-hidden="true" />)}
+        </span>
       </div>
 
       {aberto === "endereco" && (
