@@ -297,7 +297,7 @@ export function PrintSettings({
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-96"
+          className="fixed inset-x-4 bottom-24 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:w-96 lg:bottom-6"
         >
           {/* o recado fica em cima do pedido: pedido novo é dinheiro parado
               esperando um toque, recado é recado */}

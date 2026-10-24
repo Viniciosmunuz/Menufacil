@@ -517,3 +517,17 @@ export async function mesAteAgora(escopo: Prisma.OrderWhereInput = {}): Promise<
     maisVendido: maior("centavos"),
   };
 }
+
+/**
+ * Quantos pedidos estão esperando o balcão agora.
+ *
+ * É o número do selo em Pedidos, na barra de baixo do celular. Conta o
+ * mesmo que toca o sino e sai na impressora: o pedido do 100% Delivery que
+ * ainda espera o Pix fica de fora -- um carrinho abandonado deixaria o selo
+ * aceso a noite inteira, e selo que nunca apaga ensina a ignorar o selo.
+ */
+export function pedidosEsperando(restaurantId: string) {
+  return db.order.count({
+    where: { restaurantId, ...SO_DELIVERY, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
+  });
+}

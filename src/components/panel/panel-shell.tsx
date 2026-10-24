@@ -9,6 +9,7 @@ import { Logo, LogoIcon } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 import { logout } from "@/server/auth/actions";
 
+import { BarraDeBaixo } from "./barra-de-baixo";
 import { SidebarNav, TabsNav, type NavItem } from "./nav-link";
 
 // Casca dos dois painéis (admin e restaurante): menu lateral no
@@ -29,6 +30,7 @@ export function PanelShell({
   menuAberto,
   larga,
   atalho,
+  barraDeBaixo,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -45,6 +47,15 @@ export function PanelShell({
    * seções ele pesava igual a Pedidos e Cardápio, que são o trabalho.
    */
   atalho?: { href: string; label: string; icon: ReactNode };
+  /**
+   * No celular, o menu embaixo em vez das abas no alto.
+   *
+   * Os hrefs de `fixos` ficam na barra; o resto vai para "Mais". `topo`
+   * entra na linha fina que sobra em cima (o aberto/fechado), `nome` é o
+   * que aparece ao lado do logo, e `selos` ficam por cima dos ícones. Sem
+   * isto, o celular continua com as abas no alto -- é o caso do admin.
+   */
+  barraDeBaixo?: { fixos: string[]; nome: string; topo?: ReactNode; selos?: Record<string, ReactNode> };
   /**
    * A tela em que o menu fica aberto, com os nomes das seções.
    *
@@ -111,6 +122,17 @@ export function PanelShell({
 
       <div className="min-w-0">
         {banner}
+        {barraDeBaixo ? (
+          // uma linha só: o logo, o restaurante e se ele está aberto. O resto
+          // do menu desceu para onde o polegar alcança.
+          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur lg:hidden">
+            <Link href={homeHref} aria-label="Início" className="shrink-0">
+              <LogoIcon className="size-8 text-brand" />
+            </Link>
+            <p className="min-w-0 flex-1 truncate font-extrabold">{barraDeBaixo.nome}</p>
+            {barraDeBaixo.topo}
+          </header>
+        ) : (
         <header className="border-b border-line bg-surface/40 px-4 pt-4 pb-3 lg:hidden">
           <div className="mb-3 flex items-center justify-between gap-3">
             <Link href={homeHref}>
@@ -124,7 +146,19 @@ export function PanelShell({
           <div className="mb-3 truncate text-sm font-semibold text-faint">{context}</div>
           <TabsNav items={nav} />
         </header>
-        <main className={cn("w-full px-4 py-6 sm:px-6", larguraToda ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10")}>{children}</main>
+        )}
+        <main
+          className={cn(
+            "w-full px-4 py-6 sm:px-6",
+            barraDeBaixo && "pb-28",
+            larguraToda ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10",
+          )}
+        >
+          {children}
+        </main>
+        {barraDeBaixo && (
+          <BarraDeBaixo items={nav} fixos={barraDeBaixo.fixos} selos={barraDeBaixo.selos} atalho={atalho} contexto={context} />
+        )}
       </div>
     </div>
   );
