@@ -28,6 +28,7 @@ export function PanelShell({
   children,
   menuAberto,
   larga,
+  atalho,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -36,6 +37,14 @@ export function PanelShell({
   userName: string;
   banner?: ReactNode;
   children: ReactNode;
+  /**
+   * Um destino que não é seção: fica como ícone ao lado do Sair.
+   *
+   * O Menu Fácil PC é disso: ninguém "navega" até lá no dia a dia -- entra
+   * uma vez para baixar o programa e parear o computador. Na lista de
+   * seções ele pesava igual a Pedidos e Cardápio, que são o trabalho.
+   */
+  atalho?: { href: string; label: string; icon: ReactNode };
   /**
    * A tela em que o menu fica aberto, com os nomes das seções.
    *
@@ -53,6 +62,17 @@ export function PanelShell({
   // o menu em ícones devolve largura para o conteúdo, mas quem usa a tela
   // inteira é só o salão: num formulário, linha de 1600px não se lê
   const larguraToda = !!larga && pathname.includes(larga);
+
+  const atalhoButton = atalho ? (
+    <Link
+      href={atalho.href}
+      aria-label={atalho.label}
+      title={atalho.label}
+      className="grid size-10 shrink-0 place-items-center rounded-control text-muted hover:bg-surface-2 hover:text-ink [&_svg]:size-4"
+    >
+      {atalho.icon}
+    </Link>
+  ) : null;
 
   const logoutButton = (
     <form action={logout}>
@@ -82,7 +102,10 @@ export function PanelShell({
         <SidebarNav items={nav} compacto={compacto} />
         <div className="mt-auto border-t border-line pt-4">
           {!compacto && <p className="truncate px-3 pb-2 text-sm text-faint">{userName}</p>}
-          {logoutButton}
+          <div className={cn("flex items-center gap-1", compacto && "flex-col")}>
+            {logoutButton}
+            {atalhoButton}
+          </div>
         </div>
       </aside>
 
@@ -93,7 +116,10 @@ export function PanelShell({
             <Link href={homeHref}>
               <Logo />
             </Link>
-            {logoutButton}
+            <div className="flex items-center gap-1">
+              {logoutButton}
+              {atalhoButton}
+            </div>
           </div>
           <div className="mb-3 truncate text-sm font-semibold text-faint">{context}</div>
           <TabsNav items={nav} />

@@ -1,8 +1,7 @@
-import { BookOpen, Bike, LayoutDashboard, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
+import { BookOpen, Download, Handshake, LayoutDashboard, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { noAr } from "@/lib/features";
@@ -51,16 +50,21 @@ export default async function RestaurantPanelLayout({
         ...(noAr("salaoEnabled") && restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
-        // o admin da plataforma pode ter desligado o recurso para este restaurante
-        ...(restaurant.printEnabled
-          ? [{ href: `${base}/menu-facil-pc`, label: "Menu Fácil PC", icon: <CloudPrinterIcon /> }]
-          : []),
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck /> }] : []),
-        // 100% Delivery: idem. Quem nao tem o recurso liberado nao ve a
-        // secao nem sabe que ela existe
-        ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Entrega", icon: <Bike /> }] : []),
+        // "Mercado Pago", e não "Entrega": é ali que o restaurante conecta a
+        // conta dele, e era isso que ninguém achava procurando por uma
+        // bicicleta
+        ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Mercado Pago", icon: <Handshake /> }] : []),
       ]}
+      // baixar o programa do balcão é coisa de uma vez só: vira um ícone ao
+      // lado do Sair, e não uma seção do mesmo peso que Pedidos. O admin da
+      // plataforma pode ter desligado o recurso para este restaurante.
+      atalho={
+        restaurant.printEnabled
+          ? { href: `${base}/menu-facil-pc`, label: "Menu Fácil PC: baixar e parear o computador", icon: <Download /> }
+          : undefined
+      }
     >
       {/* anota a seção, para o atalho da tela inicial voltar aqui */}
       <LembraATela />
