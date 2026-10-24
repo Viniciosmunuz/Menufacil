@@ -11,6 +11,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { formatTime } from "@/lib/format";
 
 import {
+  conectarMercadoPagoDoTotem,
+  desconectarContaDoTotem,
   desconectarMercadoPago,
   gerarCodigoDoTotem,
   removerTotem,
@@ -137,6 +139,32 @@ export function DesconectarForm({ restaurantId }: { restaurantId: string }) {
       <input type="hidden" name="restaurantId" value={restaurantId} />
       <ConfirmButton confirmText="Sim, remover" variant="outline" size="sm">
         Remover esta conta do Mercado Pago
+      </ConfirmButton>
+      <Recado state={state} />
+    </form>
+  );
+}
+
+/** o botão que leva para o Mercado Pago; a ação redireciona, não devolve estado */
+export function ConectarContaForm({ restaurantId, conectada }: { restaurantId: string; conectada: boolean }) {
+  return (
+    <form action={conectarMercadoPagoDoTotem}>
+      <input type="hidden" name="restaurantId" value={restaurantId} />
+      <SubmitButton variant={conectada ? "secondary" : "primary"} pendingText="Abrindo o Mercado Pago...">
+        {conectada ? "Conectar outra conta" : "Conectar Mercado Pago"}
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function DesconectarContaForm({ restaurantId }: { restaurantId: string }) {
+  const [state, action] = useTotemForm(desconectarContaDoTotem);
+
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="restaurantId" value={restaurantId} />
+      <ConfirmButton confirmText="Sim, desconectar" variant="outline" size="sm">
+        Desconectar a conta
       </ConfirmButton>
       <Recado state={state} />
     </form>

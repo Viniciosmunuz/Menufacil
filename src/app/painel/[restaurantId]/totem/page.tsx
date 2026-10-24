@@ -1,4 +1,4 @@
-import { CreditCard, Download, ExternalLink, ImageIcon, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
+import { ChevronDown, CircleCheck, CreditCard, Download, ExternalLink, ImageIcon, KeyRound, MonitorSmartphone, Printer, Settings2, Tv } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,6 +16,8 @@ import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { PRINT_APK_DISPONIVEL, PRINT_APK_URL, PRINT_APK_VERSION } from "@/lib/totem-release";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { temAplicativo } from "@/server/pagamentos/oauth";
+import { temChaveDePagamento } from "@/server/pagamentos/segredo";
 import { listDevices } from "@/server/print/devices";
 import { verConfig } from "@/server/totem/config";
 import { listarTotens } from "@/server/totem/dispositivos";
@@ -24,10 +26,31 @@ import { temChaveDoTotem } from "@/server/totem/segredo";
 
 import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedidos/actions";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
-import { AccessTokenForm, CartazForm, DesconectarForm, MaquininhaForm, NovoTotemForm, RemoverTotemForm, WebhookForm } from "./forms";
+import {
+  AccessTokenForm,
+  CartazForm,
+  ConectarContaForm,
+  DesconectarContaForm,
+  DesconectarForm,
+  MaquininhaForm,
+  NovoTotemForm,
+  RemoverTotemForm,
+  WebhookForm,
+} from "./forms";
 import { PagosSemPedido } from "./pagos";
 
 export const metadata: Metadata = { title: "Totem" };
+
+/** a volta do Mercado Pago, depois de o dono autorizar (ou desistir) */
+const RECADOS: Record<string, { tom: "success" | "danger" | "warning"; texto: string }> = {
+  ok: { tom: "success", texto: "Conta do Mercado Pago conectada. O totem já cobra por ela." },
+  "sem-aplicativo": {
+    tom: "warning",
+    texto: "Este servidor ainda não está cadastrado como aplicativo no Mercado Pago. Fale com o suporte do MenuFácil.",
+  },
+  negado: { tom: "warning", texto: "A autorização foi cancelada no Mercado Pago. Nada mudou aqui." },
+  erro: { tom: "danger", texto: "Não consegui concluir a conexão com o Mercado Pago. Tente de novo." },
+};
 
 // A aba Totem, em três blocos na ordem em que o dono precisa deles:
 //
@@ -42,8 +65,10 @@ export const metadata: Metadata = { title: "Totem" };
 // com a própria conta (viaAdmin, ver src/server/auth/dal.ts) e vê o mesmo
 // que o dono veria.
 
-export default async function TotemPage({ params }: PageProps<"/painel/[restaurantId]/totem">) {
+export default async function TotemPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/totem">) {
   const { restaurantId } = await params;
+  const sp = await searchParams;
+  const recado = typeof sp.mp === "string" ? RECADOS[sp.mp] : undefined;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
   // o admin libera restaurante por restaurante; o menu esconde, e aqui
   // barra de novo, para o endereço digitado na mão também não passar
@@ -64,6 +89,9 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
   const linkDasSenhas = `${servidor}/painel/senhas/${restaurant.id}`;
   const linkDoWebhook = `${servidor}/api/totem/webhook?r=${restaurant.id}`;
   const guardaSegredo = temChaveDoTotem();
+  // o botão de conectar precisa do aplicativo do MenuFácil no Mercado Pago
+  // e da chave que guarda o token da conta conectada
+  const podeConectar = temAplicativo() && temChaveDePagamento();
 
   const ativados = totens.filter((t) => !t.pairingCode);
   const esperando = totens.filter((t) => t.pairingCode);
@@ -74,6 +102,8 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
         title="Totem de autoatendimento"
         description="Transforme um tablet em terminal do balcão: o cliente monta o pedido, paga no cartão ou por Pix, e a comanda sai sozinha."
       />
+
+      {recado && <Alert tone={recado.tom}>{recado.texto}</Alert>}
 
       {/* dinheiro de cliente parado vem antes de qualquer configuração */}
       <PagosSemPedido
@@ -91,13 +121,6 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           itens: p.itens.map((i) => ({ nome: i.nome, quantidade: i.quantidade })),
         }))}
       />
-
-      {!guardaSegredo && (
-        <Alert tone="warning">
-          Este servidor ainda não está preparado para guardar os dados da sua conta do Mercado Pago com segurança. Fale com
-          a equipe do MenuFácil antes de cadastrar o token.
-        </Alert>
-      )}
 
       {/* ---- 1. TOTEM ---------------------------------------------------- */}
       <section className="flex flex-col gap-3">
@@ -306,7 +329,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
 
         {!config.prontoPix ? (
           <Alert tone="info">
-            Falta o Access Token para o totem conseguir cobrar. Sem ele, nem cartão nem Pix funcionam.
+            Falta conectar a conta do Mercado Pago para o totem conseguir cobrar. Sem ela, nem cartão nem Pix funcionam.
           </Alert>
         ) : config.prontoCartao ? (
           <Alert tone="success">
@@ -320,7 +343,7 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
 
         <Gaveta
           titulo="Mercado Pago"
-          resumo="Conta que recebe, maquininha Point e avisos de pagamento"
+          resumo="Conta que recebe e maquininha Point"
           icone={<CreditCard />}
           selo={
             config.prontoCartao ? (
@@ -337,12 +360,77 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
             no meio.
           </p>
 
-          <AccessTokenForm restaurantId={restaurant.id} resumo={config.tokenResumo} />
+          {/* De onde vem a conta. O botão é o caminho de todo restaurante
+              novo: ninguém copia token. O token colado continua valendo
+              para quem já tinha, e fica de reserva para quem não consegue
+              conectar. */}
+          {config.origem === "colado" ? (
+            <>
+              <AccessTokenForm restaurantId={restaurant.id} resumo={config.tokenResumo} />
+              {!guardaSegredo && <AvisoSemChave />}
+            </>
+          ) : config.origem === "conectado" ? (
+            <div className="flex flex-col gap-3">
+              <p className="flex items-center gap-2 font-bold">
+                <CircleCheck className="size-5 text-success" aria-hidden="true" />
+                Conta do Mercado Pago conectada
+              </p>
+              <p className="text-sm text-muted">
+                {restaurant.fullDeliveryEnabled
+                  ? "É a mesma conta que recebe o Pix da entrega. Para trocar ou desligar, use a aba Mercado Pago."
+                  : "O totem cobra por ela, sem token para copiar."}
+              </p>
+              {!restaurant.fullDeliveryEnabled && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {podeConectar && <ConectarContaForm restaurantId={restaurant.id} conectada />}
+                  <DesconectarContaForm restaurantId={restaurant.id} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <ol className="flex flex-col gap-2 text-sm text-muted">
+                <li>
+                  <strong className="text-ink">1.</strong> Toque em Conectar Mercado Pago. Você sai para o site deles.
+                </li>
+                <li>
+                  <strong className="text-ink">2.</strong> Entre com a conta do restaurante e autorize o MenuFácil.
+                </li>
+                <li>
+                  <strong className="text-ink">3.</strong> Você volta para esta tela, e o totem já cobra por ela.
+                </li>
+              </ol>
+              {podeConectar ? (
+                <div>
+                  <ConectarContaForm restaurantId={restaurant.id} conectada={false} />
+                </div>
+              ) : (
+                <Alert tone="warning">
+                  Este servidor ainda não está preparado para conectar contas do Mercado Pago. Fale com o suporte do
+                  MenuFácil.
+                </Alert>
+              )}
+              <details className="group rounded-control border border-line">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-bold text-muted">
+                  Não consigo conectar: colar o Access Token
+                  <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="flex flex-col gap-3 border-t border-line p-4">
+                  {guardaSegredo ? (
+                    <AccessTokenForm restaurantId={restaurant.id} resumo={config.tokenResumo} />
+                  ) : (
+                    <AvisoSemChave />
+                  )}
+                </div>
+              </details>
+            </div>
+          )}
 
           <div className="border-t border-line pt-5">
             <MaquininhaForm restaurantId={restaurant.id} deviceId={config.deviceId} />
           </div>
 
+          {/* tira o token colado e a maquininha; a conta conectada fica */}
           {(config.tokenResumo || config.deviceId) && (
             <div className="border-t border-line pt-5">
               <DesconectarForm restaurantId={restaurant.id} />
@@ -350,31 +438,45 @@ export default async function TotemPage({ params }: PageProps<"/painel/[restaura
           )}
         </Gaveta>
 
-        <Gaveta
-          titulo="Avisos de pagamento"
-          resumo="Endereço e chave para colar no Mercado Pago (opcional)"
-          icone={<KeyRound />}
-          selo={config.temWebhook ? <Badge tone="success">Cadastrada</Badge> : undefined}
-        >
-          <p className="text-sm text-muted">
-            Sem isto o totem funciona: ele pergunta ao Mercado Pago de dois em dois segundos como está o pagamento. Com o
-            aviso cadastrado, o pedido entra mesmo se o tablet travar no meio da passada.
-          </p>
-
-          <div className="rounded-control border border-line bg-surface-2 p-4">
-            <p className="text-sm font-bold">Endereço para colar no Mercado Pago</p>
-            <p className="mt-1 text-sm text-muted">
-              Em Suas integrações → Webhooks, cadastre este endereço e marque o evento de pagamentos.
+        {/* O aviso assinado é coisa de quem tem aplicação própria no
+            Mercado Pago, que é quem colou o token. Com a conta conectada
+            não há onde cadastrar: o totem pergunta ao Mercado Pago, e basta. */}
+        {(config.origem === "colado" || config.temWebhook) && (
+          <Gaveta
+            titulo="Avisos de pagamento"
+            resumo="Endereço e chave para colar no Mercado Pago (opcional)"
+            icone={<KeyRound />}
+            selo={config.temWebhook ? <Badge tone="success">Cadastrada</Badge> : undefined}
+          >
+            <p className="text-sm text-muted">
+              Sem isto o totem funciona: ele pergunta ao Mercado Pago de dois em dois segundos como está o pagamento. Com o
+              aviso cadastrado, o pedido entra mesmo se o tablet travar no meio da passada.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <code className="min-w-0 flex-1 truncate rounded-control bg-surface-3 px-3 py-2 text-sm">{linkDoWebhook}</code>
-              <CopyButton text={linkDoWebhook} />
-            </div>
-          </div>
 
-          <WebhookForm restaurantId={restaurant.id} temChave={config.temWebhook} />
-        </Gaveta>
+            <div className="rounded-control border border-line bg-surface-2 p-4">
+              <p className="text-sm font-bold">Endereço para colar no Mercado Pago</p>
+              <p className="mt-1 text-sm text-muted">
+                Em Suas integrações → Webhooks, cadastre este endereço e marque o evento de pagamentos.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <code className="min-w-0 flex-1 truncate rounded-control bg-surface-3 px-3 py-2 text-sm">{linkDoWebhook}</code>
+                <CopyButton text={linkDoWebhook} />
+              </div>
+            </div>
+
+            <WebhookForm restaurantId={restaurant.id} temChave={config.temWebhook} />
+          </Gaveta>
+        )}
       </section>
     </div>
+  );
+}
+
+function AvisoSemChave() {
+  return (
+    <Alert tone="warning">
+      Este servidor ainda não está preparado para guardar o token do Mercado Pago com segurança. Fale com a equipe do
+      MenuFácil antes de colar.
+    </Alert>
   );
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { credenciaisDePagamento, verConta } from "@/server/pagamentos/conta";
 
 import { cifrar, decifrar, resumoDoSegredo, temChaveDoTotem } from "./segredo";
 
@@ -10,10 +11,27 @@ import { cifrar, decifrar, resumoDoSegredo, temChaveDoTotem } from "./segredo";
 // O dinheiro é dele: a plataforma guarda o token para falar com a
 // maquininha em nome do restaurante e nada mais. O token nunca volta para
 // o navegador — o painel mostra só o começo e o fim.
+//
+// De onde vem a conta, nesta ordem:
+//
+// 1. **Token colado aqui no Totem.** O jeito antigo, que continua valendo
+//    para quem já cadastrou: ninguém que está funcionando muda de conta
+//    sem pedir.
+// 2. **A conta conectada pelo botão "Conectar Mercado Pago"** -- a mesma da
+//    seção Entrega. O dono entra na conta dele no site do Mercado Pago,
+//    autoriza, e pronto: nenhum token para copiar em restaurante novo.
+//
+// O caminho é de mão única: o Totem lê a conta da Entrega, a Entrega não
+// lê nada do Totem (ver credenciaisDePagamento). E o Totem só lê o token:
+// a chave de assinatura dos avisos da Entrega fica com a Entrega.
 
 export type TotemConfigView = {
-  /** como o token aparece no painel; null quando ainda não tem nenhum */
+  /** como o token colado aparece no painel; null quando não há token colado */
   tokenResumo: string | null;
+  /** a conta do restaurante está conectada pelo botão (a mesma da Entrega) */
+  contaConectada: boolean;
+  /** de onde o totem tira a conta agora */
+  origem: "colado" | "conectado" | null;
   deviceId: string | null;
   temWebhook: boolean;
   atualizadoEm: Date | null;
@@ -29,13 +47,19 @@ export async function verConfig(restaurantId: string): Promise<TotemConfigView> 
     select: { mpTokenHint: true, mpDeviceId: true, mpWebhookKey: true, mpAccessToken: true, updatedAt: true },
   });
 
+  const conta = await verConta(restaurantId);
+  const colado = Boolean(config?.mpAccessToken);
+  const temConta = colado || conta.conectada;
+
   return {
     tokenResumo: config?.mpTokenHint ?? null,
+    contaConectada: conta.conectada,
+    origem: colado ? "colado" : conta.conectada ? "conectado" : null,
     deviceId: config?.mpDeviceId ?? null,
     temWebhook: Boolean(config?.mpWebhookKey),
     atualizadoEm: config?.updatedAt ?? null,
-    prontoCartao: Boolean(config?.mpAccessToken && config?.mpDeviceId),
-    prontoPix: Boolean(config?.mpAccessToken),
+    prontoCartao: temConta && Boolean(config?.mpDeviceId),
+    prontoPix: temConta,
   };
 }
 
@@ -105,7 +129,15 @@ export async function credenciais(restaurantId: string): Promise<CredenciaisDoTo
     select: { mpAccessToken: true, mpDeviceId: true, mpWebhookKey: true },
   });
   // o Pix só precisa do token; a maquininha só entra no cartão
-  if (!config?.mpAccessToken) return null;
+  if (!config?.mpAccessToken) {
+    // Sem token colado, a conta conectada pelo botão. A chave dos avisos
+    // não vem junto: ela é da Entrega, e o aviso do totem que chegar sem
+    // chave é só ignorado -- quem grava o pedido é o totem perguntando ao
+    // Mercado Pago, que funciona do mesmo jeito.
+    const conta = await credenciaisDePagamento(restaurantId);
+    if (!conta) return null;
+    return { accessToken: conta.accessToken, deviceId: config?.mpDeviceId ?? null, webhookKey: null };
+  }
 
   try {
     return {

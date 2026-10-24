@@ -1,10 +1,12 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
+import { desligarConta } from "@/server/pagamentos/conta";
+import { criarState, enderecoDeAutorizacao } from "@/server/pagamentos/oauth";
 import { panelAudit } from "@/server/panel";
 import { esquecerConta, salvarChaveDoWebhook, salvarMaquininha, salvarToken } from "@/server/totem/config";
 import { desligarTotem, novoCodigoDePareamento } from "@/server/totem/dispositivos";
@@ -72,6 +74,39 @@ export async function desconectarMercadoPago(_prev: TotemState, formData: FormDa
   await panelAudit(access, "totem.desconectado");
   refresh();
   return { ok: true, message: "Conta do Mercado Pago removida deste restaurante." };
+}
+
+/**
+ * Manda o dono para o Mercado Pago autorizar a conta dele -- o mesmo
+ * caminho da seção Entrega, e a mesma conta no fim. A volta traz ele de
+ * novo para cá.
+ */
+export async function conectarMercadoPagoDoTotem(formData: FormData) {
+  const access = await acesso(formData);
+  const state = criarState(access.restaurant.id, access.user.id, "totem");
+  const endereco = state ? enderecoDeAutorizacao(state) : null;
+  // sem o aplicativo do MenuFácil no servidor não há para onde mandar; a
+  // tela já esconde o botão nesse caso
+  if (!endereco) redirect(`/painel/${access.restaurant.id}/totem?mp=sem-aplicativo`);
+  await panelAudit(access, "totem.mercado_pago.conectar");
+  redirect(endereco);
+}
+
+/**
+ * Desliga a conta conectada pelo botão. Só para quem não usa o 100%
+ * Delivery: a conta é a mesma, e desligar daqui derrubaria o Pix da
+ * entrega sem o dono estar olhando para ela. Quem tem os dois desliga na
+ * aba Mercado Pago, onde o efeito na entrega está escrito.
+ */
+export async function desconectarContaDoTotem(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  if (access.restaurant.fullDeliveryEnabled) {
+    return { error: "Esta conta também recebe o Pix da entrega. Para desligar, use a aba Mercado Pago." };
+  }
+  await desligarConta(access.restaurant.id);
+  await panelAudit(access, "totem.mercado_pago.desconectar");
+  refresh();
+  return { ok: true, message: "Conta do Mercado Pago desconectada." };
 }
 
 export async function gerarCodigoDoTotem(_prev: TotemState, formData: FormData): Promise<TotemState> {

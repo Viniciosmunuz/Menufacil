@@ -57,7 +57,7 @@ export default async function RetornoDoMercadoPago({ searchParams }: PageProps<"
     return (
       <Recado
         titulo="Não consegui identificar esta volta"
-        texto="A autorização do Mercado Pago vale por alguns minutos. Abra a seção Entrega do seu restaurante e toque em Conectar Mercado Pago de novo."
+        texto="A autorização do Mercado Pago vale por alguns minutos. Volte ao painel do seu restaurante e toque em Conectar Mercado Pago de novo."
       />
     );
   }
@@ -66,14 +66,17 @@ export default async function RetornoDoMercadoPago({ searchParams }: PageProps<"
   // quem é a volta, mas quem decide se esta pessoa pode mexer neste
   // restaurante é a camada de acesso
   const access = await requireRestaurantAccess(dados.restaurantId);
-  const destino = `/painel/${access.restaurant.id}/entrega`;
+  // a conta é a mesma para a Entrega e o Totem; o state só diz de qual das
+  // duas telas o dono saiu, e cada uma confere o próprio recurso liberado
+  const doTotem = dados.origem === "totem";
+  const destino = `/painel/${access.restaurant.id}/${doTotem ? "totem" : "entrega"}`;
 
-  if (!access.restaurant.fullDeliveryEnabled) redirect(destino);
+  if (!(doTotem ? access.restaurant.totemEnabled : access.restaurant.fullDeliveryEnabled)) redirect(destino);
   if (negado || !code) redirect(`${destino}?mp=negado`);
 
   const tokens = await trocarCodePorToken(code);
   if (!tokens.ok) {
-    await panelAudit(access, "entrega.mercado_pago.falhou", { erro: tokens.erro.slice(0, 200) });
+    await panelAudit(access, `${doTotem ? "totem" : "entrega"}.mercado_pago.falhou`, { erro: tokens.erro.slice(0, 200) });
     redirect(`${destino}?mp=erro`);
   }
 
@@ -81,7 +84,7 @@ export default async function RetornoDoMercadoPago({ searchParams }: PageProps<"
   if ("erro" in salva) redirect(`${destino}?mp=erro`);
 
   // o token nunca entra no histórico: só o fato de a conta ter sido ligada
-  await panelAudit(access, "entrega.mercado_pago.conectada", {
+  await panelAudit(access, `${doTotem ? "totem" : "entrega"}.mercado_pago.conectada`, {
     producao: tokens.tokens.liveMode,
     conta: tokens.tokens.mpUserId,
   });

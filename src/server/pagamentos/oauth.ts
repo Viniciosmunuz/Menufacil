@@ -58,16 +58,30 @@ function assinar(corpo: string, segredo: string) {
   return createHmac("sha256", segredo).update(corpo).digest("base64url");
 }
 
-export function criarState(restaurantId: string, userId: string) {
+/**
+ * De que tela o dono saiu para autorizar: é para lá que a volta leva. A
+ * conta é uma só por restaurante -- a da Entrega e a do Totem são a mesma
+ * --, só o caminho de volta muda.
+ */
+export type OrigemDaConexao = "entrega" | "totem";
+
+export function criarState(restaurantId: string, userId: string, origem: OrigemDaConexao = "entrega") {
   const app = aplicativo();
   if (!app) return null;
   const corpo = Buffer.from(
-    JSON.stringify({ r: restaurantId, u: userId, t: Date.now(), n: randomBytes(8).toString("base64url") }),
+    JSON.stringify({
+      r: restaurantId,
+      u: userId,
+      t: Date.now(),
+      n: randomBytes(8).toString("base64url"),
+      // só o totem anota: o state de antes, sem o campo, continua sendo da Entrega
+      ...(origem === "totem" ? { o: "totem" } : {}),
+    }),
   ).toString("base64url");
   return `${corpo}.${assinar(corpo, app.clientSecret)}`;
 }
 
-export type StateLido = { restaurantId: string; userId: string };
+export type StateLido = { restaurantId: string; userId: string; origem: OrigemDaConexao };
 
 export function lerState(state: string | null | undefined): StateLido | null {
   const app = aplicativo();
@@ -80,11 +94,11 @@ export function lerState(state: string | null | undefined): StateLido | null {
   if (esperado.length !== recebido.length || !timingSafeEqual(esperado, recebido)) return null;
 
   try {
-    const dados = JSON.parse(Buffer.from(corpo, "base64url").toString("utf8")) as { r?: unknown; u?: unknown; t?: unknown };
+    const dados = JSON.parse(Buffer.from(corpo, "base64url").toString("utf8")) as { r?: unknown; u?: unknown; t?: unknown; o?: unknown };
     // volta muito atrasada: melhor pedir para começar de novo
     if (typeof dados.t !== "number" || Date.now() - dados.t > VALE_MS) return null;
     if (typeof dados.r !== "string" || typeof dados.u !== "string") return null;
-    return { restaurantId: dados.r, userId: dados.u };
+    return { restaurantId: dados.r, userId: dados.u, origem: dados.o === "totem" ? "totem" : "entrega" };
   } catch {
     return null;
   }
