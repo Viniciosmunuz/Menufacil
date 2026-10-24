@@ -1,4 +1,4 @@
-import { ChevronDown, CircleCheck, CreditCard, Download, ExternalLink, Globe, ImageIcon, KeyRound, MonitorSmartphone, Printer, Tv } from "lucide-react";
+import { ChevronDown, CircleCheck, CirclePause, CreditCard, Download, ExternalLink, Globe, ImageIcon, KeyRound, MonitorSmartphone, Printer, Tv } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,6 +11,9 @@ import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
 import { Gaveta } from "@/components/ui/gaveta";
+import { SwitchButton } from "@/components/ui/switch-button";
+import { cn } from "@/lib/cn";
+import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { PRINT_APK_DISPONIVEL, PRINT_APK_URL, PRINT_APK_VERSION } from "@/lib/totem-release";
@@ -24,6 +27,7 @@ import { pagamentosSemPedido } from "@/server/totem/pagos";
 import { temChaveDoTotem } from "@/server/totem/segredo";
 
 import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedidos/actions";
+import { alternarPausaDoTotem } from "./actions";
 import { PrintFacilPanel } from "@/components/panel/print-settings";
 import {
   AccessTokenForm,
@@ -72,12 +76,15 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
   // barra de novo, para o endereço digitado na mão também não passar
   if (!restaurant.totemEnabled) notFound();
 
-  const [config, totens, impressoras, pendentes] = await Promise.all([
+  const [config, totens, impressoras, pendentes, estado] = await Promise.all([
     verConfig(restaurant.id),
     listarTotens(restaurant.id),
     listDevices(restaurant.id),
     pagamentosSemPedido(restaurant.id),
+    // o acesso traz só o essencial do restaurante; a pausa é desta tela
+    db.restaurant.findUnique({ where: { id: restaurant.id }, select: { totemPaused: true } }),
   ]);
+  const pausado = estado?.totemPaused ?? false;
 
   const servidor = appUrl();
   const linkDoTotem = `${servidor}/totem/${restaurant.slug}`;
@@ -120,6 +127,27 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
       {/* ---- 1. TOTEM ---------------------------------------------------- */}
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-extrabold tracking-widest text-faint uppercase">Totem</h2>
+
+        {/* o interruptor do dia a dia vem antes da instalação: é o que o dono
+            procura quando acaba o produto ou a cozinha enche */}
+        <Card className={cn("flex flex-col gap-3 sm:flex-row sm:items-center", pausado && "border-warning/60 bg-warning/5")}>
+          <div className="flex min-w-0 flex-1 items-start gap-4 sm:items-center">
+            <CirclePause className={cn("size-10 shrink-0", pausado ? "text-warning" : "text-faint")} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-extrabold">{pausado ? "Totem pausado" : "Pausar o totem"}</h3>
+              <p className="text-sm text-muted">
+                {pausado
+                  ? "O totem mostra “Em breve estaremos de volta” e não aceita pedido. Desligue para voltar a vender."
+                  : "Para parar o totem por um tempo: ele avisa na tela e não deixa ninguém pedir até você desligar."}
+              </p>
+            </div>
+          </div>
+          <form action={alternarPausaDoTotem}>
+            <input type="hidden" name="restaurantId" value={restaurant.id} />
+            <input type="hidden" name="pausar" value={pausado ? "0" : "1"} />
+            <SwitchButton checked={pausado} label={pausado ? "Pausado" : "Pausar"} />
+          </form>
+        </Card>
 
         {/* O caminho de todo restaurante é o aplicativo: ele abre o totem,
             imprime a senha e se ativa sozinho pelo código da impressora.

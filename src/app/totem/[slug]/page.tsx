@@ -9,6 +9,7 @@ import { getPublicRestaurant } from "@/server/public/restaurants";
 
 import { AtivarTotem } from "./ativar";
 import { TotemOcioso } from "./ocioso";
+import { TotemPausa } from "./pausado";
 
 // A tela do totem: o mesmo cardápio que o cliente abre pelo link do
 // restaurante, com os mesmos componentes.
@@ -71,7 +72,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
       {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui.
           Parado, vira o cartaz de descanso que chama quem passa. */}
-      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} />
+      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} capaUrl={r.coverUrl} />
+      {/* pausado pelo dono no painel: cobre tudo até ele despausar */}
+      <TotemPausa slug={r.slug} inicial={r.totemPaused} nome={r.name} logoUrl={r.logoUrl} />
 
       {/* A faixa de cima do totem é fina de propósito.
           

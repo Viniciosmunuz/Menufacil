@@ -223,6 +223,8 @@ model Restaurant {
   salaoEnabled Boolean       @default(false)
   // cartaz que fica na tela do totem parado; sem ele entra a capa
   totemIdleUrl String?
+  /// o dono pausou o totem pelo painel: a tela avisa e nao aceita pedido
+  totemPaused  Boolean @default(false)
 
   // ---- cobranca -----------------------------------------------------
   /// o plano contratado; nulo enquanto ninguem definiu (restaurante em

@@ -73,7 +73,7 @@ export type TotemAutenticado = {
   name: string;
   restaurantId: string;
   printerName: string | null;
-  restaurant: { id: string; name: string; slug: string; receiptWidth: number; totemEnabled: boolean };
+  restaurant: { id: string; name: string; slug: string; receiptWidth: number; totemEnabled: boolean; pausado: boolean };
 };
 
 /**
@@ -96,7 +96,9 @@ export async function totemDaRequisicao(request: Request): Promise<TotemAutentic
       restaurantId: true,
       printerName: true,
       pairingCode: true,
-      restaurant: { select: { id: true, name: true, slug: true, receiptWidth: true, totemEnabled: true, status: true } },
+      restaurant: {
+        select: { id: true, name: true, slug: true, receiptWidth: true, totemEnabled: true, totemPaused: true, status: true },
+      },
     },
   });
   if (!device?.restaurantId || !device.restaurant) return null;
@@ -104,13 +106,13 @@ export async function totemDaRequisicao(request: Request): Promise<TotemAutentic
   if (device.pairingCode) return null;
   if (!device.restaurant.totemEnabled || device.restaurant.status === "BLOCKED") return null;
 
-  const { id, name, slug, receiptWidth, totemEnabled } = device.restaurant;
+  const { id, name, slug, receiptWidth, totemEnabled, totemPaused } = device.restaurant;
   return {
     id: device.id,
     name: device.name,
     restaurantId: device.restaurantId,
     printerName: device.printerName,
-    restaurant: { id, name, slug, receiptWidth, totemEnabled },
+    restaurant: { id, name, slug, receiptWidth, totemEnabled, pausado: totemPaused },
   };
 }
 

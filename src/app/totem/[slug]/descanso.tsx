@@ -1,24 +1,26 @@
 "use client";
 
-import { Hand } from "lucide-react";
+import { Pointer, ShieldCheck, Ticket, Zap } from "lucide-react";
 import Image from "next/image";
 
-import { LogoIcon } from "@/components/brand/logo";
+import { APAGADO, Cenario, MarcaDoRestaurante } from "./cenario";
 
 // A tela de descanso do totem: o que fica no tablet quando ninguém está
 // pedindo.
 //
 // Ela existe por dois motivos. O primeiro é chamar quem passa: um tablet
 // parado num cardápio pela metade não convida ninguém, e um cartaz que diz
-// "toque para pedir" convida. O segundo é esconder o rastro do cliente
+// "toque na tela" convida. O segundo é esconder o rastro do cliente
 // anterior -- categoria aberta, rolagem no meio do cardápio.
 //
-// É um modelo só, o mesmo em todo totem: o que muda de um restaurante para
-// outro é a logo e o nome dele. Antes cada dono podia mandar o próprio
-// cartaz, e o totem de cada um ficava com uma cara; o modelo único deixa
+// É um modelo só, o mesmo em todo totem, no cenário claro (ver cenario.tsx):
+// o que muda de um restaurante para outro é a logo, o nome e a foto de
+// capa. Antes cada dono podia mandar o próprio cartaz; o modelo único deixa
 // todos com o mesmo acabamento, e ninguém precisa desenhar nada.
 //
-// Sem logo cadastrada, entra o ícone do Menu Fácil no lugar dela.
+// A foto é a capa do próprio restaurante, e não um prato bonito para todo
+// mundo: a açaiteria do centro não pode anunciar picanha. Sem capa, ou no
+// tablet deitado (onde não há altura para ela), a tela fica sem foto.
 //
 // Qualquer toque derruba a tela: não tem botão para procurar, porque quem
 // chega não sabe que é um totem até encostar nele.
@@ -26,76 +28,64 @@ import { LogoIcon } from "@/components/brand/logo";
 export function TotemDescanso({
   nome,
   logoUrl,
+  capaUrl,
   aoTocar,
 }: {
   nome: string;
   /** a foto de perfil do restaurante, a mesma do cardápio do link */
   logoUrl: string | null;
+  capaUrl: string | null;
   aoTocar: () => void;
 }) {
   return (
-    <div
-      onPointerDown={aoTocar}
-      role="button"
-      tabIndex={0}
-      aria-label="Toque para fazer o seu pedido"
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-bg select-none"
-    >
-      {/* as faixas em diagonal nos cantos */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-40 -left-40 size-96 rotate-45 bg-gradient-to-br from-brand/35 to-transparent blur-2xl"
-      />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-40 -bottom-40 size-96 rotate-45 bg-gradient-to-tl from-brand/35 to-transparent blur-2xl"
-      />
+    <Cenario rotulo="Toque para fazer o seu pedido" aoTocar={aoTocar}>
+      <MarcaDoRestaurante nome={nome} logoUrl={logoUrl} frase="Peça com mais praticidade" />
 
-      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-6 pt-[5vh] text-center">
-        {/* a logo do restaurante, grande e redonda, com o brilho da marca atrás */}
-        <div className="relative">
-          <span aria-hidden="true" className="absolute -inset-6 rounded-full bg-brand/25 blur-3xl" />
-          <div className="relative grid size-[min(42vw,30vh)] place-items-center overflow-hidden rounded-full border-4 border-brand/50 bg-surface-2">
-            {logoUrl ? (
-              <Image src={logoUrl} alt="" fill priority sizes="(max-width: 768px) 42vw, 320px" className="object-cover" />
-            ) : (
-              <LogoIcon className="size-1/2 text-brand" />
-            )}
+      {/* a mãozinha com os risquinhos laranja, chamando para o toque */}
+      <span className="relative mt-[4vh] inline-grid animate-pulse place-items-center">
+        <Pointer aria-hidden="true" strokeWidth={1.75} className="size-[min(12vw,7vh)]" />
+        <span aria-hidden="true" className="absolute -top-[22%] left-1/2 h-[24%] w-1 -translate-x-1/2 rounded-full bg-brand" />
+        <span aria-hidden="true" className="absolute -top-[10%] left-[8%] h-[22%] w-1 -rotate-45 rounded-full bg-brand" />
+        <span aria-hidden="true" className="absolute -top-[10%] right-[8%] h-[22%] w-1 rotate-45 rounded-full bg-brand" />
+      </span>
+
+      <h1 className="mt-[2vh] leading-[1.05]">
+        <span className="block text-[clamp(2.25rem,min(10vw,7vh),4.5rem)] font-extrabold tracking-tight">Toque na tela</span>
+        <span className="block text-[clamp(1.6rem,min(7.5vw,5vh),3.25rem)] font-medium">para fazer seu pedido</span>
+      </h1>
+      <p className={`mt-[2vh] max-w-xl text-[clamp(1rem,min(3.8vw,2.6vh),1.4rem)] ${APAGADO}`}>
+        Escolha seus pratos, pague no cartão ou no Pix e retire no balcão.
+      </p>
+
+      {capaUrl && (
+        // só com altura de sobra: no tablet deitado a foto empurraria o resto
+        <div className="relative mt-[3vh] hidden min-h-0 w-full max-w-xl flex-1 [@media(min-height:700px)]:block">
+          <span aria-hidden="true" className="absolute top-[6%] -left-3 h-1 w-8 -rotate-[30deg] rounded-full bg-brand" />
+          <span aria-hidden="true" className="absolute top-[18%] -left-5 h-1 w-6 rotate-[10deg] rounded-full bg-brand" />
+          <span aria-hidden="true" className="absolute -right-3 bottom-[18%] h-1 w-8 rotate-[30deg] rounded-full bg-brand" />
+          <div className="relative size-full max-h-[34vh] overflow-hidden rounded-[2rem] border-4 border-white shadow-[0_14px_40px_rgb(29_32_38/0.18)]">
+            <Image src={capaUrl} alt="" fill priority sizes="(max-width: 768px) 100vw, 576px" className="object-cover" />
           </div>
         </div>
+      )}
 
-        <p className="mt-[4vh] max-w-full truncate text-[clamp(1.5rem,min(7vw,6vh),3rem)] leading-none font-extrabold tracking-tight">
-          {nome}
-        </p>
-
-        {/* o traço com o ponto no meio */}
-        <span aria-hidden="true" className="mt-[3vh] flex w-full max-w-xs items-center gap-3">
-          <span className="h-1 flex-1 rounded-full bg-brand/60" />
-          <span className="h-1.5 w-10 rounded-full bg-brand" />
-          <span className="h-1 flex-1 rounded-full bg-brand/60" />
-        </span>
-
-        <h1 className="mt-[3vh] text-[clamp(2rem,min(10vw,9vh),4.5rem)] leading-[0.95] font-extrabold tracking-tight uppercase">
-          Faça aqui
-          <br />
-          <span className="text-brand">o seu pedido!</span>
-        </h1>
-
-        {/* o convite: o único pedaço que se mexe, para o olho achar */}
-        <p className="mt-[5vh] flex animate-pulse items-center gap-3 rounded-full bg-brand px-8 py-4 text-[clamp(1rem,min(4.5vw,4vh),1.75rem)] font-extrabold text-brand-ink">
-          <Hand className="size-[1.2em]" aria-hidden="true" />
-          Toque para pedir
-        </p>
-      </div>
-
-      {/* quem fez, discreto, no pé da tela -- no fluxo, e não por cima: no
-          tablet deitado o convite chega perto do pé */}
-      <p className="relative flex shrink-0 items-center justify-center gap-1.5 pt-[2vh] pb-[3vh] text-sm font-bold text-faint">
-        <LogoIcon className="size-4" />
-        <span>
-          Menu<span className="text-brand">Fácil</span>
-        </span>
-      </p>
-    </div>
+      {/* as três garantias do pé */}
+      <ul
+        className={`mt-[3vh] mb-[2vh] flex flex-wrap items-center justify-center gap-x-[4vw] gap-y-2 text-[clamp(0.8rem,min(3vw,2vh),1rem)] font-semibold ${APAGADO}`}
+      >
+        <li className="flex items-center gap-2">
+          <ShieldCheck aria-hidden="true" className="size-[1.6em] text-brand" />
+          Pagamento seguro
+        </li>
+        <li className="flex items-center gap-2">
+          <Zap aria-hidden="true" className="size-[1.6em] text-brand" />
+          Rápido e prático
+        </li>
+        <li className="flex items-center gap-2">
+          <Ticket aria-hidden="true" className="size-[1.6em] text-brand" />
+          Retire com a senha
+        </li>
+      </ul>
+    </Cenario>
   );
 }

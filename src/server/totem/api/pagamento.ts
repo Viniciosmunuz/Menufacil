@@ -48,6 +48,12 @@ const viaDoPedido = async (restaurantId: string, orderId: string) => (await orde
 export async function cobrar(request: Request) {
   const totem = await totemDaRequisicao(request);
   if (!totem) return Response.json({ erro: "totem não reconhecido" }, { status: 401 });
+  // pausado pelo dono no painel: a tela já avisa, e aqui a cobrança nova
+  // não começa nem se alguém chegar até o botão de pagar. O que já estava
+  // em andamento termina normalmente (conferir e cancelar não olham isto).
+  if (totem.restaurant.pausado) {
+    return Response.json({ erro: "O totem está pausado agora. Chame um atendente." }, { status: 409 });
+  }
 
   let corpo: { nome?: unknown; itens?: unknown; observacao?: unknown; forma?: unknown; comer_aqui?: unknown };
   try {

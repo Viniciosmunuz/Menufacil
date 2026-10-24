@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { refresh } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
+import { db } from "@/lib/db";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
 import { criarOrdemPoint, ligarModoIntegrado, listarTerminais } from "@/server/mercado-pago/api";
 import { desligarConta } from "@/server/pagamentos/conta";
@@ -31,6 +32,19 @@ async function acesso(formData: FormData): Promise<RestaurantAccess> {
 function salvo(): TotemState {
   refresh();
   return { ok: true, savedAt: Date.now() };
+}
+
+/**
+ * Pausa ou retoma o totem. Pausado, a tela do balcão mostra "Em breve
+ * estaremos de volta" e a cobrança nova é recusada no servidor -- a tela
+ * sozinha não basta, porque quem já estava no pagamento chegaria ao botão.
+ */
+export async function alternarPausaDoTotem(formData: FormData) {
+  const access = await acesso(formData);
+  const pausar = formData.get("pausar") === "1";
+  await db.restaurant.update({ where: { id: access.restaurant.id }, data: { totemPaused: pausar }, select: { id: true } });
+  await panelAudit(access, pausar ? "totem.pausado" : "totem.retomado");
+  refresh();
 }
 
 export async function salvarAccessToken(_prev: TotemState, formData: FormData): Promise<TotemState> {

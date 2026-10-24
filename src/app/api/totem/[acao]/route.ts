@@ -3,6 +3,7 @@ import { desbloquear } from "@/server/totem/api/desbloquear";
 import { login } from "@/server/totem/api/login";
 import { cancelar, cobrar, conferir } from "@/server/totem/api/pagamento";
 import { parear } from "@/server/totem/api/parear";
+import { pausa } from "@/server/totem/api/pausa";
 import { webhook } from "@/server/totem/api/webhook";
 
 // Uma porta só para tudo que o totem pede.
@@ -45,7 +46,10 @@ export async function POST(request: Request, { params }: RouteContext<"/api/tote
 
 export async function GET(request: Request, { params }: RouteContext<"/api/totem/[acao]">) {
   const { acao } = await params;
-  return acao === "pagamento" ? conferir(request) : naoExiste();
+  if (acao === "pagamento") return conferir(request);
+  // a tela do totem conferindo se o dono a pausou no painel
+  if (acao === "pausa") return pausa(request);
+  return naoExiste();
 }
 
 export async function DELETE(request: Request, { params }: RouteContext<"/api/totem/[acao]">) {
