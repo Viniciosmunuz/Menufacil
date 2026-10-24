@@ -71,7 +71,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
       {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui.
           Parado, vira o cartaz de descanso que chama quem passa. */}
-      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} cartazUrl={r.totemIdleUrl} capaUrl={r.coverUrl} />
+      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} />
 
       {/* A faixa de cima do totem é fina de propósito.
           

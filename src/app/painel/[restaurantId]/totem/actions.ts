@@ -5,7 +5,6 @@ import { randomUUID } from "node:crypto";
 import { refresh } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
-import { db } from "@/lib/db";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
 import { criarOrdemPoint, ligarModoIntegrado, listarTerminais } from "@/server/mercado-pago/api";
 import { desligarConta } from "@/server/pagamentos/conta";
@@ -14,7 +13,6 @@ import { panelAudit } from "@/server/panel";
 import { credenciais, esquecerConta, salvarChaveDoWebhook, salvarMaquininha, salvarToken } from "@/server/totem/config";
 import { desligarTotem, novoCodigoDePareamento } from "@/server/totem/dispositivos";
 import { darBaixaNoPagamento, gravarPedidoDoPagamento } from "@/server/totem/pagos";
-import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
 
 // Ações da seção Totem.
 //
@@ -220,43 +218,6 @@ export async function removerTotem(_prev: TotemState, formData: FormData): Promi
   await panelAudit(access, "totem.removido");
   refresh();
   return { ok: true, message: "Totem desligado. Ele vai pedir o código de novo ao abrir." };
-}
-
-/**
- * O cartaz que fica na tela do totem parado.
- *
- * É imagem de cada restaurante, não da plataforma: um cartaz de hambúrguer
- * na açaiteria do centro seria pior do que cartaz nenhum. Sem cartaz
- * cadastrado, o totem monta a tela sozinho com a capa do restaurante.
- */
-export async function salvarCartazDoTotem(_prev: TotemState, formData: FormData): Promise<TotemState> {
-  const access = await acesso(formData);
-  const arquivo = formData.get("cartaz");
-  const marcado = String(formData.get("removerCartaz") ?? "");
-  const remover = marcado === "on" || marcado === "true";
-
-  if (!remover && !hasFile(arquivo)) return { error: "Escolha uma imagem para o cartaz." };
-
-  const atual = await db.restaurant.findUnique({
-    where: { id: access.restaurant.id },
-    select: { totemIdleUrl: true },
-  });
-
-  let totemIdleUrl: string | null = null;
-  if (!remover && hasFile(arquivo)) {
-    try {
-      totemIdleUrl = await saveImage({ restaurantId: access.restaurant.id, kind: "descanso", file: arquivo });
-    } catch (e) {
-      return { error: e instanceof ImageError ? e.message : "Não consegui salvar essa imagem." };
-    }
-  }
-
-  await db.restaurant.update({ where: { id: access.restaurant.id }, data: { totemIdleUrl } });
-  // a imagem antiga só é apagada depois que a nova já está salva no banco
-  if (atual?.totemIdleUrl && atual.totemIdleUrl !== totemIdleUrl) await deleteImage(atual.totemIdleUrl);
-
-  await panelAudit(access, "totem.cartaz", { cartaz: totemIdleUrl ? "trocado" : "removido" });
-  return remover ? { ok: true, message: "Cartaz removido. O totem volta a montar a tela com a sua capa." } : salvo();
 }
 
 // ---- pagamento que entrou sem o pedido entrar ---------------------------

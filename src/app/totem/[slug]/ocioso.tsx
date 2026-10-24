@@ -82,13 +82,11 @@ function assinarDescanso(avisar: () => void) {
 export function TotemOcioso({
   href,
   nome,
-  cartazUrl,
-  capaUrl,
+  logoUrl,
 }: {
   href: string;
   nome: string;
-  cartazUrl: string | null;
-  capaUrl: string | null;
+  logoUrl: string | null;
 }) {
   const cart = useCart();
   const temItens = cartCount(cart) > 0;
@@ -134,5 +132,5 @@ export function TotemOcioso({
   }, [href, temItens, dormindo]);
 
   if (!dormindo) return null;
-  return <TotemDescanso nome={nome} cartazUrl={cartazUrl} capaUrl={capaUrl} aoTocar={() => definirDescanso(false)} />;
+  return <TotemDescanso nome={nome} logoUrl={logoUrl} aoTocar={() => definirDescanso(false)} />;
 }

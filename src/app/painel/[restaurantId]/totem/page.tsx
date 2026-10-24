@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
 import { Gaveta } from "@/components/ui/gaveta";
-import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { PRINT_APK_DISPONIVEL, PRINT_APK_URL, PRINT_APK_VERSION } from "@/lib/totem-release";
@@ -28,7 +27,6 @@ import { pairPrintDevice, setPrintDeviceRole, unpairPrintDevice } from "../pedid
 import { PrintFacilPanel } from "@/components/panel/print-settings";
 import {
   AccessTokenForm,
-  CartazForm,
   ConectarContaForm,
   DesconectarContaForm,
   DesconectarForm,
@@ -54,7 +52,7 @@ const RECADOS: Record<string, { tom: "success" | "danger" | "warning"; texto: st
 
 // A aba Totem, em dois blocos na ordem em que o dono precisa deles:
 //
-//   1. TOTEM      o aplicativo, as impressoras, as senhas e o cartaz -- e,
+//   1. TOTEM      o aplicativo, as impressoras, as senhas e o descanso -- e,
 //                 numa gaveta, o link pelo navegador
 //   2. PAGAMENTOS a conta do Mercado Pago e a maquininha
 //
@@ -74,15 +72,12 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
   // barra de novo, para o endereço digitado na mão também não passar
   if (!restaurant.totemEnabled) notFound();
 
-  const [config, totens, impressoras, cartaz, pendentes] = await Promise.all([
+  const [config, totens, impressoras, pendentes] = await Promise.all([
     verConfig(restaurant.id),
     listarTotens(restaurant.id),
     listDevices(restaurant.id),
-    // o acesso traz só o essencial do restaurante; o cartaz é desta tela
-    db.restaurant.findUnique({ where: { id: restaurant.id }, select: { totemIdleUrl: true } }),
     pagamentosSemPedido(restaurant.id),
   ]);
-  const cartazUrl = cartaz?.totemIdleUrl ?? null;
 
   const servidor = appUrl();
   const linkDoTotem = `${servidor}/totem/${restaurant.slug}`;
@@ -224,18 +219,27 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
           </div>
         </Card>
 
-        <Gaveta
-          titulo="Tela de descanso"
-          resumo={cartazUrl ? "Cartaz próprio cadastrado" : "Montada com a sua capa"}
-          icone={<ImageIcon />}
-          selo={cartazUrl ? <Badge tone="success">Cartaz próprio</Badge> : undefined}
-        >
-          <p className="text-sm text-muted">
-            Sem ninguém tocar no tablet por um minuto, o totem vira um cartaz chamando quem passa — e some no primeiro
-            toque, abrindo o cardápio. Com comida na sacola o cartaz não entra: quem está escolhendo não é interrompido.
-          </p>
-          <CartazForm restaurantId={restaurant.id} cartazUrl={cartazUrl} />
-        </Gaveta>
+        {/* um modelo só para todos os totens: a logo e o nome vêm do
+            restaurante, e não há nada para configurar aqui */}
+        <Card className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <ImageIcon className="size-10 shrink-0 text-faint" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-extrabold">Tela de descanso</h3>
+            <p className="text-sm text-muted">
+              Sem ninguém tocar por um minuto, o totem mostra a sua logo, o nome do restaurante e &ldquo;Toque para
+              pedir&rdquo;. Para trocar a logo, use Meu restaurante.
+            </p>
+          </div>
+          <Link
+            href={`/totem/${restaurant.slug}?descanso=1`}
+            target="_blank"
+            rel="noopener"
+            className={buttonClasses("secondary")}
+          >
+            <ExternalLink className="size-4" aria-hidden="true" />
+            Ver como fica
+          </Link>
+        </Card>
 
         {/* O jeito de antes, sem o aplicativo: o link aberto no navegador do
             tablet e a ativação à parte. Continua valendo -- é a reserva se o
