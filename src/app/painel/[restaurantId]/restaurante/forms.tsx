@@ -63,21 +63,6 @@ export function InfoSection({ r }: { r: RestaurantFormData }) {
           <Field label="Nome do restaurante" htmlFor="name" error={s.fieldErrors?.name}>
             <Input id="name" name="name" required maxLength={80} defaultValue={pick(s.values, "name", r.name)} aria-invalid={!!s.fieldErrors?.name} />
           </Field>
-          <Field
-            label="Descrição curta"
-            htmlFor="description"
-            error={s.fieldErrors?.description}
-            hint="Uma frase sobre a casa. Aparece no topo da sua página."
-          >
-            <Textarea
-              id="description"
-              name="description"
-              maxLength={300}
-              rows={3}
-              defaultValue={pick(s.values, "description", r.description)}
-              placeholder="Ex.: Pizzas artesanais no forno a lenha desde 2010."
-            />
-          </Field>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-[auto_1fr]">
             <ImageField name="logo" removeName="removeLogo" label="Logo" currentUrl={r.logoUrl} shape="round" maxSide={800} />
             <ImageField

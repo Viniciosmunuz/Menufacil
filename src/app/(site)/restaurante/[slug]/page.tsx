@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PageProps<"/restaurante/[slug
     : { url: `${appUrl()}/apple-icon.png`, width: 180, height: 180 };
   return {
     title: r.name,
-    description: r.description ?? `Cardápio e pedidos de ${r.name} no MenuFácil.`,
+    description: `Cardápio e pedidos de ${r.name} no MenuFácil.`,
     openGraph: { title: r.name, description: "Veja o cardápio e faça seu pedido.", images: [image] },
     twitter: { card: "summary" },
   };
@@ -158,13 +158,6 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
 
               <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
               {r.categories.length > 0 && <p className="mt-0.5 text-sm font-semibold text-muted">{r.categories.map((c) => c.name).join(" • ")}</p>}
-              {/* no celular, duas linhas: o texto inteiro fica no "Endereço,
-                  horários e pagamento" logo abaixo */}
-              {r.description && (
-                <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-ink/85 sm:line-clamp-none sm:text-[0.95rem]">
-                  {r.description}
-                </p>
-              )}
 
               {/* os selos de entrega e, do lado, as bolinhas de endereço e horários */}
               <InfoDoRestaurante
@@ -178,7 +171,6 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                     {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}
                   </>
                 }
-                descricao={r.description}
                 endereco={place || null}
                 pagamento={
                   [r.pixKey && "Pix", r.acceptsCard && "cartão (crédito ou débito)", r.acceptsCash && "dinheiro"]

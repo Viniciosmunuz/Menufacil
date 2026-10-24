@@ -18,7 +18,6 @@ type Painel = "endereco" | "horarios" | null;
 
 export function InfoDoRestaurante({
   selos,
-  descricao,
   endereco,
   pagamento,
   instagram,
@@ -26,8 +25,6 @@ export function InfoDoRestaurante({
 }: {
   /** os selos que já estavam na fileira: tempo, entrega, retirada, mínimo */
   selos: ReactNode;
-  /** a descrição inteira: no celular o topo mostra só duas linhas */
-  descricao: string | null;
   endereco: string | null;
   pagamento: string;
   instagram: string | null;
@@ -62,7 +59,6 @@ export function InfoDoRestaurante({
 
       {aberto === "endereco" && (
         <div className="mt-2 flex flex-col gap-3 rounded-card border border-line bg-surface px-4 py-4 text-sm text-muted">
-          {descricao && <p className="text-ink/85 sm:hidden">{descricao}</p>}
           {endereco && (
             <p className="flex items-start gap-2">
               <MapPin className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
