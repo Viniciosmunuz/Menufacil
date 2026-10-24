@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, MessagesSquare, ReceiptText, Utensils } from "lucide-react";
+import { BookOpen, ChevronDown, Heart, Home, Info, LayoutGrid, MessageCircle, MessagesSquare, ReceiptText, ShoppingCart, Utensils } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
@@ -8,7 +8,7 @@ import { useId, useState } from "react";
 import { CategoryIcon } from "@/lib/category-icons";
 import { cn } from "@/lib/cn";
 
-import { useCart } from "./cart-store";
+import { cartCount, useCart } from "./cart-store";
 import { abrirChat, useChat } from "./chat-store";
 
 export type NavCategory = { slug: string; name: string; icon: string | null };
@@ -104,7 +104,7 @@ function CategoriesDrawer({ categories, active, onNavigate }: { categories: NavC
 }
 
 /** barra de baixo do celular; no link de um restaurante, só leva a ele */
-export function BottomNav({ store }: { store?: { slug: string; whatsapp: string | null } | null }) {
+export function BottomNav({ store }: { store?: { slug: string } | null }) {
   const pathname = usePathname();
   const cart = useCart();
   // conversa do pedido do 100% Delivery: quando existe, ela toma o último
@@ -117,7 +117,17 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
   // atenção do botão de contato.
   const venda = pathname === "/cadastre-seu-restaurante";
   const menuHref = store ? `/restaurante/${store.slug}` : cart.restaurant ? `/restaurante/${cart.restaurant.slug}` : "/restaurantes";
-  // o carrinho não entra aqui: ele já está no topo e na barra "Ver carrinho"
+  // No site geral o carrinho fica no topo. No link do restaurante o topo
+  // some no celular, e o carrinho vem para cá, onde o polegar alcança.
+  const itensNoCarrinho = cartCount(cart);
+  const carrinho = {
+    href: "/carrinho",
+    label: "Carrinho",
+    icon: ShoppingCart,
+    active: pathname === "/carrinho",
+    badge: itensNoCarrinho || undefined,
+    badgeLabel: "itens",
+  };
   const orders = { href: "/meus-pedidos", label: "Pedidos", icon: ReceiptText, active: pathname === "/meus-pedidos" || pathname.startsWith("/pedido/") };
 
   type Item = {
@@ -126,6 +136,8 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
     icon: typeof Home;
     active: boolean;
     badge?: number;
+    /** o que o número do selo conta, para o leitor de tela */
+    badgeLabel?: string;
     external?: boolean;
     /** abre alguma coisa em cima da tela em vez de navegar */
     aoTocar?: () => void;
@@ -137,11 +149,9 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
     ? [
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
         orders,
-        ...(chat.ativo
-          ? [conversa]
-          : store.whatsapp
-            ? [{ href: `https://wa.me/${store.whatsapp}`, label: "WhatsApp", icon: MessageCircle, active: false, external: true }]
-            : []),
+        carrinho,
+        // a conversa do pedido, quando existe, entra depois do carrinho
+        ...(chat.ativo ? [conversa] : []),
       ]
     : [
         { href: "/", label: "Início", icon: Home, active: pathname === "/" },
@@ -158,7 +168,7 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
       aria-label="Navegação principal"
     >
       <ul className="mx-auto grid max-w-lg auto-cols-fr grid-flow-col">
-        {items.map(({ href, label, icon: Icon, active, badge, external, aoTocar }) => {
+        {items.map(({ href, label, icon: Icon, active, badge, badgeLabel = "novas", external, aoTocar }) => {
           const classes = cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold", active ? "text-brand" : "text-muted");
           const dentro = (
             <>
@@ -171,7 +181,11 @@ export function BottomNav({ store }: { store?: { slug: string; whatsapp: string 
                 )}
               </span>
               {label}
-              {badge !== undefined && badge > 0 && <span className="sr-only">({badge} novas)</span>}
+              {badge !== undefined && badge > 0 && (
+                <span className="sr-only">
+                  ({badge} {badgeLabel})
+                </span>
+              )}
             </>
           );
           return (
