@@ -27,7 +27,13 @@ export type RespostaDoPonto<T> = { ok: true; dados: T } | { ok: false; erro: str
 
 async function chamar<T>(
   caminho: string,
-  { accessToken, metodo = "GET", corpo, idempotencia }: { accessToken: string; metodo?: string; corpo?: unknown; idempotencia?: string },
+  {
+    accessToken,
+    metodo = "GET",
+    corpo,
+    idempotencia,
+    cabecalhos,
+  }: { accessToken: string; metodo?: string; corpo?: unknown; idempotencia?: string; cabecalhos?: Record<string, string> },
 ): Promise<RespostaDoPonto<T>> {
   const controle = new AbortController();
   const relogio = setTimeout(() => controle.abort(), TEMPO_LIMITE_MS);
@@ -39,6 +45,7 @@ async function chamar<T>(
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
         ...(idempotencia ? { "X-Idempotency-Key": idempotencia } : {}),
+        ...cabecalhos,
       },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
       signal: controle.signal,
@@ -125,6 +132,126 @@ export function situacao(state: string | null | undefined): "esperando" | "aprov
   if (s === "CANCELED" || s === "ABANDONED") return "cancelado";
   if (s === "ERROR" || s === "REJECTED") return "recusado";
   return "esperando";
+}
+
+// ---- Maquininha pela API de Orders ---------------------------------------
+//
+// A forma nova de falar com a Point. O Mercado Pago avisou que ela vai
+// substituir a das "intenções de pagamento" (as funções acima), que ficam
+// só para terminar as cobranças que já tinham começado por lá.
+//
+// Muda o endereço e os nomes, a ideia é a mesma: o totem cria uma "order"
+// para a maquininha, ela aparece na tela dela, o cliente passa o cartão.
+// Os ids das orders começam com "ORD".
+//
+// Referência: https://www.mercadopago.com.br/developers/pt/docs/mp-point
+
+export type Terminal = {
+  /** "<modelo>__<número de série>": o fim bate com a etiqueta atrás da maquininha */
+  id: string;
+  /** PDV (integrada), STANDALONE (cobra sozinha pelo teclado) ou outro */
+  operating_mode?: string | null;
+  pos_id?: string | number | null;
+  store_id?: string | number | null;
+};
+
+/** as maquininhas Point ligadas à conta */
+export async function listarTerminais(accessToken: string): Promise<RespostaDoPonto<Terminal[]>> {
+  const resposta = await chamar<{ data?: { terminals?: Terminal[] } }>("/terminals/v1/list?limit=50", { accessToken });
+  if (!resposta.ok) return resposta;
+  return { ok: true, dados: resposta.dados.data?.terminals ?? [] };
+}
+
+/**
+ * Põe a maquininha em modo integrado (PDV): a partir daí ela recebe as
+ * cobranças do sistema em vez de só cobrar pelo teclado. Só vale depois
+ * de a maquininha ser desligada e ligada de novo.
+ */
+export function ligarModoIntegrado(accessToken: string, terminalId: string) {
+  return chamar<{ terminals?: Terminal[] }>("/terminals/v1/setup", {
+    accessToken,
+    metodo: "PATCH",
+    corpo: { terminals: [{ id: terminalId, operating_mode: "PDV" }] },
+  });
+}
+
+export type OrdemPoint = {
+  id: string;
+  status?: string | null;
+  status_detail?: string | null;
+  external_reference?: string | null;
+  transactions?: { payments?: { id?: string | number; status?: string | null; status_detail?: string | null }[] };
+};
+
+/** quanto tempo a cobrança fica na maquininha; menos que o limite da tela do totem */
+const PRAZO_DA_ORDEM = "PT4M";
+
+/** manda a cobrança para a maquininha */
+export function criarOrdemPoint(params: {
+  accessToken: string;
+  terminalId: string;
+  amountCents: number;
+  descricao: string;
+  referencia: string;
+  /** a cobrança de teste do painel some antes, para não ficar na tela */
+  prazo?: string;
+}) {
+  return chamar<OrdemPoint>("/v1/orders", {
+    accessToken: params.accessToken,
+    metodo: "POST",
+    idempotencia: params.referencia,
+    corpo: {
+      type: "point",
+      external_reference: params.referencia,
+      expiration_time: params.prazo ?? PRAZO_DA_ORDEM,
+      description: params.descricao.slice(0, 80),
+      transactions: { payments: [{ amount: (params.amountCents / 100).toFixed(2) }] },
+      // o comprovante sai na impressora do totem, junto com a senha
+      config: { point: { terminal_id: params.terminalId, print_on_terminal: "no_ticket" } },
+    },
+  });
+}
+
+/** em que pé está a cobrança na maquininha */
+export function verOrdem(accessToken: string, ordemId: string) {
+  return chamar<OrdemPoint>(`/v1/orders/${encodeURIComponent(ordemId)}`, { accessToken });
+}
+
+/**
+ * Tira a cobrança da maquininha. Se ela já estiver na tela da maquininha,
+ * o cancelamento não é na hora: o Mercado Pago aceita o pedido e só depois
+ * a order vira "canceled" -- até lá ela ainda pode ser paga.
+ */
+export function cancelarOrdem(accessToken: string, ordemId: string) {
+  return chamar<OrdemPoint>(`/v1/orders/${encodeURIComponent(ordemId)}/cancel`, {
+    accessToken,
+    metodo: "POST",
+    idempotencia: `cancelar-${ordemId}`,
+    cabecalhos: { "x-allow-cancelable-status": "at_terminal" },
+  });
+}
+
+/**
+ * Situação da order traduzida para o totem. "action_required" quer dizer
+ * que só a maquininha sabe se aprovou: quem chama confere pelo pagamento.
+ * O que não for claramente aprovado, recusado ou cancelado continua como
+ * "esperando" -- nunca como aprovado.
+ */
+export function situacaoDaOrdem(status: string | null | undefined): "esperando" | "aprovado" | "recusado" | "cancelado" | "conferir" {
+  switch (String(status ?? "").toLowerCase()) {
+    case "processed":
+      return "aprovado";
+    case "failed":
+      return "recusado";
+    case "canceled":
+    case "expired":
+    case "refunded":
+      return "cancelado";
+    case "action_required":
+      return "conferir";
+    default:
+      return "esperando";
+  }
 }
 
 // ---- Pix -----------------------------------------------------------------

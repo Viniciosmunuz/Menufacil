@@ -2,6 +2,24 @@
 
 Atualizado em 29/09/2026.
 
+> **Mudou em 24/10/2026** — vale isto, por cima do que está abaixo:
+>
+> - **Conta:** ninguém copia mais Access Token. Na aba Totem o dono toca
+>   em **Conectar Mercado Pago** (a mesma conta da Entrega). O token
+>   colado continua valendo para quem já tinha.
+> - **Maquininha:** **Buscar minhas maquininhas** lista as da conta,
+>   **Usar esta** escolhe, **Pôr em modo integrado** faz o passo 4 da
+>   seção 2 (depois, reiniciar a maquininha) e **Testar cobrança** manda
+>   R$ 1,00 que some em meio minuto. O campo de digitar ficou de reserva.
+> - **Cartão pela API de Orders** (`/v1/orders`, `/terminals/v1/...`),
+>   que o Mercado Pago pôs no lugar das intenções de pagamento. As
+>   cobranças antigas (`intentId`) ainda terminam pelo caminho velho; as
+>   novas guardam `mpOrderId`.
+> - **O aparelho virou tablet Android**, não mini PC: o totem é a página
+>   web e a impressão é o APK Menu Fácil Print (só USB por enquanto).
+> - **Não testado com maquininha de verdade:** se a conta conectada pode
+>   comandar a Point só se prova no primeiro "Buscar minhas maquininhas".
+
 O totem está construído e no ar. O que falta não é código: é conta do
 Mercado Pago, maquininha e o aparelho do balcão. Este arquivo é a lista
 completa, na ordem de fazer.

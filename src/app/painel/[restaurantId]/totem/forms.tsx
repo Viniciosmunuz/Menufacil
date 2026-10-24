@@ -1,19 +1,25 @@
 "use client";
 
-import { CircleCheck, Trash2 } from "lucide-react";
+import { ChevronDown, CircleCheck, Trash2 } from "lucide-react";
 import { useActionState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Field, Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { formatTime } from "@/lib/format";
 
 import {
+  buscarMaquininhas,
   conectarMercadoPagoDoTotem,
   desconectarContaDoTotem,
   desconectarMercadoPago,
+  escolherMaquininha,
+  porEmModoIntegrado,
+  testarMaquininha,
+  type MaquininhasState,
   gerarCodigoDoTotem,
   removerTotem,
   salvarAccessToken,
@@ -103,6 +109,124 @@ export function MaquininhaForm({ restaurantId, deviceId }: { restaurantId: strin
         <Recado state={state} />
       </div>
     </form>
+  );
+}
+
+/**
+ * A maquininha sem digitar nada: buscar as da conta, escolher, pôr em
+ * modo integrado e testar. O campo de digitar o número continua, numa
+ * gaveta, para quando a busca não achar.
+ */
+export function Maquininha({ restaurantId, deviceId, temConta }: { restaurantId: string; deviceId: string | null; temConta: boolean }) {
+  const [lista, buscar] = useActionState<MaquininhasState, FormData>(buscarMaquininhas, {});
+  const [teste, testar] = useTotemForm(testarMaquininha);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="font-bold">Maquininha</p>
+        <p className="text-sm text-muted">
+          {deviceId ? (
+            <>
+              Escolhida: <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{deviceId}</code>
+            </>
+          ) : (
+            "Nenhuma escolhida ainda. Só é preciso para o cartão — o Pix funciona sem ela."
+          )}
+        </p>
+      </div>
+
+      {temConta && (
+        <div className="flex flex-wrap items-start gap-3">
+          <form action={buscar}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <SubmitButton variant={deviceId ? "secondary" : "primary"} pendingText="Buscando...">
+              Buscar minhas maquininhas
+            </SubmitButton>
+          </form>
+          {deviceId && (
+            <form action={testar}>
+              <input type="hidden" name="restaurantId" value={restaurantId} />
+              <SubmitButton variant="secondary" pendingText="Enviando...">
+                Testar cobrança (R$ 1,00)
+              </SubmitButton>
+            </form>
+          )}
+        </div>
+      )}
+      <Recado state={teste} />
+      {lista.error && <Alert tone="danger">{lista.error}</Alert>}
+
+      {lista.maquininhas && lista.maquininhas.length > 0 && (
+        <ul className="flex flex-col divide-y divide-line rounded-control border border-line">
+          {lista.maquininhas.map((m) => (
+            <ItemDaMaquininha key={m.id} restaurantId={restaurantId} maquininha={m} escolhida={m.id === deviceId} />
+          ))}
+        </ul>
+      )}
+
+      <details className="group rounded-control border border-line">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-bold text-muted">
+          Digitar o número da maquininha
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="border-t border-line p-4">
+          <MaquininhaForm restaurantId={restaurantId} deviceId={deviceId} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ItemDaMaquininha({
+  restaurantId,
+  maquininha,
+  escolhida,
+}: {
+  restaurantId: string;
+  maquininha: { id: string; integrada: boolean; modo: string };
+  escolhida: boolean;
+}) {
+  const [escolha, escolher] = useTotemForm(escolherMaquininha);
+  const [modo, integrar] = useTotemForm(porEmModoIntegrado);
+  // o número de série é o que está na etiqueta atrás da maquininha
+  const [modelo, serie] = maquininha.id.split("__");
+
+  return (
+    <li className="flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block truncate font-bold">{serie ?? maquininha.id}</span>
+          <span className="block truncate text-sm text-muted">{serie ? modelo.replaceAll("_", " ") : "Point"}</span>
+        </span>
+        <span className="flex flex-wrap items-center gap-2">
+          {escolhida && <Badge tone="success">Escolhida</Badge>}
+          {maquininha.integrada ? <Badge tone="success">Modo integrado</Badge> : <Badge tone="warning">Não integrada</Badge>}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {!escolhida && (
+          <form action={escolher}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input type="hidden" name="deviceId" value={maquininha.id} />
+            <SubmitButton size="sm" variant="secondary" pendingText="Salvando...">
+              Usar esta
+            </SubmitButton>
+          </form>
+        )}
+        {!maquininha.integrada && (
+          <form action={integrar}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input type="hidden" name="deviceId" value={maquininha.id} />
+            <SubmitButton size="sm" pendingText="Mudando...">
+              Pôr em modo integrado
+            </SubmitButton>
+          </form>
+        )}
+      </div>
+      <Recado state={escolha} />
+      <Recado state={modo} />
+    </li>
   );
 }
 

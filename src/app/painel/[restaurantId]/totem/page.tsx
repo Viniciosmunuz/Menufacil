@@ -32,7 +32,7 @@ import {
   ConectarContaForm,
   DesconectarContaForm,
   DesconectarForm,
-  MaquininhaForm,
+  Maquininha,
   NovoTotemForm,
   RemoverTotemForm,
   WebhookForm,
@@ -427,7 +427,7 @@ export default async function TotemPage({ params, searchParams }: PageProps<"/pa
           )}
 
           <div className="border-t border-line pt-5">
-            <MaquininhaForm restaurantId={restaurant.id} deviceId={config.deviceId} />
+            <Maquininha restaurantId={restaurant.id} deviceId={config.deviceId} temConta={config.prontoPix} />
           </div>
 
           {/* tira o token colado e a maquininha; a conta conectada fica */}

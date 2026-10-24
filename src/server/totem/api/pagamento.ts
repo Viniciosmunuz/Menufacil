@@ -6,12 +6,15 @@ import { credenciais } from "@/server/totem/config";
 import { tocarTotem, totemDaRequisicao } from "@/server/totem/dispositivos";
 import {
   cancelarIntencao,
+  cancelarOrdem,
   cancelarPagamento,
-  criarIntencao,
+  criarOrdemPoint,
   criarPix,
   situacao,
+  situacaoDaOrdem,
   situacaoDoPagamento,
   verIntencao,
+  verOrdem,
   verPagamento,
 } from "@/server/mercado-pago/api";
 import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } from "@/server/totem/pedido";
@@ -116,9 +119,11 @@ export async function cobrar(request: Request) {
     return Response.json({ erro: "A maquininha ainda não está configurada no painel deste restaurante." }, { status: 409 });
   }
 
-  const resposta = await criarIntencao({
+  // cobrança nova sempre pela API de Orders; o caminho das intenções só
+  // termina o que já tinha começado por ele (ver conferir e cancelar)
+  const resposta = await criarOrdemPoint({
     accessToken: contas.accessToken,
-    deviceId: contas.deviceId,
+    terminalId: contas.deviceId,
     amountCents: conta.totalCents,
     descricao,
     referencia,
@@ -126,7 +131,7 @@ export async function cobrar(request: Request) {
   if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 502 });
 
   const pagamento = await db.totemPayment.create({
-    data: { ...comum, method: "CARD", intentId: String(resposta.dados.id) },
+    data: { ...comum, method: "CARD", mpOrderId: String(resposta.dados.id) },
     select: { id: true },
   });
 
@@ -141,7 +146,7 @@ export async function conferir(request: Request) {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   const pagamento = await db.totemPayment.findFirst({
     where: { id, restaurantId: totem.restaurantId },
-    select: { id: true, method: true, intentId: true, mpPaymentId: true, status: true, orderId: true, cart: true },
+    select: { id: true, method: true, intentId: true, mpOrderId: true, mpPaymentId: true, status: true, orderId: true, cart: true },
   });
   if (!pagamento) return Response.json({ erro: "pagamento não encontrado" }, { status: 404 });
 
@@ -167,6 +172,24 @@ export async function conferir(request: Request) {
     if (!resposta.ok) return Response.json({ situacao: "esperando", aviso: resposta.erro });
     estado = situacaoDoPagamento(resposta.dados.status);
     evento = resposta.dados;
+  } else if (pagamento.mpOrderId) {
+    const resposta = await verOrdem(contas.accessToken, pagamento.mpOrderId);
+    if (!resposta.ok) return Response.json({ situacao: "esperando", aviso: resposta.erro });
+    const ordem = resposta.dados;
+    const idDoPagamento = ordem.transactions?.payments?.[0]?.id;
+    if (idDoPagamento) idNoMercadoPago = String(idDoPagamento);
+    evento = ordem;
+
+    const lida = situacaoDaOrdem(ordem.status);
+    if (lida === "conferir") {
+      // só a maquininha sabe se aprovou; o pagamento dela diz
+      if (!idNoMercadoPago) return Response.json({ situacao: "esperando" });
+      const doPagamento = await verPagamento(contas.accessToken, idNoMercadoPago);
+      if (!doPagamento.ok) return Response.json({ situacao: "esperando", aviso: doPagamento.erro });
+      estado = situacaoDoPagamento(doPagamento.dados.status);
+    } else {
+      estado = lida;
+    }
   } else {
     if (!pagamento.intentId) return Response.json({ situacao: "esperando" });
     const resposta = await verIntencao(contas.accessToken, pagamento.intentId);
@@ -238,13 +261,28 @@ export async function cancelar(request: Request) {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   const pagamento = await db.totemPayment.findFirst({
     where: { id, restaurantId: totem.restaurantId },
-    select: { id: true, method: true, intentId: true, mpPaymentId: true, status: true },
+    select: { id: true, method: true, intentId: true, mpOrderId: true, mpPaymentId: true, status: true },
   });
   if (!pagamento) return Response.json({ erro: "pagamento não encontrado" }, { status: 404 });
   if (pagamento.status !== "PENDING") return Response.json({ erro: "Esse pagamento já foi fechado." }, { status: 409 });
 
   const contas = await credenciais(totem.restaurantId);
   if (!contas) return Response.json({ erro: "O pagamento não está configurado." }, { status: 409 });
+
+  if (pagamento.method === "CARD" && pagamento.mpOrderId) {
+    const resposta = await cancelarOrdem(contas.accessToken, pagamento.mpOrderId);
+    // o Mercado Pago recusa cancelar o que já foi pago: nesse caso o GET resolve
+    if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 409 });
+
+    // Já na tela da maquininha, o cancelamento demora um pouco, e até lá
+    // o cartão ainda pode passar. A linha não vira cancelada aqui: o
+    // totem volta a acompanhar e o GET fecha quando a order mudar.
+    if (situacaoDaOrdem(resposta.dados.status) !== "cancelado") {
+      return Response.json({ erro: "Cancelando na maquininha. Aguarde um instante." }, { status: 409 });
+    }
+    await db.totemPayment.updateMany({ where: { id: pagamento.id, status: "PENDING" }, data: { status: "CANCELED" } });
+    return Response.json({ ok: true });
+  }
 
   const resposta =
     pagamento.method === "PIX"

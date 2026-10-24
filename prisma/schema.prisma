@@ -978,6 +978,11 @@ model TotemPayment {
    * cartao: o Pix nao passa pela maquininha, nasce direto como pagamento.
    */
   intentId    String?            @unique
+  /**
+   * id da order na API de Orders do Mercado Pago ("ORD..."). E o caminho
+   * novo do cartao; o intentId fica so para as cobrancas do caminho antigo.
+   */
+  mpOrderId   String?            @unique
   /// external_reference mandado ao Mercado Pago: e por ele que o webhook
   /// acha esta linha quando o aviso chega
   reference   String?

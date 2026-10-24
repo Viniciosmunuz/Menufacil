@@ -1,14 +1,17 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { refresh } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
+import { criarOrdemPoint, ligarModoIntegrado, listarTerminais } from "@/server/mercado-pago/api";
 import { desligarConta } from "@/server/pagamentos/conta";
 import { criarState, enderecoDeAutorizacao } from "@/server/pagamentos/oauth";
 import { panelAudit } from "@/server/panel";
-import { esquecerConta, salvarChaveDoWebhook, salvarMaquininha, salvarToken } from "@/server/totem/config";
+import { credenciais, esquecerConta, salvarChaveDoWebhook, salvarMaquininha, salvarToken } from "@/server/totem/config";
 import { desligarTotem, novoCodigoDePareamento } from "@/server/totem/dispositivos";
 import { darBaixaNoPagamento, gravarPedidoDoPagamento } from "@/server/totem/pagos";
 import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
@@ -43,6 +46,97 @@ export async function salvarAccessToken(_prev: TotemState, formData: FormData): 
   // o token em si nunca entra no histórico: só o fato de ter sido trocado
   await panelAudit(access, "totem.mercado_pago", { producao: resultado.producao });
   return salvo();
+}
+
+// ---- a maquininha, sem digitar nada ------------------------------------
+//
+// Buscar, escolher, pôr em modo integrado e testar: os quatro passos em
+// que a instalação mais travava, agora feitos pelo painel com a conta do
+// restaurante. Nenhum deles cobra o cliente de ninguém.
+
+export type MaquininhasState = TotemState & {
+  maquininhas?: { id: string; integrada: boolean; modo: string }[];
+};
+
+export async function buscarMaquininhas(_prev: MaquininhasState, formData: FormData): Promise<MaquininhasState> {
+  const access = await acesso(formData);
+  const contas = await credenciais(access.restaurant.id);
+  if (!contas) return { error: "Conecte a conta do Mercado Pago antes de buscar as maquininhas." };
+
+  const resposta = await listarTerminais(contas.accessToken);
+  if (!resposta.ok) return { error: `O Mercado Pago não deixou listar as maquininhas: ${resposta.erro}` };
+  if (resposta.dados.length === 0) {
+    return { error: "Nenhuma maquininha Point ligada a esta conta. Confira se ela foi ativada com a conta do restaurante." };
+  }
+
+  return {
+    ok: true,
+    maquininhas: resposta.dados.map((t) => ({
+      id: t.id,
+      integrada: String(t.operating_mode ?? "").toUpperCase() === "PDV",
+      modo: String(t.operating_mode ?? "desconhecido"),
+    })),
+  };
+}
+
+export async function escolherMaquininha(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  const id = String(formData.get("deviceId") ?? "").trim();
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(id)) return { error: "Maquininha inválida." };
+
+  await salvarMaquininha(access.restaurant.id, id);
+  await panelAudit(access, "totem.maquininha", { preenchido: true, pelaLista: true });
+  refresh();
+  return { ok: true, message: "Maquininha escolhida." };
+}
+
+export async function porEmModoIntegrado(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  const id = String(formData.get("deviceId") ?? "").trim();
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(id)) return { error: "Maquininha inválida." };
+  const contas = await credenciais(access.restaurant.id);
+  if (!contas) return { error: "Conecte a conta do Mercado Pago primeiro." };
+
+  const resposta = await ligarModoIntegrado(contas.accessToken, id);
+  if (!resposta.ok) return { error: `O Mercado Pago recusou: ${resposta.erro}` };
+
+  // já deixa escolhida: quem integra uma maquininha é para usar ela
+  await salvarMaquininha(access.restaurant.id, id);
+  await panelAudit(access, "totem.maquininha.integrada");
+  refresh();
+  return {
+    ok: true,
+    message: "Pronto. Agora desligue a maquininha e ligue de novo: o modo integrado só vale depois disso.",
+  };
+}
+
+/**
+ * Manda R$ 1,00 para a maquininha escolhida, só para ver a cobrança
+ * aparecer na tela dela. Some sozinha em meio minuto; se alguém passar o
+ * cartão, o real cai na própria conta do restaurante.
+ */
+export async function testarMaquininha(_prev: TotemState, formData: FormData): Promise<TotemState> {
+  const access = await acesso(formData);
+  const contas = await credenciais(access.restaurant.id);
+  if (!contas) return { error: "Conecte a conta do Mercado Pago primeiro." };
+  if (!contas.deviceId) return { error: "Escolha a maquininha antes de testar." };
+
+  const resposta = await criarOrdemPoint({
+    accessToken: contas.accessToken,
+    terminalId: contas.deviceId,
+    amountCents: 100,
+    descricao: `${access.restaurant.name} - teste do totem`,
+    referencia: `teste-${randomUUID()}`,
+    prazo: "PT30S",
+  });
+  if (!resposta.ok) return { error: `A cobrança não saiu: ${resposta.erro}` };
+
+  await panelAudit(access, "totem.maquininha.teste");
+  return {
+    ok: true,
+    message:
+      "Cobrança de teste de R$ 1,00 enviada. Ela deve aparecer na tela da maquininha agora e some sozinha em meio minuto. Se não aparecer, confira se a maquininha foi reiniciada depois do modo integrado.",
+  };
 }
 
 export async function salvarDeviceId(_prev: TotemState, formData: FormData): Promise<TotemState> {
