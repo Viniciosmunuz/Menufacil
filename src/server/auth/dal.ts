@@ -4,6 +4,7 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 
 import type { NivelGarcom, OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
+import { noAr } from "@/lib/features";
 import { db } from "@/lib/db";
 
 import { readSession } from "./session";
@@ -167,7 +168,9 @@ export async function requireRestaurantAccess(restaurantId: string): Promise<Res
  */
 export async function requireSalao(restaurantId: string): Promise<RestaurantAccess> {
   const acesso = await requireRestaurantAccess(restaurantId);
-  if (!acesso.restaurant.salaoEnabled) notFound();
+  // fora do ar vale para todos, inclusive para quem está com a coluna
+  // ligada no banco: a decisão é da plataforma, não do cadastro
+  if (!noAr("salaoEnabled") || !acesso.restaurant.salaoEnabled) notFound();
   return acesso;
 }
 
@@ -181,6 +184,12 @@ export async function requireSalao(restaurantId: string): Promise<RestaurantAcce
  */
 export async function requireDono(restaurantId: string): Promise<RestaurantAccess> {
   const acesso = await requireRestaurantAccess(restaurantId);
-  if (acesso.papel === "STAFF") redirect(`/garcom/${restaurantId}`);
+  // com o salão fora do ar a tela do garçom não existe, e mandá-lo para lá
+  // seria entregar um 404 a quem acabou de acertar a senha: a conta dele
+  // não tem para onde ir enquanto o recurso não voltar
+  if (acesso.papel === "STAFF") {
+    if (!noAr("salaoEnabled")) notFound();
+    redirect(`/garcom/${restaurantId}`);
+  }
   return acesso;
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CloudPrinterIcon } from "@/components/panel/cloud-printer-icon";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
+import { noAr } from "@/lib/features";
 import { requireDono } from "@/server/auth/dal";
 
 // salvo na tela inicial do celular, o atalho do painel abre no painel
@@ -47,7 +48,7 @@ export default async function RestaurantPanelLayout({
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
         // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
         // acontecendo agora --, só que nas mesas em vez da entrega
-        ...(restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
+        ...(noAr("salaoEnabled") && restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
         // o admin da plataforma pode ter desligado o recurso para este restaurante

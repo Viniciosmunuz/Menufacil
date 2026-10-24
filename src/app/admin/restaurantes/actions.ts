@@ -162,7 +162,12 @@ export async function setRestaurantFeatures(_prev: AdminFormState, formData: For
   });
   if (!before) return { error: "Restaurante não encontrado." };
 
-  const data = Object.fromEntries(FEATURES.map((f) => [f.key, marcados.has(f.key)])) as Record<FeatureKey, boolean>;
+  // o recurso fora do ar não aparece na tela, e por isso não vem marcado:
+  // gravá-lo como desligado apagaria a configuração de quem já usava, e no
+  // dia em que ele voltar o restaurante teria de ser religado na mão
+  const data = Object.fromEntries(
+    FEATURES.filter((f) => !f.foraDoAr).map((f) => [f.key, marcados.has(f.key)]),
+  ) as Partial<Record<FeatureKey, boolean>>;
   // Tirar o 100% Delivery devolve o restaurante ao Pedido pelo WhatsApp. O
   // servidor já barraria o fluxo pelo recurso desligado, mas deixar
   // "deliveryMode" apontando para um modo proibido faria o painel dele
@@ -176,7 +181,7 @@ export async function setRestaurantFeatures(_prev: AdminFormState, formData: For
   });
 
   const changes = Object.fromEntries(
-    FEATURES.filter((f) => before[f.key] !== data[f.key]).map((f) => [f.key, data[f.key] ? "ligado" : "desligado"]),
+    FEATURES.filter((f) => !f.foraDoAr && before[f.key] !== data[f.key]).map((f) => [f.key, data[f.key] ? "ligado" : "desligado"]),
   );
   if (Object.keys(changes).length === 0) return { ok: true, message: "Nada mudou." };
 

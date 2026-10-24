@@ -6,7 +6,7 @@ import { SectionTitle } from "@/components/panel/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { SwitchButton } from "@/components/ui/switch-button";
-import { FEATURES, type FeatureKey, type RestaurantFeatures } from "@/lib/features";
+import { FEATURES_NO_AR, type FeatureKey, type RestaurantFeatures } from "@/lib/features";
 
 import { setRestaurantFeatures, type AdminFormState } from "../actions";
 
@@ -29,7 +29,7 @@ export function FeaturesPanel({ restaurantId, features }: { restaurantId: string
   const [state, action] = useActionState<AdminFormState, FormData>(setRestaurantFeatures, {});
 
   /** os que ficam como estão quando este for tocado */
-  const osOutros = (alvo: FeatureKey) => FEATURES.filter((f) => f.key !== alvo && features[f.key]);
+  const osOutros = (alvo: FeatureKey) => FEATURES_NO_AR.filter((f) => f.key !== alvo && features[f.key]);
 
   // o texto se alinha sob o rótulo do interruptor, não sob o interruptor:
   // largura da chave (3rem) mais o respiro que o próprio botão usa (0.625rem)
@@ -58,7 +58,7 @@ export function FeaturesPanel({ restaurantId, features }: { restaurantId: string
           <p className={`${recuo} text-sm text-muted`}>É como todo restaurante recebe pedido hoje.</p>
         </li>
 
-        {FEATURES.map((f) => (
+        {FEATURES_NO_AR.map((f) => (
           <li key={f.key} className="py-3 last:pb-0">
             <form action={action}>
               <input type="hidden" name="restaurantId" value={restaurantId} />

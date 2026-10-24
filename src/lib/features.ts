@@ -13,6 +13,15 @@ export type Feature = {
   hint: string;
   /** ainda em construção: a chave fica guardada, mas não muda nada hoje */
   soon?: boolean;
+  /**
+   * Pronto, mas fora do ar por decisão de negócio.
+   *
+   * Some do painel do admin e o servidor responde como se a tela não
+   * existisse, em qualquer restaurante -- inclusive nos que estão com a
+   * coluna ligada no banco. O código inteiro fica onde está, e voltar é
+   * apagar esta marca: nenhuma migration, nenhum dado perdido.
+   */
+  foraDoAr?: boolean;
 };
 
 export const FEATURES: Feature[] = [
@@ -35,7 +44,17 @@ export const FEATURES: Feature[] = [
     key: "salaoEnabled",
     label: "Salão",
     hint: "Atendimento na mesa: mapa do salão, comandas e garçons com login próprio, lançando pelo mesmo cardápio dos outros canais. Libera a seção Salão no painel dele, logo abaixo de Pedidos.",
+    // O MenuFácil está focado em delivery e totem: o salão sai do ar até
+    // voltar a ser prioridade. Está pronto e testado -- é só tirar esta
+    // linha para ele reaparecer, com os dados de quem já usou intactos.
+    foraDoAr: true,
   },
 ];
+
+/** os recursos que o admin pode mexer hoje */
+export const FEATURES_NO_AR = FEATURES.filter((f) => !f.foraDoAr);
+
+/** este recurso está no ar? a pergunta que o servidor faz antes de abrir a tela */
+export const noAr = (key: FeatureKey) => !FEATURES.find((f) => f.key === key)?.foraDoAr;
 
 export type RestaurantFeatures = Record<FeatureKey, boolean>;
