@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 
 import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { db } from "@/lib/db";
+import { nextOrderStep } from "@/lib/order-flow";
 import { PAPER_WIDTHS } from "@/lib/ticket";
 import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
@@ -73,6 +74,50 @@ export async function stepRestaurantOrder(formData: FormData) {
   });
   // se o pedido mudou nesse meio-tempo, a tela atualizada mostra como ficou
   refresh();
+}
+
+/** o que a seleção da lista manda: cada pedido com o status que a tela mostrava */
+export type PassoEmLote = { orderId: string; from: string; to: string };
+export type ResultadoDoLote = { feitos: number; pulados: number };
+
+/** quantos pedidos um toque move de uma vez */
+const MAXIMO_DO_LOTE = 40;
+
+/**
+ * Vários pedidos dando o mesmo passo de uma vez: "Saiu para entrega" para
+ * os cinco que o entregador levou juntos, "Entregue" quando ele volta.
+ *
+ * Não é um caminho novo: cada pedido passa pelo mesmo setOrderStatus do
+ * botão de cada um, com a mesma trava (só muda se ainda estiver no status
+ * que a tela mostrava), a mesma impressão e os mesmos avisos ao cliente.
+ * O que o servidor confere a mais é que o passo pedido é mesmo o próximo
+ * daquele pedido -- a seleção não serve para pular etapa nem cancelar --,
+ * e confirmar pagamento fica fora do lote: é coisa de olhar um por um.
+ */
+export async function avancarPedidosEmLote(restaurantId: string, passos: PassoEmLote[]): Promise<ResultadoDoLote> {
+  const formData = new FormData();
+  formData.set("restaurantId", restaurantId);
+  const { restaurantId: id, actor } = await access(formData);
+
+  let feitos = 0;
+  let pulados = 0;
+  for (const passo of passos.slice(0, MAXIMO_DO_LOTE)) {
+    const pedido = await db.order.findFirst({
+      where: { id: String(passo.orderId), restaurantId: id },
+      select: { status: true, type: true, paymentMethod: true, origin: true },
+    });
+    const proximo = pedido ? nextOrderStep(pedido.status, pedido.type, pedido.paymentMethod, pedido.origin) : null;
+    if (!pedido || !proximo || proximo.to !== passo.to || proximo.label === "Confirmar pagamento") {
+      pulados++;
+      continue;
+    }
+    const resultado = await setOrderStatus({ orderId: passo.orderId, from: String(passo.from), to: proximo.to, actor, restaurantId: id });
+    if (resultado.error) pulados++;
+    else feitos++;
+  }
+
+  refresh();
+  return { feitos, pulados };
 }
 
 // Print Fácil: ligar e desligar o computador do restaurante. O programa

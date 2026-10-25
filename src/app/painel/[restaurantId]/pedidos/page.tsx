@@ -27,7 +27,9 @@ import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
 import { AvisoDePagosSemPedido } from "../totem/pagos";
+import { MarcarPedido, SelecaoDePedidos, type PassoDoPedido } from "./selecao";
 import {
+  avancarPedidosEmLote,
   desligarAvisos,
   ligarAvisos,
   markPrinted,
@@ -131,6 +133,14 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // dela. Nas outras abas a ordem é a de sempre: ali é histórico.
   const lista = filter === "andamento" ? [...orders].sort((a, b) => Number(emRota(a)) - Number(emRota(b))) : orders;
   const hidden = { restaurantId: restaurant.id };
+  // o passo que a seleção em lote pode dar neste pedido: o mesmo do botão
+  // dele, e nunca "confirmar pagamento", que pede olhar um por um
+  const passoEmLote = (o: (typeof lista)[number]): PassoDoPedido | null => {
+    if (filter !== "andamento") return null;
+    const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
+    if (!step || step.label === "Confirmar pagamento") return null;
+    return { orderId: o.id, from: o.status, to: step.to, label: step.label };
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -204,56 +214,63 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         </EmptyState>
       ) : (
         <>
-          <ul className="flex flex-col gap-2">
-            {lista.map((o, i) => (
-              <li key={o.id}>
-                {/* Uma linha fina separa o que ainda está aqui dentro do que
-                    já está na rua: em cima o que a cozinha e o balcão têm de
-                    fazer, embaixo o que só espera o entregador chegar. Sem
-                    ela, quem olha a lista às 20h lê o selo de cada pedido
-                    para saber qual é qual.
+          <SelecaoDePedidos restaurantId={restaurant.id} acao={avancarPedidosEmLote} disponivel={filter === "andamento"}>
+            <ul className="flex flex-col gap-2">
+              {lista.map((o, i) => (
+                <li key={o.id}>
+                  {/* Uma linha fina separa o que ainda está aqui dentro do que
+                      já está na rua: em cima o que a cozinha e o balcão têm de
+                      fazer, embaixo o que só espera o entregador chegar. Sem
+                      ela, quem olha a lista às 20h lê o selo de cada pedido
+                      para saber qual é qual.
 
-                    Discreta de propósito: é uma arrumação da lista, não um
-                    aviso. Quem precisa chamar atenção aqui é o pedido parado. */}
-                {emRota(o) && !emRota(lista[i - 1]) && (
-                  <p className="mt-5 mb-2 flex items-center gap-3 text-xs font-bold tracking-widest text-faint uppercase">
-                    <span className="h-px flex-1 bg-line" />
-                    em rota
-                    <span className="h-px flex-1 bg-line" />
-                  </p>
-                )}
-                <OrderDrawer order={o} naoLidas={naoLidas.get(o.id) ?? 0}>
-                  <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
-                    <span className="flex flex-wrap items-center gap-2">
-                      {/* no 100% Delivery o cliente fala por aqui, e não pelo
-                          WhatsApp: sem um caminho na lista, a mensagem dele
-                          só seria vista por quem abrisse o pedido por outro
-                          motivo */}
-                      {o.origin === "FULL_DELIVERY" && (
-                        <Link
-                          href={`${base}/${o.id}#conversa`}
-                          className={buttonClasses((naoLidas.get(o.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
-                        >
-                          <MessagesSquare className="size-4" aria-hidden="true" />
-                          {(naoLidas.get(o.id) ?? 0) > 0 ? `Responder (${naoLidas.get(o.id)})` : "Conversa"}
-                        </Link>
-                      )}
-                      <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                        <Printer className="size-4" aria-hidden="true" />
-                        Imprimir
-                      </a>
-                      <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
-                        <ExternalLink className="size-4" aria-hidden="true" />
-                        Abrir pedido
-                      </Link>
-                    </span>
+                      Discreta de propósito: é uma arrumação da lista, não um
+                      aviso. Quem precisa chamar atenção aqui é o pedido parado. */}
+                  {emRota(o) && !emRota(lista[i - 1]) && (
+                    <p className="mt-5 mb-2 flex items-center gap-3 text-xs font-bold tracking-widest text-faint uppercase">
+                      <span className="h-px flex-1 bg-line" />
+                      em rota
+                      <span className="h-px flex-1 bg-line" />
+                    </p>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <MarcarPedido passo={passoEmLote(o)} />
+                    <div className="min-w-0 flex-1">
+                      <OrderDrawer order={o} naoLidas={naoLidas.get(o.id) ?? 0}>
+                        <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
+                          <span className="flex flex-wrap items-center gap-2">
+                            {/* no 100% Delivery o cliente fala por aqui, e não pelo
+                                WhatsApp: sem um caminho na lista, a mensagem dele
+                                só seria vista por quem abrisse o pedido por outro
+                                motivo */}
+                            {o.origin === "FULL_DELIVERY" && (
+                              <Link
+                                href={`${base}/${o.id}#conversa`}
+                                className={buttonClasses((naoLidas.get(o.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
+                              >
+                                <MessagesSquare className="size-4" aria-hidden="true" />
+                                {(naoLidas.get(o.id) ?? 0) > 0 ? `Responder (${naoLidas.get(o.id)})` : "Conversa"}
+                              </Link>
+                            )}
+                            <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
+                              <Printer className="size-4" aria-hidden="true" />
+                              Imprimir
+                            </a>
+                            <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
+                              <ExternalLink className="size-4" aria-hidden="true" />
+                              Abrir pedido
+                            </Link>
+                          </span>
+                        </div>
+                      </OrderDrawer>
+                    </div>
                   </div>
-                </OrderDrawer>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </SelecaoDePedidos>
           {pages > 1 && (
             <nav className="flex items-center justify-between gap-2" aria-label="Páginas">
               {page > 1 ? (
