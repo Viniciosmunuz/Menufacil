@@ -5,8 +5,10 @@ import { GarcomNav } from "@/components/panel/garcom-nav";
 import { formatCpf } from "@/lib/cpf";
 import { NOME_DO_NIVEL } from "@/lib/niveis";
 import { GRUPOS } from "@/lib/permissoes-salao";
-import { requireSalao } from "@/server/auth/dal";
+import { noAr } from "@/lib/features";
+import { requireRestaurantAccess } from "@/server/auth/dal";
 
+import { SalaoNaoLiberado } from "../aviso";
 import { BotaoSair } from "./sair";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -24,7 +26,8 @@ export const metadata: Metadata = { title: "Ajustes" };
 
 export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom/[restaurantId]/ajustes">) {
   const { restaurantId } = await params;
-  const { user, restaurant, papel, pode, nivel } = await requireSalao(restaurantId);
+  const { user, restaurant, papel, pode, nivel } = await requireRestaurantAccess(restaurantId);
+  if (!noAr("salaoEnabled") || !restaurant.salaoEnabled) return <SalaoNaoLiberado nome={restaurant.name} />;
   const base = `/garcom/${restaurant.id}`;
 
   // o login do garçom é o CPF; o do dono é um e-mail de verdade

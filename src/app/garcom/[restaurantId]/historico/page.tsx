@@ -5,8 +5,11 @@ import Link from "next/link";
 import { GarcomNav } from "@/components/panel/garcom-nav";
 import { ListaDoHistorico, ResumoDoHistorico } from "@/components/panel/historico-salao";
 import { startOfToday, todayKey } from "@/lib/format";
-import { requireSalao } from "@/server/auth/dal";
+import { noAr } from "@/lib/features";
+import { requireRestaurantAccess } from "@/server/auth/dal";
 import { intervaloDoDia, lerHistorico } from "@/server/salao/historico";
+
+import { SalaoNaoLiberado } from "../aviso";
 
 export const metadata: Metadata = { title: "Meu histórico" };
 
@@ -23,7 +26,8 @@ const outroDia = (dia: string, passo: number) => todayKey(new Date(new Date(`${d
 
 export default async function HistoricoDoGarcomPage({ params, searchParams }: PageProps<"/garcom/[restaurantId]/historico">) {
   const { restaurantId } = await params;
-  const { user, restaurant } = await requireSalao(restaurantId);
+  const { user, restaurant } = await requireRestaurantAccess(restaurantId);
+  if (!noAr("salaoEnabled") || !restaurant.salaoEnabled) return <SalaoNaoLiberado nome={restaurant.name} />;
   const busca = await searchParams;
   const base = `/garcom/${restaurant.id}`;
 

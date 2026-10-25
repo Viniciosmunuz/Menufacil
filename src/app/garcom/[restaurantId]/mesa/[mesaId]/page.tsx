@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { AtendendoMesa } from "@/components/panel/atendendo-mesa";
 import { MesaDoGarcom } from "@/components/panel/mesa-garcom";
 import { db } from "@/lib/db";
-import { requireSalao } from "@/server/auth/dal";
+import { noAr } from "@/lib/features";
+import { requireRestaurantAccess } from "@/server/auth/dal";
+
+import { SalaoNaoLiberado } from "../../aviso";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
 import { mesasParaDestino } from "@/server/salao/mexer";
 
@@ -22,7 +25,8 @@ export const metadata: Metadata = { title: "Mesa" };
 
 export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[restaurantId]/mesa/[mesaId]">) {
   const { restaurantId, mesaId } = await params;
-  const { restaurant, pode } = await requireSalao(restaurantId);
+  const { restaurant, pode } = await requireRestaurantAccess(restaurantId);
+  if (!noAr("salaoEnabled") || !restaurant.salaoEnabled) return <SalaoNaoLiberado nome={restaurant.name} />;
 
   const [achado, categorias, mesas, impressoras] = await Promise.all([
     verMesa(restaurant.id, mesaId),
