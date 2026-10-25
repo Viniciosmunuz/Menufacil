@@ -186,8 +186,12 @@ function salaoLines(o: TicketOrder, restaurantName: string, p: ReturnType<typeof
   if (mesa?.nome) lines.push(meio(mesa.nome.toUpperCase()));
   if (o.comanda?.garcom?.name) lines.push(meio(`Garçom: ${o.comanda.garcom.name}`));
 
-  // as duas colunas da ordem de produção: quanto e o quê
-  lines.push(fraco, margem + "QTD  DESCRIÇÃO", fraco);
+  // Uma linha só, separando o cabeçalho da lista.
+  //
+  // A via tinha um traço entre cada parte, e numa comanda de três itens o
+  // papel saía mais pontilhado que escrito. O que separa aqui é o espaço:
+  // quem está no fogão lê a lista, não as divisórias.
+  lines.push(fraco, margem + "QTD  DESCRIÇÃO");
 
   for (const item of o.items) {
     const quantidade = `${item.quantity}`.padEnd(5);
@@ -210,14 +214,10 @@ function salaoLines(o: TicketOrder, restaurantName: string, p: ReturnType<typeof
     if (item.notes) lines.push(...texto(`Obs.: ${item.notes}`, 5, 2));
   }
 
-  lines.push(forte);
+  if (o.notes) lines.push("", ...texto(`OBSERVAÇÃO: ${o.notes}`));
 
-  if (o.notes) {
-    lines.push(...texto(`OBSERVAÇÃO: ${o.notes}`));
-    lines.push(forte);
-  }
-
-  lines.push("", meio(`DATA E HORA: ${dataEHora(o.createdAt)}`));
+  // a barra cheia fecha a ordem de produção, e embaixo dela o carimbo
+  lines.push(forte, "", meio(`DATA E HORA: ${dataEHora(o.createdAt)}`));
   return lines;
 }
 
@@ -382,40 +382,44 @@ export type ContaDaMesa = {
  * o papel para levar à mesa.
  */
 export function contaLines(c: ContaDaMesa, restaurantName: string, paper: number = DEFAULT_PAPER): string[] {
-  const { forte, fraco, meio, entre, texto, titulo } = pincel(paper);
+  const { forte, margem, meio, entre, texto, titulo } = pincel(paper);
   const lines: string[] = [];
 
-  lines.push(forte, meio(restaurantName.toUpperCase()), meio("CONTA · NÃO É DOCUMENTO FISCAL"), forte);
+  // O cabeçalho sem moldura: o nome da casa, o aviso e o número da mesa,
+  // separados por espaço. A via tinha um traço entre cada parte, e numa
+  // conta de três itens saía mais pontilhado que escrito.
+  lines.push(meio(restaurantName.toUpperCase()), meio("CONTA · NÃO É DOCUMENTO FISCAL"));
   lines.push("", meio(c.rotulo.toUpperCase()), "");
   if (c.nomeDaMesa) lines.push(meio(c.nomeDaMesa.toUpperCase()), "");
+  if (c.garcom) lines.push(meio(`Garçom: ${c.garcom}`), "");
 
-  lines.push(forte);
-  lines.push(entre("Aberta", clock(c.abertaAt)));
-  if (c.garcom) lines.push(...texto(`Garçom: ${c.garcom}`));
-  if (c.pessoas > 0) lines.push(...texto(`Pessoas: ${c.pessoas}`));
-  lines.push(forte);
-
+  // uma linha só, abrindo a lista do que foi consumido
   lines.push(...titulo("CONSUMO"));
   for (const i of c.itens) {
     lines.push(entre(`${i.quantidade}x ${i.nome}`, formatCents(i.centavos)));
     if (i.opcoes) lines.push(...texto(i.opcoes, 4, 2));
     if (i.observacao) lines.push(...texto(`Obs.: ${i.observacao}`, 4, 2));
   }
-  lines.push(fraco);
 
+  lines.push("");
   lines.push(entre("Subtotal", formatCents(c.subtotalCents)));
   if (c.servicoCents > 0) lines.push(entre("Serviço", formatCents(c.servicoCents)));
   if (c.descontoCents > 0) lines.push(entre("Desconto", "-" + formatCents(c.descontoCents)));
   lines.push(forte, entre("TOTAL", formatCents(c.totalCents)), forte);
 
   if (c.pagamentos.length > 0) {
-    lines.push(...titulo("JÁ RECEBIDO"));
+    lines.push(margem + "JÁ RECEBIDO");
     for (const p of c.pagamentos) lines.push(entre(p.forma, formatCents(p.centavos)));
-    lines.push(fraco, entre(c.faltaCents === 0 ? "CONTA PAGA" : "FALTA", c.faltaCents === 0 ? "" : formatCents(c.faltaCents)), forte);
+    lines.push("", entre(c.faltaCents === 0 ? "CONTA PAGA" : "FALTA", c.faltaCents === 0 ? "" : formatCents(c.faltaCents)), forte);
   }
+
+  // a hora em que a mesa abriu fecha o papel, miúda: quem confere a conta
+  // olha o total, e a hora é a resposta de "estamos aqui desde quando?"
+  lines.push("", meio(`Mesa aberta em ${dataEHora(c.abertaAt)}`));
 
   return lines;
 }
+
 
 export const contaText = (c: ContaDaMesa, restaurantName: string, paper: number = DEFAULT_PAPER) =>
   `${contaLines(c, restaurantName, paper).join("\n")}\n\n\n`;
