@@ -60,7 +60,7 @@ export default async function GarcomPage({ params }: PageProps<"/garcom/[restaur
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-xl flex-col gap-4 px-4 pt-4">
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 px-4 pt-4">
       <SalaoComBusca mesas={salao.mesas} balcoes={salao.balcoes} base={base} cols="grid grid-cols-2 gap-2.5" />
       <GarcomNav base={base} />
     </main>
