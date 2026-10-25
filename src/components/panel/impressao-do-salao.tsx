@@ -21,12 +21,17 @@ import { ligarImpressoraDoApp } from "@/app/painel/[restaurantId]/impressora-do-
 // antigo (antes da 1.4.0) ignora esse nome e tira tudo no caixa: sai no
 // lugar errado, mas sai -- nenhuma comanda fica presa na fila.
 
-const INTERVALO = 5000;
+// O servidor avisa pelo canal ao vivo do painel quando entra comanda de
+// mesa ou conta pedida, e a fila é buscada na hora -- a via já vem junto,
+// numa ida só. A volta de tempos em tempos fica de reserva, para o canal
+// que caiu e voltou sem ninguém perceber.
+const RESERVA = 15000;
 
 /** a tela de impressoras avisa por aqui que ligou ou desligou uma */
 export const IMPRESSORAS_MUDARAM = "mf-impressoras-do-salao";
 
-type NaFila = { id: string; numero: number; criado_em: string; tentativa: number };
+type Via = { texto?: string; dados?: unknown; papel_mm?: number; numero?: number };
+type NaFila = { id: string; numero: number; criado_em: string; tentativa: number; via?: Via | null };
 type Fila = { token: string; desde: number; impressora: string | null };
 
 let rodando = false;
@@ -61,8 +66,8 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
     const umaFila = async (fila: Fila) => {
       // a do caixa conta ao servidor qual impressora o programa usa
       const nome = fila.impressora ?? doCaixa;
-      const q = nome ? `?impressora=${encodeURIComponent(nome)}` : "";
-      const resposta = await api(fila, `/api/impressao/pedidos${q}`);
+      const q = new URLSearchParams({ vias: "1", ...(nome ? { impressora: nome } : {}) });
+      const resposta = await api(fila, `/api/impressao/pedidos?${q}`);
       if (resposta.status === 401) {
         filas = null;
         return;
@@ -80,14 +85,18 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
         // pedida de novo (tentativa) sai.
         if (p.tentativa === 0 && new Date(p.criado_em).getTime() < fila.desde) {
           feitos.add(chave);
-          await marcar(fila, p.id);
+          void marcar(fila, p.id);
           continue;
         }
 
-        const via = await api(fila, `/api/impressao/pedidos/${encodeURIComponent(p.id)}`);
-        if (!via.ok) continue;
-        const t = (await via.json()) as { texto?: string; dados?: unknown; papel_mm?: number; numero?: number };
-        if (!t.texto) continue;
+        // a via veio junto; só a busca à parte se o servidor não mandou
+        let t: Via | null | undefined = p.via;
+        if (!t) {
+          const via = await api(fila, `/api/impressao/pedidos/${encodeURIComponent(p.id)}`);
+          if (!via.ok) continue;
+          t = (await via.json()) as Via;
+        }
+        if (!t?.texto) continue;
 
         const saida = await app.imprimir({
           texto: t.texto,
@@ -98,35 +107,73 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
         });
         if (saida?.ok) {
           feitos.add(chave);
-          await marcar(fila, p.id);
+          // o "impresso" vai sem segurar a próxima via: se ele se perder,
+          // o feitos desta janela já impede a mesma via de sair de novo
+          void marcar(fila, p.id).catch(() => {});
         }
       }
     };
 
+    // as impressoras do computador trabalham juntas: a do bar não espera a
+    // do caixa terminar
     const volta = async () => {
       if (!filas && !(await ligar())) return "sem-salao" as const;
-      for (const fila of filas ?? []) {
-        if (parado) return;
-        await umaFila(fila);
+      await Promise.all((filas ?? []).map((fila) => umaFila(fila).catch(() => {})));
+    };
+
+    // Uma busca de cada vez. O aviso que chega no meio de uma busca não se
+    // perde: ela roda de novo assim que terminar.
+    let buscando = false;
+    let deNovo = false;
+    let semSalao = false;
+    const agora = async () => {
+      if (parado || semSalao) return;
+      if (buscando) {
+        deNovo = true;
+        return;
+      }
+      buscando = true;
+      try {
+        do {
+          deNovo = false;
+          if ((await volta()) === "sem-salao") semSalao = true;
+        } while (deNovo && !parado && !semSalao);
+        // restaurante sem salão: o canal não tem o que avisar
+        if (semSalao) canal?.close();
+      } catch {
+        // sem internet agora: a próxima volta tenta de novo
+      } finally {
+        buscando = false;
       }
     };
 
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const ciclo = async () => {
-      let fim: "sem-salao" | void = undefined;
-      try {
-        fim = await volta();
-      } catch {
-        // sem internet agora: tenta de novo na próxima volta
-      }
-      // restaurante sem salão: não há o que perguntar ao servidor
-      if (!parado && fim !== "sem-salao") timer = setTimeout(ciclo, INTERVALO);
+    const reserva = async () => {
+      await agora();
+      if (!parado && !semSalao) timer = setTimeout(reserva, RESERVA);
     };
-    void ciclo();
+    void reserva();
 
-    // ligou ou desligou uma impressora: pega as filas de novo na próxima volta
+    // o aviso do servidor: entrou comanda de mesa ou pediram a conta
+    let canal: EventSource | null = null;
+    let religar: ReturnType<typeof setTimeout> | undefined;
+    const abrirCanal = () => {
+      if (parado || semSalao || typeof EventSource === "undefined") return;
+      canal = new EventSource(`/api/painel/${restaurantId}/eventos?salao=1`);
+      canal.addEventListener("pronto", () => void agora());
+      canal.addEventListener("impressao", () => void agora());
+      canal.onerror = () => {
+        canal?.close();
+        // o canal se encerra sozinho a cada 50 s: reabrir é o esperado
+        if (!parado) religar = setTimeout(abrirCanal, 1500);
+      };
+    };
+    abrirCanal();
+
+    // ligou ou desligou uma impressora: pega as filas de novo na hora
     const mudou = () => {
       filas = null;
+      void agora();
     };
     window.addEventListener(IMPRESSORAS_MUDARAM, mudou);
 
@@ -134,6 +181,8 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
       parado = true;
       rodando = false;
       if (timer) clearTimeout(timer);
+      if (religar) clearTimeout(religar);
+      canal?.close();
       window.removeEventListener(IMPRESSORAS_MUDARAM, mudou);
     };
   }, [restaurantId]);

@@ -58,9 +58,43 @@ async function retrato(restaurantId: string) {
   ].join(":");
 }
 
+/**
+ * O retrato da fila de impressão do salão, para o Menu Fácil PC.
+ *
+ * Muda quando entra pedido de mesa, quando alguém pede a via de novo ou
+ * quando o garçom pede a conta: é o sinal para o programa buscar a fila na
+ * hora, em vez de esperar a próxima volta. É o que faz a comanda sair em um
+ * ou dois segundos depois do Salvar no celular do garçom.
+ */
+async function retratoDaImpressao(restaurantId: string) {
+  const desde = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const [pedidos, contas] = await Promise.all([
+    db.order.aggregate({
+      where: { restaurantId, origin: "SALAO", createdAt: { gte: desde } },
+      _count: { _all: true },
+      _max: { createdAt: true },
+      _sum: { printRuns: true },
+    }),
+    db.comanda.aggregate({ where: { restaurantId, contaPedidaAt: { gte: desde } }, _max: { contaPedidaAt: true } }),
+  ]);
+  return [
+    pedidos._count._all,
+    pedidos._max.createdAt?.getTime() ?? 0,
+    pedidos._sum.printRuns ?? 0,
+    contas._max.contaPedidaAt?.getTime() ?? 0,
+  ].join(":");
+}
+
 export async function GET(request: Request, { params }: RouteContext<"/api/painel/[restaurantId]/eventos">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
+
+  // ?salao=1: o canal da impressão do salão, e não o dos pedidos. Olha mais
+  // amiúde porque é papel que alguém está esperando na boca da impressora.
+  const doSalao = new URL(request.url).searchParams.get("salao") === "1";
+  const olhar = doSalao ? retratoDaImpressao : retrato;
+  const evento = doSalao ? "impressao" : "pedidos";
+  const intervalo = doSalao ? 1000 : OLHAR_MS;
 
   const encoder = new TextEncoder();
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -93,21 +127,21 @@ export async function GET(request: Request, { params }: RouteContext<"/api/paine
 
       request.signal.addEventListener("abort", encerra);
 
-      let anterior = await retrato(restaurant.id);
+      let anterior = await olhar(restaurant.id);
       manda("pronto", anterior);
 
       timer = setInterval(async () => {
         if (!vivo) return;
         try {
-          const agora = await retrato(restaurant.id);
+          const agora = await olhar(restaurant.id);
           if (agora !== anterior) {
             anterior = agora;
-            manda("pedidos", agora);
+            manda(evento, agora);
           }
         } catch {
           encerra();
         }
-      }, OLHAR_MS);
+      }, intervalo);
 
       ping = setInterval(() => manda("ping", String(Date.now())), PING_MS);
       fim = setTimeout(encerra, VIDA_MS);
