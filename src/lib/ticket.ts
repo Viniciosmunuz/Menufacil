@@ -1,6 +1,6 @@
 import type { CardType, OrderOrigin, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
 
-import { formatCents, formatPhone } from "./format";
+import { formatCents, formatPhone, TIME_ZONE } from "./format";
 import { isFullDelivery } from "./order-flow";
 import { pedeSecao } from "./nomes-parecidos";
 import { paymentText } from "./payment";
@@ -73,6 +73,14 @@ const clock = (date: Date | string) =>
  * exatamente as mesmas: o que muda entre os dois é o que entra em cada
  * bloco, não como a linha é montada.
  */
+/** "25/10/2026 - 14:55:32", o carimbo do rodapé da comanda */
+function dataEHora(d: Date | string) {
+  const data = new Date(d);
+  const dia = data.toLocaleDateString("pt-BR", { timeZone: TIME_ZONE });
+  const hora = data.toLocaleTimeString("pt-BR", { timeZone: TIME_ZONE, hour12: false });
+  return `${dia} - ${hora}`;
+}
+
 function pincel(paper: number) {
   const width = columnsFor(paper);
   const forte = "=".repeat(width);
@@ -153,44 +161,63 @@ function itemLines(o: TicketOrder, p: ReturnType<typeof pincel>, secoes?: Set<st
 }
 
 /**
- * A comanda de uma mesa.
+ * A comanda de uma mesa, para a cozinha.
  *
- * O que a cozinha precisa saber de um pedido de salão é para qual mesa ele
- * vai e quem o anotou. Nome de cliente, telefone, endereço e forma de
- * pagamento são perguntas de quem pede pelo link, e no salão não têm
- * resposta: o cliente está sentado ali, e como ele vai pagar ninguém sabe
- * ainda -- se sabe, é assunto do caixa, não do fogão.
+ * O que o fogão precisa saber de um pedido de salão é para qual mesa ele
+ * vai, quem anotou e o que fazer. Nome de cliente, telefone, endereço e
+ * forma de pagamento são perguntas de quem pede pelo link, e no salão não
+ * têm resposta: a pessoa está sentada ali, e como ela vai pagar ninguém
+ * sabe ainda -- se sabe, é assunto do caixa, não do fogão.
  *
- * O número da mesa vai sozinho e grande no topo porque é por ele que o
- * prato encontra a pessoa.
+ * Preço também não entra. Esta via é a ordem de produção; o dinheiro
+ * aparece na conta da mesa, que é outro papel.
+ *
+ * O número da mesa vai sozinho e entre asteriscos no topo, porque é por
+ * ele que o prato encontra a pessoa atravessando o salão.
  */
 function salaoLines(o: TicketOrder, restaurantName: string, p: ReturnType<typeof pincel>, secoes?: Set<string>): string[] {
-  const { forte, fraco, meio, entre, texto, titulo } = p;
+  const { width, forte, fraco, meio, texto, margem } = p;
   const lines: string[] = [];
   const mesa = o.comanda?.mesa;
-  const rotulo = mesa ? (mesa.tipo === "BALCAO" ? "BALCAO" : "MESA") + " " + mesa.numero : "SALAO";
+  const rotulo = mesa ? (mesa.tipo === "BALCAO" ? "BALCÃO" : "MESA") + " " + mesa.numero : "SALÃO";
 
-  lines.push(forte, meio(restaurantName.toUpperCase()), forte);
-  lines.push("", meio(rotulo), "");
-  if (mesa?.nome) lines.push(meio(mesa.nome.toUpperCase()), "");
+  lines.push(meio(restaurantName.toUpperCase()));
+  lines.push("", meio(`* ${rotulo} *`), "");
+  if (mesa?.nome) lines.push(meio(mesa.nome.toUpperCase()));
+  if (o.comanda?.garcom?.name) lines.push(meio(`Garçom: ${o.comanda.garcom.name}`));
+
+  // as duas colunas da ordem de produção: quanto e o quê
+  lines.push(fraco, margem + "QTD  DESCRIÇÃO", fraco);
+
+  for (const item of o.items) {
+    const quantidade = `${item.quantity}`.padEnd(5);
+    const nome = item.productName.toUpperCase();
+    // nome comprido desce de linha, e a coluna da quantidade continua valendo
+    if (margem.length + quantidade.length + nome.length <= width) {
+      lines.push(margem + quantidade + nome);
+    } else {
+      const quebrado = texto(nome, 5, 0);
+      lines.push(margem + quantidade + quebrado[0].trim(), ...quebrado.slice(1));
+    }
+
+    // a seção do cardápio, em destaque, antes das escolhas: é ela que
+    // separa a isca do grelhado de nome parecido
+    const secao = item.product?.category?.name;
+    if (secao && pedeSecao(secoes, item.productName)) lines.push(...texto(`[${secao.toUpperCase()}]`, 5, 2));
+    for (const escolha of (item.optionsText ?? "").split(" · ").filter(Boolean)) {
+      lines.push(...texto(escolha, 5, 2));
+    }
+    if (item.notes) lines.push(...texto(`Obs.: ${item.notes}`, 5, 2));
+  }
+
   lines.push(forte);
-
-  lines.push(entre(`PEDIDO #${o.number}`, clock(o.createdAt)));
-  if (o.comanda?.garcom?.name) lines.push(...texto(`Garçom: ${o.comanda.garcom.name}`));
-  lines.push(forte);
-
-  lines.push(...itemLines(o, p, secoes));
-
-  lines.push(fraco, entre("TOTAL", formatCents(o.totalCents)), forte);
 
   if (o.notes) {
-    lines.push(...titulo("OBSERVAÇÃO DO PEDIDO"));
-    lines.push(...texto(o.notes));
+    lines.push(...texto(`OBSERVAÇÃO: ${o.notes}`));
     lines.push(forte);
   }
 
-  // sem bloco de pagamento de propósito: a mesa paga no fim, no caixa, e a
-  // via da conta é outro papel
+  lines.push("", meio(`DATA E HORA: ${dataEHora(o.createdAt)}`));
   return lines;
 }
 

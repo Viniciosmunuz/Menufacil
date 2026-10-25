@@ -356,6 +356,13 @@ export async function finalizarMesa(_prev: SalaoFormState, formData: FormData): 
   const pago = await db.pagamentoComanda.aggregate({ where: { comandaId }, _sum: { centavos: true } });
   await panelAudit(acesso, "salao.finalizou_mesa", { comandaId, ...(await mesaDaComanda(restaurantId, comandaId)), centavos: pago._sum.centavos ?? 0 });
   refresh();
+
+  // Mesa liberada é fim de atendimento: quem está no caixa quer ver o mapa
+  // de novo, não a mesa vazia que acabou de fechar. A tela volta sozinha.
+  const voltarPara = String(formData.get("voltarPara") ?? "");
+  const destino = voltarPara.startsWith("/painel/") || voltarPara.startsWith("/garcom/") ? voltarPara : null;
+  if (destino) redirect(destino);
+
   return { ok: true, message: "Mesa liberada." };
 }
 

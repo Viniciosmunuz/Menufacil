@@ -254,6 +254,7 @@ function Acoes({
   pode,
   mesaRotulo,
   temImpressora,
+  voltarHref,
   onReceber,
   onAjustar,
   onDividir,
@@ -263,6 +264,8 @@ function Acoes({
   pode: PodeNaMesa;
   mesaRotulo: string;
   temImpressora: boolean;
+  /** para onde a tela volta quando a mesa é liberada */
+  voltarHref: string;
   onReceber: () => void;
   onAjustar: (foco: "desconto" | "servico") => void;
   onDividir: () => void;
@@ -327,6 +330,7 @@ function Acoes({
         <form action={liberar}>
           <input type="hidden" name="restaurantId" value={restaurantId} />
           <input type="hidden" name="comandaId" value={comanda.id} />
+          <input type="hidden" name="voltarPara" value={voltarHref} />
           <button
             type="submit"
             disabled={liberando}
@@ -684,6 +688,7 @@ export function ComandaDaMesa({
           pode={pode}
           mesaRotulo={mesaRotulo}
           temImpressora={temImpressora}
+          voltarHref={voltarHref}
           onReceber={() => {
             setParte(undefined);
             setFolha("pagamento");

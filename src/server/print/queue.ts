@@ -54,6 +54,9 @@ const ticketSelect = {
   totalCents: true,
   paymentMethod: true,
   payment: { select: { status: true, cardType: true, changeForCents: true } },
+  // a mesa e o garçom do pedido de salão: sem isto a via saía no formato
+  // do delivery, com "SALAO" no lugar do número da mesa
+  comanda: { select: { mesa: { select: { numero: true, tipo: true, nome: true } }, garcom: { select: { name: true } } } },
   items: {
     orderBy: { id: "asc" },
     select: {
@@ -197,6 +200,15 @@ export async function orderTicket(restaurantId: string, orderId: string, role: P
       tipo: order.type,
       origem: order.origin,
       comer_aqui: order.dineIn,
+      // a mesa do salão, para a via sair com o número grande no topo em vez
+      // do cabeçalho de delivery. Vazio em pedido que não é de mesa.
+      mesa: order.comanda?.mesa
+        ? {
+            rotulo: (order.comanda.mesa.tipo === "BALCAO" ? "BALCÃO " : "MESA ") + order.comanda.mesa.numero,
+            nome: order.comanda.mesa.nome,
+            garcom: order.comanda.garcom?.name ?? null,
+          }
+        : null,
       cliente: { nome: order.customerName, whatsapp: order.customerWhatsapp },
       endereco: {
         rua: order.deliveryStreet,
@@ -305,6 +317,9 @@ async function contaTicket(restaurantId: string, comandaId: string) {
       tipo: "PICKUP" as const,
       origem: "SALAO" as const,
       comer_aqui: true,
+      // a conta tem desenho próprio no programa; a mesa vai junto mesmo
+      // assim, para o cabeçalho dela ser o da mesa e não o do delivery
+      mesa: { rotulo: conta.rotulo.toUpperCase(), nome: conta.nomeDaMesa ?? null, garcom: conta.garcom ?? null },
       cliente: { nome: conta.rotulo, whatsapp: "" },
       endereco: { rua: null, numero: null, complemento: null, bairro: null, referencia: null },
       itens: conta.itens.map((i) => ({

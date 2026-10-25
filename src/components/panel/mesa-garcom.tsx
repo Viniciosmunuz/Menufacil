@@ -422,6 +422,7 @@ export function MesaDoGarcom({
               <form action={liberar}>
                 <input type="hidden" name="restaurantId" value={restaurantId} />
                 <input type="hidden" name="comandaId" value={comanda.id} />
+                <input type="hidden" name="voltarPara" value={voltarHref} />
                 <button
                   type="submit"
                   disabled={liberando}
