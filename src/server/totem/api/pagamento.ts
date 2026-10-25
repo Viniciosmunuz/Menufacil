@@ -65,7 +65,11 @@ export async function cobrar(request: Request) {
   const nome = typeof corpo.nome === "string" ? corpo.nome : "";
   const observacao = typeof corpo.observacao === "string" ? corpo.observacao : null;
   const itens = (Array.isArray(corpo.itens) ? corpo.itens : []) as ItemDoTotem[];
-  const pedidoPix = String(corpo.forma ?? "cartao").toLowerCase() === "pix";
+  // "credito" e "debito" são o que a tela manda hoje; "cartao" continua
+  // valendo, para um totem que ainda não recarregou a página
+  const escolhida = String(corpo.forma ?? "cartao").toLowerCase();
+  const pedidoPix = escolhida === "pix";
+  const tipoDeCartao = escolhida === "credito" ? ("credit_card" as const) : escolhida === "debito" ? ("debit_card" as const) : undefined;
   const comerAqui = corpo.comer_aqui === true;
 
   const conta = await conferirCarrinho(totem.restaurantId, itens).catch((erro: unknown) => {
@@ -127,13 +131,28 @@ export async function cobrar(request: Request) {
 
   // cobrança nova sempre pela API de Orders; o caminho das intenções só
   // termina o que já tinha começado por ele (ver conferir e cancelar)
-  const resposta = await criarOrdemPoint({
-    accessToken: contas.accessToken,
-    terminalId: contas.deviceId,
-    amountCents: conta.totalCents,
-    descricao,
-    referencia,
-  });
+  const ordem = (tipo?: "credit_card" | "debit_card") =>
+    criarOrdemPoint({
+      accessToken: contas.accessToken,
+      terminalId: contas.deviceId!,
+      amountCents: conta.totalCents,
+      descricao,
+      referencia,
+      tipoDeCartao: tipo,
+    });
+
+  let resposta = await ordem(tipoDeCartao);
+  // A conta que não aceita aquele tipo (débito não habilitado, por exemplo)
+  // recusa a ordem inteira. Em vez de deixar o cliente parado na tela, a
+  // cobrança vai de novo sem o tipo: a maquininha volta a perguntar, que é
+  // como era antes -- mas o pedido sai.
+  //
+  // Só em recusa de validação (400/422), em que a ordem com certeza não
+  // nasceu. Timeout e erro do lado deles não repetem: lá a ordem pode ter
+  // sido criada, e tentar de novo poria duas cobranças na mesma maquininha.
+  if (!resposta.ok && tipoDeCartao && (resposta.status === 400 || resposta.status === 422)) {
+    resposta = await ordem(undefined);
+  }
   if (!resposta.ok) return Response.json({ erro: resposta.erro }, { status: 502 });
 
   const pagamento = await db.totemPayment.create({

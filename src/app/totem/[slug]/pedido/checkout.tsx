@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, QrCode, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { CreditCard, QrCode, ShoppingBag, UtensilsCrossed, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -53,7 +53,10 @@ export function TotemCheckout({
   const falta = Math.max(0, minOrderCents - subtotal);
 
   const [comerAqui, setComerAqui] = useState<boolean | null>(null);
-  const [forma, setForma] = useState<"cartao" | "pix" | null>(null);
+  // Crédito e débito separados, e não um "cartão" só: a maquininha
+  // perguntava de novo qual era, e no balcão isso é o cliente respondendo
+  // duas vezes a mesma coisa, numa tela que ele não conhece.
+  const [forma, setForma] = useState<"credito" | "debito" | "pix" | null>(null);
   const [nome, setNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   // quando a cobrança para por falta de ativação, a tela oferece o caminho:
@@ -205,7 +208,7 @@ export function TotemCheckout({
           <p className="mt-4 max-w-sm text-muted">
             {forma === "pix"
               ? "Abra o aplicativo do seu banco, escolha Pix e aponte a câmera para o código."
-              : "Siga as instruções na maquininha ao lado da tela."}
+              : "Aproxime, insira ou passe o cartão na maquininha ao lado da tela."}
           </p>
           {erro && (
             <Alert tone="danger" className="mt-4">
@@ -303,20 +306,27 @@ export function TotemCheckout({
         <h2 className="font-extrabold">Como quer pagar?</h2>
         <p className="-mt-2 text-sm text-muted">No totem não recebemos dinheiro.</p>
         <div className="flex flex-wrap gap-3">
-          <label className={escolha(forma === "cartao")}>
-            <input
-              type="radio"
-              name="forma"
-              checked={forma === "cartao"}
-              onChange={() => setForma("cartao")}
-              className="size-4 accent-brand"
-            />
-            <CreditCard className="size-5 shrink-0 text-brand" aria-hidden="true" />
-            <span>
-              <span className="block font-bold">Cartão</span>
-              <span className="block text-sm text-muted">Na maquininha ao lado.</span>
-            </span>
-          </label>
+          {(
+            [
+              ["credito", "Crédito", CreditCard],
+              ["debito", "Débito", Wallet],
+            ] as const
+          ).map(([chave, nomeDaForma, Icone]) => (
+            <label key={chave} className={escolha(forma === chave)}>
+              <input
+                type="radio"
+                name="forma"
+                checked={forma === chave}
+                onChange={() => setForma(chave)}
+                className="size-4 accent-brand"
+              />
+              <Icone className="size-5 shrink-0 text-brand" aria-hidden="true" />
+              <span>
+                <span className="block font-bold">{nomeDaForma}</span>
+                <span className="block text-sm text-muted">Na maquininha ao lado.</span>
+              </span>
+            </label>
+          ))}
           <label className={escolha(forma === "pix")}>
             <input type="radio" name="forma" checked={forma === "pix"} onChange={() => setForma("pix")} className="size-4 accent-brand" />
             <QrCode className="size-5 shrink-0 text-brand" aria-hidden="true" />

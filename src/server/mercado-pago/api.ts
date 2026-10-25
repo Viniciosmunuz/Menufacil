@@ -195,19 +195,37 @@ export function criarOrdemPoint(params: {
   referencia: string;
   /** a cobrança de teste do painel some antes, para não ficar na tela */
   prazo?: string;
+  /**
+   * Crédito ou débito já escolhido na tela.
+   *
+   * Sem isto, a maquininha pergunta "Crédito, Débito ou Pix?" -- o que no
+   * totem é perguntar duas vezes, porque o cliente acabou de dizer. Com
+   * ele, a Point já abre em "aproxime o cartão".
+   */
+  tipoDeCartao?: "credit_card" | "debit_card";
 }) {
   return chamar<OrdemPoint>("/v1/orders", {
     accessToken: params.accessToken,
     metodo: "POST",
-    idempotencia: params.referencia,
+    // a chave muda com o tipo: a segunda tentativa (sem o tipo, quando a
+    // conta não aceita aquele) precisa criar a ordem, não receber de volta
+    // a recusa guardada da primeira
+    idempotencia: params.tipoDeCartao ? `${params.referencia}-${params.tipoDeCartao}` : params.referencia,
     corpo: {
       type: "point",
       external_reference: params.referencia,
       expiration_time: params.prazo ?? PRAZO_DA_ORDEM,
       description: params.descricao.slice(0, 80),
       transactions: { payments: [{ amount: (params.amountCents / 100).toFixed(2) }] },
-      // o comprovante sai na impressora do totem, junto com a senha
-      config: { point: { terminal_id: params.terminalId, print_on_terminal: "no_ticket" } },
+      config: {
+        // o comprovante sai na impressora do totem, junto com a senha
+        point: { terminal_id: params.terminalId, print_on_terminal: "no_ticket" },
+        // à vista sempre: parcelar lanche não existe, e "default_installments"
+        // maior que 1 ainda exigiria dizer quem paga os juros
+        ...(params.tipoDeCartao
+          ? { payment_method: { default_type: params.tipoDeCartao, ...(params.tipoDeCartao === "credit_card" ? { default_installments: 1 } : {}) } }
+          : {}),
+      },
     },
   });
 }
