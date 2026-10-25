@@ -385,7 +385,7 @@ export function contaLines(c: ContaDaMesa, restaurantName: string, paper: number
   const { forte, fraco, meio, entre, texto, titulo } = pincel(paper);
   const lines: string[] = [];
 
-  lines.push(forte, meio(restaurantName.toUpperCase()), meio("CONTA - NAO E DOCUMENTO FISCAL"), forte);
+  lines.push(forte, meio(restaurantName.toUpperCase()), meio("CONTA · NÃO É DOCUMENTO FISCAL"), forte);
   lines.push("", meio(c.rotulo.toUpperCase()), "");
   if (c.nomeDaMesa) lines.push(meio(c.nomeDaMesa.toUpperCase()), "");
 
