@@ -40,7 +40,7 @@ async function sizesFromFlavors(db: Db, restaurantId: string) {
 async function syncSizeGroup(db: Db, productId: string, sizes: string[]) {
   const atual = await db.productOptionGroup.findFirst({
     where: { productId, name: PIZZA_SIZE_GROUP },
-    select: { id: true, options: { orderBy: { sortOrder: "asc" }, select: { name: true } } },
+    select: { id: true, options: { orderBy: { sortOrder: "asc" }, select: { name: true, available: true } } },
   });
 
   if (sizes.length === 0) {
@@ -51,6 +51,10 @@ async function syncSizeGroup(db: Db, productId: string, sizes: string[]) {
   if (atual && atual.options.map((o) => o.name).join("|") === sizes.join("|")) return;
   if (atual) await db.productOptionGroup.delete({ where: { id: atual.id } });
 
+  // Refeito o grupo, o tamanho que o dono tinha desligado continua
+  // desligado: é assim que a brotinho fica fora da pizza de 2 sabores, e um
+  // sabor novo com outro tamanho não pode desfazer isso.
+  const desligados = new Set((atual?.options ?? []).filter((o) => !o.available).map((o) => o.name));
   await db.productOptionGroup.create({
     data: {
       productId,
@@ -59,7 +63,7 @@ async function syncSizeGroup(db: Db, productId: string, sizes: string[]) {
       maxSelect: 1,
       sortOrder: 0,
       // o preço vem do sabor escolhido, não do tamanho
-      options: { create: sizes.map((name, i) => ({ name, priceCents: 0, sortOrder: i })) },
+      options: { create: sizes.map((name, i) => ({ name, priceCents: 0, sortOrder: i, available: !desligados.has(name) })) },
     },
   });
 }

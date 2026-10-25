@@ -69,8 +69,21 @@ export type MenuCategory = { id: string; name: string; description: string | nul
 
 const unitPrice = (p: MenuProduct) => p.promoPriceCents ?? p.priceCents;
 /** preço do cardápio: o menor possível — com opções, ou com o sabor mais barato */
-const listPrice = (p: MenuProduct, flavors: PizzaFlavor[]) =>
-  flavorSlots(p) ? cheapestFlavor(flavors) : startingPrice(unitPrice(p), p.optionGroups);
+/**
+ * Os tamanhos que esta pizza montada oferece. O dono pode desligar um
+ * tamanho num montador -- a brotinho não sai de dois sabores --, e aí ele
+ * some da escolha e do "a partir de". Sem grupo de tamanhos, null.
+ */
+const tamanhosDaPizza = (p: MenuProduct) =>
+  flavorSlots(p) && p.optionGroups[0] ? p.optionGroups[0].options.filter((o) => o.available).map((o) => o.name) : null;
+
+const listPrice = (p: MenuProduct, flavors: PizzaFlavor[]) => {
+  if (!flavorSlots(p)) return startingPrice(unitPrice(p), p.optionGroups);
+  const tamanhos = tamanhosDaPizza(p);
+  if (!tamanhos?.length) return cheapestFlavor(flavors);
+  const precos = tamanhos.map((t) => cheapestFlavor(flavors, t)).filter((c) => c > 0);
+  return precos.length ? Math.min(...precos) : cheapestFlavor(flavors);
+};
 
 function Price({ p, flavors, className }: { p: MenuProduct; flavors: PizzaFlavor[]; className?: string }) {
   const from = hasPricedOptions(p.optionGroups) || !!flavorSlots(p);
@@ -160,11 +173,18 @@ function OptionGroupPicker({
   groups,
   selected,
   onToggle,
+  esconderDesligadas = false,
 }: {
   group: OptionGroupData;
   groups: OptionGroupData[];
   selected: string[];
   onToggle: (group: OptionGroupData, option: OptionData) => void;
+  /**
+   * Opção desligada some, em vez de aparecer como "(acabou)". É o tamanho
+   * do montador de pizza: desligado ali quer dizer "não sai com tantos
+   * sabores", e não que acabou.
+   */
+  esconderDesligadas?: boolean;
 }) {
   const max = effectiveMax(group, groups, selected);
   const half = halfAllowed(group, groups, selected);
@@ -187,34 +207,36 @@ function OptionGroupPicker({
       </legend>
       {half && count < 2 && <p className="-mt-1 text-sm text-muted">Quer meio a meio? Marque 2 sabores. Vale o preço do mais caro.</p>}
       {halfFrom && <p className="-mt-1 text-sm text-muted">Meio a meio a partir de {halfFrom}.</p>}
-      {group.options.map((o) => {
-        const checked = selected.includes(o.id);
-        return (
-          <label
-            key={o.id}
-            className={cn(
-              "flex min-h-12 cursor-pointer items-center gap-3 rounded-control border px-4 py-2.5",
-              !o.available && "cursor-not-allowed opacity-50",
-              checked ? "border-brand bg-brand-soft" : "border-line bg-surface-2 hover:border-line-strong",
-            )}
-          >
-            <input
-              type={single ? "radio" : "checkbox"}
-              name={`opcao-${group.id}`}
-              checked={checked}
-              disabled={!o.available}
-              onChange={() => onToggle(group, o)}
-              onClick={() => single && checked && group.minSelect === 0 && onToggle(group, o)}
-              className="size-4 shrink-0 accent-brand"
-            />
-            <span className="min-w-0 flex-1 font-semibold">
-              {o.name}
-              {!o.available && <span className="ml-1 text-sm font-normal text-faint">(acabou)</span>}
-            </span>
-            {o.priceCents > 0 && <span className="shrink-0 text-sm font-bold text-muted tabular-nums">+ {formatCents(o.priceCents)}</span>}
-          </label>
-        );
-      })}
+      {group.options
+        .filter((o) => o.available || !esconderDesligadas)
+        .map((o) => {
+          const checked = selected.includes(o.id);
+          return (
+            <label
+              key={o.id}
+              className={cn(
+                "flex min-h-12 cursor-pointer items-center gap-3 rounded-control border px-4 py-2.5",
+                !o.available && "cursor-not-allowed opacity-50",
+                checked ? "border-brand bg-brand-soft" : "border-line bg-surface-2 hover:border-line-strong",
+              )}
+            >
+              <input
+                type={single ? "radio" : "checkbox"}
+                name={`opcao-${group.id}`}
+                checked={checked}
+                disabled={!o.available}
+                onChange={() => onToggle(group, o)}
+                onClick={() => single && checked && group.minSelect === 0 && onToggle(group, o)}
+                className="size-4 shrink-0 accent-brand"
+              />
+              <span className="min-w-0 flex-1 font-semibold">
+                {o.name}
+                {!o.available && <span className="ml-1 text-sm font-normal text-faint">(acabou)</span>}
+              </span>
+              {o.priceCents > 0 && <span className="shrink-0 text-sm font-bold text-muted tabular-nums">+ {formatCents(o.priceCents)}</span>}
+            </label>
+          );
+        })}
     </fieldset>
   );
 }
@@ -1221,7 +1243,17 @@ export function RestaurantMenu({
                   <Price p={product} flavors={pizzaFlavors} className="mt-3 text-xl" />
                 </div>
                 {product.available &&
-                  groups.map((g) => <OptionGroupPicker key={g.id} group={g} groups={groups} selected={selected} onToggle={toggleOption} />)}
+                  groups.map((g, i) => (
+                    <OptionGroupPicker
+                      key={g.id}
+                      group={g}
+                      groups={groups}
+                      selected={selected}
+                      onToggle={toggleOption}
+                      // no montador de pizza o primeiro grupo é o Tamanho
+                      esconderDesligadas={!!slots && i === 0}
+                    />
+                  ))}
                 {product.available && slots && (
                   <FlavorPicker flavors={pizzaFlavors} slots={slots} chosen={flavorIds} sizeName={sizeName} onToggle={toggleFlavor} />
                 )}
