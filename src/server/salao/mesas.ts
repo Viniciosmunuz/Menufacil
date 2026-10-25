@@ -30,7 +30,12 @@ export type LugarNoMapa = {
   minutos: number | null;
   garcom: string | null;
   comandaId: string | null;
+  /** o garçom que está com a mesa aberta no celular agora: o cartão fica roxo */
+  emAtendimentoPor: string | null;
 };
+
+/** sem renovar há mais que isto, o celular do garçom saiu da mesa */
+const ATENDIMENTO_VALE_MS = 60_000;
 
 export type ResumoDoSalao = {
   mesas: LugarNoMapa[];
@@ -52,6 +57,8 @@ export async function mapaDoSalao(restaurantId: string, agora = new Date()): Pro
       numero: true,
       nome: true,
       lugares: true,
+      atendimentoAt: true,
+      atendimentoPor: true,
       // a comanda aberta, quando há: é ela que diz se o lugar está ocupado
       comandas: {
         where: { fechadaAt: null },
@@ -73,7 +80,9 @@ export async function mapaDoSalao(restaurantId: string, agora = new Date()): Pro
 
   const noMapa: LugarNoMapa[] = lugares.map((m) => {
     const comanda = m.comandas[0];
-    const base = { id: m.id, tipo: m.tipo, numero: m.numero, nome: m.nome, lugares: m.lugares };
+    const emAtendimentoPor =
+      m.atendimentoAt && agora.getTime() - m.atendimentoAt.getTime() < ATENDIMENTO_VALE_MS ? (m.atendimentoPor ?? "Garçom") : null;
+    const base = { id: m.id, tipo: m.tipo, numero: m.numero, nome: m.nome, lugares: m.lugares, emAtendimentoPor };
 
     if (!comanda) {
       return { ...base, status: "LIVRE" as const, centavos: 0, itens: 0, minutos: null, garcom: null, comandaId: null };

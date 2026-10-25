@@ -44,10 +44,12 @@ export const FEATURES: Feature[] = [
     key: "salaoEnabled",
     label: "Salão",
     hint: "Atendimento na mesa: mapa do salão, comandas e garçons com login próprio, lançando pelo mesmo cardápio dos outros canais. Libera a seção Salão no painel dele, logo abaixo de Pedidos.",
-    // O MenuFácil está focado em delivery e totem: o salão sai do ar até
-    // voltar a ser prioridade. Está pronto e testado -- é só tirar esta
-    // linha para ele reaparecer, com os dados de quem já usou intactos.
-    foraDoAr: true,
+    // Fora do ar no site publicado enquanto o salão é refeito no jeito do
+    // Yooga, que é o que o Papaléguas já usa no balcão. No computador de
+    // desenvolvimento (next dev) ele aparece, para dar para construir e
+    // testar; qualquer build de produção continua com ele desligado. Para
+    // pôr no ar, é tirar esta linha -- os dados de quem já usou ficam.
+    foraDoAr: process.env.NODE_ENV === "production",
   },
 ];
 

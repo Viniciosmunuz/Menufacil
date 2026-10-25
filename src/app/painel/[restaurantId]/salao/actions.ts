@@ -461,3 +461,21 @@ export async function pedirAContaNoPapel(_prev: SalaoFormState, formData: FormDa
   refresh();
   return { ok: true, message: "Conta indo para a impressora do balcão." };
 }
+
+/**
+ * O garçom está (ou deixou de estar) com a mesa aberta no celular -- é o
+ * que deixa o cartão roxo, "Em atendimento", no mapa do caixa.
+ *
+ * Só o garçom marca: o dono ou o caixa abrindo a mesa no computador não é
+ * atendimento, é conferência. O celular renova a marca de tempos em tempos
+ * (ver components/panel/atendendo-mesa.tsx); sem renovar, ela vence sozinha
+ * no mapa, então um celular que apagou no bolso não deixa a mesa roxa.
+ */
+export async function marcarAtendimento(restaurantId: string, mesaId: string, aberta: boolean) {
+  const acesso = await requireSalao(restaurantId);
+  if (acesso.papel !== "STAFF") return;
+  await db.mesa.updateMany({
+    where: { id: mesaId, restaurantId: acesso.restaurant.id },
+    data: aberta ? { atendimentoAt: new Date(), atendimentoPor: acesso.user.name } : { atendimentoAt: null, atendimentoPor: null },
+  });
+}

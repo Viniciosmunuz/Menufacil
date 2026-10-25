@@ -1234,6 +1234,12 @@ model Mesa {
   ativa        Boolean    @default(true)
   sortOrder    Int        @default(0)
 
+  /// o garcom esta com esta mesa aberta no celular: o cartao fica roxo,
+  /// "Em atendimento". O celular renova de tempos em tempos; parado ha mais
+  /// de um minuto, a mesa volta a cor dela.
+  atendimentoAt  DateTime?
+  atendimentoPor String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -1,4 +1,4 @@
-import { LayoutGrid, Settings2 } from "lucide-react";
+import { DollarSign, Headset, LayoutGrid, Settings } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -6,6 +6,7 @@ import { SalaoComBusca } from "@/components/panel/busca-mesa";
 import { CaixaDoSalaoPanel } from "@/components/panel/caixa-salao";
 import { PageHeader } from "@/components/panel/page-header";
 import { buttonClasses } from "@/components/ui/button";
+import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { EmptyState } from "@/components/ui/empty-state";
 import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
@@ -44,15 +45,42 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
     turnoAberto(restaurant.id),
   ]);
 
+  // "Configuração geral", como no Yooga: mesas, balcão, garçons e impressão
   const engrenagem = (
     <Link
       href={`${base}/configuracao`}
-      aria-label="Configuração do salão: mesas, balcão e garçons"
-      title="Mesas, balcão e garçons"
-      className="grid size-12 shrink-0 place-items-center rounded-control border border-line bg-surface text-muted transition-colors hover:border-line-strong hover:text-ink"
+      title="Mesas, balcão, garçons e impressão"
+      className="inline-flex h-14 shrink-0 items-center gap-2 rounded-control bg-surface-3 px-5 font-semibold text-ink transition-colors hover:bg-line"
     >
-      <Settings2 className="size-5" aria-hidden="true" />
+      <Settings className="size-5 text-brand" aria-hidden="true" />
+      <span className="hidden sm:inline">Configuração geral</span>
     </Link>
+  );
+
+  // O topo, no jeito do Yooga: o título à esquerda e os atalhos do dia a
+  // dia à direita. O verde do totem é o mesmo botão de destaque de lá.
+  const topo = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h1 className="text-3xl font-extrabold">Salão</h1>
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+        <Link
+          href={`/painel/${restaurant.id}/suporte`}
+          className="inline-flex h-11 items-center gap-2 rounded-control px-3 font-semibold text-ink/80 hover:bg-surface-2"
+        >
+          <Headset className="size-5" aria-hidden="true" />
+          Suporte
+        </Link>
+        {restaurant.totemEnabled && (
+          <Link
+            href={`/painel/${restaurant.id}/totem`}
+            className="inline-flex h-12 items-center gap-2 rounded-control bg-[#8ee6b0] px-5 font-semibold text-[#0f3d22] shadow-sm transition-colors hover:bg-[#7ddba2]"
+          >
+            <DollarSign className="size-5" aria-hidden="true" />
+            Totem de Autoatendimento
+          </Link>
+        )}
+      </div>
+    </div>
   );
 
   if (salao.mesas.length === 0 && salao.balcoes.length === 0) {
@@ -93,12 +121,14 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
   // quatro por linha no computador, e não seis: com seis, o cartão ficava
   // do tamanho de um botão e o número da mesa -- que é o que se procura
   // atravessando o salão -- virava letra miúda. No celular seguem dois.
-  const cols = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4";
+  const cols = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
 
   return (
     <div className="flex flex-col gap-5">
-      {/* a busca tomou o lugar do título: "toque numa mesa para ver a
-          comanda" se lê uma vez na vida e ocupava a tela todo dia */}
+      {/* o cartão fica roxo quando um garçom abre a mesa no celular: a tela
+          do caixa se renova sozinha para mostrar isso */}
+      <AutoRefresh seconds={15} background />
+      {topo}
       <SalaoComBusca
         mesas={salao.mesas}
         balcoes={salao.balcoes}

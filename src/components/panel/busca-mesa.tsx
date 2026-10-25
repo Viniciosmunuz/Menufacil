@@ -71,59 +71,57 @@ export function SalaoComBusca({
   const achados = procurando ? [...mesas, ...balcoes].filter(combina) : [];
 
   const abas: Aba[] = [
-    { chave: "mesas", titulo: "Mesas", conteudo: <Grade lugares={mesas} base={base} cols={cols} vazio="Nenhuma mesa cadastrada." /> },
+    { chave: "mesas", titulo: `Mesas (${mesas.length})`, conteudo: <Grade lugares={mesas} base={base} cols={cols} vazio="Nenhuma mesa cadastrada." /> },
     {
       chave: "balcao",
-      titulo: "Balcão",
+      titulo: `Balcões (${balcoes.length})`,
       conteudo: <Grade lugares={balcoes} base={base} cols={cols} vazio="Sem lugares de balcão." />,
     },
     ...(caixa ? [{ chave: "caixa", titulo: "Caixa", conteudo: caixa }] : []),
   ];
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* a engrenagem divide a linha com a busca, e só com ela.
-          
-          Estava num flex por fora do bloco inteiro, e aí os cinquenta e
-          poucos pixels dela saíam da largura de tudo que vinha abaixo --
-          num celular, isso é meia mesa a menos por linha. */}
-      <div className="flex items-start gap-3">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-faint" aria-hidden="true" />
+  // a linha da busca, entre as abas e as mesas -- como no Yooga: a busca à
+  // esquerda e a configuração na outra ponta
+  const linhaDaBusca = (
+    <div className="flex items-center justify-between gap-3">
+      <div className="relative w-full max-w-md min-w-0">
         <input
           type="search"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Procurar mesa"
+          placeholder="Buscar..."
           aria-label="Procurar mesa pelo número"
           inputMode="numeric"
-          className="h-12 w-full rounded-control border border-line bg-surface pr-12 pl-12 font-bold outline-none placeholder:font-normal placeholder:text-faint focus:border-brand [&::-webkit-search-cancel-button]:hidden"
+          className="h-14 w-full rounded-control border border-line bg-surface pr-12 pl-5 font-semibold outline-none placeholder:font-normal placeholder:text-faint focus:border-brand [&::-webkit-search-cancel-button]:hidden"
         />
-          {procurando && (
-            <button
-              type="button"
-              onClick={() => setTexto("")}
-              aria-label="Limpar a busca"
-              className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-        {acao}
-      </div>
-
-      {procurando ? (
-        achados.length === 0 ? (
-          <p className="rounded-card border border-line bg-surface px-5 py-8 text-center text-muted">
-            Nenhuma mesa com <span className="font-bold text-ink">{texto}</span>.
-          </p>
+        {procurando ? (
+          <button
+            type="button"
+            onClick={() => setTexto("")}
+            aria-label="Limpar a busca"
+            className="absolute top-1/2 right-2 grid size-10 -translate-y-1/2 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </button>
         ) : (
-          <Grade lugares={achados} base={base} cols={cols} vazio="" />
-        )
-      ) : (
-        <SalaoAbas abas={abas} />
-      )}
+          <Search className="pointer-events-none absolute top-1/2 right-4 size-5 -translate-y-1/2 text-ink/70" aria-hidden="true" />
+        )}
+      </div>
+      {acao}
     </div>
   );
+
+  // Procurando, o resultado toma o lugar das mesas e as abas ficam paradas:
+  // quem digita "27" quer a mesa 27, esteja ela no salão ou no balcão.
+  const resultado = procurando ? (
+    achados.length === 0 ? (
+      <p className="rounded-card border border-line bg-surface px-5 py-8 text-center text-muted">
+        Nenhuma mesa com <span className="font-bold text-ink">{texto}</span>.
+      </p>
+    ) : (
+      <Grade lugares={achados} base={base} cols={cols} vazio="" />
+    )
+  ) : undefined;
+
+  return <SalaoAbas abas={abas} entre={linhaDaBusca} noLugar={resultado} />;
 }

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AtendendoMesa } from "@/components/panel/atendendo-mesa";
 import { MesaDoGarcom } from "@/components/panel/mesa-garcom";
 import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
 import { mesasParaDestino } from "@/server/salao/mexer";
+
+import { marcarAtendimento } from "../../../../painel/[restaurantId]/salao/actions";
 
 export const metadata: Metadata = { title: "Mesa" };
 
@@ -35,18 +38,23 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
   const base = `/garcom/${restaurant.id}`;
 
   return (
-    <MesaDoGarcom
-      comanda={comanda}
-      categorias={categorias}
-      mesaRotulo={rotulo}
-      voltarHref={base}
-      restaurantId={restaurant.id}
-      mesaId={mesa.id}
-      podeFinanceiro={pode.finalizarMesa}
-      podeApagarItem={pode.excluirItem}
-      podeMexer={pode.mexerNaMesa}
-      mesas={mesas}
-      temImpressora={impressoras > 0}
-    />
+    <>
+      {/* a mesa fica roxa, "Em atendimento", no mapa do caixa enquanto o
+          garçom está nela */}
+      <AtendendoMesa restaurantId={restaurant.id} mesaId={mesa.id} marcar={marcarAtendimento} />
+      <MesaDoGarcom
+        comanda={comanda}
+        categorias={categorias}
+        mesaRotulo={rotulo}
+        voltarHref={base}
+        restaurantId={restaurant.id}
+        mesaId={mesa.id}
+        podeFinanceiro={pode.finalizarMesa}
+        podeApagarItem={pode.excluirItem}
+        podeMexer={pode.mexerNaMesa}
+        mesas={mesas}
+        temImpressora={impressoras > 0}
+      />
+    </>
   );
 }

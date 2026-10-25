@@ -20,7 +20,17 @@ import { cn } from "@/lib/cn";
 
 export type Aba = { chave: string; titulo: string; conteudo: ReactNode };
 
-export function SalaoAbas({ abas }: { abas: Aba[] }) {
+export function SalaoAbas({
+  abas,
+  entre,
+  noLugar,
+}: {
+  abas: Aba[];
+  /** o que fica entre as abas e o conteúdo: a linha da busca, como no Yooga */
+  entre?: ReactNode;
+  /** procurando, o resultado toma o lugar dos painéis, com as abas paradas em cima */
+  noLugar?: ReactNode;
+}) {
   const trilho = useRef<HTMLDivElement>(null);
   const [ativa, setAtiva] = useState(0);
 
@@ -48,7 +58,8 @@ export function SalaoAbas({ abas }: { abas: Aba[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="flex gap-1 border-b border-line" aria-label="Seções do salão">
+      {/* No jeito do Yooga: a aba da vez numa pílula, com o traço embaixo */}
+      <nav className="flex gap-2 border-b border-line" aria-label="Seções do salão">
         {abas.map((a, i) => (
           <button
             key={a.chave}
@@ -56,17 +67,29 @@ export function SalaoAbas({ abas }: { abas: Aba[] }) {
             onClick={() => ir(i)}
             aria-current={i === ativa ? "page" : undefined}
             className={cn(
-              "-mb-px border-b-2 px-4 py-3 text-sm font-extrabold transition-colors",
-              i === ativa ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink",
+              "relative -mb-px px-1 pt-1 pb-3 transition-colors",
+              i === ativa && "after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:rounded-full after:bg-brand",
             )}
           >
-            {a.titulo}
+            <span
+              className={cn(
+                "block rounded-full px-4 py-2 text-[0.95rem] font-semibold",
+                i === ativa ? "bg-brand-soft text-ink" : "text-faint hover:text-ink",
+              )}
+            >
+              {a.titulo}
+            </span>
           </button>
         ))}
       </nav>
 
+      {entre}
+
+      {noLugar}
+
       <div
         ref={trilho}
+        hidden={!!noLugar}
         // a barra de rolagem some, mas o arrasto continua; o encaixe é por
         // painel, então o dedo nunca deixa a tela entre duas abas
         className="flex snap-x snap-mandatory items-start overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
