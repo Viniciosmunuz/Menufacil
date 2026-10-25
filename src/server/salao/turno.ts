@@ -147,7 +147,24 @@ export async function numerosDaNoite(restaurantId: string, caixaId: string): Pro
   };
 }
 
-export async function fecharTurno(restaurantId: string, userId: string): Promise<ResultadoDoTurno & { caixaId?: string }> {
+/**
+ * Fecha o caixa da noite.
+ *
+ * Com `contado`, o dono conferiu a gaveta: o valor e a diferença ficam
+ * gravados na linha do caixa, porque recalcular isso amanhã daria outro
+ * número -- a noite seguinte já mexeu no dinheiro. Sem ele, fecha como
+ * sempre fechou, e a diferença fica nula.
+ *
+ * A diferença é sempre contado menos esperado: negativa falta dinheiro,
+ * positiva sobra. Ela não impede o fechamento -- quem decide o que fazer
+ * com uma sobra de dois reais é o dono, não o sistema --, mas fica
+ * registrada para a conversa do dia seguinte.
+ */
+export async function fecharTurno(
+  restaurantId: string,
+  userId: string,
+  contado?: { dinheiroCents: number; esperadoCents: number; contagem?: Record<string, number> | null },
+): Promise<ResultadoDoTurno & { caixaId?: string }> {
   const abertas = await db.comanda.count({ where: { restaurantId, fechadaAt: null, status: "OCUPADA" } });
   if (abertas > 0) {
     return { ok: false, error: `Ainda há ${abertas} ${abertas === 1 ? "mesa aberta" : "mesas abertas"}. Receba antes de fechar o caixa.` };
@@ -156,10 +173,62 @@ export async function fecharTurno(restaurantId: string, userId: string): Promise
   const aberto = await db.caixaSalao.findFirst({ where: { restaurantId, fechadoAt: null }, select: { id: true } });
   if (!aberto) return { ok: false, error: "O caixa não está aberto." };
 
+  const conferencia = contado
+    ? {
+        fechamentoDinheiroCents: contado.dinheiroCents,
+        fechamentoDiferencaCents: contado.dinheiroCents - contado.esperadoCents,
+        fechamentoContagem: contado.contagem ?? undefined,
+      }
+    : {};
+
   await db.$transaction([
-    db.caixaSalao.update({ where: { id: aberto.id }, data: { fechadoAt: new Date(), fechadoPorId: userId }, select: { id: true } }),
+    db.caixaSalao.update({
+      where: { id: aberto.id },
+      data: { fechadoAt: new Date(), fechadoPorId: userId, ...conferencia },
+      select: { id: true },
+    }),
     // as mesas pagas voltam a ficar livres: o turno acabou
     db.comanda.updateMany({ where: { restaurantId, fechadaAt: null }, data: { fechadaAt: new Date() } }),
   ]);
   return { ok: true, caixaId: aberto.id };
+}
+
+export type ResultadoDoMovimento = { ok: true } | { ok: false; error: string };
+
+/**
+ * Dinheiro que entrou ou saiu da gaveta fora da venda.
+ *
+ * Sangria para o cofre, troco trazido de casa, a conta do gás paga na hora:
+ * tudo isso mexe no que há na gaveta e não é venda nenhuma. Sem registrar,
+ * o caixa fecha com uma diferença que ninguém sabe explicar -- e a diferença
+ * sem explicação é o que faz o dono desconfiar da equipe inteira.
+ */
+export async function lancarMovimento(
+  restaurantId: string,
+  userId: string,
+  tipo: "ENTRADA" | "SAIDA",
+  centavos: number,
+  motivo: string,
+): Promise<ResultadoDoMovimento> {
+  if (!Number.isInteger(centavos) || centavos <= 0) return { ok: false, error: "Diga um valor maior que zero." };
+  const texto = motivo.trim().slice(0, 120);
+  if (!texto) return { ok: false, error: "Diga o motivo: quem confere o caixa depois precisa saber." };
+
+  const aberto = await db.caixaSalao.findFirst({ where: { restaurantId, fechadoAt: null }, select: { id: true } });
+  if (!aberto) return { ok: false, error: "O caixa não está aberto." };
+
+  await db.movimentoCaixa.create({
+    data: { restaurantId, caixaId: aberto.id, tipo, centavos, motivo: texto, criadoPorId: userId },
+    select: { id: true },
+  });
+  return { ok: true };
+}
+
+/** desfaz um lançamento digitado errado, enquanto o caixa está aberto */
+export async function apagarMovimento(restaurantId: string, movimentoId: string): Promise<ResultadoDoMovimento> {
+  const { count } = await db.movimentoCaixa.deleteMany({
+    where: { id: movimentoId, restaurantId, caixa: { fechadoAt: null } },
+  });
+  if (count === 0) return { ok: false, error: "Lançamento não encontrado, ou o caixa já foi fechado." };
+  return { ok: true };
 }

@@ -49,6 +49,7 @@ model User {
   pushDevices   PushDevice[]
   comandas      Comanda[]
   caixasAbertos CaixaSalao[] @relation("CaixaAberto")
+  movimentosDeCaixa MovimentoCaixa[]
   caixasFechados CaixaSalao[] @relation("CaixaFechado")
   recebimentos   PagamentoComanda[]
 
@@ -273,6 +274,7 @@ model Restaurant {
   mesas               Mesa[]
   comandas            Comanda[]
   caixas              CaixaSalao[]
+  movimentosDeCaixa   MovimentoCaixa[]
   mercadoPago         MercadoPagoAccount?
   chats               ChatConversation[]
   payments            RestaurantPayment[]
@@ -1323,6 +1325,14 @@ model CaixaSalao {
   fechamentoCents Int?
   fechadoAt       DateTime?
 
+  /// o que foi contado na gaveta no fechamento, e quanto bateu ou faltou.
+  /// Fica gravado porque recalcular depois daria outro numero: a noite
+  /// seguinte ja mexeu no caixa.
+  fechamentoDinheiroCents  Int?
+  fechamentoDiferencaCents Int?
+  /// a contagem de cedulas, quando o dono conferiu nota por nota
+  fechamentoContagem       Json?
+
   observacao String?
 
   createdAt DateTime @default(now())
@@ -1331,8 +1341,41 @@ model CaixaSalao {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   abertoPor  User?      @relation("CaixaAberto", fields: [abertoPorId], references: [id], onDelete: SetNull)
   fechadoPor User?      @relation("CaixaFechado", fields: [fechadoPorId], references: [id], onDelete: SetNull)
+  movimentos MovimentoCaixa[]
 
   @@index([restaurantId, abertoAt])
+}
+
+/// Dinheiro que entra ou sai da gaveta fora da venda: sangria para o cofre,
+/// troco trazido de casa, a conta do gás paga na hora.
+///
+/// Nao e venda nem pagamento de mesa, e por isso tem tabela propria: somado
+/// ao que as mesas pagaram, o caixa nunca fecharia com a gaveta.
+enum MovimentoCaixaTipo {
+  ENTRADA // suprimento: dinheiro que entrou na gaveta
+  SAIDA // sangria: dinheiro que saiu
+}
+
+model MovimentoCaixa {
+  id           String @id @default(cuid())
+  restaurantId String
+  /// o turno em que o dinheiro passou pela gaveta
+  caixaId      String
+
+  tipo     MovimentoCaixaTipo
+  centavos Int
+  /// "sangria para o cofre", "pagamento do gas": quem confere precisa saber
+  motivo   String
+
+  criadoPorId String?
+  createdAt   DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  caixa      CaixaSalao @relation(fields: [caixaId], references: [id], onDelete: Cascade)
+  criadoPor  User?      @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([caixaId, createdAt])
+  @@index([restaurantId])
 }
 
 /// Por onde o dinheiro da mesa entrou.

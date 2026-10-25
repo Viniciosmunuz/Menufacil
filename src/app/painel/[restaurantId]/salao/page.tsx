@@ -1,19 +1,17 @@
-import { DollarSign, Headset, History, LayoutGrid, Settings } from "lucide-react";
+import { DollarSign, Headset, History, LayoutGrid, Settings, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { SalaoComBusca } from "@/components/panel/busca-mesa";
-import { CaixaDoSalaoPanel, CaixaFechado } from "@/components/panel/caixa-salao";
+import { CaixaFechado } from "@/components/panel/caixa-salao";
 import { PageHeader } from "@/components/panel/page-header";
 import { buttonClasses } from "@/components/ui/button";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { EmptyState } from "@/components/ui/empty-state";
-import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
 
-import { AbrirCaixaForm, FecharCaixaForm } from "./caixa-form";
-import { caixaDoSalao } from "@/server/salao/caixa";
+import { AbrirCaixaForm } from "./caixa-form";
 import { turnoAberto } from "@/server/salao/turno";
 import { mapaDoSalao } from "@/server/salao/mesas";
 
@@ -36,15 +34,7 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
   const { restaurant } = await requireSalao(restaurantId);
   const base = `/painel/${restaurant.id}/salao`;
 
-  const horarios = await db.openingHour.findMany({
-    where: { restaurantId: restaurant.id },
-    select: { weekday: true, opensAt: true, closesAt: true, closed: true },
-  });
-  const [salao, caixa, turno] = await Promise.all([
-    mapaDoSalao(restaurant.id),
-    caixaDoSalao(restaurant.id, horarios),
-    turnoAberto(restaurant.id),
-  ]);
+  const [salao, turno] = await Promise.all([mapaDoSalao(restaurant.id), turnoAberto(restaurant.id)]);
 
   // "Configuração geral", como no Yooga: mesas, balcão, garçons e impressão
   const engrenagem = (
@@ -70,6 +60,10 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
         >
           <Headset className="size-5" aria-hidden="true" />
           Suporte
+        </Link>
+        <Link href={`${base}/caixa`} className="inline-flex h-11 items-center gap-2 rounded-control px-3 font-semibold text-ink/80 hover:bg-surface-2">
+          <Wallet className="size-5" aria-hidden="true" />
+          Caixa
         </Link>
         <Link href={`${base}/historico`} className="inline-flex h-11 items-center gap-2 rounded-control px-3 font-semibold text-ink/80 hover:bg-surface-2">
           <History className="size-5" aria-hidden="true" />
@@ -136,14 +130,6 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
         base={base}
         cols={cols}
         acao={engrenagem}
-        caixa={
-          <CaixaDoSalaoPanel
-            caixa={caixa}
-            turno={turno}
-            abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
-            fechar={<FecharCaixaForm restaurantId={restaurant.id} podeFechar />}
-          />
-        }
       />
     </div>
   );

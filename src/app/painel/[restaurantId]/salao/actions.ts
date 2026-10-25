@@ -23,7 +23,7 @@ import {
   NOME_DA_FORMA,
   type FormaNaMesa,
 } from "@/server/salao/pagamento";
-import { abrirTurno, fecharTurno, turnoAberto } from "@/server/salao/turno";
+import { abrirTurno, apagarMovimento, fecharTurno, lancarMovimento, turnoAberto } from "@/server/salao/turno";
 
 // Ações do salão. Toda uma delas passa por requireSalao: esconder o botão
 // não impede ninguém de chamar a ação direto, e aqui se mexe com dinheiro.
@@ -210,10 +210,23 @@ export async function fecharCaixa(_prev: SalaoFormState, formData: FormData): Pr
   const acesso = await requireSalao(restaurantId);
   if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para fechar o caixa." };
 
-  const r = await fecharTurno(restaurantId, acesso.user.id);
+  // o dono conferiu a gaveta: o valor contado e o esperado vêm da tela do
+  // Resumo do Caixa, e a diferença é calculada no servidor
+  const contadoCents = parseMoneyToCents(String(formData.get("contado") ?? ""));
+  const esperadoCents = Number(formData.get("esperado"));
+  const conferiu = contadoCents !== null && Number.isInteger(esperadoCents);
+
+  const r = await fecharTurno(
+    restaurantId,
+    acesso.user.id,
+    conferiu ? { dinheiroCents: contadoCents, esperadoCents } : undefined,
+  );
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.caixa_fechou", { caixaId: r.caixaId ?? null });
+  await panelAudit(acesso, "salao.caixa_fechou", {
+    caixaId: r.caixaId ?? null,
+    ...(conferiu ? { contado: contadoCents, esperado: esperadoCents, diferenca: contadoCents - esperadoCents } : {}),
+  });
   refresh();
 
   // Fechou: a tela vira a via da noite, que sai sozinha na impressora.
@@ -540,4 +553,43 @@ export async function marcarAtendimento(restaurantId: string, mesaId: string, ab
     where: { id: mesaId, restaurantId: acesso.restaurant.id },
     data: aberta ? { atendimentoAt: new Date(), atendimentoPor: acesso.user.name } : { atendimentoAt: null, atendimentoPor: null },
   });
+}
+
+/**
+ * Entrada ou saída de dinheiro da gaveta, fora da venda.
+ *
+ * Só o dono e quem pode finalizar mesa: mexer no que há na gaveta é a mesma
+ * confiança de fechar o caixa.
+ */
+export async function lancarNoCaixa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para mexer no caixa." };
+
+  const tipo = formData.get("tipo") === "SAIDA" ? "SAIDA" : "ENTRADA";
+  const centavos = parseMoneyToCents(String(formData.get("valor") ?? ""));
+  if (centavos === null) return { error: "Diga o valor." };
+  const motivo = String(formData.get("motivo") ?? "");
+
+  const r = await lancarMovimento(restaurantId, acesso.user.id, tipo, centavos, motivo);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, tipo === "SAIDA" ? "salao.caixa_saida" : "salao.caixa_entrada", { centavos, motivo: motivo.trim().slice(0, 120) });
+  refresh();
+  return { ok: true, message: tipo === "SAIDA" ? `Saída de ${formatCents(centavos)} registrada.` : `Entrada de ${formatCents(centavos)} registrada.` };
+}
+
+/** desfaz um lançamento digitado errado */
+export async function apagarDoCaixa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para mexer no caixa." };
+
+  const movimentoId = String(formData.get("movimentoId") ?? "");
+  const r = await apagarMovimento(restaurantId, movimentoId);
+  if (!r.ok) return { error: r.error };
+
+  await panelAudit(acesso, "salao.caixa_movimento_apagado", { movimentoId });
+  refresh();
+  return { ok: true, message: "Lançamento apagado." };
 }
