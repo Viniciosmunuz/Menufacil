@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, ShoppingCart, X } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { renomearMesa, type SalaoFormState } from "@/app/painel/[restaurantId]/salao/actions";
@@ -74,6 +74,9 @@ export function NomeDaMesa({
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
+      {/* o carrinho antes do nome, como no Yooga: diz que dali para baixo é
+          a conta da mesa, e não a tela toda */}
+      <ShoppingCart className="size-5 shrink-0 text-ink/60" aria-hidden="true" />
       <h1 className="truncate text-2xl font-extrabold">{nome ?? rotulo + " " + numero}</h1>
       {/* com apelido, o número continua à vista: é por ele que a cozinha
           e a comanda se entendem */}

@@ -140,12 +140,27 @@ function Totais({ comanda, novoCents }: { comanda: ComandaAberta; novoCents: num
   );
 }
 
-/** os botões quadrados do Yooga: só o ícone, com o nome no title */
+/**
+ * A fila de botões quadrados embaixo da conta, no jeito do Yooga: cada um
+ * de uma cor, só com o ícone.
+ *
+ * A cor é o que o caixa lê de longe, e no meio do movimento ele acerta o
+ * botão pela cor antes de ler o ícone -- cinco quadrados cinzentos iguais
+ * viravam cinco chances de errar. São as mesmas cores do mapa de mesas,
+ * para o salão inteiro falar a mesma língua.
+ */
 const QUADRADO =
-  "grid aspect-square w-full place-items-center rounded-control border border-line bg-surface text-ink transition-colors hover:border-line-strong hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-35";
+  "grid aspect-square w-full place-items-center rounded-control text-white shadow-[0_1px_0_rgb(0_0_0/0.08)] transition-[filter,opacity] hover:brightness-105 disabled:pointer-events-none disabled:opacity-30";
 
-/** a lixeira é o único quadrado vermelho, como no Yooga */
-const LIXEIRA = QUADRADO.replace("text-ink", "text-danger").replace("hover:border-line-strong hover:bg-surface-2", "hover:border-danger hover:bg-danger/10");
+const COR = {
+  imprimir: "bg-[#2f7de1]",
+  apagar: "bg-[#e2483d]",
+  servico: "bg-[#f0b429]",
+  desconto: "bg-[#1fc46e]",
+  dividir: "bg-[#6f4fd8]",
+} as const;
+
+const quadrado = (cor: keyof typeof COR) => `${QUADRADO} ${COR[cor]}`;
 
 /**
  * Dividir a conta: quanto dá para cada um.
@@ -261,43 +276,53 @@ function Acoes({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* a ordem é a do Yooga: imprimir, apagar, serviço, desconto -- e o
+          dividir, que é nosso, por último */}
       <div className="grid grid-cols-5 gap-2">
+        <ContaNoPapel
+          restaurantId={restaurantId}
+          comandaId={comanda.id}
+          temConta={temConta}
+          temImpressora={temImpressora}
+          className={quadrado("imprimir")}
+        />
         {podeMexer && temConta ? (
-          <ApagarAMesa
-            comanda={comanda}
-            restaurantId={restaurantId}
-            rotulo={mesaRotulo}
-            classeInteira={LIXEIRA}
-          />
+          <ApagarAMesa comanda={comanda} restaurantId={restaurantId} rotulo={mesaRotulo} classeInteira={quadrado("apagar")} />
         ) : (
-          <button type="button" disabled aria-label="Apagar a comanda" className={LIXEIRA}>
+          <button type="button" disabled aria-label="Apagar a comanda" className={quadrado("apagar")}>
             <Trash2 className="size-5" aria-hidden="true" />
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onAjustar("desconto")}
-          disabled={!podeFinanceiro || !temConta}
-          aria-label="Desconto"
-          title="Desconto"
-          className={QUADRADO}
-        >
-          <Percent className="size-5" aria-hidden="true" />
-        </button>
         <button
           type="button"
           onClick={() => onAjustar("servico")}
           disabled={!podeFinanceiro || !temConta}
           aria-label="Taxa de serviço"
           title="Taxa de serviço"
-          className={QUADRADO}
+          className={quadrado("servico")}
         >
           <HandCoins className="size-5" aria-hidden="true" />
         </button>
-        <button type="button" onClick={onDividir} disabled={!temConta || quitada} aria-label="Dividir a conta" title="Dividir a conta" className={QUADRADO}>
+        <button
+          type="button"
+          onClick={() => onAjustar("desconto")}
+          disabled={!podeFinanceiro || !temConta}
+          aria-label="Desconto"
+          title="Desconto"
+          className={quadrado("desconto")}
+        >
+          <Percent className="size-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onDividir}
+          disabled={!temConta || quitada}
+          aria-label="Dividir a conta"
+          title="Dividir a conta"
+          className={quadrado("dividir")}
+        >
           <ReceiptText className="size-5" aria-hidden="true" />
         </button>
-        <ContaNoPapel restaurantId={restaurantId} comandaId={comanda.id} temConta={temConta} temImpressora={temImpressora} className={QUADRADO} />
       </div>
 
       {quitada && podeFinanceiro ? (
@@ -623,12 +648,14 @@ export function ComandaDaMesa({
             </ul>
           )}
 
-          {/* o que ainda não foi enviado fica separado do que já está na
-              cozinha: são duas coisas diferentes para quem olha a conta */}
+          {/* O que ainda não foi enviado fica separado do que já está na
+              cozinha: são duas coisas diferentes para quem olha a conta.
+              A faixa amarela atravessando a coluna é a do Yooga -- de
+              relance ela diz "isto aqui ainda não foi para o fogão". */}
           {sacola.length > 0 && (
-            <div className="mt-3 flex flex-col gap-2 rounded-control border border-brand/50 bg-brand-soft p-3">
-              <p className="text-xs font-bold tracking-wide text-brand uppercase">Novos · falta salvar</p>
-              <ul className="flex flex-col gap-1">
+            <div className="mt-3 overflow-hidden rounded-control border border-[#f0b429]/60">
+              <p className="bg-[#f7d070] px-3 py-1.5 text-xs font-extrabold tracking-wide text-[#4a3708] uppercase">Novos · falta salvar</p>
+              <ul className="flex flex-col gap-1 bg-[#fdf6e3] p-3">
                 {sacola.map((i) => (
                   <li key={i.chave} className="flex items-center gap-2 text-sm">
                     <span className="min-w-0 flex-1">
