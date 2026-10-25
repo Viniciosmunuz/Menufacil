@@ -25,6 +25,36 @@ const TEMPO_LIMITE_MS = 15_000;
 export type IntencaoCriada = { id: string; state: string | null };
 export type RespostaDoPonto<T> = { ok: true; dados: T } | { ok: false; erro: string; status?: number };
 
+// O porquê da recusa, que o Mercado Pago guarda em lugares diferentes
+// conforme a API.
+//
+// Isto já custou um diagnóstico: a Orders (a da maquininha nova) devolve
+// "errors": [{ code, message }], que não era lido aqui -- sobrava na tela
+// do totem "O Mercado Pago respondeu 400.", que não diz nada a ninguém.
+// As APIs antigas usam "message" com um "cause" do lado, e o código do
+// erro é o que se procura na documentação deles.
+function motivo(dados: unknown, status: number): string {
+  const d = (dados ?? {}) as {
+    errors?: { code?: string; message?: string; description?: string }[];
+    cause?: { code?: string | number; description?: string }[];
+    message?: string;
+    error?: string;
+  };
+
+  const primeiro = d.errors?.[0];
+  const causa = d.cause?.[0];
+
+  const texto = primeiro?.message ?? primeiro?.description ?? causa?.description ?? d.message ?? d.error;
+  const codigo = primeiro?.code ?? (causa?.code === undefined ? undefined : String(causa.code));
+
+  // o código entra junto de propósito: é por ele que se acha o caso na
+  // documentação, e o texto deles às vezes vem genérico demais
+  if (texto && codigo) return `${texto} (${codigo})`;
+  if (texto) return texto;
+  if (codigo) return `O Mercado Pago recusou: ${codigo}.`;
+  return `O Mercado Pago respondeu ${status}.`;
+}
+
 async function chamar<T>(
   caminho: string,
   {
@@ -56,11 +86,11 @@ async function chamar<T>(
     const dados = texto ? (JSON.parse(texto) as T & { message?: string; error?: string }) : ({} as T);
 
     if (!resposta.ok) {
-      const mensagem =
-        (dados as { message?: string; error?: string }).message ??
-        (dados as { error?: string }).error ??
-        `O Mercado Pago respondeu ${resposta.status}.`;
-      return { ok: false, erro: mensagem, status: resposta.status };
+      // o corpo inteiro vai para o log da Vercel: a tela do totem mostra uma
+      // frase, mas quem vai atrás do caso precisa do que eles mandaram. O
+      // token fica de fora -- ele nunca está na resposta, só no cabeçalho.
+      console.error("[mercado-pago]", metodo, caminho, resposta.status, texto.slice(0, 600));
+      return { ok: false, erro: motivo(dados, resposta.status), status: resposta.status };
     }
     return { ok: true, dados };
   } catch (erro) {
