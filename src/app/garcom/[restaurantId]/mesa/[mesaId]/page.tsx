@@ -49,9 +49,7 @@ export default async function MesaDoGarcomPage({ params }: PageProps<"/garcom/[r
         voltarHref={base}
         restaurantId={restaurant.id}
         mesaId={mesa.id}
-        podeFinanceiro={pode.finalizarMesa}
-        podeApagarItem={pode.excluirItem}
-        podeMexer={pode.mexerNaMesa}
+        pode={pode}
         mesas={mesas}
         temImpressora={impressoras > 0}
       />

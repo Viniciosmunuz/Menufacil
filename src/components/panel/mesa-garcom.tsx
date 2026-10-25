@@ -7,6 +7,7 @@ import { useActionState, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import type { PodeNaMesa } from "@/lib/permissoes-salao";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 import type { MesaDestino } from "@/server/salao/mexer";
 
@@ -46,9 +47,7 @@ export function MesaDoGarcom({
   voltarHref,
   restaurantId,
   mesaId,
-  podeFinanceiro = false,
-  podeApagarItem = false,
-  podeMexer = false,
+  pode,
   mesas = [],
   temImpressora = false,
 }: {
@@ -59,11 +58,8 @@ export function MesaDoGarcom({
   restaurantId: string;
   mesaId: string;
   /** liberar a mesa, dar desconto, desfazer recebimento: o dono liga por garçom */
-  podeFinanceiro?: boolean;
-  /** tirar da conta o que já foi para a cozinha */
-  podeApagarItem?: boolean;
-  /** trocar a mesa de lugar, mover itens e apagar a comanda: Garçom II */
-  podeMexer?: boolean;
+  /** o que esta pessoa pode fazer na mesa, chave por chave */
+  pode: PodeNaMesa;
   mesas?: MesaDestino[];
   /** com o Menu Fácil PC ligado, a conta sai no balcão em vez de abrir na tela */
   temImpressora?: boolean;
@@ -150,7 +146,7 @@ export function MesaDoGarcom({
           a mesa está aberta, que é quando há comanda para mudar de lugar */}
       <div className="flex items-center justify-center gap-2 bg-brand py-2 font-extrabold text-brand-ink">
         <span>{mesaRotulo}</span>
-        {temComanda && podeMexer && (
+        {temComanda && pode.mexerNaMesa && (
           <MexerNaMesa comanda={comanda} restaurantId={restaurantId} mesas={mesas} rotulo={mesaRotulo} />
         )}
       </div>
@@ -341,7 +337,7 @@ export function MesaDoGarcom({
                       {i.observacao && <span className="block truncate text-xs text-warning">{i.observacao}</span>}
                     </span>
                     <span className="shrink-0 text-sm font-bold tabular-nums">{formatCents(i.centavos)}</span>
-                    {podeApagarItem && (
+                    {pode.excluirItem && (
                       <form action={apagar} className="shrink-0">
                         <input type="hidden" name="restaurantId" value={restaurantId} />
                         <input type="hidden" name="itemId" value={i.id} />
@@ -401,11 +397,11 @@ export function MesaDoGarcom({
             <ContaNoPapel
               restaurantId={restaurantId}
               comandaId={comanda.id}
-              temConta={temConta}
+              temConta={temConta && pode.imprimirConta}
               temImpressora={temImpressora}
               className="grid h-12 flex-1 place-items-center rounded-control bg-surface-3 text-muted"
             />
-            {podeFinanceiro && (
+            {(pode.desconto || pode.acrescimo) && (
               <button
                 type="button"
                 onClick={() => setFolha("desconto")}
@@ -416,13 +412,13 @@ export function MesaDoGarcom({
                 <Percent className="size-5" aria-hidden="true" />
               </button>
             )}
-            {podeMexer && temComanda && (
+            {pode.apagarComanda && temComanda && (
               <ApagarAMesa comanda={comanda} restaurantId={restaurantId} rotulo={mesaRotulo} className="h-12 w-auto flex-1" />
             )}
           </div>
 
           <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {quitada && podeFinanceiro ? (
+            {quitada && pode.finalizarMesa ? (
               <form action={liberar}>
                 <input type="hidden" name="restaurantId" value={restaurantId} />
                 <input type="hidden" name="comandaId" value={comanda.id} />
@@ -464,10 +460,10 @@ export function MesaDoGarcom({
       )}
 
       {folha === "pagamento" && (
-        <FolhaDoPagamento comanda={comanda} restaurantId={restaurantId} podeDesfazer={podeFinanceiro} onFechar={() => setFolha(null)} />
+        <FolhaDoPagamento comanda={comanda} restaurantId={restaurantId} podeDesfazer={pode.desfazerPagamento} onFechar={() => setFolha(null)} />
       )}
 
-      {folha === "desconto" && <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} onFechar={() => setFolha(null)} />}
+      {folha === "desconto" && <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} podeDesconto={pode.desconto} podeAcrescimo={pode.acrescimo} onFechar={() => setFolha(null)} />}
 
       {aberto && (
         <FolhaDoItem

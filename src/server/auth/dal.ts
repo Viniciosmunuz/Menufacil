@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import type { NivelGarcom, OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
 import { noAr } from "@/lib/features";
+import { permissoesDoVinculo, TUDO, type PermissoesDoSalao } from "@/lib/permissoes-salao";
 import { db } from "@/lib/db";
 
 import { readSession } from "./session";
@@ -87,14 +88,18 @@ export type RestaurantAccess = {
    * O que esta pessoa pode fazer na mesa.
    *
    * O dono pode tudo. O garçom lança pedido e recebe pagamento sempre --
-   * é o trabalho dele. O resto depende do nível: o Garçom II mexe no que
-   * já aconteceu (apaga item impresso, dá desconto, troca a mesa de
-   * lugar, finaliza e apaga a comanda), o Garçom não.
+   * é o trabalho dele. O resto vem das chaves do vínculo e, enquanto o
+   * dono não mexer em nenhuma, do nível: o Garçom II mexe no que já
+   * aconteceu, o Garçom não.
+   *
+   * `mexerNaMesa` não é chave: é a pergunta que a tela faz para saber se
+   * mostra o botão de transferir, e ele vale para qualquer uma das duas
+   * transferências.
    *
    * A conferência é aqui, no servidor, porque esconder o botão não impede
    * ninguém de chamar a ação direto.
    */
-  pode: { excluirItem: boolean; finalizarMesa: boolean; mexerNaMesa: boolean };
+  pode: PermissoesDoSalao & { mexerNaMesa: boolean };
 };
 
 export const getRestaurantAccess = cache(
@@ -122,26 +127,26 @@ export const getRestaurantAccess = cache(
         fullDeliveryEnabled: true,
         salaoEnabled: true,
         deliveryMode: true,
-        owners: { where: { userId: user.id }, select: { id: true, role: true, nivel: true }, take: 1 },
+        owners: { where: { userId: user.id }, select: { id: true, role: true, nivel: true, permissoes: true }, take: 1 },
       },
     });
     if (!linha) return null;
     const { owners, ...restaurant } = linha;
 
-    // o dono pode tudo; o garçom depende do nível, e o Garçom II faz na
-    // mesa o mesmo que o dono -- é o que o nível quer dizer
-    const tudo = { excluirItem: true, finalizarMesa: true, mexerNaMesa: true };
+    // o dono pode tudo; o garçom vem das chaves dele, que nascem do nível
+    const tudo = { ...TUDO, mexerNaMesa: true };
     if (user.role === "ADMIN") return { user, restaurant, viaAdmin: true, papel: "OWNER", pode: tudo };
     if (owners.length === 0 || restaurant.status === "BLOCKED") return null;
 
     const vinculo = owners[0];
+    const chaves = vinculo.role === "OWNER" ? TUDO : permissoesDoVinculo(vinculo.nivel, vinculo.permissoes);
     return {
       user,
       restaurant,
       viaAdmin: false,
       papel: vinculo.role,
       nivel: vinculo.nivel,
-      pode: vinculo.role === "OWNER" || vinculo.nivel === "GARCOM_II" ? tudo : { excluirItem: false, finalizarMesa: false, mexerNaMesa: false },
+      pode: { ...chaves, mexerNaMesa: chaves.transferirMesa || chaves.transferirItens },
     };
   },
 );

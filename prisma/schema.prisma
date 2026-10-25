@@ -316,9 +316,15 @@ model RestaurantOwner {
   podeExcluirItem   Boolean @default(false)
   podeFinalizarMesa Boolean @default(false)
 
-  /// O nivel manda: as duas colunas acima ficam como estavam, para o
-  /// historico, mas quem decide o que o garcom pode fazer e este campo.
+  /// O nivel manda enquanto o dono nao mexe nas chaves: as duas colunas
+  /// acima ficam como estavam, para o historico.
   nivel NivelGarcom @default(GARCOM)
+
+  /// O que este garcom pode fazer na mesa, chave por chave. Vazio quer
+  /// dizer "siga o nivel" -- e e assim que todo vinculo antigo continua.
+  /// A leitura passa por src/lib/permissoes-salao.ts, que descarta o que
+  /// nao reconhece.
+  permissoes Json?
   createdAt    DateTime  @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)

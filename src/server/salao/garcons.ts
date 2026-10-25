@@ -3,6 +3,7 @@ import "server-only";
 import type { NivelGarcom } from "@/generated/prisma/enums";
 import { cpfValido, formatCpf, soDigitos } from "@/lib/cpf";
 import { db } from "@/lib/db";
+import { permissoesDoVinculo } from "@/lib/permissoes-salao";
 
 import { hashPassword } from "../auth/password";
 
@@ -135,6 +136,7 @@ export async function listarGarcons(restaurantId: string) {
       id: true,
       createdAt: true,
       nivel: true,
+      permissoes: true,
       user: { select: { id: true, name: true, email: true, status: true, lastLoginAt: true } },
     },
   });
@@ -147,6 +149,8 @@ export async function listarGarcons(restaurantId: string) {
     ativo: v.user.status === "ACTIVE",
     ultimoAcesso: v.user.lastLoginAt,
     nivel: v.nivel,
+    // vazio no banco quer dizer "siga o nível": a leitura resolve isso
+    permissoes: permissoesDoVinculo(v.nivel, v.permissoes),
   }));
 }
 

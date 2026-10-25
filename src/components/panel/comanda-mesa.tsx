@@ -7,6 +7,7 @@ import { useActionState, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import type { PodeNaMesa } from "@/lib/permissoes-salao";
 import type { CategoriaDoCardapio, ComandaAberta, ProdutoDoCardapio } from "@/server/salao/comanda";
 
 import { ContaNoPapel } from "./conta-no-papel";
@@ -250,8 +251,7 @@ function FolhaDaDivisao({
 function Acoes({
   comanda,
   restaurantId,
-  podeFinanceiro,
-  podeMexer,
+  pode,
   mesaRotulo,
   temImpressora,
   onReceber,
@@ -260,9 +260,7 @@ function Acoes({
 }: {
   comanda: ComandaAberta;
   restaurantId: string;
-  podeFinanceiro: boolean;
-  /** apagar a comanda inteira: dono e Garçom II */
-  podeMexer: boolean;
+  pode: PodeNaMesa;
   mesaRotulo: string;
   temImpressora: boolean;
   onReceber: () => void;
@@ -282,11 +280,11 @@ function Acoes({
         <ContaNoPapel
           restaurantId={restaurantId}
           comandaId={comanda.id}
-          temConta={temConta}
+          temConta={temConta && pode.imprimirConta}
           temImpressora={temImpressora}
           className={quadrado("imprimir")}
         />
-        {podeMexer && temConta ? (
+        {pode.apagarComanda && temConta ? (
           <ApagarAMesa comanda={comanda} restaurantId={restaurantId} rotulo={mesaRotulo} classeInteira={quadrado("apagar")} />
         ) : (
           <button type="button" disabled aria-label="Apagar a comanda" className={quadrado("apagar")}>
@@ -296,7 +294,7 @@ function Acoes({
         <button
           type="button"
           onClick={() => onAjustar("servico")}
-          disabled={!podeFinanceiro || !temConta}
+          disabled={!pode.acrescimo || !temConta}
           aria-label="Taxa de serviço"
           title="Taxa de serviço"
           className={quadrado("servico")}
@@ -306,7 +304,7 @@ function Acoes({
         <button
           type="button"
           onClick={() => onAjustar("desconto")}
-          disabled={!podeFinanceiro || !temConta}
+          disabled={!pode.desconto || !temConta}
           aria-label="Desconto"
           title="Desconto"
           className={quadrado("desconto")}
@@ -325,7 +323,7 @@ function Acoes({
         </button>
       </div>
 
-      {quitada && podeFinanceiro ? (
+      {quitada && pode.finalizarMesa ? (
         <form action={liberar}>
           <input type="hidden" name="restaurantId" value={restaurantId} />
           <input type="hidden" name="comandaId" value={comanda.id} />
@@ -502,9 +500,7 @@ function Cardapio({
 export function ComandaDaMesa({
   comanda,
   categorias,
-  podeFinanceiro = true,
-  podeApagarItem = true,
-  podeMexer = true,
+  pode,
   mesaRotulo = "mesa",
   temImpressora = false,
   restaurantId,
@@ -514,12 +510,8 @@ export function ComandaDaMesa({
 }: {
   comanda: ComandaAberta;
   categorias: CategoriaDoCardapio[];
-  /** o garçom sem permissão não vê desconto nem liberação de mesa */
-  podeFinanceiro?: boolean;
-  /** nem a lixeira ao lado do item que já foi para a cozinha */
-  podeApagarItem?: boolean;
-  /** trocar a mesa de lugar, mover itens e apagar a comanda */
-  podeMexer?: boolean;
+  /** o que esta pessoa pode fazer na mesa, chave por chave */
+  pode: PodeNaMesa;
   mesaRotulo?: string;
   /** com o Menu Fácil PC ligado, a conta sai no balcão em vez de abrir na tela */
   temImpressora?: boolean;
@@ -643,7 +635,7 @@ export function ComandaDaMesa({
           ) : (
             <ul className="flex flex-col divide-y divide-line">
               {comanda.itens.map((i) => (
-                <Linha key={i.id} item={i} restaurantId={restaurantId} podeApagar={podeApagarItem} />
+                <Linha key={i.id} item={i} restaurantId={restaurantId} podeApagar={pode.excluirItem} />
               ))}
             </ul>
           )}
@@ -689,8 +681,7 @@ export function ComandaDaMesa({
         <Acoes
           comanda={comanda}
           restaurantId={restaurantId}
-          podeFinanceiro={podeFinanceiro}
-          podeMexer={podeMexer}
+          pode={pode}
           mesaRotulo={mesaRotulo}
           temImpressora={temImpressora}
           onReceber={() => {
@@ -723,14 +714,14 @@ export function ComandaDaMesa({
         <FolhaDoPagamento
           comanda={comanda}
           restaurantId={restaurantId}
-          podeDesfazer={podeFinanceiro}
+          podeDesfazer={pode.desfazerPagamento}
           valorInicial={parte}
           onFechar={() => setFolha(null)}
         />
       )}
 
       {(folha === "desconto" || folha === "servico") && (
-        <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} foco={folha} onFechar={() => setFolha(null)} />
+        <FolhaDoDesconto comanda={comanda} restaurantId={restaurantId} foco={folha} podeDesconto={pode.desconto} podeAcrescimo={pode.acrescimo} onFechar={() => setFolha(null)} />
       )}
 
       {folha === "divisao" && (

@@ -86,9 +86,7 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
       <ComandaDaMesa
         comanda={comanda}
         categorias={categorias}
-        podeFinanceiro={pode.finalizarMesa}
-        podeApagarItem={pode.excluirItem}
-        podeMexer={pode.mexerNaMesa}
+        pode={pode}
         mesaRotulo={mesa.nome ?? rotulo + " " + mesa.numero}
         temImpressora={impressoras > 0}
         restaurantId={restaurant.id}

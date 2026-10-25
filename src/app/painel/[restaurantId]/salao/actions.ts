@@ -7,6 +7,7 @@ import type { LugarTipo } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/format";
 import { parseMoneyToCents } from "@/lib/validation";
+import { limparPermissoes, NOME_DA_CHAVE, TODAS } from "@/lib/permissoes-salao";
 import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
 import { criarGarcom, mudarNivel, tirarGarcom } from "@/server/salao/garcons";
@@ -177,6 +178,8 @@ export async function tirarGarcomDaEquipe(_prev: SalaoFormState, formData: FormD
 export async function renomearMesa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
+  if (!acesso.pode.renomearMesa) return { error: "Você não tem permissão para dar nome à mesa." };
+
   const mesaId = String(formData.get("mesaId") ?? "");
   const nome = String(formData.get("nome") ?? "").trim().slice(0, 40);
 
@@ -320,8 +323,7 @@ export async function receberPagamento(_prev: SalaoFormState, formData: FormData
 export async function desfazerPagamento(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  // tirar dinheiro lançado é o avesso de finalizar a mesa: mesma confiança
-  if (!acesso.pode.finalizarMesa) return { error: "Só quem pode finalizar a mesa desfaz um recebimento." };
+  if (!acesso.pode.desfazerPagamento) return { error: "Você não tem permissão para desfazer um recebimento." };
 
   const pagamentoId = String(formData.get("pagamentoId") ?? "");
   const antes = await db.pagamentoComanda.findFirst({
@@ -385,11 +387,16 @@ export async function apagarItem(_prev: SalaoFormState, formData: FormData): Pro
 export async function ajustarAConta(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  if (!acesso.pode.finalizarMesa) return { error: "Você não tem permissão para dar desconto." };
-
   const comandaId = String(formData.get("comandaId") ?? "");
   const desconto = parseMoneyToCents(String(formData.get("desconto") ?? "0")) ?? 0;
   const servico = parseMoneyToCents(String(formData.get("servico") ?? "0")) ?? 0;
+
+  // a folha traz os dois campos juntos, mas são duas confianças diferentes:
+  // cada uma só passa se a chave dela estiver ligada
+  const antes = await db.comanda.findFirst({ where: { id: comandaId, restaurantId }, select: { descontoCents: true, servicoCents: true } });
+  if (!antes) return { error: "Mesa não encontrada." };
+  if (desconto !== antes.descontoCents && !acesso.pode.desconto) return { error: "Você não tem permissão para dar desconto." };
+  if (servico !== antes.servicoCents && !acesso.pode.acrescimo) return { error: "Você não tem permissão para cobrar taxa de serviço." };
 
   const r = await ajustarConta(restaurantId, comandaId, desconto, servico);
   if (!r.ok) return { error: r.error };
@@ -412,9 +419,19 @@ export async function editarGarcom(_prev: SalaoFormState, formData: FormData): P
   const r = await mudarNivel(restaurantId, vinculoId, nivel);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.garcom_nivel", { vinculoId, nivel, nome: r.nome ?? null });
+  // a tela manda as chaves junto com o nível: a partir daqui é o conjunto
+  // gravado que manda, e o nível vira só o atalho que o preencheu
+  const chaves = limparPermissoes(formData);
+  await db.restaurantOwner.updateMany({ where: { id: vinculoId, restaurantId }, data: { permissoes: chaves } });
+
+  await panelAudit(acesso, "salao.garcom_nivel", {
+    vinculoId,
+    nivel,
+    nome: r.nome ?? null,
+    ligadas: TODAS.filter((c) => chaves[c]).map((c) => NOME_DA_CHAVE[c]).join(", ") || "nenhuma",
+  });
   refresh();
-  return { ok: true, message: `${r.nome ?? "O garçom"} agora é ${nivel === "GARCOM_II" ? "Garçom II" : "Garçom"}.` };
+  return { ok: true, message: `O que ${r.nome ?? "o garçom"} pode fazer foi salvo.` };
 }
 
 /**
@@ -426,7 +443,7 @@ export async function editarGarcom(_prev: SalaoFormState, formData: FormData): P
 export async function apagarAComanda(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para apagar a mesa." };
+  if (!acesso.pode.apagarComanda) return { error: "Você não tem permissão para apagar a mesa." };
 
   const comandaId = String(formData.get("comandaId") ?? "");
   const [onde, total] = await Promise.all([mesaDaComanda(restaurantId, comandaId), totalDaComanda(comandaId)]);
@@ -442,7 +459,7 @@ export async function apagarAComanda(_prev: SalaoFormState, formData: FormData):
 export async function trocarAMesa(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para trocar a mesa." };
+  if (!acesso.pode.transferirMesa) return { error: "Você não tem permissão para trocar a mesa." };
 
   const comandaId = String(formData.get("comandaId") ?? "");
   const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
@@ -459,7 +476,7 @@ export async function trocarAMesa(_prev: SalaoFormState, formData: FormData): Pr
 export async function moverOsItens(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
-  if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para mudar itens de mesa." };
+  if (!acesso.pode.transferirItens) return { error: "Você não tem permissão para mudar itens de mesa." };
 
   const comandaId = String(formData.get("comandaId") ?? "");
   const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
@@ -524,6 +541,8 @@ export async function definirImpressoraDaSecao(_prev: SalaoFormState, formData: 
 export async function pedirAContaNoPapel(_prev: SalaoFormState, formData: FormData): Promise<SalaoFormState> {
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const acesso = await requireSalao(restaurantId);
+
+  if (!acesso.pode.imprimirConta) return { error: "Você não tem permissão para imprimir a conta." };
 
   const comandaId = String(formData.get("comandaId") ?? "");
   const { count } = await db.comanda.updateMany({

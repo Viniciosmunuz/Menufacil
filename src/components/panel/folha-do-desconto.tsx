@@ -21,12 +21,19 @@ export function FolhaDoDesconto({
   comanda,
   restaurantId,
   foco = "desconto",
+  podeDesconto = true,
+  podeAcrescimo = true,
   onFechar,
 }: {
   comanda: ComandaAberta;
   restaurantId: string;
   /** o botão que abriu a folha: o cursor já cai no campo dele */
   foco?: "desconto" | "servico";
+  /** o campo que esta pessoa não pode mexer nem aparece: o servidor
+      recusaria de qualquer jeito, e um campo que não salva é uma promessa
+      quebrada na frente do cliente */
+  podeDesconto?: boolean;
+  podeAcrescimo?: boolean;
   onFechar: () => void;
 }) {
   const [estado, salvar, salvando] = useActionState<SalaoFormState, FormData>(ajustarAConta, {});
@@ -38,7 +45,7 @@ export function FolhaDoDesconto({
       <div className="relative flex max-h-[88dvh] w-full flex-col rounded-t-card border border-line bg-surface sm:max-w-md sm:rounded-card">
         <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-extrabold">{foco === "servico" ? "Taxa de serviço" : "Desconto"}</h2>
+            <h2 className="text-lg font-extrabold">{!podeDesconto ? "Taxa de serviço" : !podeAcrescimo ? "Desconto" : foco === "servico" ? "Taxa de serviço" : "Desconto"}</h2>
             <p className="text-sm tabular-nums text-muted">Soma dos itens: {formatCents(comanda.subtotalCents)}</p>
           </div>
           <button
@@ -54,18 +61,24 @@ export function FolhaDoDesconto({
         <form action={salvar} className="flex flex-col gap-4 px-4 py-4">
           <input type="hidden" name="restaurantId" value={restaurantId} />
           <input type="hidden" name="comandaId" value={comanda.id} />
+          {!podeDesconto && <input type="hidden" name="desconto" value={centsToInput(comanda.descontoCents)} />}
+          {!podeAcrescimo && <input type="hidden" name="servico" value={centsToInput(comanda.servicoCents)} />}
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-bold">Desconto</span>
-            <MoneyInput name="desconto" defaultValue={centsToInput(comanda.descontoCents)} autoFocus={foco === "desconto"} />
-          </label>
+          {podeDesconto && (
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-bold">Desconto</span>
+              <MoneyInput name="desconto" defaultValue={centsToInput(comanda.descontoCents)} autoFocus={foco === "desconto"} />
+            </label>
+          )}
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-bold">
-              Acréscimo <span className="font-semibold text-faint">· taxa de serviço</span>
-            </span>
-            <MoneyInput name="servico" defaultValue={centsToInput(comanda.servicoCents)} autoFocus={foco === "servico"} />
-          </label>
+          {podeAcrescimo && (
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-bold">
+                Acréscimo <span className="font-semibold text-faint">· taxa de serviço</span>
+              </span>
+              <MoneyInput name="servico" defaultValue={centsToInput(comanda.servicoCents)} autoFocus={foco === "servico"} />
+            </label>
+          )}
 
           {(estado.error || estado.message) && (
             <p

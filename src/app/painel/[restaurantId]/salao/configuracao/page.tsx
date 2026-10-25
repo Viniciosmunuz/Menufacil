@@ -83,7 +83,7 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
                 {g.nivel === "GARCOM_II" && <span className="block text-xs font-bold text-brand">Garçom II</span>}
               </span>
               <span className="shrink-0 text-sm text-faint">{g.ultimoAcesso ? `entrou ${formatWhen(g.ultimoAcesso)}` : "nunca entrou"}</span>
-              <PermissoesDoGarcom restaurantId={restaurant.id} vinculoId={g.vinculoId} nome={g.nome} nivel={g.nivel} />
+              <PermissoesDoGarcom restaurantId={restaurant.id} vinculoId={g.vinculoId} nome={g.nome} nivel={g.nivel} permissoes={g.permissoes} />
             </li>
           ))}
         </ul>
