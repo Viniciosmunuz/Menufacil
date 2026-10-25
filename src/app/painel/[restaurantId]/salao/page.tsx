@@ -1,4 +1,4 @@
-import { DollarSign, Headset, LayoutGrid, Settings } from "lucide-react";
+import { DollarSign, Headset, History, LayoutGrid, Settings } from "lucide-react";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -70,6 +70,10 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
         >
           <Headset className="size-5" aria-hidden="true" />
           Suporte
+        </Link>
+        <Link href={`${base}/historico`} className="inline-flex h-11 items-center gap-2 rounded-control px-3 font-semibold text-ink/80 hover:bg-surface-2">
+          <History className="size-5" aria-hidden="true" />
+          Histórico
         </Link>
         {restaurant.totemEnabled && (
           <Link

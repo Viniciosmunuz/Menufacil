@@ -11,6 +11,7 @@ import { requireSalao } from "@/server/auth/dal";
 import { panelAudit } from "@/server/panel";
 import { criarGarcom, mudarNivel, tirarGarcom } from "@/server/salao/garcons";
 import { apagarComanda, moverItens, trocarDeMesa } from "@/server/salao/mexer";
+import { mesaDaComanda, rotuloDaMesaPorId, textoDosItens } from "@/server/salao/historico";
 import { lancarNaMesa } from "@/server/salao/lancar";
 import {
   ajustarConta,
@@ -28,6 +29,25 @@ import { abrirTurno, fecharTurno, turnoAberto } from "@/server/salao/turno";
 // não impede ninguém de chamar a ação direto, e aqui se mexe com dinheiro.
 
 export type SalaoFormState = { ok?: boolean; error?: string; message?: string; fechamentoId?: string };
+
+// O que vai para o histórico: a mesa, os itens e os valores ficam gravados
+// junto da ação, do jeito que eram naquela hora. Ler depois pelo id não
+// serve -- a comanda muda de mesa, o item apagado some.
+
+/** os itens de uma lista de ids, em "2x X-Burger, 1x Coca" */
+async function itensParaOHistorico(restaurantId: string, itemIds: string[]) {
+  const itens = await db.orderItem.findMany({
+    where: { id: { in: itemIds }, order: { restaurantId } },
+    select: { quantity: true, productName: true },
+  });
+  return textoDosItens(itens.map((i) => ({ quantidade: i.quantity, nome: i.productName })));
+}
+
+/** o que a comanda soma agora, sem os pedidos cancelados */
+async function totalDaComanda(comandaId: string) {
+  const r = await db.order.aggregate({ where: { comandaId, status: { not: "CANCELED" } }, _sum: { totalCents: true } });
+  return r._sum.totalCents ?? 0;
+}
 
 /** ninguém tem mil mesas; o teto existe para um dedo escorregado não criar um salão inteiro */
 const MAXIMO = 120;
@@ -241,7 +261,18 @@ export async function lancarItens(_prev: SalaoFormState, formData: FormData): Pr
   const r = await lancarNaMesa(restaurantId, mesaId, acesso.user.id, itens);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.lancou", { mesaId, pedido: r.numero, itens: itens.length });
+  const [pedido, mesa] = await Promise.all([
+    db.order.findUnique({ where: { id: r.orderId }, select: { totalCents: true, items: { select: { quantity: true, productName: true } } } }),
+    rotuloDaMesaPorId(restaurantId, mesaId),
+  ]);
+  await panelAudit(acesso, "salao.lancou", {
+    mesaId,
+    mesa,
+    pedido: r.numero,
+    itens: itens.length,
+    itensTexto: pedido ? textoDosItens(pedido.items.map((i) => ({ quantidade: i.quantity, nome: i.productName }))) : null,
+    centavos: pedido?.totalCents ?? null,
+  });
   refresh();
   return { ok: true, message: `Pedido #${r.numero} enviado para a cozinha.` };
 }
@@ -267,7 +298,7 @@ export async function receberPagamento(_prev: SalaoFormState, formData: FormData
   const r = await receberNaMesa(restaurantId, comandaId, acesso.user.id, forma as FormaNaMesa, cents);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.recebeu", { comandaId, forma, centavos: cents });
+  await panelAudit(acesso, "salao.recebeu", { comandaId, ...(await mesaDaComanda(restaurantId, comandaId)), forma, centavos: cents });
   refresh();
   return { ok: true, message: `${NOME_DA_FORMA[forma as FormaNaMesa]}: ${formatCents(cents)} recebido.` };
 }
@@ -279,10 +310,20 @@ export async function desfazerPagamento(_prev: SalaoFormState, formData: FormDat
   // tirar dinheiro lançado é o avesso de finalizar a mesa: mesma confiança
   if (!acesso.pode.finalizarMesa) return { error: "Só quem pode finalizar a mesa desfaz um recebimento." };
 
-  const r = await desfazerRecebimento(restaurantId, String(formData.get("pagamentoId") ?? ""));
+  const pagamentoId = String(formData.get("pagamentoId") ?? "");
+  const antes = await db.pagamentoComanda.findFirst({
+    where: { id: pagamentoId, comanda: { restaurantId } },
+    select: { forma: true, centavos: true, comandaId: true },
+  });
+  const r = await desfazerRecebimento(restaurantId, pagamentoId);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.desfez_recebimento", { pagamentoId: String(formData.get("pagamentoId") ?? "") });
+  await panelAudit(acesso, "salao.desfez_recebimento", {
+    pagamentoId,
+    ...(antes
+      ? { comandaId: antes.comandaId, ...(await mesaDaComanda(restaurantId, antes.comandaId)), forma: antes.forma, centavos: antes.centavos }
+      : {}),
+  });
   refresh();
   return { ok: true, message: "Recebimento desfeito." };
 }
@@ -297,7 +338,8 @@ export async function finalizarMesa(_prev: SalaoFormState, formData: FormData): 
   const r = await liberarMesa(restaurantId, comandaId);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.finalizou_mesa", { comandaId });
+  const pago = await db.pagamentoComanda.aggregate({ where: { comandaId }, _sum: { centavos: true } });
+  await panelAudit(acesso, "salao.finalizou_mesa", { comandaId, ...(await mesaDaComanda(restaurantId, comandaId)), centavos: pago._sum.centavos ?? 0 });
   refresh();
   return { ok: true, message: "Mesa liberada." };
 }
@@ -309,10 +351,19 @@ export async function apagarItem(_prev: SalaoFormState, formData: FormData): Pro
   if (!acesso.pode.excluirItem) return { error: "Você não tem permissão para apagar item da comanda." };
 
   const itemId = String(formData.get("itemId") ?? "");
+  const antes = await db.orderItem.findFirst({
+    where: { id: itemId, order: { restaurantId } },
+    select: { quantity: true, productName: true, totalCents: true, order: { select: { comandaId: true } } },
+  });
   const r = await apagarItemDaComanda(restaurantId, itemId, acesso.user.id);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.apagou_item", { itemId });
+  const comandaDoItem = antes?.order.comandaId ?? null;
+  await panelAudit(acesso, "salao.apagou_item", {
+    itemId,
+    ...(comandaDoItem ? { comandaId: comandaDoItem, ...(await mesaDaComanda(restaurantId, comandaDoItem)) } : {}),
+    ...(antes ? { itemTexto: `${antes.quantity}x ${antes.productName}`, centavos: antes.totalCents } : {}),
+  });
   refresh();
   return { ok: true, message: "Item apagado da conta." };
 }
@@ -330,7 +381,7 @@ export async function ajustarAConta(_prev: SalaoFormState, formData: FormData): 
   const r = await ajustarConta(restaurantId, comandaId, desconto, servico);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.ajustou_conta", { comandaId, desconto, servico });
+  await panelAudit(acesso, "salao.ajustou_conta", { comandaId, ...(await mesaDaComanda(restaurantId, comandaId)), desconto, servico });
   refresh();
   return { ok: true, message: "Conta ajustada." };
 }
@@ -348,7 +399,7 @@ export async function editarGarcom(_prev: SalaoFormState, formData: FormData): P
   const r = await mudarNivel(restaurantId, vinculoId, nivel);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.garcom_nivel", { vinculoId, nivel });
+  await panelAudit(acesso, "salao.garcom_nivel", { vinculoId, nivel, nome: r.nome ?? null });
   refresh();
   return { ok: true, message: `${r.nome ?? "O garçom"} agora é ${nivel === "GARCOM_II" ? "Garçom II" : "Garçom"}.` };
 }
@@ -365,10 +416,11 @@ export async function apagarAComanda(_prev: SalaoFormState, formData: FormData):
   if (!acesso.pode.mexerNaMesa) return { error: "Você não tem permissão para apagar a mesa." };
 
   const comandaId = String(formData.get("comandaId") ?? "");
+  const [onde, total] = await Promise.all([mesaDaComanda(restaurantId, comandaId), totalDaComanda(comandaId)]);
   const r = await apagarComanda(restaurantId, comandaId, acesso.user.id);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.apagou_comanda", { comandaId });
+  await panelAudit(acesso, "salao.apagou_comanda", { comandaId, ...onde, centavos: total });
   refresh();
   return { ok: true, message: "Mesa apagada e liberada." };
 }
@@ -381,10 +433,11 @@ export async function trocarAMesa(_prev: SalaoFormState, formData: FormData): Pr
 
   const comandaId = String(formData.get("comandaId") ?? "");
   const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
+  const de = await mesaDaComanda(restaurantId, comandaId);
   const r = await trocarDeMesa(restaurantId, comandaId, mesaDestinoId);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.trocou_de_mesa", { comandaId, mesaDestinoId });
+  await panelAudit(acesso, "salao.trocou_de_mesa", { comandaId, ...de, mesaDestinoId, para: await rotuloDaMesaPorId(restaurantId, mesaDestinoId) });
   refresh();
   return { ok: true, message: "Comanda na mesa nova." };
 }
@@ -399,10 +452,18 @@ export async function moverOsItens(_prev: SalaoFormState, formData: FormData): P
   const mesaDestinoId = String(formData.get("mesaDestinoId") ?? "");
   const itemIds = formData.getAll("itemId").map(String).filter(Boolean);
 
+  const [de, itensTexto] = await Promise.all([mesaDaComanda(restaurantId, comandaId), itensParaOHistorico(restaurantId, itemIds)]);
   const r = await moverItens(restaurantId, comandaId, itemIds, mesaDestinoId, acesso.user.id);
   if (!r.ok) return { error: r.error };
 
-  await panelAudit(acesso, "salao.moveu_itens", { comandaId, mesaDestinoId, itens: itemIds.length });
+  await panelAudit(acesso, "salao.moveu_itens", {
+    comandaId,
+    ...de,
+    mesaDestinoId,
+    para: await rotuloDaMesaPorId(restaurantId, mesaDestinoId),
+    itens: itemIds.length,
+    itensTexto,
+  });
   refresh();
   return { ok: true, message: itemIds.length === 1 ? "Item na mesa nova." : "Itens na mesa nova." };
 }
@@ -431,7 +492,8 @@ export async function definirImpressoraDaSecao(_prev: SalaoFormState, formData: 
   const { count } = await db.menuCategory.updateMany({ where: { id: categoriaId, restaurantId }, data: { printDeviceId: impressoraId } });
   if (count === 0) return { error: "Seção não encontrada." };
 
-  await panelAudit(acesso, "salao.impressora_da_secao", { categoriaId, impressoraId });
+  const secao = await db.menuCategory.findFirst({ where: { id: categoriaId, restaurantId }, select: { name: true } });
+  await panelAudit(acesso, "salao.impressora_da_secao", { categoriaId, impressoraId, secao: secao?.name ?? null });
   refresh();
   return { ok: true, message: "Pronto." };
 }
@@ -457,7 +519,7 @@ export async function pedirAContaNoPapel(_prev: SalaoFormState, formData: FormDa
   });
   if (count === 0) return { error: "Mesa não encontrada." };
 
-  await panelAudit(acesso, "salao.pediu_conta", { comandaId });
+  await panelAudit(acesso, "salao.pediu_conta", { comandaId, ...(await mesaDaComanda(restaurantId, comandaId)) });
   refresh();
   return { ok: true, message: "Conta indo para a impressora do balcão." };
 }

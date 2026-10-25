@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, HandCoins, ImageOff, Info, Minus, Percent, Plus, ReceiptText, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { ArrowLeft, Check, HandCoins, History, ImageOff, Info, Minus, Percent, Plus, ReceiptText, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
@@ -360,11 +360,14 @@ function Bolinha({ nome, imagem, ativa, onClick }: { nome: string; imagem: strin
 function Cardapio({
   categorias,
   voltarHref,
+  historicoHref,
   onEscolher,
   rodape,
 }: {
   categorias: CategoriaDoCardapio[];
   voltarHref: string;
+  /** o histórico já filtrado por esta mesa, como o relógio do Yooga */
+  historicoHref: string;
   onEscolher: (p: ProdutoDoCardapio) => void;
   /** o Salvar, colado embaixo dos pratos no computador */
   rodape: ReactNode;
@@ -393,6 +396,14 @@ function Cardapio({
             className="h-12 w-full rounded-control border border-line bg-surface pr-4 pl-11 outline-none placeholder:text-faint focus:border-brand [&::-webkit-search-cancel-button]:hidden"
           />
         </label>
+        <Link
+          href={historicoHref}
+          aria-label="Histórico desta mesa"
+          title="Histórico desta mesa"
+          className="grid size-12 shrink-0 place-items-center rounded-control border border-line bg-surface text-ink/70 hover:bg-surface-2 hover:text-ink"
+        >
+          <History className="size-5" aria-hidden="true" />
+        </Link>
         <Link
           href={voltarHref}
           className="hidden h-12 shrink-0 items-center gap-2 rounded-control border border-line bg-surface px-5 text-sm font-bold tracking-wide uppercase hover:bg-surface-2 lg:flex"
@@ -667,7 +678,7 @@ export function ComandaDaMesa({
       <section
         className={cn("min-h-0 min-w-0 flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1", aba === "cardapio" ? "flex" : "hidden lg:flex")}
       >
-        <Cardapio categorias={categorias} voltarHref={voltarHref} onEscolher={setAberto} rodape={botaoSalvar()} />
+        <Cardapio categorias={categorias} voltarHref={voltarHref} historicoHref={`${voltarHref}/historico?mesa=${mesaId}`} onEscolher={setAberto} rodape={botaoSalvar()} />
       </section>
 
       {aberto && (

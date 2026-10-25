@@ -13,10 +13,7 @@ import { cn } from "@/lib/cn";
 // da tela para trocar de seção.
 //
 // Em Ajustes fica a conta aberta neste aparelho, o que o garçom pode fazer
-// e a saída. Histórico ainda não faz nada -- entra numa próxima rodada, e
-// aparece desde agora porque o lugar de cada coisa é parte do que se aprende
-// usando: mudar a barra de três para quatro ícones depois custa mais ao
-// garçom do que mostrar um destino que ainda está chegando.
+// e a saída. Em Histórico, só o que o próprio garçom fez no dia.
 
 const ITENS = [
   { chave: "inicio", titulo: "Mesas", icone: House },
