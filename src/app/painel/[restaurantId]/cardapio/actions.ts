@@ -51,6 +51,7 @@ const categorySchema = z.object({
   description: optionalText(200),
   active: z.string().optional(),
   addons: z.string().optional(),
+  somenteSalao: z.string().optional(),
 });
 
 export async function saveMenuCategory(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
@@ -64,9 +65,13 @@ export async function saveMenuCategory(_prev: MenuFormState, formData: FormData)
   if (id) {
     const active = parsed.data.active === "on";
     const addons = parsed.data.addons === "on";
-    const { count } = await db.menuCategory.updateMany({ where: { id, restaurantId }, data: { name, description, active, addons } });
+    const somenteSalao = parsed.data.somenteSalao === "on";
+    const { count } = await db.menuCategory.updateMany({
+      where: { id, restaurantId },
+      data: { name, description, active, addons, somenteSalao },
+    });
     if (!count) return { error: "Categoria não encontrada." };
-    await panelAudit(acc, "menu.category_update", { name, active, addons });
+    await panelAudit(acc, "menu.category_update", { name, active, addons, somenteSalao });
   } else {
     const last = await db.menuCategory.aggregate({ where: { restaurantId }, _max: { sortOrder: true } });
     await db.menuCategory.create({

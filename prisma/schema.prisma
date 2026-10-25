@@ -358,7 +358,12 @@ model MenuCategory {
   name         String
   description  String?
   sortOrder    Int      @default(0)
-  active       Boolean  @default(true)
+  active    Boolean  @default(true)
+
+  /// Secao que so existe no salao: a taxa de embalagem, o couvert, o
+  /// "para viagem". O garcom lanca na comanda como qualquer produto, e o
+  /// cliente do link e o totem nem veem que ela existe.
+  somenteSalao Boolean @default(false)
   // catalogo de sabores de pizza (Especiais, Tradicionais): os produtos daqui
   // nao aparecem soltos no cardapio, sao os sabores que o cliente escolhe
   // dentro da pizza

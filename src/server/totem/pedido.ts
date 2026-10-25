@@ -87,7 +87,10 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
       available: true,
       pizzaFlavors: true,
       allowAddons: true,
-      category: { select: { active: true } },
+      // "somenteSalao" é a seção que só o garçom lança: o totem não a
+      // mostra, e aqui ela também é recusada, para o carrinho forjado não
+      // passar
+      category: { select: { active: true, somenteSalao: true } },
       optionGroups: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -156,7 +159,9 @@ export async function conferirCarrinho(restaurantId: string, itens: ItemDoTotem[
 
   const linhas = itens.map((item) => {
     const produto = porId.get(item.productId);
-    if (!produto || !produto.category.active) throw new TotemError("Um item saiu do cardápio. Comece o pedido de novo.");
+    if (!produto || !produto.category.active || produto.category.somenteSalao) {
+      throw new TotemError("Um item saiu do cardápio. Comece o pedido de novo.");
+    }
     if (!produto.available) throw new TotemError(`"${produto.name}" acabou. Escolha outro item.`);
 
     const problemas = selectionProblems(produto.optionGroups, item.optionIds ?? []);

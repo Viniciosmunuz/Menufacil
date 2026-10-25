@@ -17,7 +17,15 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 import { deleteMenuCategory, moveMenuCategory, saveMenuCategory, type MenuFormState } from "./actions";
 
-type Category = { id: string; name: string; description: string | null; active: boolean; addons: boolean; productCount: number };
+type Category = {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  addons: boolean;
+  somenteSalao: boolean;
+  productCount: number;
+};
 
 function CategoryFields({ category, state }: { category?: Category; state: MenuFormState }) {
   const err = state.fieldErrors ?? {};
@@ -52,6 +60,16 @@ function CategoryFields({ category, state }: { category?: Category; state: MenuF
             defaultChecked={category.addons}
             label="Esta seção É a lista de acompanhamentos"
             hint="Marque na seção que tem o arroz, o feijão, a farofa — não na do prato que vai recebê-los. Depois, em cada prato, ligue “Aceita acompanhamento”."
+          />
+          {/* A seção que só o garçom lança: a taxa de embalagem, o couvert,
+              o "para viagem". O cliente do link e o totem nem sabem que ela
+              existe, e o preço continua sendo o do cadastro -- é produto de
+              verdade, não um campo à parte. */}
+          <Checkbox
+            name="somenteSalao"
+            defaultChecked={category.somenteSalao}
+            label="Só no salão"
+            hint="Esta seção some do cardápio do cliente e do totem. Serve para o que só o garçom lança na mesa: taxa de embalagem, couvert, “para viagem”."
           />
         </>
       )}

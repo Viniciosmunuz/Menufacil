@@ -90,8 +90,8 @@ export async function listRestaurants(filters: {
       where,
       select: {
         ...cardSelect,
-        menuCategories: { where: { active: true }, select: { name: true } },
-        products: { where: { available: true, category: { active: true } }, select: { name: true } },
+        menuCategories: { where: { active: true, somenteSalao: false }, select: { name: true } },
+        products: { where: { available: true, category: { active: true, somenteSalao: false } }, select: { name: true } },
       },
       orderBy: [{ featured: "desc" }, { name: "asc" }],
       take: 300,
@@ -170,7 +170,9 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
       categories: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { name: true } },
       openingHours: { orderBy: { weekday: "asc" }, select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
-        where: { active: true },
+        // a seção marcada como "só no salão" não existe para quem pede
+        // pelo link: ela é a taxa de embalagem, o couvert, o "para viagem"
+        where: { active: true, somenteSalao: false },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,

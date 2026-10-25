@@ -182,7 +182,7 @@ export async function placeOrder(params: {
       available: true,
       pizzaFlavors: true,
       allowAddons: true,
-      category: { select: { active: true } },
+      category: { select: { active: true, somenteSalao: true } },
       optionGroups: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -257,7 +257,9 @@ export async function placeOrder(params: {
 
   const lines = items.map((item) => {
     const product = byId.get(item.productId);
-    if (!product || !product.category.active) {
+    // a seção só do salão não é pedida pelo link nem pelo WhatsApp: ela
+    // é a taxa de embalagem, que o garçom lança na comanda
+    if (!product || !product.category.active || product.category.somenteSalao) {
       throw new OrderError("Um item do carrinho saiu do cardápio. Confira o carrinho e tente de novo.");
     }
     if (!product.available) throw new OrderError(`"${product.name}" esgotou. Tire do carrinho para continuar.`);
