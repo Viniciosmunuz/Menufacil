@@ -15,7 +15,8 @@ import { cn } from "@/lib/cn";
 // No navegador nada disso aparece: o objeto não existe e o painel se
 // comporta como sempre.
 
-export type ViaParaImprimir = { texto: string; dados?: unknown; papel?: number; numero?: number };
+/** "impressora" escolhe outra que não a do caixa; o programa antes da 1.4.0 ignora */
+export type ViaParaImprimir = { texto: string; dados?: unknown; papel?: number; numero?: number; impressora?: string };
 
 type EstadoDoApp = {
   versao: string;

@@ -1,8 +1,8 @@
-version: 1.3.1
+version: 1.4.0
 files:
-  - url: MenuFacil-Setup-1.3.1.exe
-    sha512: RCb9C7XYOcUn1HtnNZFhACT+0+2ua4FD/o9T57z6sTyKnucYy2yTAmlLoLk80frzHpUbkTH/QpOkM4k/y3A+sw==
-    size: 102890286
-path: MenuFacil-Setup-1.3.1.exe
-sha512: RCb9C7XYOcUn1HtnNZFhACT+0+2ua4FD/o9T57z6sTyKnucYy2yTAmlLoLk80frzHpUbkTH/QpOkM4k/y3A+sw==
-releaseDate: '2026-10-03T22:40:42.688Z'
+  - url: MenuFacil-Setup-1.4.0.exe
+    sha512: 8xijYi87agROVemElVymeyEBh8xMAqBXP45WHdktn+AUFLYtqXRBFXO3HM33iQPv8mCNiaO/zZSv3gw5u8xHWA==
+    size: 102890550
+path: MenuFacil-Setup-1.4.0.exe
+sha512: 8xijYi87agROVemElVymeyEBh8xMAqBXP45WHdktn+AUFLYtqXRBFXO3HM33iQPv8mCNiaO/zZSv3gw5u8xHWA==
+releaseDate: '2026-10-25T03:51:28.780Z'

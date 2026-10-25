@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { requireSalao } from "@/server/auth/dal";
 import { ImpressoraDaSecao } from "@/components/panel/impressora-da-secao";
+import { ImpressorasDoComputador } from "@/components/panel/impressoras-do-computador";
 import { PermissoesDoGarcom } from "@/components/panel/permissoes-garcom";
 import { listarGarcons } from "@/server/salao/garcons";
 
@@ -26,7 +27,7 @@ export const metadata: Metadata = { title: "Configuração do salão" };
 
 export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/painel/[restaurantId]/salao/configuracao">) {
   const { restaurantId } = await params;
-  const { restaurant } = await requireSalao(restaurantId);
+  const { restaurant, viaAdmin } = await requireSalao(restaurantId);
 
   const [mesas, balcoes, garcons, impressoras, secoes] = await Promise.all([
     db.mesa.count({ where: { restaurantId: restaurant.id, tipo: "MESA" } }),
@@ -113,11 +114,16 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
         </p>
       </div>
 
+      {/* no Menu Fácil PC: a impressora do caixa e a chave para ligar as
+          outras do mesmo computador. O admin vendo o painel de alguém não
+          liga impressora na casa dele. */}
+      {!viaAdmin && <ImpressorasDoComputador restaurantId={restaurant.id} />}
+
       {impressoras.length < 2 ? (
         <p className="rounded-control border border-line bg-surface-2 px-4 py-3 text-sm text-muted">
           {impressoras.length === 0
             ? "Nenhuma impressora ligada ainda. Abra o painel no Menu Fácil PC do computador do balcão: ele aparece aqui sozinho."
-            : `Você tem uma impressora (${impressoras[0].printerName ?? impressoras[0].name}). Ligue a segunda no Menu Fácil PC para dividir o cardápio entre elas.`}
+            : `Você tem uma impressora (${impressoras[0].printerName ?? impressoras[0].name}). Ligue a segunda para dividir o cardápio entre elas.`}
         </p>
       ) : secoes.length === 0 ? (
         <p className="text-sm text-muted">Seu cardápio ainda não tem seções.</p>

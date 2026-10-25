@@ -148,31 +148,102 @@ export function setDeviceRole(id: string, restaurantId: string, role: PrintRole)
  * chave é o restaurante e o nome do computador, então abrir o programa de
  * novo reaproveita o mesmo aparelho em vez de criar outro. O token troca a
  * cada abertura e só o painel daquela janela fica com ele.
+ *
+ * Cada impressora a mais do mesmo computador (a do bar ao lado da do
+ * caixa) é outro aparelho, com o nome dela na chave: é o que deixa o dono
+ * mandar a seção Bebidas para uma e o resto para a outra.
  */
-export async function ligarAppDoPc(restaurantId: string, computador: string, impressora: string | null) {
+const chaveDoPc = (restaurantId: string, computador: string) => `${restaurantId}:${computador.trim().slice(0, 80).toLowerCase() || "computador"}`;
+
+export type ImpressoraDoPc = {
+  deviceId: string;
+  token: string;
+  /** quando virou impressora: o que é de antes não sai */
+  desde: string;
+  /** null é a do caixa, a escolhida nos ajustes do programa */
+  impressora: string | null;
+};
+
+export async function ligarAppDoPc(restaurantId: string, computador: string, impressora: string | null): Promise<ImpressoraDoPc[]> {
   const nome = computador.trim().slice(0, 80) || "Computador";
-  const appKey = `${restaurantId}:${nome.toLowerCase()}`;
-  const token = randomBytes(32).toString("base64url");
+  const base = chaveDoPc(restaurantId, nome);
   const agora = new Date();
 
-  const device = await db.printDevice.upsert({
+  const novoToken = () => {
+    const token = randomBytes(32).toString("base64url");
+    return { token, tokenHash: hashToken(token) };
+  };
+
+  const doCaixa = novoToken();
+  const principal = await db.printDevice.upsert({
+    where: { appKey: base },
+    create: {
+      appKey: base,
+      restaurantId,
+      name: nome,
+      tokenHash: doCaixa.tokenHash,
+      printerName: impressora?.slice(0, 120) ?? null,
+      pairedAt: agora,
+      lastSeenAt: agora,
+    },
+    update: { tokenHash: doCaixa.tokenHash, printerName: impressora?.slice(0, 120) ?? null, lastSeenAt: agora },
+    select: { id: true, createdAt: true },
+  });
+
+  const extras = await db.printDevice.findMany({
+    where: { restaurantId, appKey: { startsWith: base + ":" } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, createdAt: true, printerName: true },
+  });
+
+  const lista: ImpressoraDoPc[] = [{ deviceId: principal.id, token: doCaixa.token, desde: principal.createdAt.toISOString(), impressora: null }];
+  for (const e of extras) {
+    // a mesma impressora escolhida como a do caixa não sai duas vezes
+    if (!e.printerName || e.printerName === impressora) continue;
+    const t = novoToken();
+    await db.printDevice.update({ where: { id: e.id }, data: { tokenHash: t.tokenHash, lastSeenAt: agora }, select: { id: true } });
+    lista.push({ deviceId: e.id, token: t.token, desde: e.createdAt.toISOString(), impressora: e.printerName });
+  }
+  return lista;
+}
+
+/** as impressoras a mais deste computador que já estão ligadas */
+export function extrasDoPc(restaurantId: string, computador: string) {
+  return db.printDevice.findMany({
+    where: { restaurantId, appKey: { startsWith: chaveDoPc(restaurantId, computador) + ":" } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, printerName: true },
+  });
+}
+
+/** liga mais uma impressora do computador; ela nasce sem seção nenhuma */
+export function ligarExtraDoPc(restaurantId: string, computador: string, impressora: string) {
+  const nome = computador.trim().slice(0, 80) || "Computador";
+  const nomeDaImpressora = impressora.trim().slice(0, 120);
+  const appKey = `${chaveDoPc(restaurantId, nome)}:${nomeDaImpressora.toLowerCase()}`;
+  return db.printDevice.upsert({
     where: { appKey },
     create: {
       appKey,
       restaurantId,
       name: nome,
-      tokenHash: hashToken(token),
-      printerName: impressora?.slice(0, 120) ?? null,
-      pairedAt: agora,
-      lastSeenAt: agora,
+      // o token de verdade sai na próxima vez que o painel ligar a fila
+      tokenHash: hashToken(randomBytes(32).toString("base64url")),
+      printerName: nomeDaImpressora,
+      pairedAt: new Date(),
+      lastSeenAt: new Date(),
     },
-    update: {
-      tokenHash: hashToken(token),
-      printerName: impressora?.slice(0, 120) ?? null,
-      lastSeenAt: agora,
-    },
-    select: { id: true, createdAt: true },
+    update: {},
+    select: { id: true },
   });
+}
 
-  return { deviceId: device.id, token, desde: device.createdAt.toISOString() };
+/**
+ * Desliga uma impressora a mais. A seção que saía nela volta para a do
+ * caixa sozinha: a ligação no cardápio some junto (SetNull).
+ */
+export function desligarExtraDoPc(restaurantId: string, computador: string, deviceId: string) {
+  return db.printDevice.deleteMany({
+    where: { id: deviceId, restaurantId, appKey: { startsWith: chaveDoPc(restaurantId, computador) + ":" } },
+  });
 }
