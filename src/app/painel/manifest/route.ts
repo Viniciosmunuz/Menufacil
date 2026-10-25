@@ -9,8 +9,8 @@ export function GET() {
     start_url: "/painel",
     scope: "/painel",
     display: "standalone",
-    background_color: "#f6f1ea",
-    theme_color: "#f6f1ea",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     icons: [
       { src: "/icone-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icone-512.png", sizes: "512x512", type: "image/png" },

@@ -1,9 +1,10 @@
-import { ArrowDownUp, Lock, Trash2, UserRound, Wallet } from "lucide-react";
+import { Check, Lock, UserRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 
 import { GarcomNav } from "@/components/panel/garcom-nav";
 import { formatCpf } from "@/lib/cpf";
 import { NOME_DO_NIVEL } from "@/lib/niveis";
+import { GRUPOS } from "@/lib/permissoes-salao";
 import { requireSalao } from "@/server/auth/dal";
 
 import { BotaoSair } from "./sair";
@@ -30,11 +31,10 @@ export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom
   const ehGarcom = papel === "STAFF" && user.email.endsWith(".garcom");
   const entra = ehGarcom ? formatCpf(user.email.split("@")[0]) : user.email;
 
-  const permissoes = [
-    { ligada: pode.excluirItem, icone: Trash2, titulo: "Apagar item da comanda", nao: "Só o balcão apaga item já enviado." },
-    { ligada: pode.finalizarMesa, icone: Wallet, titulo: "Finalizar a mesa", nao: "Quem libera a mesa e dá desconto é o balcão." },
-    { ligada: pode.mexerNaMesa, icone: ArrowDownUp, titulo: "Trocar a mesa e mover itens", nao: "Quem muda mesa de lugar é o balcão." },
-  ];
+  // o que ele pode, chave por chave, do jeito que o dono ligou no painel.
+  // O que está desligado também aparece, apagado: a pergunta do garçom é
+  // "eu consigo fechar a mesa?", e some da lista não responde nada.
+  const permissoes = GRUPOS.flatMap((g) => g.chaves.map((c) => ({ chave: c.chave, titulo: c.nome, resumo: c.resumo, ligada: pode[c.chave] })));
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-5 px-4 pt-5">
@@ -62,16 +62,16 @@ export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom
               <span className="block text-sm text-muted">É o seu trabalho; todo garçom faz.</span>
             </span>
           </li>
-          {permissoes.map(({ ligada, icone: Icone, titulo, nao }) => (
-            <li key={titulo} className="flex items-start gap-3 px-4 py-3">
+          {permissoes.map(({ chave, ligada, titulo, resumo }) => (
+            <li key={chave} className="flex items-start gap-3 px-4 py-3">
               {ligada ? (
-                <Icone className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+                <Check className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
               ) : (
                 <Lock className="mt-0.5 size-5 shrink-0 text-faint" aria-hidden="true" />
               )}
               <span className="min-w-0">
-                <span className={ligada ? "block font-bold" : "block font-bold text-muted"}>{titulo}</span>
-                <span className="block text-sm text-muted">{ligada ? "Liberado para você." : nao}</span>
+                <span className={ligada ? "block font-bold" : "block font-bold text-faint"}>{titulo}</span>
+                <span className="block text-sm text-muted">{ligada ? resumo : "Isso quem faz é o balcão."}</span>
               </span>
             </li>
           ))}

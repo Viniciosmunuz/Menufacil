@@ -8,14 +8,18 @@
    sistema. (Até 25/10/2026 o sistema inteiro era preto.)
    ============================================================ */
 @theme {
-  /* creme no fundo, branco nos cartões: cada camada um pouco mais clara
-     que a de baixo, do mesmo jeito que o preto ia clareando antes */
-  --color-bg: #f6f1ea;
-  --color-surface: #ffffff;
-  --color-surface-2: #f8f4ee;
-  --color-surface-3: #eee6db;
-  --color-line: #e7ddd0;
-  --color-line-strong: #d3c6b5;
+  /* Branco no fundo, creme nos cartões -- o contrário do que era até
+     26/10/2026.
+     O creme deixou de ser o fundo de tudo e virou a terceira cor da marca,
+     ao lado do laranja: é ele que desenha o cartão, o campo e a barra, e o
+     branco por baixo é o papel. Cada camada acima do fundo fecha um pouco
+     mais, em vez de clarear. */
+  --color-bg: #ffffff;
+  --color-surface: #f6f1ea;
+  --color-surface-2: #efe7db;
+  --color-surface-3: #e6dbca;
+  --color-line: #e2d8c8;
+  --color-line-strong: #cbbda8;
 
   --color-ink: #1d2026;
   --color-muted: #5b6168;

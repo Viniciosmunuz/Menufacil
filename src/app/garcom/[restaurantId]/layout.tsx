@@ -12,7 +12,7 @@ import type { Viewport } from "next";
 // que é o que quem lê de longe ou tem a vista cansada precisa.
 
 export const viewport: Viewport = {
-  themeColor: "#f6f1ea",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
