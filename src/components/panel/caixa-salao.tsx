@@ -1,4 +1,4 @@
-import { Banknote, CreditCard, NotebookPen, QrCode, Wallet } from "lucide-react";
+import { Banknote, CreditCard, Lock, NotebookPen, QrCode, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
@@ -23,6 +23,28 @@ const ICONE: Record<string, ReactNode> = {
   ANOTADO: <NotebookPen className="size-5" aria-hidden="true" />,
 };
 
+/**
+ * O caixa fechado, no jeito do Yooga: o aviso grande no meio da tela e o
+ * "Abrir caixa" embaixo dele. É o primeiro toque da noite, então não
+ * divide a tela com mais nada.
+ */
+export function CaixaFechado({ abrir }: { abrir: ReactNode }) {
+  return (
+    <div className="flex flex-1 items-center justify-center py-10">
+      <div className="flex w-full max-w-md flex-col items-center gap-5 rounded-card border border-line bg-surface px-6 py-10 text-center shadow-sm sm:px-10">
+        <span className="grid size-20 place-items-center rounded-full bg-brand-soft text-brand">
+          <Lock className="size-9" aria-hidden="true" />
+        </span>
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-3xl font-extrabold">Caixa fechado</h2>
+          <p className="text-muted">Enquanto o caixa não abrir, os garçons veem o caixa fechado e não conseguem lançar pedido.</p>
+        </div>
+        {abrir}
+      </div>
+    </div>
+  );
+}
+
 export function CaixaDoSalaoPanel({
   caixa,
   turno,
@@ -41,19 +63,7 @@ export function CaixaDoSalaoPanel({
   //
   // Mostrar aqui o movimento do turno anterior faria o dono conferir
   // números de ontem achando que são de hoje.
-  if (!turno) {
-    return (
-      <Card className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold">O salão está fechado</h2>
-          <p className="text-sm text-muted">
-            Enquanto o caixa não abrir, os garçons veem o salão fechado e não conseguem lançar pedido.
-          </p>
-        </div>
-        {abrir}
-      </Card>
-    );
-  }
+  if (!turno) return <CaixaFechado abrir={abrir} />;
 
   return (
     <div className="flex flex-col gap-4">

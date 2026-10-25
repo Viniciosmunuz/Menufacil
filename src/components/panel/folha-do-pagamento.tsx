@@ -39,12 +39,15 @@ export function FolhaDoPagamento({
   comanda,
   restaurantId,
   podeDesfazer,
+  valorInicial,
   onFechar,
 }: {
   comanda: ComandaAberta;
   restaurantId: string;
   /** desfazer recebimento é a mesma confiança de finalizar a mesa */
   podeDesfazer: boolean;
+  /** a parte de cada um, quando a folha abre pela divisão da conta */
+  valorInicial?: number;
   onFechar: () => void;
 }) {
   const [forma, setForma] = useState<FormaNaMesa>("DINHEIRO");
@@ -54,7 +57,7 @@ export function FolhaDoPagamento({
   // o campo volta a mostrar o que falta depois de cada recebimento: quem
   // está dividindo a conta digita a parte seguinte sem apagar nada
   const [ultimo, setUltimo] = useState<string | undefined>(undefined);
-  const [valor, setValor] = useState(centsToInput(comanda.faltaCents));
+  const [valor, setValor] = useState(centsToInput(Math.min(valorInicial ?? comanda.faltaCents, comanda.faltaCents)));
   if (estado.ok && estado.message !== ultimo) {
     setUltimo(estado.message);
     setValor(centsToInput(comanda.faltaCents));

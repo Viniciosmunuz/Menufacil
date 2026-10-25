@@ -4,9 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComandaDaMesa } from "@/components/panel/comanda-mesa";
+import { tempoDeMesa } from "@/components/panel/mesa-card";
 import { MexerNaMesa } from "@/components/panel/mexer-na-mesa";
 import { NomeDaMesa } from "@/components/panel/nome-da-mesa";
-import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { requireSalao } from "@/server/auth/dal";
 import { cardapioDoSalao, verMesa } from "@/server/salao/comanda";
@@ -33,44 +33,56 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
   const aberta = comanda.id !== "";
   const base = `/painel/${restaurant.id}/salao`;
 
-  return (
-    <div className="flex min-h-[calc(100dvh-10rem)] flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Link href={base} className="grid size-10 shrink-0 place-items-center rounded-control border border-line text-muted hover:text-ink" aria-label="Voltar ao salão">
-          <ArrowLeft className="size-5" aria-hidden="true" />
-        </Link>
+  // "Mesa 4 ✎ ⇅" em cima da comanda, como no Yooga. A seta de voltar só
+  // aparece no celular: no computador quem volta é o VOLTAR do cardápio.
+  const cabecalho = (
+    <>
+      <Link
+        href={base}
+        className="grid size-10 shrink-0 place-items-center rounded-control border border-line text-muted hover:text-ink lg:hidden"
+        aria-label="Voltar ao salão"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+      </Link>
+      <span className="min-w-0 flex-1">
         <NomeDaMesa restaurantId={restaurant.id} mesaId={mesa.id} rotulo={rotulo} numero={mesa.numero} nome={mesa.nome} />
-        {/* as setas só existem com a mesa aberta: é a comanda que muda de
-            lugar, e mesa livre não tem comanda */}
-        {aberta && pode.mexerNaMesa && (
-          <MexerNaMesa comanda={comanda} restaurantId={restaurant.id} mesas={mesas} rotulo={mesa.nome ?? rotulo + " " + mesa.numero} />
-        )}
         {/* Mesa sem nada lançado é mesa livre, e aqui ela chega como uma
             comanda vazia -- é o que faz o toque cair direto no cardápio.
-            Sem este teste o cabeçalho anunciava "Ocupada · 0 pessoas · 0
-            min" numa mesa em que ninguém sentou. */}
-        {aberta ? (
-          <>
-            <Badge tone={comanda.status === "PAGO" ? "success" : "brand"}>{comanda.status === "PAGO" ? "Pago" : "Ocupada"}</Badge>
-            <span className="flex items-center gap-3 text-sm text-muted">
+            Sem este teste o cabeçalho anunciava "0 min" numa mesa em que
+            ninguém sentou. */}
+        <span className="flex flex-wrap items-center gap-x-3 text-sm text-muted">
+          {aberta ? (
+            <>
+              <span className={comanda.status === "PAGO" ? "font-semibold text-[#2f7de1]" : "font-semibold text-[#1e9a52]"}>
+                {comanda.status === "PAGO" ? "Paga" : "Aberta"}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="size-3.5" aria-hidden="true" />
+                {tempoDeMesa(comanda.minutos)}
+              </span>
               {comanda.pessoas > 0 && (
                 <span className="flex items-center gap-1">
-                  <Users className="size-4" aria-hidden="true" />
+                  <Users className="size-3.5" aria-hidden="true" />
                   {comanda.pessoas}
                 </span>
               )}
-              <span className="flex items-center gap-1">
-                <Clock className="size-4" aria-hidden="true" />
-                {comanda.minutos} min
-              </span>
               {comanda.garcom && <span className="truncate">{comanda.garcom}</span>}
-            </span>
-          </>
-        ) : (
-          <Badge tone="neutral">Livre</Badge>
-        )}
-      </header>
+            </>
+          ) : (
+            <span className="font-semibold">Livre</span>
+          )}
+        </span>
+      </span>
+      {/* as setas só existem com a mesa aberta: é a comanda que muda de
+          lugar, e mesa livre não tem comanda */}
+      {aberta && pode.mexerNaMesa && (
+        <MexerNaMesa comanda={comanda} restaurantId={restaurant.id} mesas={mesas} rotulo={mesa.nome ?? rotulo + " " + mesa.numero} />
+      )}
+    </>
+  );
 
+  return (
+    <div className="flex min-h-[calc(100dvh-10rem)] flex-col lg:h-[calc(100dvh-7rem)] lg:min-h-[36rem]">
       <ComandaDaMesa
         comanda={comanda}
         categorias={categorias}
@@ -81,6 +93,8 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         temImpressora={impressoras > 0}
         restaurantId={restaurant.id}
         mesaId={mesa.id}
+        voltarHref={base}
+        cabecalho={cabecalho}
       />
     </div>
   );

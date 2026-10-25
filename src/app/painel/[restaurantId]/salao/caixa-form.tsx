@@ -20,21 +20,43 @@ import { abrirCaixa, fecharCaixa, type SalaoFormState } from "./actions";
 // repetisse uma conta que o papel vai trazer pronta. O que ele faz é
 // confirmar, porque fechar o caixa encerra a noite e libera as mesas.
 
+/**
+ * O "Abrir caixa" da tela de caixa fechado, como no Yooga: primeiro só o
+ * botão, embaixo do aviso; o toque abre a pergunta do troco no lugar dele.
+ */
 export function AbrirCaixaForm({ restaurantId }: { restaurantId: string }) {
   const [state, action] = useActionState<SalaoFormState, FormData>(abrirCaixa, {});
+  const [abrindo, setAbrindo] = useState(false);
+
+  if (!abrindo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAbrindo(true)}
+        className="flex min-h-14 w-full items-center justify-center rounded-control bg-brand px-8 text-lg font-bold text-brand-ink transition hover:brightness-105"
+      >
+        Abrir caixa
+      </button>
+    );
+  }
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="flex w-full flex-col gap-4 text-left">
       <input type="hidden" name="restaurantId" value={restaurantId} />
 
-      <Field label="Dinheiro na gaveta" htmlFor="abertura" hint="O troco com que a noite começa. Pode ser zero.">
-        <MoneyInput id="abertura" name="abertura" defaultValue="" className="h-12" />
+      <Field label="Valor de abertura" htmlFor="abertura" hint="O troco que já está na gaveta. Pode ser zero.">
+        <MoneyInput id="abertura" name="abertura" defaultValue="" className="h-14" autoFocus />
       </Field>
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
 
-      <div>
-        <SubmitButton pendingText="Abrindo...">Abrir o salão</SubmitButton>
+      <div className="flex flex-col gap-2">
+        <SubmitButton pendingText="Abrindo..." className="min-h-14 w-full text-lg">
+          Abrir caixa
+        </SubmitButton>
+        <button type="button" onClick={() => setAbrindo(false)} className="min-h-11 rounded-control font-bold text-muted hover:text-ink">
+          Cancelar
+        </button>
       </div>
     </form>
   );

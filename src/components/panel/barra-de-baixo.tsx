@@ -61,6 +61,10 @@ export function BarraDeBaixo({
 
   const botao = "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 text-[11px] font-bold transition-colors [&_svg]:size-5";
 
+  // Dentro de uma mesa do salão a barra sai: a tela tem a seta de voltar e
+  // o próprio rodapé, com a comanda e o Salvar -- que ficavam embaixo dela.
+  if (pathname.includes("/salao/mesa/")) return null;
+
   return (
     <>
       <nav

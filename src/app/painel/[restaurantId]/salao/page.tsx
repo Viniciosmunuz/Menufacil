@@ -1,9 +1,10 @@
 import { DollarSign, Headset, LayoutGrid, Settings } from "lucide-react";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { SalaoComBusca } from "@/components/panel/busca-mesa";
-import { CaixaDoSalaoPanel } from "@/components/panel/caixa-salao";
+import { CaixaDoSalaoPanel, CaixaFechado } from "@/components/panel/caixa-salao";
 import { PageHeader } from "@/components/panel/page-header";
 import { buttonClasses } from "@/components/ui/button";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
@@ -59,7 +60,7 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
 
   // O topo, no jeito do Yooga: o título à esquerda e os atalhos do dia a
   // dia à direita. O verde do totem é o mesmo botão de destaque de lá.
-  const topo = (
+  const topo = (extra?: ReactNode) => (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-3xl font-extrabold">Salão</h1>
       <div className="flex flex-wrap items-center gap-1 sm:gap-2">
@@ -79,6 +80,7 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
             Totem de Autoatendimento
           </Link>
         )}
+        {extra}
       </div>
     </div>
   );
@@ -107,14 +109,9 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
   // descobrir que o salão não abriu.
   if (!turno) {
     return (
-      <div className="flex flex-col gap-5">
-        <div className="flex items-start justify-end">{engrenagem}</div>
-        <CaixaDoSalaoPanel
-          caixa={caixa}
-          turno={null}
-          abrir={<AbrirCaixaForm restaurantId={restaurant.id} />}
-          fechar={null}
-        />
+      <div className="flex min-h-[calc(100dvh-12rem)] flex-col gap-5">
+        {topo(engrenagem)}
+        <CaixaFechado abrir={<AbrirCaixaForm restaurantId={restaurant.id} />} />
       </div>
     );
   }
@@ -128,7 +125,7 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
       {/* o cartão fica roxo quando um garçom abre a mesa no celular: a tela
           do caixa se renova sozinha para mostrar isso */}
       <AutoRefresh seconds={15} background />
-      {topo}
+      {topo()}
       <SalaoComBusca
         mesas={salao.mesas}
         balcoes={salao.balcoes}

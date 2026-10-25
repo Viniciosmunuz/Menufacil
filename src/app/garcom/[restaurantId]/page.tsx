@@ -35,10 +35,10 @@ export default async function GarcomPage({ params }: PageProps<"/garcom/[restaur
   if (!turno) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="grid size-16 place-items-center rounded-full bg-surface-2 text-faint">
-          <Lock className="size-7" aria-hidden="true" />
+        <span className="grid size-20 place-items-center rounded-full bg-brand-soft text-brand">
+          <Lock className="size-9" aria-hidden="true" />
         </span>
-        <h1 className="text-2xl font-extrabold">Salão fechado</h1>
+        <h1 className="text-3xl font-extrabold">Caixa fechado</h1>
         <p className="text-muted">O caixa ainda não foi aberto. Fale com o balcão: assim que abrirem, suas mesas aparecem aqui.</p>
       </main>
     );

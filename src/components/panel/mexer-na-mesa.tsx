@@ -326,11 +326,15 @@ export function ApagarAMesa({
   restaurantId,
   rotulo,
   className,
+  classeInteira,
 }: {
   comanda: ComandaAberta;
   restaurantId: string;
   rotulo: string;
   className?: string;
+  /** troca o desenho inteiro do botão em vez de somar classes: sem o
+      tailwind-merge, um bg-surface somado ao bg-surface-3 daqui perde */
+  classeInteira?: string;
 }) {
   const [perguntando, setPerguntando] = useState(false);
   const [estado, apagar] = useActionState<SalaoFormState, FormData>(apagarAComanda, {});
@@ -341,7 +345,8 @@ export function ApagarAMesa({
         type="button"
         onClick={() => setPerguntando(true)}
         aria-label={"Apagar a comanda da " + rotulo}
-        className={cn("grid size-12 shrink-0 place-items-center rounded-control bg-surface-3 text-muted active:text-danger", className)}
+        title="Apagar a comanda"
+        className={classeInteira ?? cn("grid size-12 shrink-0 place-items-center rounded-control bg-surface-3 text-muted active:text-danger", className)}
       >
         <Trash2 className="size-5" aria-hidden="true" />
       </button>
