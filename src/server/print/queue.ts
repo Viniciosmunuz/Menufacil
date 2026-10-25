@@ -75,9 +75,12 @@ const aindaNaoSaiu = (role: PrintRole) =>
       { origin: "TOTEM" as const, senhaPrintedAt: null }
     : { printedAt: null };
 
-export async function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA", deviceId?: string) {
+export async function pendingOrders(restaurantId: string, role: PrintRole = "COMANDA", deviceId?: string, soSalao = false) {
   const comum = {
     restaurantId,
+    // o Menu Fácil PC tira só o salão: o delivery dele continua saindo pela
+    // tela de Pedidos, do jeito de sempre
+    ...(soSalao ? { origin: "SALAO" as const } : {}),
     status: { in: [...OPEN_ORDER_STATUSES] },
     // 100% Delivery: a via só sai depois que o Mercado Pago confirmou
     ...EXCLUDE_UNPAID,

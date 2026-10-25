@@ -82,7 +82,7 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
   );
 
   return (
-    <div className="flex min-h-[calc(100dvh-10rem)] flex-col lg:h-[calc(100dvh-7rem)] lg:min-h-[36rem]">
+    <div className="flex min-h-[calc(100dvh-10rem)] flex-col lg:h-[calc(100dvh-3rem)] lg:min-h-[36rem]">
       <ComandaDaMesa
         comanda={comanda}
         categorias={categorias}

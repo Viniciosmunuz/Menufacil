@@ -816,6 +816,10 @@ model PrintDevice {
    */
   printerName String?
 
+  /// o Menu Fácil PC (o painel no programa do Windows): restaurante + nome
+  /// do computador. Vazio no Print Fácil e no tablet, que pareiam por código.
+  appKey String? @unique
+
   pairedAt   DateTime?
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())

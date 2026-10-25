@@ -74,12 +74,16 @@ export async function impressoraPrincipal(restaurantId: string) {
     db.printDevice.findMany({
       where: { restaurantId, role: "COMANDA" },
       orderBy: { createdAt: "asc" },
-      select: { id: true },
+      select: { id: true, lastSeenAt: true },
     }),
     db.menuCategory.findMany({ where: { restaurantId, printDeviceId: { not: null } }, select: { printDeviceId: true } }),
   ]);
   if (devices.length === 0) return null;
 
   const destinos = new Set(atribuidas.map((c) => c.printDeviceId));
-  return devices.find((d) => !destinos.has(d.id))?.id ?? devices[0].id;
+  // entre as do balcão, a que está ligada agora: um Print Fácil esquecido
+  // de outra época não pode ficar com a conta que ninguém vai buscar
+  const ligada = (d: { lastSeenAt: Date | null }) => d.lastSeenAt !== null && Date.now() - d.lastSeenAt.getTime() < 3 * 60 * 1000;
+  const doBalcao = devices.filter((d) => !destinos.has(d.id));
+  return (doBalcao.find(ligada) ?? doBalcao[0] ?? devices[0]).id;
 }

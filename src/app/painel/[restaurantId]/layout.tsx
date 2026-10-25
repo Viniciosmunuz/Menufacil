@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AbertoFechado, SeloDePedidos } from "@/components/panel/barra-de-baixo";
+import { ImpressaoDoSalao } from "@/components/panel/impressao-do-salao";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { db } from "@/lib/db";
@@ -93,6 +94,9 @@ export default async function RestaurantPanelLayout({
     >
       {/* anota a seção, para o atalho da tela inicial voltar aqui */}
       <LembraATela />
+      {/* o admin vendo o painel de um restaurante não vira impressora dele:
+          a comanda do salão sairia na casa errada */}
+      {!viaAdmin && noAr("salaoEnabled") && restaurant.salaoEnabled && <ImpressaoDoSalao restaurantId={restaurant.id} />}
       {children}
     </PanelShell>
   );

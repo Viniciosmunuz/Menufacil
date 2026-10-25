@@ -116,7 +116,7 @@ export default async function ConfiguracaoDoSalaoPage({ params }: PageProps<"/pa
       {impressoras.length < 2 ? (
         <p className="rounded-control border border-line bg-surface-2 px-4 py-3 text-sm text-muted">
           {impressoras.length === 0
-            ? "Nenhuma impressora ligada ainda. Pareie o Menu Fácil PC no computador do balcão."
+            ? "Nenhuma impressora ligada ainda. Abra o painel no Menu Fácil PC do computador do balcão: ele aparece aqui sozinho."
             : `Você tem uma impressora (${impressoras[0].printerName ?? impressoras[0].name}). Ligue a segunda no Menu Fácil PC para dividir o cardápio entre elas.`}
         </p>
       ) : secoes.length === 0 ? (

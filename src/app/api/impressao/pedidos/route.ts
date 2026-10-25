@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   // o recibo de cliente que ainda não saiu -- e, quando o cardápio está
   // dividido entre impressoras, cada uma vê só os pedidos que têm algo
   // dela, com a própria trava de já impresso
-  const orders = await pendingOrders(device.restaurantId, device.role, device.id);
+  const orders = await pendingOrders(device.restaurantId, device.role, device.id, device.appKey !== null);
   return Response.json({
     pareado: true,
     papel_mm: device.restaurant?.receiptWidth ?? DEFAULT_PAPER,

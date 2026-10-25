@@ -57,6 +57,8 @@ export type AuthedDevice = {
   restaurantId: string | null;
   pairingCode: string | null;
   printerName: string | null;
+  /** preenchido no Menu Fácil PC, que só tira o que é do salão */
+  appKey: string | null;
   restaurant: { id: string; name: string; receiptWidth: number } | null;
 };
 
@@ -75,6 +77,7 @@ export async function deviceFromRequest(request: Request): Promise<AuthedDevice 
       restaurantId: true,
       pairingCode: true,
       printerName: true,
+      appKey: true,
       restaurant: { select: { id: true, name: true, receiptWidth: true } },
     },
   });
@@ -109,7 +112,9 @@ export async function pairDevice(code: string, restaurantId: string) {
 
 export function listDevices(restaurantId: string) {
   return db.printDevice.findMany({
-    where: { restaurantId },
+    // o Menu Fácil PC fica fora: ele só imprime o salão, e entrar nesta
+    // lista mudaria o jeito de imprimir o delivery nas outras telas
+    where: { restaurantId, appKey: null },
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true, role: true, printerName: true, pairedAt: true, lastSeenAt: true },
   });
@@ -128,4 +133,46 @@ export function unpairDevice(id: string, restaurantId: string) {
  */
 export function setDeviceRole(id: string, restaurantId: string, role: PrintRole) {
   return db.printDevice.updateMany({ where: { id, restaurantId }, data: { role } });
+}
+
+/**
+ * O Menu Fácil PC entra na fila como um aparelho.
+ *
+ * O painel aberto no programa do Windows imprimia só pela tela de Pedidos,
+ * e só o delivery: a comanda do salão e a conta da mesa não tinham por
+ * onde sair, e a configuração do salão dizia que não havia impressora
+ * nenhuma. Aqui ele vira um aparelho como o Print Fácil -- com a mesma
+ * fila, a mesma trava e a mesma divisão por seção.
+ *
+ * Não há código para digitar: quem chama já está logado como dono. A
+ * chave é o restaurante e o nome do computador, então abrir o programa de
+ * novo reaproveita o mesmo aparelho em vez de criar outro. O token troca a
+ * cada abertura e só o painel daquela janela fica com ele.
+ */
+export async function ligarAppDoPc(restaurantId: string, computador: string, impressora: string | null) {
+  const nome = computador.trim().slice(0, 80) || "Computador";
+  const appKey = `${restaurantId}:${nome.toLowerCase()}`;
+  const token = randomBytes(32).toString("base64url");
+  const agora = new Date();
+
+  const device = await db.printDevice.upsert({
+    where: { appKey },
+    create: {
+      appKey,
+      restaurantId,
+      name: nome,
+      tokenHash: hashToken(token),
+      printerName: impressora?.slice(0, 120) ?? null,
+      pairedAt: agora,
+      lastSeenAt: agora,
+    },
+    update: {
+      tokenHash: hashToken(token),
+      printerName: impressora?.slice(0, 120) ?? null,
+      lastSeenAt: agora,
+    },
+    select: { id: true, createdAt: true },
+  });
+
+  return { deviceId: device.id, token, desde: device.createdAt.toISOString() };
 }
