@@ -1,0 +1,83 @@
+name: Menu Fácil Garçom (APK)
+
+# Compila o aplicativo do garçom no próprio GitHub, para não depender de
+# ninguém ter o Android Studio instalado, e publica o APK numa release.
+#
+# É o aplicativo que vai para a maquininha: a mesma tela do garçom do site,
+# em tela cheia e com ícone próprio. Para a loja da Stone ainda falta a
+# assinatura de produção e a homologação deles -- este APK é o de
+# depuração, que instala direto no aparelho para testar.
+#
+# Roda sozinho quando algo em menufacil-garcom/ muda, e também pelo botão
+# "Run workflow".
+
+on:
+  push:
+    paths:
+      - "menufacil-garcom/**"
+      - ".github/workflows/menufacil-garcom.yml"
+  workflow_dispatch:
+
+permissions:
+  # para criar e atualizar a release com o APK
+  contents: write
+
+env:
+  # mesma versão de menufacil-garcom/app/build.gradle.kts
+  VERSAO: "1.0.0"
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # O runner já vem com o SDK do Android; a ação de setup baixava outra
+      # cópia e parava na pergunta das licenças, que ninguém responde aqui.
+      - name: Licenças do SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      # Versão travada: o Gradle do runner muda sem avisar, e versão nova
+      # demais não roda com este plugin do Android.
+      - name: Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Compilar
+        working-directory: menufacil-garcom
+        run: gradle --no-daemon assembleDebug
+
+      - name: Nomear com a versão
+        run: |
+          cp menufacil-garcom/app/build/outputs/apk/debug/app-debug.apk \
+             "menufacil-garcom-${VERSAO}.apk"
+
+      - name: Guardar o APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: menufacil-garcom-apk
+          path: menufacil-garcom-*.apk
+          if-no-files-found: error
+
+      # Só no main: branch de teste não troca o arquivo que se baixa.
+      - name: Publicar a release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          etiqueta="garcom-v${VERSAO}"
+          if gh release view "$etiqueta" >/dev/null 2>&1; then
+            gh release upload "$etiqueta" "menufacil-garcom-${VERSAO}.apk" --clobber
+          else
+            gh release create "$etiqueta" "menufacil-garcom-${VERSAO}.apk" \
+              --title "Menu Fácil Garçom $VERSAO" \
+              --notes "O salão na mão do garçom, em tela cheia. Baixe o .apk no aparelho e libere a instalação de fontes desconhecidas."
+          fi

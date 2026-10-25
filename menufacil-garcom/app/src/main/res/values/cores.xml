@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- o branco do sistema: o ícone e a tela de carregar nascem na cor dele -->
+  <color name="fundo_do_icone">#ffffff</color>
+</resources>
