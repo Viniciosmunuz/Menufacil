@@ -317,9 +317,16 @@ async function contaTicket(restaurantId: string, comandaId: string) {
       tipo: "PICKUP" as const,
       origem: "SALAO" as const,
       comer_aqui: true,
-      // a conta tem desenho próprio no programa; a mesa vai junto mesmo
-      // assim, para o cabeçalho dela ser o da mesa e não o do delivery
+      // a conta da mesa tem desenho próprio no programa do balcão: sem
+      // isto ela sairia com o cabeçalho da comanda da cozinha, que não
+      // leva preço
+      conta: true,
       mesa: { rotulo: conta.rotulo.toUpperCase(), nome: conta.nomeDaMesa ?? null, garcom: conta.garcom ?? null },
+      abertura: conta.abertaAt.toISOString(),
+      recebido: conta.pagamentos.map((p) => ({ forma: p.forma, centavos: p.centavos })),
+      falta_centavos: conta.faltaCents,
+      servico_centavos: conta.servicoCents,
+      desconto_centavos: conta.descontoCents,
       cliente: { nome: conta.rotulo, whatsapp: "" },
       endereco: { rua: null, numero: null, complemento: null, bairro: null, referencia: null },
       itens: conta.itens.map((i) => ({
