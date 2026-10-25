@@ -5,7 +5,7 @@ import { LogoIcon } from "@/components/brand/logo";
 import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { requireRestaurantAccess } from "@/server/auth/dal";
-import { senhasDoSalao, type SenhaNaTela } from "@/server/totem/senhas";
+import { NA_FILA, senhasDoSalao, type SenhaNaTela } from "@/server/totem/senhas";
 
 // Painel de senhas: a tela do segundo monitor, virada para o salão.
 //
@@ -37,7 +37,7 @@ export default async function PainelDeSenhasPage({ params }: PageProps<"/painel/
   if (!restaurant.totemEnabled) notFound();
 
   const pedidos = await senhasDoSalao(restaurant.id);
-  const preparando = pedidos.filter((p) => p.status === "PREPARING");
+  const preparando = pedidos.filter((p) => (NA_FILA as readonly string[]).includes(p.status));
 
   // o mais recente a ficar pronto é o da vez: é a chamada que o salão
   // acabou de ouvir, e é esse número que todo mundo está procurando

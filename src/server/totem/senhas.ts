@@ -22,10 +22,21 @@ const HORAS_NA_TELA = 4;
 /** quanto tempo uma senha já retirada ainda aparece em "últimos pedidos" */
 const MINUTOS_APOS_RETIRAR = 30;
 
+/**
+ * Pago e ainda não pronto: é isto que o cliente chama de "na fila".
+ *
+ * São três estados porque o pedido chega de jeitos diferentes. O do totem
+ * nasce CONFIRMED -- o dinheiro já entrou, a cozinha que faça --, e só
+ * vira PREPARING se alguém apertar o passo no painel. Enquanto a fila
+ * olhava só PREPARING, o pedido do totem não aparecia em lugar nenhum:
+ * sumia do balcão e só reaparecia, do nada, quando ficava pronto.
+ */
+export const NA_FILA = ["PAID", "CONFIRMED", "PREPARING"] as const;
+
 export type SenhaNaTela = {
   id: string;
   number: number;
-  status: "PREPARING" | "READY" | "COMPLETED";
+  status: "PAID" | "CONFIRMED" | "PREPARING" | "READY" | "COMPLETED";
   customerName: string;
   /** quando mudou de estado pela última vez; ordena os "últimos pedidos" */
   em: Date;
@@ -42,7 +53,7 @@ export async function senhasDoSalao(restaurantId: string): Promise<SenhaNaTela[]
       origin: { not: "SALAO" },
       createdAt: { gte: desde },
       OR: [
-        { status: { in: ["PREPARING", "READY"] } },
+        { status: { in: [...NA_FILA, "READY"] } },
         // o retirado sai da tela sozinho, pelo horário em que foi entregue
         { status: "COMPLETED", updatedAt: { gte: retiradoDesde } },
       ],
@@ -54,7 +65,7 @@ export async function senhasDoSalao(restaurantId: string): Promise<SenhaNaTela[]
   return pedidos.map((p) => ({
     id: p.id,
     number: p.number,
-    status: p.status as "PREPARING" | "READY" | "COMPLETED",
+    status: p.status as SenhaNaTela["status"],
     customerName: p.customerName,
     em: p.updatedAt,
   }));
