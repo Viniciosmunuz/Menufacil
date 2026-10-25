@@ -1,9 +1,10 @@
-import { Lock } from "lucide-react";
+import { Lock, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 
 import { SalaoComBusca } from "@/components/panel/busca-mesa";
 import { GarcomNav } from "@/components/panel/garcom-nav";
-import { requireSalao } from "@/server/auth/dal";
+import { noAr } from "@/lib/features";
+import { requireRestaurantAccess } from "@/server/auth/dal";
 import { mapaDoSalao } from "@/server/salao/mesas";
 import { turnoAberto } from "@/server/salao/turno";
 
@@ -22,9 +23,33 @@ export const metadata: Metadata = { title: "Salão" };
 
 export default async function GarcomPage({ params }: PageProps<"/garcom/[restaurantId]">) {
   const { restaurantId } = await params;
-  const { restaurant } = await requireSalao(restaurantId);
-  const [salao, turno] = await Promise.all([mapaDoSalao(restaurant.id), turnoAberto(restaurant.id)]);
+  // Aqui o acesso é o do restaurante, e não o do salão.
+  //
+  // O login manda todo garçom para esta tela, inclusive o de um
+  // restaurante que ainda não tem o Salão liberado -- e com requireSalao
+  // ele batia num 404 seco, sem saber o que fazer nem a quem recorrer. A
+  // tela existe; o que falta é o recurso, e isso se diz em português.
+  //
+  // As ações continuam atrás de requireSalao: a trava é no servidor, não
+  // nesta página.
+  const { restaurant } = await requireRestaurantAccess(restaurantId);
   const base = `/garcom/${restaurant.id}`;
+
+  if (!noAr("salaoEnabled") || !restaurant.salaoEnabled) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-3 px-6 text-center">
+        <span className="grid size-20 place-items-center rounded-full bg-surface-2 text-faint">
+          <UtensilsCrossed className="size-9" aria-hidden="true" />
+        </span>
+        <h1 className="text-2xl font-extrabold">Salão ainda não liberado</h1>
+        <p className="text-muted">
+          O atendimento na mesa não está ativo em {restaurant.name}. Fale com o dono do restaurante: é ele quem pede a liberação.
+        </p>
+      </main>
+    );
+  }
+
+  const [salao, turno] = await Promise.all([mapaDoSalao(restaurant.id), turnoAberto(restaurant.id)]);
 
   // Sem caixa aberto, o salão não opera.
   //
