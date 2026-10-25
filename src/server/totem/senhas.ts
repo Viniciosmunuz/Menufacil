@@ -8,6 +8,12 @@ import { db } from "@/lib/db";
 // atrás não fica na tela atrapalhando quem chegou agora, mesmo que ninguém
 // tenha marcado como entregue.
 //
+// O salão fica de fora. O pedido de mesa nasce com type PICKUP -- ninguém
+// entrega na mesa 7 --, então ele entrava aqui como se fosse senha de
+// balcão, e ficava: a mesa não passa por "pronto", então o número só sairia
+// da tela ao completar as quatro horas. Quem esperava no balcão via uma
+// fila que não existe.
+//
 // Entram três momentos, porque a tela mostra os três: o que está no fogo,
 // o que já pode ser retirado, e o que acabou de sair -- este último fica
 // pouco tempo, só para quem perdeu a chamada se achar.
@@ -33,6 +39,7 @@ export async function senhasDoSalao(restaurantId: string): Promise<SenhaNaTela[]
     where: {
       restaurantId,
       type: "PICKUP",
+      origin: { not: "SALAO" },
       createdAt: { gte: desde },
       OR: [
         { status: { in: ["PREPARING", "READY"] } },
