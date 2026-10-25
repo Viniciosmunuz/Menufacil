@@ -1,4 +1,5 @@
 import { aplicativo } from "@/server/totem/api/aplicativo";
+import { cardapio } from "@/server/totem/api/cardapio";
 import { desbloquear } from "@/server/totem/api/desbloquear";
 import { login } from "@/server/totem/api/login";
 import { cancelar, cobrar, conferir } from "@/server/totem/api/pagamento";
@@ -49,6 +50,8 @@ export async function GET(request: Request, { params }: RouteContext<"/api/totem
   if (acao === "pagamento") return conferir(request);
   // a tela do totem conferindo se o dono a pausou no painel
   if (acao === "pausa") return pausa(request);
+  // e conferindo se o cardápio mudou desde que a tela abriu
+  if (acao === "cardapio") return cardapio(request);
   return naoExiste();
 }
 

@@ -8,6 +8,8 @@ import { isOpenNow } from "@/lib/opening-hours";
 import { getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
 
 import { AtivarTotem } from "./ativar";
+import { assinaturaDoCardapio } from "@/server/totem/api/cardapio";
+
 import { TotemOcioso } from "./ocioso";
 import { TotemPausa } from "./pausado";
 
@@ -40,6 +42,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
   if (sp.ativar === "1") return <AtivarTotem slug={r.slug} nome={r.name} />;
 
   const aberto = isOpenNow(r.openMode, r.openingHours);
+  // a cara do cardápio agora: o totem guarda e compara de tempos em tempos,
+  // para se renovar quando o dono mexer no painel
+  const assinatura = await assinaturaDoCardapio(r.id);
   // o selo "Mais pedido" dos pratos que mais saíram no mês
   const campeoes = await maisPedidos(r.id);
   const categorias = r.menuCategories.filter((c) => c.products.length > 0 && !c.pizzaFlavors);
@@ -74,7 +79,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
       {/* o cardápio do totem acompanha o do dono: esgotou lá, some daqui.
           Parado, vira o cartaz de descanso que chama quem passa. */}
-      <TotemOcioso href={`/totem/${r.slug}`} nome={r.name} logoUrl={r.logoUrl} />
+      <TotemOcioso href={`/totem/${r.slug}`} slug={r.slug} assinatura={assinatura} nome={r.name} logoUrl={r.logoUrl} />
       {/* pausado pelo dono no painel: cobre tudo até ele despausar */}
       <TotemPausa slug={r.slug} inicial={r.totemPaused} nome={r.name} logoUrl={r.logoUrl} />
 

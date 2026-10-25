@@ -33,6 +33,8 @@ const OCIOSO_MS = 90_000;
 const DESCANSO_MS = 60_000;
 /** de quanto em quanto tempo o cardápio se renova por trás do descanso */
 const RENOVA_MS = 5 * 60 * 1000;
+/** de quanto em quanto tempo se pergunta ao servidor se o cardápio mudou */
+const CONFERE_MS = 30_000;
 
 /** lembra que o totem estava descansando quando a página se recarregou */
 const CHAVE = "mf_totem_descanso";
@@ -81,10 +83,16 @@ function assinarDescanso(avisar: () => void) {
 
 export function TotemOcioso({
   href,
+  slug,
+  assinatura,
   nome,
   logoUrl,
 }: {
   href: string;
+  /** o restaurante, para perguntar ao servidor se o cardápio mudou */
+  slug: string;
+  /** a cara do cardápio no instante em que esta tela foi montada */
+  assinatura: string;
   nome: string;
   logoUrl: string | null;
 }) {
@@ -92,6 +100,44 @@ export function TotemOcioso({
   const temItens = cartCount(cart) > 0;
   // no servidor nunca está descansando: o cartaz é coisa do tablet
   const dormindo = useSyncExternalStore(assinarDescanso, lerDescanso, () => false);
+
+  // O cardápio mudou no painel? Então esta tela está velha.
+  //
+  // Esgotou um prato às 11h e o totem continuava oferecendo até se
+  // recarregar sozinho -- o que podia levar minutos, e no pior caso o
+  // cliente pedia o que não existe mais. Agora o totem pergunta de meio em
+  // meio minuto se mudou alguma coisa, e se renova assim que ninguém
+  // estiver no meio de um pedido.
+  //
+  // Com a sacola cheia, espera: recarregar derrubaria a escolha de quem
+  // está ali decidindo. O servidor continua conferindo o esgotado na hora
+  // de pagar, que é a trava que vale.
+  useEffect(() => {
+    if (!assinatura) return;
+    let vivo = true;
+    let mudou = false;
+
+    const conferir = async () => {
+      try {
+        const r = await fetch(`/api/totem/cardapio?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
+        if (!r.ok) return;
+        const { assinatura: agora } = (await r.json()) as { assinatura?: string };
+        if (agora && agora !== assinatura) mudou = true;
+      } catch {
+        // sem rede agora: pergunta de novo na próxima volta
+      }
+      // a tela só se renova com a sacola vazia; com comida nela, o cliente
+      // está no meio de um pedido e a troca espera a vez dele acabar
+      if (mudou && vivo && !temItens) window.location.reload();
+    };
+
+    const relogio = setInterval(conferir, CONFERE_MS);
+    void conferir();
+    return () => {
+      vivo = false;
+      clearInterval(relogio);
+    };
+  }, [slug, assinatura, temItens]);
 
   useEffect(() => {
     let relogio: ReturnType<typeof setTimeout>;
