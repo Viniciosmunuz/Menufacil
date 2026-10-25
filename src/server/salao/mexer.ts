@@ -241,7 +241,13 @@ export async function moverItens(
 }
 
 
-export type MesaDestino = { id: string; rotulo: string; ocupada: boolean };
+export type MesaDestino = {
+  id: string;
+  rotulo: string;
+  ocupada: boolean;
+  /** o que já está lançado na mesa ocupada, para a lista mostrar como o Yooga */
+  centavos: number;
+};
 
 /**
  * As mesas para onde dá para mandar a comanda ou os itens.
@@ -254,12 +260,23 @@ export async function mesasParaDestino(restaurantId: string, exceto: string): Pr
   const mesas = await db.mesa.findMany({
     where: { restaurantId, ativa: true, id: { not: exceto } },
     orderBy: [{ tipo: "asc" }, { numero: "asc" }],
-    select: { id: true, numero: true, nome: true, tipo: true, comandas: { where: { fechadaAt: null }, select: { id: true }, take: 1 } },
+    select: {
+      id: true,
+      numero: true,
+      nome: true,
+      tipo: true,
+      comandas: {
+        where: { fechadaAt: null },
+        take: 1,
+        select: { id: true, orders: { where: { status: { not: "CANCELED" } }, select: { totalCents: true } } },
+      },
+    },
   });
 
   return mesas.map((m) => ({
     id: m.id,
     rotulo: m.nome ?? `${m.tipo === "BALCAO" ? "Balcão" : "Mesa"} ${m.numero}`,
     ocupada: m.comandas.length > 0,
+    centavos: m.comandas[0]?.orders.reduce((s, o) => s + o.totalCents, 0) ?? 0,
   }));
 }
