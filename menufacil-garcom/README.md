@@ -34,6 +34,25 @@ gradle assembleDebug
 
 O APK sai em `app/build/outputs/apk/debug/app-debug.apk`.
 
+## O que a Stone exige, e onde está cumprido
+
+Da página de pré-requisitos da SDK Android da Stone
+(sdkandroid.stone.com.br):
+
+| Exigência | Como está |
+|---|---|
+| Android 6.0 (API 23) ou mais | minSdk 24 |
+| Nome do pacote `br.com.Empresa.App.Campo`, sem citar a Stone nem modelos | `br.com.menufacil.garcom.salao` |
+| Kotlin 2.0 ou mais | 2.0.21 |
+| APK até 70 MB | 3,5 MB |
+| HTTPS com TLS 1.2 | só menufacildelivery.com.br, e nada mais abre no aplicativo |
+| Seção "Fale Conosco" visível | Ajustes → Fale conosco, no próprio site |
+| Layout responsivo | a mesma página do celular, que já se vira em tela pequena |
+| Assinado antes de instalar | o APK de depuração é assinado com a chave de teste; a de produção ainda não existe |
+
+Modelos que a Stone lista como suportados: GPOS 700X, Positivo L400,
+Positivo L300 e Sunmi P2-B.
+
 ## O que falta para a loja da Stone
 
 O APK de hoje é o de **depuração**, assinado com a chave de teste do

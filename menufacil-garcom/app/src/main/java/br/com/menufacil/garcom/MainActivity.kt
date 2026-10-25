@@ -1,4 +1,4 @@
-package app.menufacil.garcom
+package br.com.menufacil.garcom
 
 import android.annotation.SuppressLint
 import android.graphics.Color

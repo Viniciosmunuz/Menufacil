@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-  namespace = "app.menufacil.garcom"
+  namespace = "br.com.menufacil.garcom"
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "app.menufacil.garcom"
+    applicationId = "br.com.menufacil.garcom.salao"
     // Android 7 em diante: cobre as maquininhas Android em uso hoje e os
     // celulares baratos que o garçom leva no bolso do avental.
     minSdk = 24

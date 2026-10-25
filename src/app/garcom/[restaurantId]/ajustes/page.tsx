@@ -1,7 +1,8 @@
-import { Check, Lock, UserRound, Wallet } from "lucide-react";
+import { Check, Lock, MessageCircle, Store, UserRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 
 import { GarcomNav } from "@/components/panel/garcom-nav";
+import { linkWhatsappMenuFacil, WHATSAPP_MENUFACIL } from "@/lib/contato";
 import { formatCpf } from "@/lib/cpf";
 import { NOME_DO_NIVEL } from "@/lib/niveis";
 import { GRUPOS } from "@/lib/permissoes-salao";
@@ -23,6 +24,9 @@ export const metadata: Metadata = { title: "Ajustes" };
 // ao balcão ("eu consigo fechar a mesa?"), e a resposta estava só no
 // cadastro, do outro lado do salão. Quem muda isso é o dono, no painel: aqui
 // é só o espelho.
+
+/** "(92) 99913-0838", do jeito que se lê, a partir do número com DDI */
+const TELEFONE_MENUFACIL = WHATSAPP_MENUFACIL.replace(/^55(d{2})(d{5})(d{4})$/, "($1) $2-$3");
 
 export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom/[restaurantId]/ajustes">) {
   const { restaurantId } = await params;
@@ -80,6 +84,38 @@ export default async function AjustesDoGarcomPage({ params }: PageProps<"/garcom
           ))}
         </ul>
         <p className="px-1 text-sm text-faint">Para mudar isso, fale com o dono do restaurante.</p>
+      </section>
+
+      {/* Fale conosco.
+          A primeira porta é o dono: quase tudo que trava o garçom -- a
+          permissão, o caixa fechado, a mesa que sumiu -- se resolve ali
+          mesmo, e no meio do movimento ele é quem está por perto. O
+          MenuFácil fica embaixo, para quando o problema for do sistema.
+          É também o que a loja de aplicativos da Stone exige: uma seção
+          de contato visível dentro do aplicativo. */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xs font-bold tracking-wide text-faint uppercase">Fale conosco</h2>
+        <div className="flex flex-col divide-y divide-line rounded-card border border-line bg-surface">
+          <p className="flex items-start gap-3 px-4 py-3">
+            <Store className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block font-bold">Dúvida no atendimento</span>
+              <span className="block text-sm text-muted">Fale com o dono de {restaurant.name}: permissão, caixa e mesa são com ele.</span>
+            </span>
+          </p>
+          <a
+            href={linkWhatsappMenuFacil("Olá! Sou garçom e preciso de ajuda com o MenuFácil.") ?? "#"}
+            target="_blank"
+            rel="noopener"
+            className="flex items-start gap-3 px-4 py-3 active:bg-surface-2"
+          >
+            <MessageCircle className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block font-bold">Suporte do MenuFácil</span>
+              <span className="block text-sm text-muted">WhatsApp {TELEFONE_MENUFACIL}</span>
+            </span>
+          </a>
+        </div>
       </section>
 
       <div className="mt-auto pb-4">
