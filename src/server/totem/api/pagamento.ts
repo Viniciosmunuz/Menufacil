@@ -43,6 +43,21 @@ import { conferirCarrinho, criarPedidoDoTotem, TotemError, type ItemDoTotem } fr
 /** dinheiro que o totem aceita numa cobrança */
 const MAX_CENTAVOS = 500_000_00;
 
+/**
+ * O menor valor que a maquininha aceita no cartão.
+ *
+ * Abaixo disto o Mercado Pago recusa a cobrança inteira com
+ * "Invalid value for property (property_value)" -- uma frase em inglês que
+ * o cliente não tem como entender, no meio da tela de pagar. Eles não
+ * publicam o número; este veio da medição: R$ 1,00 passa, R$ 0,10 e
+ * R$ 0,05 não.
+ *
+ * Num cardápio de verdade isto nunca aparece. A trava existe porque a
+ * recusa vinha tarde demais, depois de o cliente escolher a forma e
+ * confirmar, e porque o Pix não tem esse piso: mandar para lá é a saída.
+ */
+const MINIMO_CARTAO_CENTAVOS = 100;
+
 const viaDoPedido = async (restaurantId: string, orderId: string) => (await orderTicket(restaurantId, orderId)) ?? null;
 
 export async function cobrar(request: Request) {
@@ -123,6 +138,13 @@ export async function cobrar(request: Request) {
       total_centavos: conta.totalCents,
       pix: { copia_e_cola: qr.qr_code, imagem_base64: qr.qr_code_base64 ?? null },
     });
+  }
+
+  if (conta.totalCents < MINIMO_CARTAO_CENTAVOS) {
+    return Response.json(
+      { erro: "No cartão, a maquininha aceita a partir de R$ 1,00. Pague no Pix ou acrescente algo ao pedido." },
+      { status: 400 },
+    );
   }
 
   if (!contas.deviceId) {
