@@ -1,5 +1,7 @@
 import { UtensilsCrossed } from "lucide-react";
 
+import { BotaoSair } from "./ajustes/sair";
+
 // O recado que o garçom recebe quando a tela existe mas o salão não está
 // no ar para o restaurante dele.
 //
@@ -7,6 +9,10 @@ import { UtensilsCrossed } from "lucide-react";
 // pediu o Salão -- e antes ele batia num 404 seco, sem saber o que houve
 // nem a quem recorrer. Quem está de avental não tem como adivinhar que
 // falta um recurso ser liberado na plataforma.
+//
+// O botão de sair fica aqui porque esta tela não tem a barra de baixo: sem
+// ele, quem entrou com a conta errada ficaria preso, e o sistema só
+// devolve a tela de login para quem não está logado.
 
 export function SalaoNaoLiberado({ nome }: { nome: string }) {
   return (
@@ -18,6 +24,9 @@ export function SalaoNaoLiberado({ nome }: { nome: string }) {
       <p className="text-muted">
         O atendimento na mesa não está ativo em {nome}. Fale com o dono do restaurante: é ele quem pede a liberação.
       </p>
+      <div className="mt-6 w-full max-w-xs">
+        <BotaoSair nome={null} />
+      </div>
     </main>
   );
 }
