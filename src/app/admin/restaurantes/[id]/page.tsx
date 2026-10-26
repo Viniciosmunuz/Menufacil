@@ -44,9 +44,16 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
     where: { id },
     include: {
       categories: { select: { id: true } },
+      // Dono e garçom moram na mesma tabela de vínculos, separados pelo
+      // papel: OWNER entra no painel inteiro, STAFF é a conta de salão que
+      // só lança pedido na mesa. Sem o filtro, os dois apareciam
+      // misturados em "Acesso do dono" -- e um CPF com endereço
+      // ".garcom" na lista de donos assusta sem motivo.
       owners: {
         orderBy: { createdAt: "asc" },
         select: {
+          role: true,
+          nivel: true,
           user: {
             select: { id: true, name: true, email: true, phone: true, mustChangePassword: true, lastLoginAt: true },
           },
@@ -56,6 +63,14 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
     },
   });
   if (!restaurant) notFound();
+
+  // Dono e garçom moram na mesma tabela de vínculos, separados pelo papel:
+  // OWNER entra no painel inteiro, STAFF é a conta de salão que só lança
+  // pedido na mesa. Sem separar, os dois apareciam misturados em "Acesso
+  // do dono" -- e um CPF com endereço ".garcom" na lista de donos assusta
+  // sem motivo.
+  const donos = restaurant.owners.filter((o) => o.role === "OWNER");
+  const garcons = restaurant.owners.filter((o) => o.role === "STAFF");
 
   const [checklist, categories, logs, resumoExclusao, fullDelivery, saude, mensalidades] = await Promise.all([
     activationChecklist(id),
@@ -161,9 +176,15 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
         <div className="flex flex-col gap-6">
           <OwnersPanel
             restaurantId={restaurant.id}
-            owners={restaurant.owners.map(({ user }) => ({
+            owners={donos.map(({ user }) => ({
               ...user,
               lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+            }))}
+            garcons={garcons.map((g) => ({
+              id: g.user.id,
+              nome: g.user.name,
+              nivel: g.nivel,
+              lastLoginAt: g.user.lastLoginAt?.toISOString() ?? null,
             }))}
           />
 

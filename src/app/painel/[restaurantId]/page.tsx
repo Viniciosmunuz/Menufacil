@@ -10,7 +10,7 @@ import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, hojeContraOntem, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import { fechamentoDoDia, hojeContraOntem, pedidosAtrasados, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
 import { FechamentoCard } from "./fechamento-card";
@@ -83,7 +83,8 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   // o caixa é do turno, e o turno vem do horário: por isso depois do
   // Promise.all, que é quando os horários chegam
-  const fechamento = await fechamentoDoDia(escopo, details.openingHours);
+  // o atraso se mede contra a régua da casa, que só existe depois dos tempos
+  const [fechamento, atrasados] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), pedidosAtrasados(escopo, tempos)]);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
 
@@ -136,7 +137,13 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           dele, o que está na mão agora e os campeões do mês. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr]">
         <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
-        <MovimentacaoCard base={base} emAndamento={emAndamento} concluidos={completedToday} cancelados={canceladosHoje} />
+        <MovimentacaoCard
+          base={base}
+          emAndamento={emAndamento}
+          concluidos={completedToday}
+          cancelados={canceladosHoje}
+          atrasados={atrasados}
+        />
         <MaisPedidosCard
           produtos={topProducts.map((p) => ({ nome: p.productName, quantidade: p._sum.quantity ?? 0, centavos: p._sum.totalCents ?? 0 }))}
           cardapioHref={`${base}/cardapio`}

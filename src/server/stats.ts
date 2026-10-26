@@ -581,3 +581,172 @@ export function pedidosEsperando(restaurantId: string) {
     where: { restaurantId, ...SO_DELIVERY, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
   });
 }
+
+// ─── pedidos atrasados ────────────────────────────────────────────────
+
+export type PedidoAtrasado = {
+  id: string;
+  numero: number;
+  /** em que etapa ele empacou */
+  etapa: "aceite" | "cozinha" | "entrega";
+  /** há quantos minutos está parado nela */
+  minutos: number;
+  /** o que esta casa costuma levar nessa etapa */
+  normal: number;
+};
+
+/**
+ * Quanto um pedido pode demorar antes de virar aviso.
+ *
+ * O dobro do normal da casa, com piso de dez minutos a mais. O dobro
+ * sozinho dispararia num restaurante que aceita em dois minutos -- quatro
+ * minutos não é esquecimento, é o telefone tocando. O piso sozinho não
+ * serviria para a cozinha que leva quarenta.
+ */
+const atrasoACima = (normal: number) => Math.max(normal * 2, normal + 10);
+
+/**
+ * Pedidos que estão demorando mais que o normal DESTA casa.
+ *
+ * Não existe "25 minutos é muito": é ótimo numa pizzaria e péssimo num
+ * lanche. O aviso nasce da régua do próprio restaurante -- a mediana que a
+ * tela de Início já mostra --, e por isso ele cala a boca enquanto não
+ * houver medida suficiente para comparar.
+ *
+ * Olha a etapa em que o pedido está agora, e não o tempo total: um pedido
+ * de uma hora que acabou de sair para entrega está no caminho; um de vinte
+ * minutos que ninguém aceitou está esquecido.
+ */
+export async function pedidosAtrasados(escopo: Prisma.OrderWhereInput, tempos: TemposDoAtendimento): Promise<PedidoAtrasado[]> {
+  // sem régua não há atraso: o que seria "muito" aqui ainda não se sabe
+  if (!tempos.aceite && !tempos.cozinha && !tempos.entrega) return [];
+
+  const abertos = await db.order.findMany({
+    where: { ...escopo, ...SO_DELIVERY, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      createdAt: true,
+      statusEvents: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  const agora = Date.now();
+  const atrasados: PedidoAtrasado[] = [];
+
+  for (const p of abertos) {
+    const quando = (...status: OrderStatus[]) => p.statusEvents.find((e) => status.includes(e.status))?.createdAt ?? null;
+
+    // em que etapa ele está, e desde quando
+    let etapa: PedidoAtrasado["etapa"];
+    let desde: Date | null;
+    if (p.status === "READY" || p.status === "OUT_FOR_DELIVERY") {
+      etapa = "entrega";
+      desde = quando("OUT_FOR_DELIVERY", "READY");
+    } else if (p.status === "CONFIRMED" || p.status === "PREPARING") {
+      etapa = "cozinha";
+      desde = quando("CONFIRMED", "PREPARING");
+    } else {
+      etapa = "aceite";
+      desde = quando("PAID", "PAYMENT_SENT") ?? p.createdAt;
+    }
+    if (!desde) continue;
+
+    const regua = tempos[etapa];
+    if (!regua) continue;
+
+    const minutos = Math.round((agora - desde.getTime()) / 60000);
+    if (minutos > atrasoACima(regua.minutos)) {
+      atrasados.push({ id: p.id, numero: p.number, etapa, minutos, normal: regua.minutos });
+    }
+  }
+
+  // o mais parado primeiro: é por ele que se começa
+  return atrasados.sort((a, b) => b.minutos - a.minutos);
+}
+
+export type AtrasoDeUmRestaurante = {
+  id: string;
+  nome: string;
+  /** quantos pedidos estão parados além do normal da casa */
+  quantos: number;
+  /** o mais parado de todos */
+  pior: PedidoAtrasado;
+};
+
+/**
+ * Quais restaurantes estão com pedido parado agora.
+ *
+ * A mesma régua da tela de cada um -- a mediana da própria casa --, mas
+ * numa consulta só para a plataforma inteira: olhar restaurante por
+ * restaurante custaria uma ida ao banco por casa, e esta tela abre a cada
+ * visita do admin.
+ *
+ * Serve para o telefonema: "o #42 de vocês está há 40 minutos esperando
+ * alguém aceitar". É o tipo de coisa que o dono agradece e que nenhum
+ * relatório de fim de mês pega.
+ */
+export async function atrasosDaPlataforma(reguas: TemposDeUmRestaurante[]): Promise<AtrasoDeUmRestaurante[]> {
+  const comRegua = reguas.filter((r) => r.tempos.aceite || r.tempos.cozinha || r.tempos.entrega);
+  if (comRegua.length === 0) return [];
+
+  const porId = new Map(comRegua.map((r) => [r.id, r]));
+  const abertos = await db.order.findMany({
+    where: {
+      restaurantId: { in: [...porId.keys()] },
+      ...SO_DELIVERY,
+      status: { in: [...OPEN_ORDER_STATUSES] },
+      ...EXCLUDE_UNPAID,
+    },
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      createdAt: true,
+      restaurantId: true,
+      statusEvents: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  const agora = Date.now();
+  const porCasa = new Map<string, PedidoAtrasado[]>();
+
+  for (const p of abertos) {
+    const casa = porId.get(p.restaurantId);
+    if (!casa) continue;
+    const quando = (...status: OrderStatus[]) => p.statusEvents.find((e) => status.includes(e.status))?.createdAt ?? null;
+
+    let etapa: PedidoAtrasado["etapa"];
+    let desde: Date | null;
+    if (p.status === "READY" || p.status === "OUT_FOR_DELIVERY") {
+      etapa = "entrega";
+      desde = quando("OUT_FOR_DELIVERY", "READY");
+    } else if (p.status === "CONFIRMED" || p.status === "PREPARING") {
+      etapa = "cozinha";
+      desde = quando("CONFIRMED", "PREPARING");
+    } else {
+      etapa = "aceite";
+      desde = quando("PAID", "PAYMENT_SENT") ?? p.createdAt;
+    }
+    if (!desde) continue;
+
+    const regua = casa.tempos[etapa];
+    if (!regua) continue;
+
+    const minutos = Math.round((agora - desde.getTime()) / 60000);
+    if (minutos <= atrasoACima(regua.minutos)) continue;
+
+    const lista = porCasa.get(p.restaurantId) ?? [];
+    lista.push({ id: p.id, numero: p.number, etapa, minutos, normal: regua.minutos });
+    porCasa.set(p.restaurantId, lista);
+  }
+
+  return [...porCasa.entries()]
+    .map(([id, lista]) => {
+      const ordenada = [...lista].sort((a, b) => b.minutos - a.minutos);
+      return { id, nome: porId.get(id)?.nome ?? "Restaurante", quantos: ordenada.length, pior: ordenada[0] };
+    })
+    // a casa mais parada primeiro: é para ela que se liga antes
+    .sort((a, b) => b.pior.minutos - a.pior.minutos);
+}

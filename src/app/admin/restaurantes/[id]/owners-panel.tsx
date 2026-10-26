@@ -1,6 +1,6 @@
 "use client";
 
-import { UserPlus } from "lucide-react";
+import { HandPlatter, UserPlus } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { CredentialsCard } from "@/components/panel/credentials-card";
@@ -25,7 +25,22 @@ type Owner = {
   lastLoginAt: string | null;
 };
 
-export function OwnersPanel({ restaurantId, owners }: { restaurantId: string; owners: Owner[] }) {
+export type Garcom = {
+  id: string;
+  nome: string;
+  nivel: "GARCOM" | "GARCOM_II";
+  lastLoginAt: string | null;
+};
+
+export function OwnersPanel({
+  restaurantId,
+  owners,
+  garcons,
+}: {
+  restaurantId: string;
+  owners: Owner[];
+  garcons: Garcom[];
+}) {
   const [adding, setAdding] = useState(owners.length === 0);
 
   return (
@@ -51,6 +66,42 @@ export function OwnersPanel({ restaurantId, owners }: { restaurantId: string; ow
           <UserPlus className="size-4" aria-hidden="true" />
           Adicionar dono
         </Button>
+      )}
+
+      {/* O garçom tem vínculo com o restaurante igual ao do dono, e por
+          isso aparecia nesta mesma lista -- um CPF com endereço ".garcom"
+          no meio dos donos assusta sem motivo, e o botão de remover ali
+          tirava do salão alguém que o dono acabou de cadastrar.
+
+          Aqui ele só é mostrado: quem cria, troca a senha e remove garçom
+          é o dono, na configuração do salão dele. */}
+      {garcons.length > 0 && (
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-3 flex items-center gap-2">
+            <HandPlatter className="size-4 shrink-0 text-faint" aria-hidden="true" />
+            <h3 className="font-extrabold">
+              {garcons.length === 1 ? "1 garçom no salão" : `${garcons.length} garçons no salão`}
+            </h3>
+          </div>
+          <p className="mb-3 text-sm text-muted">
+            Contas de salão, que só lançam pedido na mesa. Quem cadastra e remove é o próprio dono, na configuração do salão.
+          </p>
+          <ul className="flex flex-col divide-y divide-line">
+            {garcons.map((g) => (
+              <li key={g.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+                <span className="min-w-0">
+                  <span className="block truncate font-bold">{g.nome}</span>
+                  <span className="block text-xs text-faint">
+                    {g.lastLoginAt ? `Último acesso: ${formatDateTime(g.lastLoginAt)}` : "Nunca entrou"}
+                  </span>
+                </span>
+                <Badge tone={g.nivel === "GARCOM_II" ? "brand" : "neutral"}>
+                  {g.nivel === "GARCOM_II" ? "Garçom II" : "Garçom"}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Card>
   );

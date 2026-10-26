@@ -1,4 +1,4 @@
-import { ChevronRight, Crown, MessageSquareText, Moon, ReceiptText, Store, Wallet } from "lucide-react";
+import { ChevronRight, Crown, MessageSquareText, Moon, ReceiptText, Store, TriangleAlert, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -9,11 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { TIME_ZONE, formatCents, formatWhen, startOfDaysAgo } from "@/lib/format";
+import { TIME_ZONE, formatCents, formatMinutos, formatWhen, startOfDaysAgo } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
-import { hojeContraOntem, semanaDePedidos, temposPorRestaurante, variacao } from "@/server/stats";
+import { atrasosDaPlataforma, hojeContraOntem, semanaDePedidos, temposPorRestaurante, variacao } from "@/server/stats";
 
 import { SuporteCard } from "./suporte-card";
 import { TemposPorRestaurante } from "./tempos-restaurantes";
@@ -93,6 +93,10 @@ export default async function AdminOverviewPage() {
       },
     }),
   ]);
+
+  // o atraso se mede contra a régua de cada casa, que só existe depois
+  // dos tempos -- por isso fora do Promise.all de cima
+  const atrasos = await atrasosDaPlataforma(tempos);
 
   // quem está esperando ajuda: o cartão do suporte mostra o número e, no
   // computador, quem são os mais antigos
@@ -188,6 +192,42 @@ export default async function AdminOverviewPage() {
           abertos={chamados.map((c) => ({ id: c.id, restaurante: c.restaurant.name, assunto: c.assunto, createdAt: c.createdAt }))}
         />
       </div>
+
+      {/* Pedido parado em alguma casa.
+
+          A régua é a de cada restaurante, não uma da plataforma: "25
+          minutos" é ótimo numa pizzaria e péssimo num lanche. Serve para o
+          telefonema -- é o tipo de coisa que o dono agradece e que nenhum
+          relatório de fim de mês pega. */}
+      {atrasos.length > 0 && (
+        <section>
+          <SectionTitle description="Parados além do que a própria casa costuma levar. Vale uma ligação.">
+            Pedidos atrasados agora
+          </SectionTitle>
+          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {atrasos.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/admin/restaurantes/${a.id}`}
+                  className="flex items-center gap-3 rounded-card border border-warning/40 bg-warning/5 px-4 py-3 hover:border-warning/60"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-control bg-warning/15 text-warning">
+                    <TriangleAlert className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-bold">{a.nome}</span>
+                    <span className="block truncate text-sm text-muted">
+                      {a.quantos === 1 ? "1 pedido parado" : `${a.quantos} pedidos parados`} · o #{a.pior.numero} há{" "}
+                      {formatMinutos(a.pior.minutos)}, contra {formatMinutos(a.pior.normal)} de normal
+                    </span>
+                  </span>
+                  <ChevronRight className="size-5 shrink-0 text-warning" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Atraso aparece e para por aí: nada aqui tira restaurante do ar.
           Derrubar quem está vendendo por um erro de cadastro custaria muito

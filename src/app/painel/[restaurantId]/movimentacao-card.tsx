@@ -1,4 +1,7 @@
-import { ChevronRight, CircleCheck, CircleSlash, PackageOpen } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleSlash, PackageOpen, TriangleAlert } from "lucide-react";
+
+import { formatMinutos } from "@/lib/format";
+import type { PedidoAtrasado } from "@/server/stats";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -45,17 +48,27 @@ function Linha({
   );
 }
 
+const ETAPA = {
+  aceite: "esperando alguém aceitar",
+  cozinha: "na cozinha",
+  entrega: "na entrega",
+} as const;
+
 export function MovimentacaoCard({
   base,
   emAndamento,
   concluidos,
   cancelados,
+  atrasados,
 }: {
   base: string;
   emAndamento: number;
   concluidos: number;
   cancelados: number;
+  /** pedidos parados mais que o normal desta casa; o pior vem primeiro */
+  atrasados: PedidoAtrasado[];
 }) {
+  const pior = atrasados[0];
   return (
     <Card className="flex flex-col">
       <h2 className="text-lg font-extrabold">Movimentação do dia</h2>
@@ -87,6 +100,33 @@ export function MovimentacaoCard({
           href={`${base}/pedidos?ver=cancelados`}
         />
       </ul>
+
+      {/* O aviso de atraso.
+
+          Não é "demorou mais de X minutos" -- esse X não existe igual para
+          todo mundo. É mais que o dobro do que ESTA casa costuma levar
+          nessa etapa, com piso de dez minutos a mais. Sem régua medida, o
+          aviso não aparece: inventar um limite seria apitar na cara de
+          quem está trabalhando no ritmo normal dele. */}
+      {pior && (
+        <Link
+          href={`${base}/pedidos`}
+          className="mt-3 flex items-center gap-3 rounded-control border border-warning/50 bg-warning/10 px-3 py-2.5 transition-colors hover:bg-warning/15"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-warning/20 text-warning">
+            <TriangleAlert className="size-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block leading-tight font-extrabold text-warning">
+              {atrasados.length === 1 ? "1 pedido atrasado" : `${atrasados.length} pedidos atrasados`}
+            </span>
+            <span className="block truncate text-xs text-muted">
+              O #{pior.numero} está há {formatMinutos(pior.minutos)} {ETAPA[pior.etapa]} · o normal daqui é {formatMinutos(pior.normal)}
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-warning" aria-hidden="true" />
+        </Link>
+      )}
     </Card>
   );
 }
