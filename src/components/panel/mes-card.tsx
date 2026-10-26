@@ -24,7 +24,7 @@ function rotulo(key: string) {
 
 function Destaque({ titulo, dia, valor }: { titulo: string; dia: DiaDoMes; valor: string }) {
   return (
-    <div className="min-w-0 rounded-control bg-surface-2 px-4 py-3">
+    <div className="flex h-full min-w-0 flex-col justify-center rounded-control bg-surface-2 px-4 py-3">
       <p className="text-xs font-bold tracking-wide text-faint uppercase">{titulo}</p>
       <p className="mt-1 font-extrabold">{rotulo(dia.key)}</p>
       <p className="text-sm text-muted tabular-nums">{valor}</p>
@@ -36,7 +36,7 @@ export function MesCard({ mes }: { mes: MesAteAgora }) {
   const nome = competenciaLabel(mes.competencia);
 
   return (
-    <Card className="flex flex-col gap-4">
+    <Card className="flex h-full flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-extrabold">
@@ -52,7 +52,7 @@ export function MesCard({ mes }: { mes: MesAteAgora }) {
       </div>
 
       {mes.maisPedidos && mes.maisVendido ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid flex-1 grid-cols-2 gap-3">
           <Destaque
             titulo="Mais pedidos"
             dia={mes.maisPedidos}
@@ -61,7 +61,7 @@ export function MesCard({ mes }: { mes: MesAteAgora }) {
           <Destaque titulo="Mais vendeu" dia={mes.maisVendido} valor={formatCents(mes.maisVendido.centavos)} />
         </div>
       ) : (
-        <p className="text-sm text-muted">Assim que entrarem os primeiros pedidos do mês, os melhores dias aparecem aqui.</p>
+        <p className="flex-1 text-sm text-muted">Assim que entrarem os primeiros pedidos do mês, os melhores dias aparecem aqui.</p>
       )}
     </Card>
   );

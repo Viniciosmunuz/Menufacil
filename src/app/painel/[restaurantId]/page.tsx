@@ -1,17 +1,13 @@
-import { ChevronRight, Trophy } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { MensalidadeCard } from "@/components/panel/mensalidade-card";
 import { MesCard } from "@/components/panel/mes-card";
-import { TemposCard } from "@/components/panel/tempos-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
-import { TIME_ZONE, formatCents, startOfDaysAgo, startOfToday } from "@/lib/format";
+import { TIME_ZONE, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
@@ -23,6 +19,7 @@ import { ClientesCard } from "./clientes-card";
 import { EsperandoCard } from "./esperando-card";
 import { FechamentoCard } from "./fechamento-card";
 import { Indicadores } from "./indicadores";
+import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
 import { OpenNowCard } from "./open-now-card";
 import { StatusCard } from "./status-card";
@@ -182,65 +179,25 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
           dele, o que está na mão agora e o fechamento do dia. */}
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
         <div className="flex flex-col gap-4">
           <MovimentacaoCard base={base} emAndamento={emAndamento} concluidos={completedToday} cancelados={canceladosHoje} />
           <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
+          <MaisPedidosCard
+            produtos={topProducts.map((p) => ({ nome: p.productName, quantidade: p._sum.quantity ?? 0, centavos: p._sum.totalCents ?? 0 }))}
+            cardapioHref={`${base}/cardapio`}
+          />
         </div>
       </div>
 
-      {/* o que conta história: o mês, os tempos e os campeões */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      {/* o que conta história: o mês e quem volta. Os tempos saíram daqui
+          -- cozinha e entrega abrem a tela nos indicadores, e repetir o
+          mesmo número duas vezes na mesma página é ruído. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MesCard mes={mes} />
-        <TemposCard tempos={tempos} />
-
-        <Card className="flex flex-col">
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-              <Trophy className="size-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-lg leading-tight font-extrabold">Mais pedidos no mês</h2>
-              <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
-            </div>
-          </div>
-
-          {topProducts.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
-          ) : (
-            <ol className="mt-3 flex flex-col divide-y divide-line">
-              {topProducts.map((p, i) => (
-                <li key={p.productName} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className={
-                        i === 0
-                          ? "grid size-6 shrink-0 place-items-center rounded-full bg-brand text-xs font-extrabold text-brand-ink"
-                          : "grid size-6 shrink-0 place-items-center rounded-full bg-surface-3 text-xs font-bold text-muted"
-                      }
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="min-w-0 truncate text-sm font-semibold">{p.productName}</span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-sm font-extrabold tabular-nums">{p._sum.quantity ?? 0}x</span>
-                    <span className="block text-xs text-muted tabular-nums">{formatCents(p._sum.totalCents ?? 0)}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          <Link href={`${base}/cardapio`} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-bold text-brand hover:underline">
-            Ver o cardápio
-            <ChevronRight className="size-4" aria-hidden="true" />
-          </Link>
-        </Card>
+        <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
       </div>
-
-      <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
     </div>
   );
 }
