@@ -2,21 +2,20 @@ import type { Metadata } from "next";
 
 import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { MensalidadeCard } from "@/components/panel/mensalidade-card";
-import { MesCard } from "@/components/panel/mes-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
-import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
+import { competenciaDe, competenciaLabel, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { TIME_ZONE, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, hojeContraOntem, mesAteAgora, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import { fechamentoDoDia, hojeContraOntem, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
-import { ClientesCard } from "./clientes-card";
 import { FechamentoCard } from "./fechamento-card";
+import { ComoEstaODia, DesempenhoCard } from "./desempenho";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
@@ -56,11 +55,10 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const semSalao = { ...escopo, origin: { not: "SALAO" as const } };
   const todayWhere = { ...semSalao, createdAt: { gte: hoje } };
 
-  const [dia, semana, clientes, tempos, completedToday, canceladosHoje, emAndamento, esgotados, topProducts, checklist, details] =
+  const [dia, semana, tempos, completedToday, canceladosHoje, emAndamento, esgotados, topProducts, checklist, details] =
     await Promise.all([
       hojeContraOntem(escopo),
       semanaDePedidos(escopo),
-      quemMaisPede(restaurant.id, startOfDaysAgo(30)),
       temposDoAtendimento(escopo, startOfDaysAgo(30)),
       db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
       db.order.count({ where: { ...todayWhere, status: "CANCELED" } }),
@@ -104,7 +102,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   // o caixa é do turno, e o turno vem do horário: por isso depois do
   // Promise.all, que é quando os horários chegam
-  const [fechamento, mes] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), mesAteAgora(escopo)]);
+  const fechamento = await fechamentoDoDia(escopo, details.openingHours);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
 
@@ -198,9 +196,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MesCard mes={mes} />
-        <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
+      {/* O rodapé: para onde ir depois de olhar o movimento, e como o dia
+          está indo contra a média da semana. */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
+        <DesempenhoCard base={base} mes={competenciaLabel(competenciaDe())} />
+        <ComoEstaODia semana={semana} />
       </div>
     </div>
   );

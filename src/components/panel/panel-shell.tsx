@@ -117,10 +117,24 @@ export function PanelShell({
   );
 
   return (
-    <div className={cn("min-h-dvh lg:grid", compacto ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17rem_minmax(0,1fr)]")}>
+    // Dentro do painel o creme e o branco trocam de lugar.
+    //
+    // No site, o cartão creme sobre papel branco é a marca. No painel isso
+    // se vira contra ele: a tela é quase toda cartão, e o branco sumia em
+    // tiras finas entre blocos cremes -- lido de relance, vira uma parede
+    // só. Aqui o fundo é o off-white, o cartão é o papel branco, e as
+    // linhas são o creme mais claro separando um do outro.
+    //
+    // Só aqui dentro: o site público continua como está.
+    <div
+      className={cn(
+        "min-h-dvh [--color-bg:#faf8f4] [--color-line:#ece7df] [--color-line-strong:#d9d2c6] [--color-surface-2:#f4f1ec] [--color-surface-3:#e9e4db] [--color-surface:#ffffff] bg-bg lg:grid",
+        compacto ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17rem_minmax(0,1fr)]",
+      )}
+    >
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface/40 py-6 lg:flex",
+          "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface py-6 lg:flex",
           compacto ? "items-stretch px-3" : "px-4",
         )}
       >
@@ -164,7 +178,7 @@ export function PanelShell({
             {barraDeBaixo.topo}
           </header>
         ) : (
-        <header className="border-b border-line bg-surface/40 px-4 pt-4 pb-3 lg:hidden">
+        <header className="border-b border-line bg-surface px-4 pt-4 pb-3 lg:hidden">
           <div className="mb-3 flex items-center justify-between gap-3">
             <Link href={homeHref}>
               <Logo />
