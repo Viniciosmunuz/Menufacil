@@ -14,7 +14,8 @@ const modes: { value: OpenMode; label: string; icone: typeof Clock }[] = [
   { value: "CLOSED", label: "Fechar agora", icone: DoorClosed },
 ];
 
-const botao = "flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border px-2.5 text-[0.8rem] leading-tight font-bold 2xl:w-auto 2xl:px-3.5 2xl:text-sm";
+const botao =
+  "flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border px-3 text-sm leading-tight font-bold xl:w-auto xl:px-4";
 const apagado = "border-line bg-surface-2 text-muted hover:text-ink";
 
 // Aberto ou fechado agora, com a troca em um toque (dia de chuva, acabou o
@@ -51,8 +52,8 @@ export function OpenNowCard({
   const pausada = soRetiradaAte !== null;
 
   return (
-    <Card className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:gap-5">
-      <div className="flex min-w-0 items-center gap-3 2xl:flex-1">
+    <Card className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-5">
+      <div className="flex min-w-0 items-center gap-3 xl:flex-1">
         <span
           className={cn(
             "grid size-11 shrink-0 place-items-center rounded-full",
@@ -86,9 +87,9 @@ export function OpenNowCard({
       {/* os quatro na mesma grade: soltos, as larguras diferentes quebravam
           em linhas tortas, e são quatro faces da mesma decisão de agora */}
       <div
-        // dois a dois até a tela bem larga: em quatro colunas, "Seguir
-        // horário" e "Pausar a entrega" eram cortados no meio
-        className={cn("grid gap-2 2xl:flex 2xl:shrink-0", entregaAtiva ? "grid-cols-2" : "grid-cols-3")}
+        // dois a dois no celular, os quatro em linha a partir do tablet:
+        // a faixa tem a largura da tela, e aí o nome do botão cabe inteiro
+        className={cn("grid gap-2 xl:flex xl:shrink-0", entregaAtiva ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}
         role="group"
         aria-label="Operação"
       >

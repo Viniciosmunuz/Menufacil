@@ -6,18 +6,16 @@ import { MesCard } from "@/components/panel/mes-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
-import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { TIME_ZONE, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, filaDeEspera, hojeContraOntem, mesAteAgora, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import { fechamentoDoDia, hojeContraOntem, mesAteAgora, quemMaisPede, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
 import { ClientesCard } from "./clientes-card";
-import { EsperandoCard } from "./esperando-card";
 import { FechamentoCard } from "./fechamento-card";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
@@ -58,11 +56,10 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const semSalao = { ...escopo, origin: { not: "SALAO" as const } };
   const todayWhere = { ...semSalao, createdAt: { gte: hoje } };
 
-  const [dia, semana, fila, clientes, tempos, completedToday, canceladosHoje, emAndamento, esgotados, topProducts, checklist, details] =
+  const [dia, semana, clientes, tempos, completedToday, canceladosHoje, emAndamento, esgotados, topProducts, checklist, details] =
     await Promise.all([
       hojeContraOntem(escopo),
       semanaDePedidos(escopo),
-      filaDeEspera(escopo),
       quemMaisPede(restaurant.id, startOfDaysAgo(30)),
       temposDoAtendimento(escopo, startOfDaysAgo(30)),
       db.order.count({ where: { ...todayWhere, status: "COMPLETED" } }),
@@ -110,8 +107,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const [fechamento, mes] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), mesAteAgora(escopo)]);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
-  // a coluna da direita só existe quando há o que pôr nela
-  const temLateral = esgotados.length > 0 || fechamento.totalPedidos > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -137,17 +132,22 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           movimento de hoje, e some sozinho quando o pagamento for registrado */}
       <MensalidadeCard situacao={mensalidade} restaurante={restaurant.name} />
 
-      <StatusCard
-        restaurantId={restaurant.id}
-        slug={restaurant.slug}
-        status={restaurant.status}
-        checklist={checklist.items}
-        ready={checklist.ready}
-        viaAdmin={viaAdmin}
-      />
+      {/* A operação abre a tela.
 
-      {/* a fila é a única coisa desta tela que pede ação agora */}
-      <EsperandoCard href={`${base}/pedidos`} quantos={fila.quantos} maisAntigo={fila.maisAntigo} />
+          Aqui ficavam o link do cardápio e a fila de espera, e o
+          interruptor do negócio -- aberto ou fechado, entregando ou não --
+          vinha só depois dos números. É ele que a mão procura ao abrir o
+          painel, e enquanto estiver errado nenhum número desta tela
+          acontece. O link desceu para as gavetas; a fila saiu, porque
+          "em andamento" já a mostra na movimentação do dia. */}
+      <OpenNowCard
+        restaurantId={restaurant.id}
+        open={isOpenNow(details.openMode, details.openingHours)}
+        openMode={details.openMode}
+        today={todayLabel(details.openingHours)}
+        entregaAtiva={details.deliveryEnabled}
+        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
+      />
 
       <Indicadores
         href={`${base}/pedidos?ver=todos`}
@@ -160,36 +160,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         tempos={tempos}
       />
 
-      {/* Operação à esquerda e as gavetas à direita, como no desenho: o
-          esgotado primeiro, porque é o que pede decisão, e o fechamento
-          embaixo dele. Sem nenhum dos dois, a operação toma a linha
-          inteira em vez de deixar um vão. */}
-      <div className={cn("grid grid-cols-1 gap-4", temLateral && "xl:grid-cols-[2fr_1fr]")}>
-        <OpenNowCard
-          restaurantId={restaurant.id}
-          open={isOpenNow(details.openMode, details.openingHours)}
-          openMode={details.openMode}
-          today={todayLabel(details.openingHours)}
-          entregaAtiva={details.deliveryEnabled}
-          soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
-        />
-
-        {temLateral && (
-          <div className="flex flex-col gap-4">
-            {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
-                obrigava a ir até o cardápio e procurar quais eram, para uma
-                coisa de um segundo. Religar acontece aqui mesmo. */}
-            <EsgotadosCard
-              esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
-              cardapioHref={`${base}/cardapio`}
-              toggleAction={toggleProduct}
-              restaurantId={restaurant.id}
-            />
-            <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
-          </div>
-        )}
-      </div>
-
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
           dele, o que está na mão agora e os campeões do mês. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr]">
@@ -198,6 +168,31 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         <MaisPedidosCard
           produtos={topProducts.map((p) => ({ nome: p.productName, quantidade: p._sum.quantity ?? 0, centavos: p._sum.totalCents ?? 0 }))}
           cardapioHref={`${base}/cardapio`}
+        />
+      </div>
+
+      {/* As gavetas, depois do gráfico: o que acabou, o caixa do dia e o
+          link do cardápio. As três são consulta -- abre quem quiser. O
+          link era um bloco no alto da tela para uma coisa que o dono já
+          fez na primeira semana. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
+            obrigava a ir até o cardápio e procurar quais eram, para uma
+            coisa de um segundo. Religar acontece aqui mesmo. */}
+        <EsgotadosCard
+          esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
+          cardapioHref={`${base}/cardapio`}
+          toggleAction={toggleProduct}
+          restaurantId={restaurant.id}
+        />
+        <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
+        <StatusCard
+          restaurantId={restaurant.id}
+          slug={restaurant.slug}
+          status={restaurant.status}
+          checklist={checklist.items}
+          ready={checklist.ready}
+          viaAdmin={viaAdmin}
         />
       </div>
 
