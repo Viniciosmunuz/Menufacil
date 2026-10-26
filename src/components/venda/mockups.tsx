@@ -272,3 +272,114 @@ export function ViaImpressa() {
     </div>
   );
 }
+
+// ─── as composições do topo e dos recursos ────────────────────────────
+//
+// O mockup da página mostra o sistema rodando em três lugares ao mesmo
+// tempo: o painel no computador, o cardápio no celular e a comanda saindo
+// no papel. É o argumento inteiro numa imagem só -- e por isso vale montar
+// aqui, em HTML, em vez de uma foto: acompanha o tema e não desfoca.
+
+const PEDIDOS_DO_PAINEL = [
+  { n: "#42", tipo: "Entrega", quem: "Maria Souza", valor: "62,00", estado: "Novo" },
+  { n: "#41", tipo: "Retirada", quem: "João Batista", valor: "38,50", estado: "Na cozinha" },
+  { n: "#40", tipo: "Entrega", quem: "Ana Clara", valor: "91,00", estado: "Saiu" },
+  { n: "#39", tipo: "Mesa 5", quem: "Salão", valor: "154,50", estado: "Aberta" },
+];
+
+const COR_DO_ESTADO: Record<string, string> = {
+  Novo: "bg-brand text-brand-ink",
+  "Na cozinha": "bg-surface-2 text-muted",
+  Saiu: "bg-info/15 text-info",
+  Aberta: "bg-success/15 text-success",
+};
+
+/** o painel do restaurante, na tela do computador */
+export function TelaDoPainelLargo() {
+  return (
+    <div className="w-full">
+      <div className="rounded-[0.9rem] border border-line-strong bg-surface-3 p-1.5 shadow-[0_22px_45px_-18px_rgb(0_0_0/0.55)]">
+        <div className="flex overflow-hidden rounded-[0.6rem] bg-bg">
+          {/* o menu lateral, reduzido ao essencial */}
+          <div className="flex w-10 shrink-0 flex-col gap-2 border-r border-line bg-surface px-2 py-2.5 sm:w-12">
+            <span className="h-3 w-full rounded-sm bg-brand/80" aria-hidden="true" />
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className="h-2 w-full rounded-sm bg-surface-3" aria-hidden="true" />
+            ))}
+          </div>
+
+          <div className="min-w-0 flex-1 px-2.5 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[0.6rem] font-extrabold">Pedidos</span>
+              <span className="rounded-full bg-brand px-1.5 py-px text-[0.42rem] font-extrabold text-brand-ink">1 novo</span>
+            </div>
+
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {PEDIDOS_DO_PAINEL.map((p) => (
+                <li key={p.n} className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-1.5 py-1">
+                  <span className="w-6 shrink-0 text-[0.5rem] font-extrabold">{p.n}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.5rem] leading-tight font-bold">{p.quem}</span>
+                    <span className="block text-[0.44rem] leading-tight text-faint">{p.tipo}</span>
+                  </span>
+                  <span className="shrink-0 text-[0.5rem] font-extrabold">R$ {p.valor}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-1 py-px text-[0.4rem] font-extrabold",
+                      COR_DO_ESTADO[p.estado] ?? "bg-surface-2 text-muted",
+                    )}
+                  >
+                    {p.estado}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      {/* a base do notebook */}
+      <div className="mx-auto h-1.5 w-[72%] rounded-b-md bg-line-strong" aria-hidden="true" />
+    </div>
+  );
+}
+
+/**
+ * Notebook, celular e papel juntos: a imagem do topo.
+ *
+ * O papel só entra a partir do tablet. No celular a coluna é estreita, e a
+ * via, que é alta por natureza, subia por cima do texto do topo em vez de
+ * ficar embaixo do notebook -- o canto de baixo não segura um elemento
+ * mais alto que o espaço que sobra.
+ */
+export function ComposicaoDoTopo() {
+  return (
+    <div className="relative w-full pb-4 sm:pb-10" aria-hidden="true">
+      <div className="w-[88%]">
+        <TelaDoPainelLargo />
+      </div>
+      <div className="absolute top-[18%] -right-1 w-[36%] drop-shadow-[0_16px_28px_rgb(0_0_0/0.5)] sm:right-2">
+        <TelaDoCardapio />
+      </div>
+      <div className="absolute bottom-0 left-[8%] hidden w-[26%] rotate-[-6deg] opacity-95 sm:block">
+        <ViaImpressa />
+      </div>
+    </div>
+  );
+}
+
+/** celular, salão e papel: a imagem da seção de recursos */
+export function ComposicaoDeRecursos() {
+  return (
+    <div className="relative flex w-full items-start justify-center gap-3" aria-hidden="true">
+      <div className="w-[38%] max-w-[9.5rem]">
+        <TelaDoCardapio />
+      </div>
+      <div className="w-[38%] max-w-[9.5rem] pt-8">
+        <TelaDoSalao />
+      </div>
+      <div className="w-[26%] max-w-[7rem] pt-4">
+        <ComandaDoSalao />
+      </div>
+    </div>
+  );
+}

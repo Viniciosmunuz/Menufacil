@@ -1,15 +1,22 @@
 import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
 
 import {
-  BellRing,
+  BadgePercent,
+  BookOpen,
+  Bike,
+  ChefHat,
   ClipboardList,
+  Headset,
   HandPlatter,
+  LayoutDashboard,
   Link2,
   ListChecks,
+  Monitor,
   Percent,
   Printer,
   Receipt,
   ShieldCheck,
+  Smartphone,
   Split,
   ToggleLeft,
   Wallet,
@@ -20,8 +27,8 @@ import {
 // O que você muda nesta página
 //
 // Tudo o que é texto comercial (preço, itens do plano, link da
-// demonstração, WhatsApp, perguntas) está aqui. Mexa só neste arquivo:
-// o desenho da página fica em sections.tsx e não precisa ser tocado.
+// demonstração, WhatsApp, perguntas, depoimentos) está aqui. Mexa só neste
+// arquivo: o desenho da página fica em sections.tsx.
 // ============================================================
 
 /** como o programa do balcão se chama para o restaurante */
@@ -30,6 +37,9 @@ export const NOME_DO_APP = "Menu Fácil para PC";
 /** cardápio que abre no botão "Fazer um pedido de teste" */
 // TODO: trocar por /restaurante/demonstracao quando o restaurante de demonstração existir
 export const DEMO_URL = "/restaurante/papaleguas";
+
+/** de onde o MenuFácil atende: aparece no rodapé */
+export const PRACA = "Presidente Figueiredo · AM";
 
 /**
  * WhatsApp da equipe MenuFácil. Aceita duas formas:
@@ -47,76 +57,61 @@ export const WHATSAPP_MSG = "Olá! Quero saber mais sobre o MenuFácil para o me
 /** endereço do botão "Prefiro falar no WhatsApp"; null quando não há contato */
 export const linkDoWhatsapp = () => linkWhatsappMenuFacil(WHATSAPP_MSG);
 
-export type Plano = {
-  nome: string;
-  preco: string;
-  periodo: string;
-  /** uma linha dizendo para quem é */
-  resumo: string;
-  itens: string[];
-  /** o que aparece no botão */
-  botao: string;
-  /** o cartão em evidência; só um deve ter */
-  destaque?: boolean;
-  /** selo acima do nome, quando há o que dizer */
-  selo?: string;
-  /** frase curta acima da lista, quando o plano soma ao anterior */
-  herda?: string;
+/** as âncoras da página, usadas pelo menu do topo e pelos botões */
+export const SECOES = {
+  topo: "topo",
+  recursos: "recursos",
+  planos: "planos",
+  totem: "totem",
+  depoimentos: "depoimentos",
+  duvidas: "duvidas",
+  comece: "comece",
+} as const;
+
+// ─── topo ─────────────────────────────────────────────────────────────
+
+export const TOPO = {
+  etiqueta: "Sistema de delivery e salão",
+  titulo: "Seu restaurante organizado.",
+  tituloDestaque: "Seus pedidos sob controle.",
+  texto:
+    "Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido.",
+  botao: "Quero conhecer o sistema",
+  secundario: "Ver como funciona",
+  selo: "Pedidos chegando!",
 };
 
-export const PLANOS: Plano[] = [
-  {
-    nome: "Essencial",
-    preco: "R$ 100",
-    periodo: "/mês",
-    resumo: "O cardápio no link e o pedido chegando no seu WhatsApp.",
-    itens: [
-      "Cardápio digital com link próprio",
-      "Pedido pronto no seu WhatsApp",
-      "Painel de pedidos com aviso sonoro",
-      `Impressão automática com o ${NOME_DO_APP}`,
-      "Montagem do cardápio feita por nós",
-      "Suporte incluso: chamou, a gente atende",
-      "Sem comissão por pedido",
-    ],
-    botao: "Quero o Essencial",
-  },
-  {
-    nome: "100% Delivery",
-    preco: "R$ 180",
-    periodo: "/mês",
-    resumo: "O pedido inteiro dentro do sistema, já pago, sem sair para conversa nenhuma.",
-    herda: "Tudo do Essencial, e mais:",
-    itens: [
-      "Cliente paga por Pix na hora, na própria tela",
-      "O dinheiro cai direto na sua conta do Mercado Pago",
-      "O pedido só vira comanda depois de pago",
-      "Cliente acompanha cada passo sem precisar perguntar",
-      "Conversa com o cliente dentro do pedido",
-      "Continua sem comissão: nem um centavo da venda",
-    ],
-    botao: "Quero o 100% Delivery",
-  },
-  {
-    nome: "Completo",
-    preco: "R$ 280",
-    periodo: "/mês",
-    resumo: "O delivery e o salão no mesmo sistema, com o mesmo cardápio.",
-    selo: "Delivery + salão",
-    herda: "Tudo do 100% Delivery, e mais:",
-    itens: [
-      "Mapa de mesas: quem está ocupado, há quanto tempo e quanto já consumiu",
-      "Garçom lança o pedido pelo celular, com CPF e senha dele",
-      "Comanda sai na cozinha na hora, separada por setor",
-      "Conta da mesa impressa, com desconto, taxa e divisão por pessoa",
-      "Caixa com abertura, sangria e relatório do dia",
-      "Cada garçom com a permissão que você der",
-      "Totem de autoatendimento disponível (consulte)",
-    ],
-    botao: "Quero o Completo",
-    destaque: true,
-  },
+/** os quatro "sem" e "com" que o dono quer ouvir logo de cara */
+export const PROMESSAS: { icon: LucideIcon; title: string }[] = [
+  { icon: Percent, title: "Sem comissão por pedido" },
+  { icon: BadgePercent, title: "Sem taxa de adesão" },
+  { icon: Headset, title: "Suporte incluso" },
+  { icon: ChefHat, title: "Atendimento rápido e humanizado" },
 ];
+
+// ─── como funciona ────────────────────────────────────────────────────
+
+export const PASSOS: { icon: LucideIcon; title: string; text: string }[] = [
+  { icon: Smartphone, title: "Cliente faz o pedido", text: "Pelo link, pelo cardápio no WhatsApp ou no totem." },
+  { icon: ClipboardList, title: "Pedido chega no restaurante", text: "Aparece no painel e apita, com som que se ouve no salão." },
+  { icon: Printer, title: "Cozinha prepara", text: "A comanda sai impressa sozinha, com itens e observações." },
+  { icon: Bike, title: "Entrega ou retirada", text: "O cliente acompanha e recebe. E pronto." },
+];
+
+// ─── tudo em um só lugar ──────────────────────────────────────────────
+
+export const RECURSOS: { icon: LucideIcon; title: string; text: string }[] = [
+  { icon: Bike, title: "Delivery", text: "Pedidos pelo link do seu cardápio, com entrega e retirada." },
+  { icon: HandPlatter, title: "Salão", text: "Mesas, comandas e garçons, no plano Completo." },
+  { icon: Printer, title: "Impressão de comandas", text: "Sai sozinha no balcão e na cozinha, separada por setor." },
+  { icon: Monitor, title: "Totem de autoatendimento", text: "O cliente pede e paga sozinho no balcão. Opcional." },
+  { icon: LayoutDashboard, title: "Painel administrativo", text: "Vendas, pedidos, cardápio e relatórios no seu celular." },
+];
+
+/** a frase manuscrita ao lado das telas */
+export const RECADO_RECURSOS = "Mais praticidade no seu dia a dia!";
+
+// ─── o delivery, em detalhe ───────────────────────────────────────────
 
 export const BENEFICIOS: { icon: LucideIcon; title: string; text: string }[] = [
   {
@@ -128,11 +123,6 @@ export const BENEFICIOS: { icon: LucideIcon; title: string; text: string }[] = [
     icon: Percent,
     title: "Sem comissão por pedido",
     text: "O cliente paga direto para você, por Pix, cartão ou dinheiro.",
-  },
-  {
-    icon: BellRing,
-    title: "Aviso na hora, com som",
-    text: "Pedido novo apita no celular, no tablet ou no computador.",
   },
   {
     icon: Printer,
@@ -149,9 +139,15 @@ export const BENEFICIOS: { icon: LucideIcon; title: string; text: string }[] = [
     title: "Um cardápio só",
     text: "Acabou um prato? Marque esgotado e ele some do delivery, do salão e do totem ao mesmo tempo.",
   },
+  {
+    icon: BookOpen,
+    title: "A gente monta com você",
+    text: "Você manda o cardápio como tiver, e nós cadastramos. Não precisa saber mexer em sistema.",
+  },
 ];
 
-/** o módulo de salão, que é o que o plano Completo acrescenta */
+// ─── o salão ──────────────────────────────────────────────────────────
+
 export const SALAO: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: HandPlatter,
@@ -185,23 +181,133 @@ export const SALAO: { icon: LucideIcon; title: string; text: string }[] = [
   },
 ];
 
-/** o totem entra como recurso do plano de cima, sem preço fechado */
+// ─── planos ───────────────────────────────────────────────────────────
+
+export type Plano = {
+  nome: string;
+  preco: string;
+  periodo: string;
+  /** uma linha dizendo para quem é */
+  resumo: string;
+  itens: string[];
+  /** o que aparece no botão */
+  botao: string;
+  /** o cartão em evidência; só um deve ter */
+  destaque?: boolean;
+  /** selo acima do nome, quando há o que dizer */
+  selo?: string;
+};
+
+export const PLANOS: Plano[] = [
+  {
+    nome: "Essencial",
+    preco: "R$ 100",
+    periodo: "/mês",
+    resumo: "Pedidos pelo WhatsApp",
+    itens: [
+      "Cardápio digital com link próprio",
+      "Pedidos no WhatsApp",
+      "Painel de pedidos com aviso sonoro",
+      "Impressão de comandas",
+      "Montagem do cardápio feita por nós",
+      "Suporte incluso",
+    ],
+    botao: "Quero o Essencial",
+  },
+  {
+    nome: "100% Delivery",
+    preco: "R$ 180",
+    periodo: "/mês",
+    resumo: "Gestão completa do delivery",
+    selo: "Mais escolhido",
+    itens: [
+      "Tudo do plano Essencial",
+      "Pagamento por Pix na própria tela",
+      "O dinheiro cai direto na sua conta do Mercado Pago",
+      "Cliente acompanha cada passo do pedido",
+      "Conversa com o cliente dentro do pedido",
+      "Sem comissão: nem um centavo da venda",
+    ],
+    botao: "Quero o 100% Delivery",
+    destaque: true,
+  },
+  {
+    nome: "Completo",
+    preco: "R$ 280",
+    periodo: "/mês",
+    resumo: "Delivery + salão",
+    itens: [
+      "Tudo do 100% Delivery",
+      "Gestão de mesas e garçons",
+      "Comanda na cozinha separada por setor",
+      "Conta da mesa, desconto, taxa e divisão",
+      "Caixa com abertura, sangria e relatório",
+      "Totem de autoatendimento (opcional)",
+    ],
+    botao: "Quero o Completo",
+  },
+];
+
+/** a frase manuscrita ao lado dos planos */
+export const RECADO_PLANOS = "Temos o plano certo para cada momento do seu negócio!";
+
+export const PLANOS_TEXTO = {
+  titulo: "Escolha o plano ideal para o seu restaurante.",
+  texto: "Todos os planos incluem suporte, sistema estável e atualizações constantes.",
+};
+
+// ─── totem ────────────────────────────────────────────────────────────
+
 export const TOTEM = {
+  etiqueta: "Solução complementar",
   title: "Totem de autoatendimento",
-  text: "O cliente monta o pedido sozinho num tablet no balcão, paga no cartão ou no Pix ali mesmo, e a senha dele aparece no telão. O cardápio é o mesmo: o que você esgota no painel some do totem na hora.",
+  text: "O cliente faz o pedido direto no totem, paga ali mesmo e recebe o número da mesa ou da retirada. Mais agilidade e menos fila no seu restaurante.",
   itens: [
     "Pagamento no cartão pela maquininha ou por Pix na tela",
     "Senha impressa e chamada no telão do salão",
-    "Funciona junto com o delivery e o salão, sem cadastro em dobro",
+    "O mesmo cardápio do delivery e do salão, sem cadastro em dobro",
   ],
+  botao: "Saiba mais sobre o totem",
   nota: "Disponível no plano Completo. Fale com a gente para montar junto com o seu balcão.",
 };
 
-export const PASSOS = [
+// ─── depoimentos ──────────────────────────────────────────────────────
+
+export type Depoimento = {
+  /** o restaurante que falou */
+  restaurante: string;
+  /** cidade e estado, como ele quiser aparecer */
+  praca: string;
+  /** o que ele disse, nas palavras dele */
+  texto: string;
+  /** quem falou, se quiser assinar */
+  quem?: string;
+};
+
+/**
+ * Depoimento é palavra de cliente, e só entra aqui o que um cliente
+ * realmente disse.
+ *
+ * A lista nasce vazia de propósito: sem depoimento de verdade, a seção
+ * inteira não aparece na página, do mesmo jeito que a pergunta sem
+ * resposta. Inventar elogio é o tipo de coisa que, descoberta uma vez,
+ * derruba a confiança no resto -- e quem vende sistema para o vizinho não
+ * tem como se dar a esse luxo.
+ *
+ * Para publicar: peça a frase ao dono, pergunte se pode usar o nome do
+ * restaurante, e cole aqui do jeito que ele falou.
+ */
+export const DEPOIMENTOS: Depoimento[] = [];
+
+// ─── como começar ─────────────────────────────────────────────────────
+
+export const COMECAR = [
   { title: "Deixe seu contato", text: "Leva 1 minuto." },
   { title: "A gente te chama no WhatsApp", text: "E monta o cardápio junto com você." },
   { title: "Seu link fica pronto", text: "É só divulgar e receber pedidos." },
 ];
+
+// ─── dúvidas ──────────────────────────────────────────────────────────
 
 /** pergunta sem resposta não aparece na página */
 export const DUVIDAS = [
@@ -233,9 +339,11 @@ export const DUVIDAS = [
   },
 ];
 
-/** os três "não" que o dono de restaurante quer ouvir, no alto da página */
-export const PROMESSAS = [
-  { icon: Percent, text: "Sem comissão por pedido" },
-  { icon: ClipboardList, text: "Sem taxa de adesão" },
-  { icon: BellRing, text: "Suporte incluso" },
-];
+// ─── chamada final ────────────────────────────────────────────────────
+
+export const FINAL = {
+  recado: "Vamos conversar?",
+  titulo: "Mais tempo para o que realmente importa: seus clientes.",
+  texto: "Fale agora com a nossa equipe e tire suas dúvidas sobre o sistema.",
+  botao: "Quero falar no WhatsApp",
+};

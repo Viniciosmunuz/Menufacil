@@ -4,19 +4,18 @@ import { redirect } from "next/navigation";
 
 import { RestaurantMiniCard } from "@/components/public/restaurant-mini-card";
 import { buttonClasses } from "@/components/ui/button";
-import { linkDoWhatsapp, PLANOS } from "@/components/venda/conteudo";
+import { linkDoWhatsapp, PLANOS, SECOES } from "@/components/venda/conteudo";
 import { LeadForm } from "@/components/venda/lead-form";
 import {
-  ANCORA,
-  Beneficios,
-  ComoComecar,
+  ChamadaFinal,
+  ComoFunciona,
+  Depoimentos,
   Duvidas,
   Parceiros,
-  Plano,
-  Salao,
+  Planos,
+  Recursos,
   Topo,
   Totem,
-  VejaFuncionando,
 } from "@/components/venda/sections";
 import { getCurrentUser } from "@/server/auth/dal";
 import { listRestaurants } from "@/server/public/restaurants";
@@ -41,7 +40,7 @@ export const metadata: Metadata = {
   // absoluto: o título da raiz já termina em "MenuFácil", e o padrão da
   // aplicação acrescentaria outro
   title: { absolute: "MenuFácil · Sistema de delivery e salão para restaurantes" },
-  description: `Cardápio digital com link próprio, pedido sem comissão, comanda na cozinha e garçom anotando pelo celular. A partir de ${essencial.preco}${essencial.periodo}.`,
+  description: `Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido. A partir de ${essencial.preco}${essencial.periodo}.`,
 };
 
 export default async function HomePage({ searchParams }: PageProps<"/">) {
@@ -58,12 +57,18 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const whatsapp = linkDoWhatsapp();
 
   return (
-    <div className="flex w-full flex-col gap-10 sm:gap-16">
+    <div className="flex w-full flex-col gap-11 sm:gap-16">
       <Topo />
-      <VejaFuncionando />
-      <Beneficios />
-      <Salao />
-      <Totem />
+      <ComoFunciona />
+      <Recursos />
+      <Planos />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Totem />
+        <ChamadaFinal whatsapp={whatsapp} />
+      </div>
+
+      <Depoimentos />
 
       <Parceiros total={parceiros.length}>
         {parceiros.map((r, i) => (
@@ -71,13 +76,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         ))}
       </Parceiros>
 
-      <ComoComecar />
-      <Plano />
       <Duvidas />
 
-      <section id={ANCORA} className="scroll-mt-20">
+      <section id={SECOES.comece} className="scroll-mt-20">
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-xl leading-tight font-extrabold sm:text-3xl">Comece agora</h2>
+          <h2 className="text-[1.45rem] leading-tight font-extrabold sm:text-[2rem]">Comece agora</h2>
           <p className="mt-1 text-sm text-muted sm:text-base">Te chamamos no WhatsApp em até 24h.</p>
         </div>
         <LeadForm

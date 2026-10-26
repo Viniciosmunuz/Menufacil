@@ -1,4 +1,4 @@
-import { ArrowRight, Check, ChevronDown } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronRight, MessageCircle, PlayCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -7,8 +7,24 @@ import { LogoIcon } from "@/components/brand/logo";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-import { BENEFICIOS, DEMO_URL, DUVIDAS, PASSOS, PLANOS, PROMESSAS, SALAO, TOTEM, type Plano } from "./conteudo";
-import { ComandaDoSalao, TelaDoCardapio, TelaDoPainel, TelaDoSalao, ViaImpressa } from "./mockups";
+import {
+  DEMO_URL,
+  DEPOIMENTOS,
+  DUVIDAS,
+  FINAL,
+  PASSOS,
+  PLANOS,
+  PLANOS_TEXTO,
+  PROMESSAS,
+  RECADO_PLANOS,
+  RECADO_RECURSOS,
+  RECURSOS,
+  SECOES,
+  TOPO,
+  TOTEM,
+  type Plano,
+} from "./conteudo";
+import { ComposicaoDeRecursos, ComposicaoDoTopo, TelaDoCardapio } from "./mockups";
 
 // A página do MenuFácil: é a home e é a página de venda, porque são a mesma
 // coisa. Quem chega aqui é dono de restaurante, quase sempre pelo Instagram
@@ -17,33 +33,28 @@ import { ComandaDoSalao, TelaDoCardapio, TelaDoPainel, TelaDoSalao, ViaImpressa 
 // Esta página já foi duas: uma vitrine de restaurantes, como um aplicativo
 // de delivery, e uma página de venda escondida noutro endereço. Era o
 // posicionamento errado -- o MenuFácil não vende comida, vende o sistema
-// que o restaurante usa para vender a dele. Os restaurantes continuam aqui,
-// mas como prova de quem já confia, não como catálogo.
+// que o restaurante usa para vender a dele.
 //
-// A ordem é a de uma conversa: o que é, vendo funcionar, o que ganha no
-// delivery, o que ganha no salão, quem já usa, como começa, quanto custa,
-// dúvidas e o contato.
-//
-// Os textos que mudam com o tempo (preço, plano, links) estão em conteudo.ts.
+// Os textos que mudam com o tempo (preço, plano, links, depoimentos) estão
+// em conteudo.ts.
 
-/** onde os botões da página vão parar */
-export const ANCORA = "comece";
-
-function BotaoDoForm({ children, className }: { children: ReactNode; className?: string }) {
+function BotaoDoForm({ children, className, variante = "primary" }: { children: ReactNode; className?: string; variante?: "primary" | "secondary" }) {
   return (
-    <a href={`#${ANCORA}`} className={cn(buttonClasses("primary", "lg"), className)}>
+    <a href={`#${SECOES.comece}`} className={cn(buttonClasses(variante, "lg"), className)}>
       {children}
     </a>
   );
 }
 
-function Titulo({ children, sub, etiqueta }: { children: ReactNode; sub?: string; etiqueta?: string }) {
+function Titulo({ children, sub, etiqueta, claro }: { children: ReactNode; sub?: string; etiqueta?: string; claro?: boolean }) {
   return (
-    <div className="mb-4 sm:mb-6">
+    <div className="mb-5 sm:mb-7">
       {etiqueta && (
-        <p className="mb-2 text-[0.68rem] font-extrabold tracking-[0.12em] text-brand uppercase sm:text-xs">{etiqueta}</p>
+        <p className="mb-2 text-[0.68rem] font-extrabold tracking-[0.14em] text-brand uppercase sm:text-xs">{etiqueta}</p>
       )}
-      <h2 className="text-xl leading-tight font-extrabold text-balance sm:text-3xl">{children}</h2>
+      <h2 className={cn("text-[1.45rem] leading-tight font-extrabold text-balance sm:text-[2rem]", claro && "text-ink")}>
+        {children}
+      </h2>
       {sub && <p className="mt-1.5 max-w-2xl text-sm text-pretty text-muted sm:text-base">{sub}</p>}
     </div>
   );
@@ -53,101 +64,142 @@ function Titulo({ children, sub, etiqueta }: { children: ReactNode; sub?: string
 
 export function Topo() {
   return (
-    // O banner continua escuro no tema claro: o texto fica por cima de uma
-    // foto escurecida, e ali só letra clara se lê. As cores do tema são
-    // trocadas só aqui dentro, então o resto da página segue claro.
-    <section className="relative isolate overflow-hidden rounded-card border border-line px-5 py-8 [--color-bg:#08080a] [--color-faint:#8f8f99] [--color-ink:#f4f4f6] [--color-line:#27272e] [--color-muted:#c4c4cc] text-ink sm:px-10 sm:py-14">
+    <section
+      id={SECOES.topo}
+      className="relative isolate -mx-4 overflow-hidden border-y border-line px-5 py-9 [--color-bg:#0b0a09] [--color-faint:#8f8f99] [--color-ink:#f4f4f6] [--color-line:#2a2724] [--color-line-strong:#3b3732] [--color-muted:#c4c4cc] [--color-surface:#17151300] [--color-surface-2:#252220] [--color-surface-3:#36322e] text-ink sm:-mx-6 sm:px-10 sm:py-14 lg:rounded-card lg:border"
+    >
       {/* a mesa posta, ao fundo: é de comida que a página fala */}
       <Image
         src="/demo/burger/capa.webp"
         alt=""
         fill
         priority
-        sizes="(min-width: 1024px) 64rem, 100vw"
-        className="-z-40 object-cover object-[72%_50%]"
+        sizes="100vw"
+        className="-z-40 object-cover object-[70%_50%]"
       />
-      {/* o calor laranja de trás do celular */}
       <div
         aria-hidden="true"
-        className="absolute top-1/2 right-0 -z-30 h-64 w-52 -translate-y-1/2 rounded-full bg-brand/40 blur-[70px] sm:h-80 sm:w-72"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#0b0a09_0%,#0b0a09_40%,rgb(11_10_9/0.88)_62%,rgb(11_10_9/0.55)_100%)]"
       />
-      {/* o celular do cliente, inclinado como se estivesse na mão */}
-      <div aria-hidden="true" className="pointer-events-none absolute top-1/2 -right-28 -z-20 -translate-y-1/2 sm:-right-10 lg:right-2">
-        <div className="w-[13.5rem] [transform:perspective(1000px)_rotateY(-20deg)_rotateZ(7deg)] lg:[transform:perspective(1100px)_rotateY(-18deg)_rotateZ(6deg)_scale(1.18)]">
-          <TelaDoCardapio />
+      <div
+        aria-hidden="true"
+        className="absolute top-1/2 right-0 -z-30 h-72 w-64 -translate-y-1/2 rounded-full bg-brand/35 blur-[80px]"
+      />
+
+      <div className="relative mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-center">
+        <div className="min-w-0 lg:max-w-[33rem] lg:flex-1">
+          <p className="text-[0.7rem] font-extrabold tracking-[0.16em] text-brand uppercase sm:text-xs">{TOPO.etiqueta}</p>
+          <h1 className="mt-3 text-[1.85rem] leading-[1.12] font-extrabold tracking-tight text-balance sm:text-[2.6rem] lg:text-[2.9rem]">
+            {TOPO.titulo} <span className="text-brand">{TOPO.tituloDestaque}</span>
+          </h1>
+          <p className="mt-3.5 max-w-lg text-[0.95rem] leading-snug text-pretty text-ink/85 sm:text-lg">{TOPO.texto}</p>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <BotaoDoForm className="w-full sm:w-auto">
+              <MessageCircle className="size-5" aria-hidden="true" />
+              {TOPO.botao}
+            </BotaoDoForm>
+            <a
+              href={`#${SECOES.recursos}`}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-control px-3 font-extrabold text-ink transition-colors hover:text-brand"
+            >
+              <PlayCircle className="size-6" strokeWidth={1.8} aria-hidden="true" />
+              {TOPO.secundario}
+            </a>
+          </div>
+
+          <ul className="mt-8 grid grid-cols-2 gap-x-5 gap-y-3.5 sm:max-w-lg lg:grid-cols-2">
+            {PROMESSAS.map(({ icon: Icon, title }) => (
+              <li key={title} className="flex items-start gap-2">
+                <Icon className="mt-0.5 size-[1.15rem] shrink-0 text-brand" strokeWidth={2} aria-hidden="true" />
+                <span className="text-[0.78rem] leading-tight font-bold text-ink/90 sm:text-[0.85rem]">{title}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-      {/* escurece da esquerda para a direita: o texto precisa se ler sempre */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-bg/35 bg-[linear-gradient(100deg,#08080a_0%,#08080a_44%,rgb(8_8_10/0.86)_63%,rgb(8_8_10/0.3)_100%)] sm:bg-bg/0"
-      />
 
-      <div className="relative max-w-xl lg:max-w-[34rem]">
-        <LogoIcon className="h-8 drop-shadow-[0_0_14px_rgb(249_104_11/0.5)] sm:h-10" />
-        <p className="mt-3.5 inline-block rounded-full border border-brand/70 px-3.5 py-1 text-[0.68rem] font-extrabold tracking-[0.09em] text-brand uppercase sm:text-xs">
-          O sistema do seu restaurante
-        </p>
-        <h1 className="mt-3 text-[1.72rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-4xl lg:text-[2.6rem]">
-          Delivery e salão no mesmo sistema, <span className="text-brand">sem pagar comissão</span>
-        </h1>
-        <p className="mt-3 max-w-md text-base leading-snug text-pretty text-ink/85 sm:text-lg">
-          Cardápio com link próprio, pedido chegando na hora, comanda saindo na cozinha e o garçom anotando pelo celular. A
-          gente monta tudo com você.
-        </p>
-        <BotaoDoForm className="mt-6 w-full sm:w-auto">
-          <ArrowRight className="size-5" aria-hidden="true" />
-          Quero conhecer
-        </BotaoDoForm>
-
-        <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
-          {PROMESSAS.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-1.5 text-[0.8rem] font-bold text-ink/90 sm:text-sm">
-              <Icon className="size-4 shrink-0 text-brand" aria-hidden="true" />
-              {text}
-            </li>
-          ))}
-        </ul>
+        <div className="relative min-w-0 lg:flex-1">
+          {/* o selo flutuante do mockup */}
+          <span className="absolute -top-2 right-2 z-10 flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[0.7rem] font-extrabold text-brand-ink shadow-[0_8px_20px_-6px_rgb(0_0_0/0.6)] sm:text-xs">
+            <span className="size-1.5 animate-pulse rounded-full bg-brand-ink" aria-hidden="true" />
+            {TOPO.selo}
+          </span>
+          <ComposicaoDoTopo />
+        </div>
       </div>
     </section>
   );
 }
 
-// ─── 2. veja como funciona ────────────────────────────────────────────
+// ─── 2. como funciona ─────────────────────────────────────────────────
 
-const VITRINE = [
-  { title: "Cliente pede pelo celular", text: "Ele abre seu link, monta o pedido e envia. Sem baixar aplicativo.", tela: <TelaDoCardapio /> },
-  { title: "Painel apita com pedido novo", text: "O pedido chega na hora, com um som que dá para ouvir no salão.", tela: <TelaDoPainel /> },
-  { title: "Pedido imprime sozinho no balcão", text: "Sai na impressora já com itens, observações, endereço e troco.", tela: <ViaImpressa /> },
-];
-
-export function VejaFuncionando() {
+export function ComoFunciona() {
   return (
     <section>
-      <Titulo etiqueta="Delivery e retirada" sub="Do celular do cliente até o papel na sua mão.">
-        Veja como funciona
-      </Titulo>
-      <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-        {VITRINE.map(({ title, text, tela }, i) => (
-          <li key={title} className="flex flex-col rounded-card border border-line bg-surface p-4 sm:p-5">
-            <div className="flex items-start gap-2.5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink">
-                {i + 1}
-              </span>
-              <div className="min-w-0">
-                <p className="leading-tight font-extrabold">{title}</p>
-                <p className="mt-0.5 text-sm leading-snug text-muted">{text}</p>
+      <Titulo sub="É simples. Em poucos passos seu restaurante já começa a vender mais.">Como funciona?</Titulo>
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))] lg:gap-0">
+        {PASSOS.map(({ icon: Icon, title, text }, i) => (
+          <li key={title} className="flex items-stretch">
+            <div className="flex min-w-0 flex-1 flex-col rounded-card border border-line bg-surface p-4 sm:p-5">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink">
+                  {i + 1}
+                </span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-brand/40 bg-brand-soft text-brand">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
               </div>
+              <p className="mt-3 leading-tight font-extrabold">{title}</p>
+              <p className="mt-1 text-sm leading-snug text-muted">{text}</p>
             </div>
-            <div className="mt-5 flex flex-1 items-end pb-1">{tela}</div>
+            {/* a seta entre os passos só existe onde eles ficam lado a lado */}
+            {i < PASSOS.length - 1 && (
+              <span className="hidden shrink-0 items-center px-2 text-faint lg:flex" aria-hidden="true">
+                <ChevronRight className="size-5" />
+              </span>
+            )}
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+// ─── 3. tudo em um só lugar ───────────────────────────────────────────
+
+export function Recursos() {
+  return (
+    <section id={SECOES.recursos} className="scroll-mt-20">
+      <Titulo sub="Delivery, salão e muito mais. O MenuFácil é completo e fácil de usar.">
+        Tudo o que você precisa em um só lugar
+      </Titulo>
+
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-10">
+        <ul className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-3.5">
+          {RECURSOS.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex flex-col rounded-card border border-line bg-surface p-3.5 sm:p-4">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-brand/40 bg-brand-soft text-brand">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <p className="mt-2.5 text-sm leading-tight font-extrabold sm:text-[0.95rem]">{title}</p>
+              <p className="mt-1 text-xs leading-snug text-muted">{text}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div className="relative min-w-0 lg:w-[23rem] lg:shrink-0">
+          <p className="mb-1 text-center font-script text-xl leading-tight text-brand sm:text-2xl lg:text-right">
+            {RECADO_RECURSOS}
+          </p>
+          <ComposicaoDeRecursos />
+        </div>
+      </div>
+
       <Link
         href={DEMO_URL}
         target="_blank"
         rel="noopener"
-        className={cn(buttonClasses("secondary", "lg"), "mt-4 w-full sm:w-auto")}
+        className={cn(buttonClasses("secondary", "lg"), "mt-7 w-full sm:w-auto")}
       >
         Fazer um pedido de teste
         <ArrowRight className="size-4" aria-hidden="true" />
@@ -156,101 +208,125 @@ export function VejaFuncionando() {
   );
 }
 
-// ─── 3. o que você ganha ──────────────────────────────────────────────
+// ─── 4. planos ────────────────────────────────────────────────────────
 
-export function Beneficios() {
+function CartaoDoPlano({ plano }: { plano: Plano }) {
   return (
-    <section>
-      <Titulo sub="O que muda no dia a dia do seu restaurante.">O que você ganha</Titulo>
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
-        {BENEFICIOS.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="flex flex-col rounded-card border border-line bg-surface p-3.5 sm:p-5">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full border border-brand/50 bg-brand-soft text-brand sm:size-11">
-              <Icon className="size-4.5 sm:size-5" aria-hidden="true" />
-            </span>
-            <p className="mt-2.5 text-sm leading-tight font-extrabold sm:text-base">{title}</p>
-            <p className="mt-1 text-xs leading-snug text-muted sm:text-sm">{text}</p>
+    <div
+      className={cn(
+        "relative flex flex-col rounded-card p-5",
+        plano.destaque ? "border-2 border-brand bg-bg shadow-[0_0_40px_-10px_rgb(249_104_11/0.55)]" : "border border-line bg-bg",
+      )}
+    >
+      {plano.selo ? (
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-0.5 text-[0.62rem] font-extrabold tracking-wide text-brand-ink uppercase">
+          {plano.selo}
+        </span>
+      ) : null}
+
+      <p className="text-lg font-extrabold">{plano.nome}</p>
+      <p className="mt-0.5 text-sm text-muted">{plano.resumo}</p>
+      <p className="mt-4 flex items-end gap-1">
+        <span className="text-[2.1rem] leading-none font-extrabold">{plano.preco}</span>
+        <span className="pb-1 text-sm font-bold text-muted">{plano.periodo}</span>
+      </p>
+
+      <ul className="mt-5 flex flex-col gap-2.5">
+        {plano.itens.map((item) => (
+          <li key={item} className="flex items-start gap-2.5 text-[0.82rem] leading-snug">
+            <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={3.2} aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* o botão fica colado embaixo: com listas de tamanhos diferentes, os
+          cartões terminam na mesma linha */}
+      <BotaoDoForm className="mt-6 w-full">{plano.botao}</BotaoDoForm>
+    </div>
+  );
+}
+
+export function Planos() {
+  return (
+    <section
+      id={SECOES.planos}
+      className="scroll-mt-20 rounded-card border border-line px-5 py-8 [--color-bg:#141211] [--color-faint:#8a857f] [--color-ink:#f4f2ef] [--color-line:#2f2b28] [--color-muted:#bdb8b1] bg-bg text-ink sm:px-9 sm:py-11"
+    >
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+        <div className="lg:w-[20rem] lg:shrink-0">
+          <p className="text-[0.7rem] font-extrabold tracking-[0.16em] text-brand uppercase sm:text-xs">Planos</p>
+          <h2 className="mt-2.5 text-[1.5rem] leading-tight font-extrabold text-balance sm:text-[2rem]">
+            {PLANOS_TEXTO.titulo}
+          </h2>
+          <p className="mt-2.5 text-sm text-pretty text-muted sm:text-base">{PLANOS_TEXTO.texto}</p>
+          <p className="mt-7 hidden font-script text-2xl leading-tight text-brand lg:block">{RECADO_PLANOS}</p>
+          <ArrowRight className="mt-2 hidden size-10 rotate-12 text-brand lg:block" strokeWidth={1.4} aria-hidden="true" />
+        </div>
+
+        <div className="grid min-w-0 flex-1 grid-cols-1 items-start gap-4 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+          {PLANOS.map((plano) => (
+            <CartaoDoPlano key={plano.nome} plano={plano} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── 5. o trio de baixo: totem, quem já usa, conversa ─────────────────
+
+export function Totem() {
+  return (
+    <section id={SECOES.totem} className="flex scroll-mt-20 flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:flex-row sm:items-center sm:gap-6">
+      <div aria-hidden="true" className="mx-auto w-32 shrink-0 sm:mx-0 sm:w-36">
+        {/* o totem do balcão: o cardápio de pé, num pedestal */}
+        <div className="rounded-[1.1rem] border-4 border-line-strong bg-surface-3 p-1.5">
+          <div className="overflow-hidden rounded-[0.7rem]">
+            <TelaDoCardapio />
+          </div>
+        </div>
+        <div className="mx-auto h-5 w-5 bg-line-strong" />
+        <div className="mx-auto h-1.5 w-20 rounded-full bg-line-strong" />
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-[0.65rem] font-extrabold tracking-[0.14em] text-brand uppercase">{TOTEM.etiqueta}</p>
+        <h2 className="mt-1.5 text-lg leading-tight font-extrabold sm:text-xl">{TOTEM.title}</h2>
+        <p className="mt-1.5 text-sm leading-snug text-pretty text-muted">{TOTEM.text}</p>
+        <BotaoDoForm variante="secondary" className="mt-4 w-full sm:w-auto">
+          {TOTEM.botao}
+        </BotaoDoForm>
+      </div>
+    </section>
+  );
+}
+
+/** o depoimento só aparece quando existe um de verdade (ver conteudo.ts) */
+export function Depoimentos() {
+  if (!DEPOIMENTOS.length) return null;
+  return (
+    <section id={SECOES.depoimentos} className="scroll-mt-20 rounded-card border border-line bg-surface p-5 sm:p-6">
+      <h2 className="text-lg leading-tight font-extrabold sm:text-xl">Quem já usa</h2>
+      <p className="mt-0.5 text-sm text-muted">Restaurantes que confiam no MenuFácil.</p>
+      <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {DEPOIMENTOS.map((d) => (
+          <li key={d.restaurante} className="flex flex-col rounded-card border border-line bg-bg p-4">
+            <div className="flex items-center gap-2.5">
+              <LogoIcon className="h-8 shrink-0" />
+              <span className="min-w-0">
+                <span className="block truncate font-extrabold">{d.restaurante}</span>
+                <span className="block truncate text-xs text-faint">{d.praca}</span>
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-snug text-pretty text-muted">“{d.texto}”</p>
+            {d.quem && <p className="mt-2 text-xs font-bold text-faint">— {d.quem}</p>}
           </li>
         ))}
       </ul>
     </section>
   );
 }
-
-// ─── 4. o salão ───────────────────────────────────────────────────────
-//
-// A parte que mais separa o MenuFácil de um cardápio no WhatsApp, e por
-// isso ganha fundo escuro: é o ponto em que a página muda de assunto.
-
-export function Salao() {
-  return (
-    <section className="rounded-card border border-line px-5 py-8 [--color-bg:#08080a] [--color-faint:#8f8f99] [--color-ink:#f4f4f6] [--color-line:#27272e] [--color-muted:#c4c4cc] [--color-surface:#141418] bg-bg text-ink sm:px-9 sm:py-11">
-      <Titulo etiqueta="Salão" sub="Mesa, comanda, garçom e caixa, no mesmo lugar e com o mesmo cardápio do delivery.">
-        O seu salão sem papel
-      </Titulo>
-
-      <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:gap-10">
-        <ul className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {SALAO.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="flex flex-col rounded-card border border-line bg-surface p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-brand/50 bg-brand/15 text-brand">
-                <Icon className="size-5" aria-hidden="true" />
-              </span>
-              <p className="mt-2.5 leading-tight font-extrabold">{title}</p>
-              <p className="mt-1 text-sm leading-snug text-muted">{text}</p>
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex shrink-0 items-start justify-center gap-5 lg:w-[22rem]">
-          <div className="w-[9.5rem] sm:w-[11rem]">
-            <TelaDoSalao />
-          </div>
-          <div className="w-[8.5rem] pt-6 sm:w-[10rem]">
-            <ComandaDoSalao />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 5. totem ─────────────────────────────────────────────────────────
-
-export function Totem() {
-  return (
-    <section className="rounded-card border border-line bg-surface p-5 sm:p-8">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-10">
-        <div className="min-w-0 flex-1">
-          <Titulo etiqueta="Também disponível">{TOTEM.title}</Titulo>
-          <p className="text-sm text-pretty text-muted sm:text-base">{TOTEM.text}</p>
-          <ul className="mt-5 flex flex-col gap-2.5">
-            {TOTEM.itens.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm sm:text-base">
-                <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 rounded-card border border-brand/40 bg-brand-soft px-4 py-3 text-sm font-bold text-brand">
-            {TOTEM.nota}
-          </p>
-        </div>
-        <div aria-hidden="true" className="flex shrink-0 justify-center lg:w-72">
-          {/* o tablet do balcão: a mesma tela do cardápio, de pé */}
-          <div className="w-[13rem] rounded-[1.5rem] border-4 border-line-strong bg-surface-3 p-2 shadow-[0_20px_45px_-15px_rgb(0_0_0/0.45)] sm:w-60">
-            <div className="overflow-hidden rounded-[1rem]">
-              <TelaDoCardapio />
-            </div>
-            <span className="mx-auto mt-2 block h-1 w-14 rounded-full bg-line-strong" />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── 6. quem já usa ───────────────────────────────────────────────────
 
 export function Parceiros({ children, total }: { children: ReactNode; total: number }) {
   if (!total) return null;
@@ -267,92 +343,13 @@ export function Parceiros({ children, total }: { children: ReactNode; total: num
   );
 }
 
-// ─── 7. como começar ──────────────────────────────────────────────────
-
-export function ComoComecar() {
-  return (
-    <section className="rounded-card border border-line bg-surface p-5 sm:p-8">
-      <Titulo sub="Sem taxa de adesão e sem burocracia.">Como começar</Titulo>
-      <ol className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-        {PASSOS.map((p, i) => (
-          <li key={p.title} className="flex flex-1 items-start gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand text-sm font-extrabold text-brand-ink">
-              {i + 1}
-            </span>
-            <span className="min-w-0">
-              <span className="block leading-tight font-extrabold">{p.title}</span>
-              <span className="mt-0.5 block text-sm leading-snug text-muted">{p.text}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-// ─── 8. planos ────────────────────────────────────────────────────────
-
-function CartaoDoPlano({ plano }: { plano: Plano }) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col rounded-card p-5 sm:p-6",
-        plano.destaque
-          ? "border-2 border-brand bg-[linear-gradient(170deg,rgb(249_104_11/0.14),transparent_55%)] shadow-[0_0_40px_-12px_rgb(249_104_11/0.45)]"
-          : "border border-line bg-surface",
-      )}
-    >
-      {plano.selo ? (
-        <p className="mb-2 inline-block self-start rounded-full bg-brand px-2.5 py-0.5 text-[0.65rem] font-extrabold tracking-wide text-brand-ink uppercase">
-          {plano.selo}
-        </p>
-      ) : null}
-      <p className="text-lg font-extrabold sm:text-xl">{plano.nome}</p>
-      <p className="mt-1 flex items-end gap-1">
-        <span className={cn("text-4xl leading-none font-extrabold", plano.destaque ? "text-brand" : "text-ink")}>
-          {plano.preco}
-        </span>
-        <span className="pb-1 font-bold text-muted">{plano.periodo}</span>
-      </p>
-      <p className="mt-2 text-sm text-muted">{plano.resumo}</p>
-      {plano.herda && <p className="mt-5 text-sm font-extrabold text-brand">{plano.herda}</p>}
-      <ul className={cn("flex flex-col gap-2.5", plano.herda ? "mt-2.5" : "mt-5")}>
-        {plano.itens.map((item) => (
-          <li key={item} className="flex items-start gap-2.5 text-sm">
-            <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={3} aria-hidden="true" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-      {/* o botão fica colado embaixo: com listas de tamanhos diferentes, os
-          cartões terminam na mesma linha */}
-      <BotaoDoForm className="mt-6 w-full">{plano.botao}</BotaoDoForm>
-    </div>
-  );
-}
-
-export function Plano() {
-  return (
-    <section>
-      <Titulo etiqueta="Planos" sub="Sem pegadinha e sem comissão: você sabe quanto vai pagar. Pode trocar de plano quando quiser.">
-        Quanto custa
-      </Titulo>
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-        {PLANOS.map((plano) => (
-          <CartaoDoPlano key={plano.nome} plano={plano} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ─── 9. perguntas frequentes ──────────────────────────────────────────
+// ─── 6. dúvidas ───────────────────────────────────────────────────────
 
 export function Duvidas() {
   const perguntas = DUVIDAS.filter((d) => d.a.trim());
   if (!perguntas.length) return null;
   return (
-    <section>
+    <section id={SECOES.duvidas} className="scroll-mt-20">
       <Titulo>Perguntas frequentes</Titulo>
       <div className="flex flex-col gap-2">
         {perguntas.map(({ q, a }) => (
@@ -365,6 +362,35 @@ export function Duvidas() {
           </details>
         ))}
       </div>
+    </section>
+  );
+}
+
+// ─── 7. a conversa final ──────────────────────────────────────────────
+
+export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
+  return (
+    <section className="flex flex-col gap-5 rounded-card bg-brand px-5 py-7 text-brand-ink sm:flex-row sm:items-center sm:justify-between sm:px-9 sm:py-9">
+      <div className="min-w-0">
+        <p className="font-script text-2xl leading-none sm:text-3xl">{FINAL.recado}</p>
+        <h2 className="mt-2 text-[1.3rem] leading-tight font-extrabold text-balance sm:text-[1.7rem]">{FINAL.titulo}</h2>
+        <p className="mt-1.5 text-sm text-pretty opacity-80 sm:text-base">{FINAL.texto}</p>
+      </div>
+      {whatsapp ? (
+        <a
+          href={whatsapp}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-h-13 shrink-0 items-center justify-center gap-2 rounded-control bg-brand-ink px-6 font-extrabold text-bg transition-opacity hover:opacity-90"
+        >
+          <MessageCircle className="size-5" aria-hidden="true" />
+          {FINAL.botao}
+        </a>
+      ) : (
+        <BotaoDoForm variante="secondary" className="shrink-0">
+          {FINAL.botao}
+        </BotaoDoForm>
+      )}
     </section>
   );
 }
