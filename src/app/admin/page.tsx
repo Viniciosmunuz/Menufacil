@@ -6,10 +6,9 @@ import { SectionTitle } from "@/components/panel/page-header";
 import { StatCard } from "@/components/panel/stat-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { TIME_ZONE, formatCents, formatMinutos, formatWhen, startOfDaysAgo } from "@/lib/format";
+import { formatCents, formatMinutos, formatWhen, startOfDaysAgo } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
@@ -19,17 +18,6 @@ import { SuporteCard } from "./suporte-card";
 import { TemposPorRestaurante } from "./tempos-restaurantes";
 
 export const metadata: Metadata = { title: "Visão geral" };
-
-/** "segunda-feira, 26 de outubro de 2026", no fuso da casa */
-function hojePorExtenso() {
-  return new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: TIME_ZONE,
-  });
-}
 
 /** quantos dias parado já contam como "sumiu" */
 const DIAS_PARADO = 7;
@@ -127,24 +115,13 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Cabeçalho baixo de propósito: o primeiro número precisa aparecer
-          sem rolar, como no painel do restaurante. */}
-      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-muted">MenuFácil · plataforma</p>
-          <h1 className="text-2xl leading-tight font-extrabold sm:text-3xl">Visão geral</h1>
-          <p className="mt-0.5 text-sm text-muted">Como a plataforma está hoje.</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-bold text-muted first-letter:uppercase">
-            {hojePorExtenso()}
-          </span>
-          <Link href="/admin/restaurantes/novo" className={buttonClasses("primary")}>
-            Novo restaurante
-          </Link>
-        </div>
-      </header>
+      {/* O cabeçalho saiu inteiro.
 
+          Trazia "MenuFácil · plataforma", "Visão geral", "Como a
+          plataforma está hoje" e a data por extenso -- quatro linhas que
+          ninguém lê duas vezes, empurrando o primeiro número para baixo. O
+          botão de novo restaurante foi junto: ele já mora na aba
+          Restaurantes, que é onde se procura por ele. */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Restaurantes ativos"
