@@ -18,7 +18,7 @@ import { ComoEstaODia, DesempenhoCard } from "./desempenho";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
-import { OperacaoBarra } from "./open-now-card";
+import { OperacaoCard, SeloDaOperacao } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
 export const metadata: Metadata = { title: "Início" };
@@ -96,8 +96,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           número para baixo. O que fica aqui agora é o que a mão procura ao
           abrir o painel: aberto ou fechado, e a entrega. */}
       <header>
-        <OperacaoBarra
-          restaurantId={restaurant.id}
+        <SeloDaOperacao
           open={isOpenNow(details.openMode, details.openingHours)}
           openMode={details.openMode}
           today={todayLabel(details.openingHours)}
@@ -119,6 +118,18 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         concluidos={completedToday}
         semana={semana}
         tempos={tempos}
+      />
+
+      {/* O interruptor do negócio, logo abaixo dos números: enquanto ele
+          estiver errado, nenhum outro número desta tela acontece. Apertou
+          aqui, o selo do canto de cima vira de cor. */}
+      <OperacaoCard
+        restaurantId={restaurant.id}
+        open={isOpenNow(details.openMode, details.openingHours)}
+        openMode={details.openMode}
+        today={todayLabel(details.openingHours)}
+        entregaAtiva={details.deliveryEnabled}
+        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
