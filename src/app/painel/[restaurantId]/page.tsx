@@ -166,22 +166,21 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
-      {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
-          obrigava a ir até o cardápio e procurar quais eram, para uma coisa
-          de um segundo. A lista inteira abre na seta, e religar acontece
-          aqui mesmo. */}
-      <EsgotadosCard
-        esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
-        cardapioHref={`${base}/cardapio`}
-        toggleAction={toggleProduct}
-        restaurantId={restaurant.id}
-      />
-
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
           dele, o que está na mão agora e o fechamento do dia. */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
         <div className="flex flex-col gap-4">
+          {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
+              obrigava a ir até o cardápio e procurar quais eram, para uma
+              coisa de um segundo. A lista inteira abre na seta, e religar
+              acontece aqui mesmo. Só existe quando falta alguma coisa. */}
+          <EsgotadosCard
+            esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
+            cardapioHref={`${base}/cardapio`}
+            toggleAction={toggleProduct}
+            restaurantId={restaurant.id}
+          />
           <MovimentacaoCard base={base} emAndamento={emAndamento} concluidos={completedToday} cancelados={canceladosHoje} />
           <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
           <MaisPedidosCard
