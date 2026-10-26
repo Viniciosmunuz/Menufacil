@@ -132,23 +132,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           movimento de hoje, e some sozinho quando o pagamento for registrado */}
       <MensalidadeCard situacao={mensalidade} restaurante={restaurant.name} />
 
-      {/* A operação abre a tela.
-
-          Aqui ficavam o link do cardápio e a fila de espera, e o
-          interruptor do negócio -- aberto ou fechado, entregando ou não --
-          vinha só depois dos números. É ele que a mão procura ao abrir o
-          painel, e enquanto estiver errado nenhum número desta tela
-          acontece. O link desceu para as gavetas; a fila saiu, porque
-          "em andamento" já a mostra na movimentação do dia. */}
-      <OpenNowCard
-        restaurantId={restaurant.id}
-        open={isOpenNow(details.openMode, details.openingHours)}
-        openMode={details.openMode}
-        today={todayLabel(details.openingHours)}
-        entregaAtiva={details.deliveryEnabled}
-        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
-      />
-
       <Indicadores
         href={`${base}/pedidos?ver=todos`}
         pedidos={dia.hoje}
@@ -158,6 +141,25 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         concluidos={completedToday}
         semana={semana}
         tempos={tempos}
+      />
+
+      {/* A operação, logo abaixo dos números.
+
+          Aqui em cima ficavam o link do cardápio e a fila de espera. O
+          link desceu para as gavetas -- era um bloco grande para uma
+          coisa que o dono já fez na primeira semana --, e a fila saiu,
+          porque "em andamento" já a mostra na movimentação do dia.
+
+          Na largura inteira os quatro botões cabem numa linha com o nome
+          por extenso; espremidos, "Seguir horário" e "Pausar a entrega"
+          eram cortados. */}
+      <OpenNowCard
+        restaurantId={restaurant.id}
+        open={isOpenNow(details.openMode, details.openingHours)}
+        openMode={details.openMode}
+        today={todayLabel(details.openingHours)}
+        entregaAtiva={details.deliveryEnabled}
+        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
