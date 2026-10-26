@@ -3,11 +3,10 @@ import type { Metadata } from "next";
 import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { MensalidadeCard } from "@/components/panel/mensalidade-card";
 import { WeekChart } from "@/components/panel/week-chart";
-import { Badge } from "@/components/ui/badge";
 import { competenciaDe, competenciaLabel, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
-import { TIME_ZONE, startOfDaysAgo, startOfToday } from "@/lib/format";
-import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
+import { startOfDaysAgo, startOfToday } from "@/lib/format";
+import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
@@ -19,28 +18,10 @@ import { ComoEstaODia, DesempenhoCard } from "./desempenho";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
-import { OpenNowCard } from "./open-now-card";
+import { OperacaoBarra } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
 export const metadata: Metadata = { title: "Início" };
-
-/** "Bom dia" de verdade: a hora é a de Manaus, não a do servidor em UTC */
-function saudacao() {
-  const hora = Number(new Date().toLocaleString("pt-BR", { hour: "2-digit", hourCycle: "h23", timeZone: TIME_ZONE }));
-  if (hora < 12) return "Bom dia";
-  return hora < 18 ? "Boa tarde" : "Boa noite";
-}
-
-/** "domingo, 26 de outubro de 2026", no fuso da casa */
-function hojePorExtenso() {
-  return new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: TIME_ZONE,
-  });
-}
 
 export default async function RestaurantDashboardPage({ params }: PageProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
@@ -108,22 +89,21 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Cabeçalho baixo de propósito: o primeiro número precisa aparecer
-          sem rolar. Antes a saudação ocupava uma faixa inteira sozinha. */}
-      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-muted">
-            {saudacao()}, {restaurant.name}
-          </p>
-          <h1 className="text-2xl leading-tight font-extrabold sm:text-3xl">Visão geral</h1>
-          <p className="mt-0.5 text-sm text-muted">Acompanhe o desempenho do seu restaurante.</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Badge tone={restaurantStatusTone[restaurant.status]}>{restaurantStatusLabel[restaurant.status]}</Badge>
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-bold text-muted first-letter:uppercase">
-            {hojePorExtenso()}
-          </span>
-        </div>
+      {/* No lugar da saudação e da data, o interruptor.
+
+          Esta faixa trazia "Boa tarde", "Visão geral" e o dia por extenso
+          -- três linhas que ninguém lê duas vezes, empurrando o primeiro
+          número para baixo. O que fica aqui agora é o que a mão procura ao
+          abrir o painel: aberto ou fechado, e a entrega. */}
+      <header>
+        <OperacaoBarra
+          restaurantId={restaurant.id}
+          open={isOpenNow(details.openMode, details.openingHours)}
+          openMode={details.openMode}
+          today={todayLabel(details.openingHours)}
+          entregaAtiva={details.deliveryEnabled}
+          soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
+        />
       </header>
 
       {/* o atraso vem antes de tudo: é o único aviso aqui que não é sobre o
@@ -139,25 +119,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         concluidos={completedToday}
         semana={semana}
         tempos={tempos}
-      />
-
-      {/* A operação, logo abaixo dos números.
-
-          Aqui em cima ficavam o link do cardápio e a fila de espera. O
-          link desceu para as gavetas -- era um bloco grande para uma
-          coisa que o dono já fez na primeira semana --, e a fila saiu,
-          porque "em andamento" já a mostra na movimentação do dia.
-
-          Na largura inteira os quatro botões cabem numa linha com o nome
-          por extenso; espremidos, "Seguir horário" e "Pausar a entrega"
-          eram cortados. */}
-      <OpenNowCard
-        restaurantId={restaurant.id}
-        open={isOpenNow(details.openMode, details.openingHours)}
-        openMode={details.openMode}
-        today={todayLabel(details.openingHours)}
-        entregaAtiva={details.deliveryEnabled}
-        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
       />
 
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado

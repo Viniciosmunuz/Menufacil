@@ -1,7 +1,6 @@
-import { Bike, Clock, DoorClosed, DoorOpen, Store } from "lucide-react";
+import { Bike, Clock, DoorClosed, DoorOpen } from "lucide-react";
 import Link from "next/link";
 
-import { Card } from "@/components/ui/card";
 import type { OpenMode } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/format";
@@ -15,24 +14,26 @@ const modes: { value: OpenMode; label: string; icone: typeof Clock }[] = [
 ];
 
 const botao =
-  "flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border px-3 text-sm leading-tight font-bold xl:w-auto xl:px-4";
-const apagado = "border-line bg-surface-2 text-muted hover:text-ink";
+  "flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border px-3 text-[0.8rem] leading-tight font-bold sm:w-auto sm:text-sm";
+const apagado = "border-line bg-surface text-muted hover:text-ink";
 
-// Aberto ou fechado agora, com a troca em um toque (dia de chuva, acabou o
-// gás, fechou mais cedo...).
+// Abrir, fechar e pausar a entrega: a barra do alto do painel.
 //
-// É o interruptor do negócio: enquanto ele estiver errado, nenhum outro
-// número desta tela acontece. Por isso fica na largura inteira, logo abaixo
-// dos indicadores -- mas numa faixa baixa, e não num cartão alto: ele é
-// consultado de relance e tocado de vez em quando, não lido.
+// Era um cartão com título, subtítulo e ícone, ocupando uma faixa inteira
+// da tela. Mas isto não é informação para ler -- é interruptor. Quem abre o
+// painel às 19h e vê "Fechado" quer tocar, não ler sobre.
 //
-// Duas linhas até a tela bem larga, e uma só depois dela. Em três linhas a
-// faixa virava um cartão e empurrava o gráfico para fora da primeira vista,
-// que é justamente o que esta tela não pode fazer.
+// Então virou barra, no lugar onde antes ficavam a saudação e a data, que
+// eram as duas coisas desta tela que ninguém precisava.
 //
-// Tudo aqui é botão de verdade, com a ação do servidor por trás. Nada nesta
-// faixa é enfeite.
-export function OpenNowCard({
+// O estado vem escrito dentro da cor, e não só ao lado dela: verde aberto,
+// vermelho fechado, âmbar entrega pausada. São os três estados em que o
+// restaurante pode estar, e o terceiro convive com os outros dois -- dá
+// para estar aberto e sem entregador. Por isso são dois selos, e não um
+// com três cores.
+//
+// Tudo aqui continua sendo botão de verdade, com a ação do servidor atrás.
+export function OperacaoBarra({
   restaurantId,
   open,
   openMode,
@@ -52,46 +53,36 @@ export function OpenNowCard({
   const pausada = soRetiradaAte !== null;
 
   return (
-    <Card className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-5">
-      <div className="flex min-w-0 items-center gap-3 xl:flex-1">
+    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+      <span
+        className={cn(
+          "flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-extrabold text-white",
+          open ? "bg-success" : "bg-danger",
+        )}
+        title={openMode === "AUTO" ? today : openMode === "OPEN" ? "Aberto manualmente" : "Fechado manualmente"}
+      >
+        <span className="size-1.5 rounded-full bg-white/80" aria-hidden="true" />
+        {open ? "Aberto" : "Fechado"}
+      </span>
+
+      {pausada && (
         <span
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-full",
-            open ? "bg-success/15 text-success" : "bg-surface-3 text-faint",
-          )}
+          className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-warning px-3.5 text-sm font-extrabold text-white"
+          title={`O cliente só consegue pedir para retirar. Volta sozinho às ${formatTime(soRetiradaAte)}.`}
         >
-          <Store className="size-5" aria-hidden="true" />
+          <Bike className="size-4" aria-hidden="true" />
+          Entrega pausada
         </span>
+      )}
 
-        <div className="min-w-0 flex-1">
-          <p className="leading-tight font-extrabold">Operação do restaurante</p>
-          <p className="truncate text-sm text-muted">
-            {openMode === "AUTO" ? today : openMode === "OPEN" ? "Aberto manualmente" : "Fechado manualmente"} ·{" "}
-            <Link href={`/painel/${restaurantId}/restaurante#horarios`} className="font-bold text-ink underline-offset-4 hover:underline">
-              horários
-            </Link>
-          </p>
-        </div>
-
-        <span
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-extrabold",
-            open ? "bg-success/15 text-success" : "bg-surface-3 text-muted",
-          )}
-        >
-          <span className={cn("size-1.5 rounded-full", open ? "bg-success" : "bg-faint")} aria-hidden="true" />
-          {open ? "Aberto" : "Fechado"}
-        </span>
-      </div>
-
-      {/* os quatro na mesma grade: soltos, as larguras diferentes quebravam
-          em linhas tortas, e são quatro faces da mesma decisão de agora */}
+      {/* No celular os botões descem para a linha inteira, em duas colunas.
+          Dividindo a linha com os selos, "Seguir horário" e "Voltar a
+          entregar" não cabiam e eram cortados no meio -- e botão cortado
+          não se lê. */}
       <div
-        // dois a dois no celular, os quatro em linha a partir do tablet:
-        // a faixa tem a largura da tela, e aí o nome do botão cabe inteiro
-        className={cn("grid gap-2 xl:flex xl:shrink-0", entregaAtiva ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}
+        className={cn("grid w-full gap-2 sm:flex sm:w-auto sm:flex-none", entregaAtiva ? "grid-cols-2" : "grid-cols-3")}
         role="group"
-        aria-label="Operação"
+        aria-label="Operação do restaurante"
       >
         {modes.map(({ value, label, icone: Icone }) => (
           <form key={value} action={setOpenMode}>
@@ -120,17 +111,24 @@ export function OpenNowCard({
               type="submit"
               title={
                 pausada
-                  ? `O cliente só consegue pedir para retirar. Volta sozinho às ${formatTime(soRetiradaAte)}.`
+                  ? `Volta a entregar agora, sem esperar as ${formatTime(soRetiradaAte)}.`
                   : "Pause a entrega quando faltar entregador ou a cozinha encher."
               }
               className={cn(botao, pausada ? "border-warning bg-warning/12 text-warning" : apagado)}
             >
               <Bike className="size-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">{pausada ? `Só retirada até ${formatTime(soRetiradaAte)}` : "Pausar a entrega"}</span>
+              <span className="truncate">{pausada ? "Voltar a entregar" : "Pausar a entrega"}</span>
             </button>
           </form>
         )}
       </div>
-    </Card>
+
+      <Link
+        href={`/painel/${restaurantId}/restaurante#horarios`}
+        className="shrink-0 px-1 text-sm font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+      >
+        horários
+      </Link>
+    </div>
   );
 }
