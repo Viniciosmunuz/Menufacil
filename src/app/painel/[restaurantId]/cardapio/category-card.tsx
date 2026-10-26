@@ -299,7 +299,10 @@ export function CategoryCard({
       id={`categoria-${category.id}`}
       data-escolhida={escolhida ? "sim" : "nao"}
       className={cn(
-        "scroll-mt-24 overflow-hidden rounded-card border border-line bg-surface",
+        // sem recorte: o menu dos três pontinhos nasce dentro do cartão e,
+        // com a gaveta fechada, o cartão tem a altura do cabeçalho -- um
+        // overflow-hidden aqui cortava o menu rente à borda de baixo
+        "scroll-mt-24 rounded-card border border-line bg-surface",
         // no computador só a categoria escolhida na coluna da esquerda fica
         some && "hidden",
         "lg:data-[escolhida=nao]:hidden",
