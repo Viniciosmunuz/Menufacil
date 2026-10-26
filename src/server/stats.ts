@@ -295,6 +295,15 @@ export type TemposDoAtendimento = Etapas & {
   normal: Etapas | null;
   /** quantos pedidos concluídos entraram na conta de agora */
   base: number;
+  /**
+   * A mediana de cada um dos últimos sete dias, para a linha do indicador.
+   *
+   * Medida de verdade, dia a dia, do mesmo conjunto de pedidos que o resto
+   * desta função já carregou -- não custa consulta nova. O dia sem medida
+   * suficiente vem null e a linha simplesmente pula por cima dele, em vez
+   * de desenhar um zero que não aconteceu.
+   */
+  serie: { cozinha: (number | null)[]; entrega: (number | null)[] };
 };
 
 /** menos que isto é anedota, não média: dois pedidos ruins viram "o normal" */
@@ -338,6 +347,16 @@ const etapa = (valores: number[]): Etapa | null => {
   const m = valores.length >= MINIMO_PARA_MEDIR ? mediana(valores) : null;
   return m === null ? null : { minutos: m, pedidos: valores.length };
 };
+
+/**
+ * O mínimo para um ponto da linha do indicador.
+ *
+ * Mais baixo que o das etapas de propósito: ali o número vira decisão -- ir
+ * até a cozinha no meio do serviço --, e cinco pedidos é o mínimo para isso
+ * não ser anedota. Aqui é só o desenho do ritmo da semana, e exigir cinco
+ * por dia deixaria a linha vazia em casa que faz dez pedidos por dia.
+ */
+const MINIMO_DA_LINHA = 2;
 
 type PedidoMedido = {
   createdAt: Date;
@@ -383,6 +402,24 @@ function medir(pedidos: PedidoMedido[]): Etapas {
   return { aceite: etapa(aceites), cozinha: etapa(cozinhas), entrega: etapa(entregas), total: etapa(totais) };
 }
 
+/** a mediana crua do dia, quando ela não chega ao mínimo de medir() */
+function pontoSolto(pedidos: PedidoMedido[], qual: "cozinha" | "entrega"): number | null {
+  const minutos: number[] = [];
+  for (const p of pedidos) {
+    const quando = (...status: OrderStatus[]) => p.statusEvents.find((e) => status.includes(e.status))?.createdAt ?? null;
+    const aceito = quando("CONFIRMED", "PREPARING");
+    const saiu = p.type === "DELIVERY" ? quando("OUT_FOR_DELIVERY") : quando("READY");
+    const fim = quando("COMPLETED");
+    const de = qual === "cozinha" ? aceito : saiu;
+    const ate = qual === "cozinha" ? saiu : fim;
+    if (qual === "entrega" && p.type !== "DELIVERY") continue;
+    if (!de || !ate) continue;
+    const m = Math.round((ate.getTime() - de.getTime()) / 60000);
+    if (m >= 0) minutos.push(m);
+  }
+  return minutos.length >= MINIMO_DA_LINHA ? mediana(minutos) : null;
+}
+
 /**
  * Quanto tempo o atendimento está levando, etapa por etapa, e como isso se
  * compara com o que esta casa costuma fazer.
@@ -414,6 +451,19 @@ export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, d
     },
   });
 
+  // sete baldes, um por dia, do mais antigo ao de hoje
+  const inicioDeHoje = startOfToday().getTime();
+  const dia = (d: Date) => Math.floor((d.getTime() - inicioDeHoje) / 86400000) + 6;
+  const baldes: PedidoMedido[][] = Array.from({ length: 7 }, () => []);
+  for (const p of pedidos) {
+    const i = dia(p.createdAt);
+    if (i >= 0 && i < 7) baldes[i].push(p);
+  }
+  const serie = {
+    cozinha: baldes.map((b) => (b.length >= MINIMO_DA_LINHA ? (medir(b).cozinha?.minutos ?? pontoSolto(b, "cozinha")) : null)),
+    entrega: baldes.map((b) => (b.length >= MINIMO_DA_LINHA ? (medir(b).entrega?.minutos ?? pontoSolto(b, "entrega")) : null)),
+  };
+
   const agora = pedidos.slice(0, QUANTOS_PEDIDOS);
   // a régua é o que veio ANTES destes, e não o conjunto todo: comparar os
   // quinze últimos com uma média que já os contém esconde metade da
@@ -421,7 +471,7 @@ export async function temposDoAtendimento(escopo: Prisma.OrderWhereInput = {}, d
   const antes = pedidos.slice(QUANTOS_PEDIDOS);
   const regua = antes.length >= MINIMO_PARA_MEDIR ? medir(antes) : null;
 
-  return { ...medir(agora), normal: regua, base: agora.length };
+  return { ...medir(agora), normal: regua, base: agora.length, serie };
 }
 
 export type TemposDeUmRestaurante = {

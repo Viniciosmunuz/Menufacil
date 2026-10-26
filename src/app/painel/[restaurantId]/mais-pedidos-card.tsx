@@ -1,36 +1,35 @@
 import { ChevronRight, Trophy } from "lucide-react";
 import Link from "next/link";
 
-import { Gaveta } from "@/components/ui/gaveta";
+import { Card } from "@/components/ui/card";
 import { formatCents } from "@/lib/format";
 
-// Os campeões do mês, em gaveta.
+// Os campeões do mês: o que comprar amanhã.
 //
-// É consulta, não vigilância: o ranking responde "o que comprar amanhã",
-// uma pergunta de quem senta para pensar, não de quem está no meio do
-// movimento. Aberto o tempo todo, ele ocupava um terço da linha para dizer
-// cinco nomes que ninguém lê com pedido entrando.
-//
-// Fechado, o resumo já entrega o que mais importa -- quem é o primeiro --,
-// e a lista inteira está a um toque.
+// Aberto, e não em gaveta: cinco nomes cabem na coluna sem pedir toque
+// nenhum, e o primeiro colocado em laranja é o que se lê de relance.
 
 export type MaisPedido = { nome: string; quantidade: number; centavos: number };
 
 export function MaisPedidosCard({ produtos, cardapioHref }: { produtos: MaisPedido[]; cardapioHref: string }) {
-  const primeiro = produtos[0];
-
   return (
-    <Gaveta
-      titulo="Mais pedidos no mês"
-      resumo={primeiro ? `${primeiro.nome} · ${primeiro.quantidade}x` : "Os campeões dos últimos 30 dias"}
-      icone={<Trophy />}
-    >
+    <Card className="flex flex-col">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+          <Trophy className="size-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-lg leading-tight font-extrabold">Mais pedidos no mês</h2>
+          <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
+        </div>
+      </div>
+
       {produtos.length === 0 ? (
-        <p className="text-sm text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
+        <p className="mt-4 text-sm text-muted">Assim que chegarem os primeiros pedidos, os produtos mais vendidos aparecem aqui.</p>
       ) : (
-        <ol className="flex flex-col divide-y divide-line">
+        <ol className="mt-3 flex flex-col divide-y divide-line">
           {produtos.map((p, i) => (
-            <li key={p.nome} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+            <li key={p.nome} className="flex items-center justify-between gap-3 py-2.5">
               <span className="flex min-w-0 items-center gap-2.5">
                 <span
                   className={
@@ -52,10 +51,10 @@ export function MaisPedidosCard({ produtos, cardapioHref }: { produtos: MaisPedi
         </ol>
       )}
 
-      <Link href={cardapioHref} className="inline-flex items-center gap-1 text-sm font-bold text-brand hover:underline">
+      <Link href={cardapioHref} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-bold text-brand hover:underline">
         Ver o cardápio
         <ChevronRight className="size-4" aria-hidden="true" />
       </Link>
-    </Gaveta>
+    </Card>
   );
 }

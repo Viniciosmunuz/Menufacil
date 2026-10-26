@@ -14,23 +14,28 @@ import type { DiaDaSemana, TemposDoAtendimento } from "@/server/stats";
 // do tamanho certo, a tela inteira passa a caber numa olhada -- que é o
 // tempo que alguém no meio do expediente tem para olhar.
 //
-// Nenhum número aqui é novo: todos já eram calculados. O que mudou foi a
-// hierarquia.
+// Nenhum número aqui é inventado. A linha de cada cartão é medida de
+// verdade, dia a dia: dinheiro e ticket saem da mesma semana que o gráfico
+// mostra embaixo, cozinha e entrega saem da mediana de cada dia. Dia sem
+// medida some da linha em vez de virar um zero que não aconteceu.
 
-/** a linha fininha do histórico, desenhada do que já veio do servidor */
-function Risco({ valores, cor }: { valores: number[]; cor: string }) {
+/** a linha fininha do histórico; o dia sem medida é pulado */
+function Risco({ valores, cor }: { valores: (number | null)[]; cor: string }) {
+  const pontos = valores.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v !== null);
   // menos de três pontos não desenha tendência nenhuma, desenha ruído
-  if (valores.length < 3) return null;
-  const maior = Math.max(...valores);
-  const menor = Math.min(...valores);
+  if (pontos.length < 3) return <span className="w-14 shrink-0 sm:w-16" aria-hidden="true" />;
+
+  const nums = pontos.map((p) => p.v);
+  const maior = Math.max(...nums);
+  const menor = Math.min(...nums);
   const vao = maior - menor || 1;
-  const passo = 100 / (valores.length - 1);
-  const pontos = valores.map((v, i) => `${(i * passo).toFixed(1)},${(26 - ((v - menor) / vao) * 22).toFixed(1)}`);
+  const passo = valores.length > 1 ? 100 / (valores.length - 1) : 100;
+  const d = pontos.map((p) => `${(p.i * passo).toFixed(1)},${(24 - ((p.v - menor) / vao) * 20).toFixed(1)}`);
 
   return (
-    <svg viewBox="0 0 100 28" preserveAspectRatio="none" className="h-7 w-16 shrink-0 sm:w-20" aria-hidden="true">
+    <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="h-7 w-14 shrink-0 sm:w-16" aria-hidden="true">
       <polyline
-        points={pontos.join(" ")}
+        points={d.join(" ")}
         fill="none"
         stroke={cor}
         strokeWidth="2.5"
@@ -42,27 +47,34 @@ function Risco({ valores, cor }: { valores: number[]; cor: string }) {
   );
 }
 
-/** a variação contra ontem; sem ontem não há variação */
-function Variacao({ atual, anterior }: { atual: number; anterior: number }) {
-  if (anterior <= 0) return null;
+/**
+ * Quanto mudou, em porcento.
+ *
+ * `menosEMelhor` vira o sinal da cor: no dinheiro subir é bom, no relógio
+ * subir é a cozinha atrasando. Sem passado para comparar não há variação --
+ * "+100%" contra zero não significa nada e só enfeita.
+ */
+function Variacao({ atual, anterior, menosEMelhor = false }: { atual: number; anterior: number; menosEMelhor?: boolean }) {
+  if (anterior <= 0 || atual <= 0) return null;
   const pct = Math.round(((atual - anterior) / anterior) * 100);
   if (pct === 0) return null;
   const subiu = pct > 0;
+  const bom = menosEMelhor ? !subiu : subiu;
   const Icone = subiu ? TrendingUp : TrendingDown;
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs font-extrabold", subiu ? "text-success" : "text-danger")}>
-      <Icone className="size-3.5" aria-hidden="true" />
+    <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs font-extrabold", bom ? "text-success" : "text-danger")}>
       {subiu ? "+" : ""}
       {pct}%
+      <Icone className="size-3.5" aria-hidden="true" />
     </span>
   );
 }
 
 const TONS = {
-  brand: { fundo: "bg-brand-soft text-brand", linha: "var(--color-brand)" },
-  info: { fundo: "bg-info/12 text-info", linha: "var(--color-info)" },
-  success: { fundo: "bg-success/12 text-success", linha: "var(--color-success)" },
-  warning: { fundo: "bg-warning/12 text-warning", linha: "var(--color-warning)" },
+  laranja: { fundo: "bg-brand", linha: "var(--color-brand)" },
+  roxo: { fundo: "bg-[#6366f1]", linha: "#6366f1" },
+  verde: { fundo: "bg-success", linha: "var(--color-success)" },
+  azul: { fundo: "bg-info", linha: "var(--color-info)" },
 } as const;
 
 function Indicador({
@@ -80,29 +92,23 @@ function Indicador({
   valor: string;
   apoio: string;
   extra?: ReactNode;
-  serie?: number[];
+  serie: (number | null)[];
 }) {
   const { fundo, linha } = TONS[tom];
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-card border border-line bg-surface p-4">
-      <span className={cn("grid size-10 shrink-0 place-items-center rounded-full sm:size-11", fundo)}>{icone}</span>
+    <div className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-4">
+      <span className={cn("grid size-11 shrink-0 place-items-center rounded-full text-white", fundo)}>{icone}</span>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-tight font-bold text-muted">{titulo}</p>
-        <p className="mt-0.5 text-[1.6rem] leading-none font-extrabold tabular-nums">{valor}</p>
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
+        <p className="text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
+        <p className="mt-0.5 text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-muted">
           <span className="truncate">{apoio}</span>
           {extra}
         </p>
       </div>
 
-      {/* a linhinha é o primeiro a sair quando a largura aperta: ela
-          enfeita, e o título e o número é que precisam caber */}
-      {serie && (
-        <span className="hidden 2xl:block">
-          <Risco valores={serie} cor={linha} />
-        </span>
-      )}
+      <Risco valores={serie} cor={linha} />
     </div>
   );
 }
@@ -129,10 +135,9 @@ export function Indicadores({
   const ticket = pedidos > 0 ? Math.round(centavos / pedidos) : 0;
   const ticketOntem = pedidosOntem > 0 ? Math.round(centavosOntem / pedidosOntem) : 0;
 
-  // as linhinhas saem da mesma semana que o gráfico mostra embaixo: é o
-  // único histórico que esta tela já tinha em mãos
-  const serieVendas = semana.map((d) => d.centavos);
-  const serieTicket = semana.map((d) => (d.pedidos > 0 ? Math.round(d.centavos / d.pedidos) : 0));
+  // dinheiro e ticket saem da mesma semana que o gráfico mostra embaixo
+  const serieVendas = semana.map((d) => (d.centavos > 0 ? d.centavos : null));
+  const serieTicket = semana.map((d) => (d.pedidos > 0 ? Math.round(d.centavos / d.pedidos) : null));
 
   // A frase só aparece quando os dois lados discordam -- é aí que o número
   // sozinho engana: dobrar o movimento com o ticket pela metade parece
@@ -151,7 +156,7 @@ export function Indicadores({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador
           icone={<Wallet className="size-5" aria-hidden="true" />}
-          tom="brand"
+          tom="laranja"
           titulo="Vendas hoje"
           valor={formatCents(centavos)}
           apoio={`${pedidos} ${pedidos === 1 ? "pedido" : "pedidos"}${concluidos > 0 ? ` · ${concluidos} concluído${concluidos === 1 ? "" : "s"}` : ""}`}
@@ -161,36 +166,40 @@ export function Indicadores({
 
         <Indicador
           icone={<Receipt className="size-5" aria-hidden="true" />}
-          tom="info"
+          tom="roxo"
           titulo="Ticket médio"
           valor={ticket > 0 ? formatCents(ticket) : "—"}
-          apoio={ticketOntem > 0 ? `Ontem ${formatCents(ticketOntem)}` : "Por pedido"}
+          apoio="Por pedido"
           extra={<Variacao atual={ticket} anterior={ticketOntem} />}
           serie={serieTicket}
         />
 
         <Indicador
           icone={<ChefHat className="size-5" aria-hidden="true" />}
-          tom="success"
+          tom="verde"
           titulo="Na cozinha"
           valor={tempos.cozinha ? formatMinutos(tempos.cozinha.minutos) : "—"}
-          apoio={
-            tempos.cozinha
-              ? `Tempo médio · ${tempos.cozinha.pedidos} ${tempos.cozinha.pedidos === 1 ? "pedido" : "pedidos"}`
-              : "Ainda sem pedidos medidos"
+          apoio={tempos.cozinha ? "Tempo médio" : "Ainda sem medida"}
+          extra={
+            tempos.cozinha && tempos.normal?.cozinha ? (
+              <Variacao atual={tempos.cozinha.minutos} anterior={tempos.normal.cozinha.minutos} menosEMelhor />
+            ) : null
           }
+          serie={tempos.serie.cozinha}
         />
 
         <Indicador
           icone={<Bike className="size-5" aria-hidden="true" />}
-          tom="warning"
+          tom="azul"
           titulo="Na entrega"
           valor={tempos.entrega ? formatMinutos(tempos.entrega.minutos) : "—"}
-          apoio={
-            tempos.entrega
-              ? `Tempo médio · ${tempos.entrega.pedidos} ${tempos.entrega.pedidos === 1 ? "entrega" : "entregas"}`
-              : "Ainda sem entregas medidas"
+          apoio={tempos.entrega ? "Tempo médio" : "Ainda sem medida"}
+          extra={
+            tempos.entrega && tempos.normal?.entrega ? (
+              <Variacao atual={tempos.entrega.minutos} anterior={tempos.normal.entrega.minutos} menosEMelhor />
+            ) : null
           }
+          serie={tempos.serie.entrega}
         />
       </div>
 

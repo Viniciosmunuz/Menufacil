@@ -86,7 +86,9 @@ export function OpenNowCard({
       {/* os quatro na mesma grade: soltos, as larguras diferentes quebravam
           em linhas tortas, e são quatro faces da mesma decisão de agora */}
       <div
-        className={cn("grid gap-2 2xl:flex 2xl:shrink-0", entregaAtiva ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}
+        // dois a dois até a tela bem larga: em quatro colunas, "Seguir
+        // horário" e "Pausar a entrega" eram cortados no meio
+        className={cn("grid gap-2 2xl:flex 2xl:shrink-0", entregaAtiva ? "grid-cols-2" : "grid-cols-3")}
         role="group"
         aria-label="Operação"
       >

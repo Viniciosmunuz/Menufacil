@@ -6,6 +6,7 @@ import { MesCard } from "@/components/panel/mes-card";
 import { WeekChart } from "@/components/panel/week-chart";
 import { Badge } from "@/components/ui/badge";
 import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
+import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { TIME_ZONE, startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES, restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
@@ -109,6 +110,8 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
   const [fechamento, mes] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), mesAteAgora(escopo)]);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
+  // a coluna da direita só existe quando há o que pôr nela
+  const temLateral = esgotados.length > 0 || fechamento.totalPedidos > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -157,42 +160,47 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         tempos={tempos}
       />
 
-      <OpenNowCard
-        restaurantId={restaurant.id}
-        open={isOpenNow(details.openMode, details.openingHours)}
-        openMode={details.openMode}
-        today={todayLabel(details.openingHours)}
-        entregaAtiva={details.deliveryEnabled}
-        soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
-      />
+      {/* Operação à esquerda e as gavetas à direita, como no desenho: o
+          esgotado primeiro, porque é o que pede decisão, e o fechamento
+          embaixo dele. Sem nenhum dos dois, a operação toma a linha
+          inteira em vez de deixar um vão. */}
+      <div className={cn("grid grid-cols-1 gap-4", temLateral && "xl:grid-cols-[2fr_1fr]")}>
+        <OpenNowCard
+          restaurantId={restaurant.id}
+          open={isOpenNow(details.openMode, details.openingHours)}
+          openMode={details.openMode}
+          today={todayLabel(details.openingHours)}
+          entregaAtiva={details.deliveryEnabled}
+          soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
+        />
 
-      {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
-          dele, o que está na mão agora e o fechamento do dia. */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
-        <div className="flex flex-col gap-4">
-          {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
-              obrigava a ir até o cardápio e procurar quais eram, para uma
-              coisa de um segundo. A lista inteira abre na seta, e religar
-              acontece aqui mesmo. Só existe quando falta alguma coisa. */}
-          <EsgotadosCard
-            esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
-            cardapioHref={`${base}/cardapio`}
-            toggleAction={toggleProduct}
-            restaurantId={restaurant.id}
-          />
-          <MovimentacaoCard base={base} emAndamento={emAndamento} concluidos={completedToday} cancelados={canceladosHoje} />
-          <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
-          <MaisPedidosCard
-            produtos={topProducts.map((p) => ({ nome: p.productName, quantidade: p._sum.quantity ?? 0, centavos: p._sum.totalCents ?? 0 }))}
-            cardapioHref={`${base}/cardapio`}
-          />
-        </div>
+        {temLateral && (
+          <div className="flex flex-col gap-4">
+            {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
+                obrigava a ir até o cardápio e procurar quais eram, para uma
+                coisa de um segundo. Religar acontece aqui mesmo. */}
+            <EsgotadosCard
+              esgotados={esgotados.map((p) => ({ id: p.id, nome: p.name, secao: p.category?.name ?? null }))}
+              cardapioHref={`${base}/cardapio`}
+              toggleAction={toggleProduct}
+              restaurantId={restaurant.id}
+            />
+            <FechamentoCard linhas={fechamento.linhas} totalCentavos={fechamento.totalCentavos} totalPedidos={fechamento.totalPedidos} />
+          </div>
+        )}
       </div>
 
-      {/* o que conta história: o mês e quem volta. Os tempos saíram daqui
-          -- cozinha e entrega abrem a tela nos indicadores, e repetir o
-          mesmo número duas vezes na mesma página é ruído. */}
+      {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
+          dele, o que está na mão agora e os campeões do mês. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr]">
+        <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
+        <MovimentacaoCard base={base} emAndamento={emAndamento} concluidos={completedToday} cancelados={canceladosHoje} />
+        <MaisPedidosCard
+          produtos={topProducts.map((p) => ({ nome: p.productName, quantidade: p._sum.quantity ?? 0, centavos: p._sum.totalCents ?? 0 }))}
+          cardapioHref={`${base}/cardapio`}
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MesCard mes={mes} />
         <ClientesCard clientes={clientes.clientes} deQuemVoltou={clientes.deQuemVoltou} totalDePedidos={clientes.totalDePedidos} />
