@@ -40,7 +40,7 @@ export function MobileMenu({ categories }: { categories: NavCategory[] }) {
           </div>
           <SiteNavLinks categories={categories} onNavigate={close} />
           <div className="mt-auto flex flex-col gap-2 border-t border-line pt-4">
-            <Link href="/cadastre-seu-restaurante" onClick={close} className={buttonClasses("primary")}>
+            <Link href="/" onClick={close} className={buttonClasses("primary")}>
               Cadastrar meu restaurante
             </Link>
             <Link href="/entrar" onClick={close} className={buttonClasses("ghost")}>

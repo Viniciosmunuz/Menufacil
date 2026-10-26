@@ -27,7 +27,7 @@ export default function AboutPage() {
             <Link href="/restaurantes" className={buttonClasses("primary")}>
               Ver restaurantes
             </Link>
-            <Link href="/cadastre-seu-restaurante" className={buttonClasses("secondary")}>
+            <Link href="/" className={buttonClasses("secondary")}>
               Cadastrar meu restaurante
             </Link>
           </div>

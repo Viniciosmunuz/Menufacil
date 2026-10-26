@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/panel/page-header";
 import { Card } from "@/components/ui/card";
 import { formatPhone } from "@/lib/format";
 
-import { LeadForm } from "../cadastre-seu-restaurante/lead-form";
+import { LeadForm } from "@/components/venda/lead-form";
 
 export const metadata: Metadata = { title: "Contato" };
 

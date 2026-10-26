@@ -1,52 +1,11 @@
-import { MessageCircle } from "lucide-react";
-import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 
-import { buttonClasses } from "@/components/ui/button";
-
-import { linkDoWhatsapp, PLANOS } from "./conteudo";
-import { LeadForm } from "./lead-form";
-import { ANCORA, Beneficios, ComoComecar, Duvidas, Plano, Topo, VejaFuncionando } from "./sections";
-
-// o preço vem do mesmo lugar que a página mostra: escrito duas vezes, ele
-// desencontra na primeira troca -- e foi o que aconteceu
-const essencial = PLANOS[0];
-
-export const metadata: Metadata = {
-  title: "Cardápio digital para restaurantes",
-  description: `Receba pedidos direto do cliente, sem comissão. Cardápio com link próprio, aviso de pedido e impressão automática. ${essencial.nome} por ${essencial.preco}${essencial.periodo}.`,
-};
-
-export default function LeadPage() {
-  const whatsapp = linkDoWhatsapp();
-
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 sm:gap-16">
-      <Topo />
-      <VejaFuncionando />
-      <Beneficios />
-      <ComoComecar />
-      <Plano />
-      <Duvidas />
-
-      <section id={ANCORA} className="scroll-mt-24">
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-xl leading-tight font-extrabold sm:text-3xl">Comece agora</h2>
-          <p className="mt-1 text-sm text-muted sm:text-base">Te chamamos no WhatsApp em até 24h.</p>
-        </div>
-        <LeadForm
-          submitLabel="Quero meu cardápio digital"
-          successTitle="Recebemos!"
-          successText="Vamos te chamar no WhatsApp em breve."
-          footer={
-            whatsapp ? (
-              <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "lg", "w-full")}>
-                <MessageCircle className="size-5" aria-hidden="true" />
-                Prefiro falar no WhatsApp
-              </a>
-            ) : null
-          }
-        />
-      </section>
-    </div>
-  );
+// A página de venda virou a principal.
+//
+// Este endereço ficou de pé porque ele está no Instagram, em QR impresso e
+// em conversa de WhatsApp de meses atrás. Quem abrir vai parar na home, que
+// é onde a mesma coisa mora agora -- e o buscador aprende sozinho, pelo
+// 308, que o endereço mudou de casa.
+export default function CadastreSeuRestaurantePage(): never {
+  permanentRedirect("/");
 }

@@ -138,6 +138,95 @@ export function TelaDoPainel() {
   );
 }
 
+const MESAS = [
+  { n: 1, estado: "ocupada", valor: "86,00", tempo: "42min" },
+  { n: 2, estado: "livre" },
+  { n: 3, estado: "ocupada", valor: "154,50", tempo: "1h10" },
+  { n: 4, estado: "conta", valor: "61,00", tempo: "55min" },
+  { n: 5, estado: "livre" },
+  { n: 6, estado: "ocupada", valor: "212,00", tempo: "18min" },
+] as const;
+
+/** 4. o mapa de mesas, no celular do garçom e no painel do caixa */
+export function TelaDoSalao() {
+  return (
+    <Moldura>
+      <div className="flex items-center justify-between px-2.5 py-2">
+        <span className="text-[0.6rem] font-extrabold">Salão</span>
+        <span className="rounded-full bg-success/15 px-1.5 py-px text-[0.45rem] font-extrabold text-success">
+          Caixa aberto
+        </span>
+      </div>
+      <ul className="grid grid-cols-3 gap-1 px-2 pb-2">
+        {MESAS.map((m) => {
+          const livre = m.estado === "livre";
+          const conta = m.estado === "conta";
+          return (
+            <li
+              key={m.n}
+              className={cn(
+                "flex flex-col items-center justify-center gap-px rounded-lg border px-1 py-1.5",
+                livre && "border-line bg-surface text-faint",
+                m.estado === "ocupada" && "border-brand/60 bg-brand-soft",
+                conta && "border-success/60 bg-success/10",
+              )}
+            >
+              <span className={cn("text-[0.62rem] leading-none font-extrabold", conta && "text-success")}>{m.n}</span>
+              {livre ? (
+                <span className="text-[0.42rem] leading-tight font-bold">livre</span>
+              ) : (
+                <>
+                  <span className="text-[0.45rem] leading-tight font-extrabold text-brand">{m.valor}</span>
+                  <span className="text-[0.4rem] leading-tight text-muted">{m.tempo}</span>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="border-t border-line px-2 py-1.5">
+        <div className="flex items-center justify-between text-[0.5rem]">
+          <span className="text-muted">4 mesas abertas</span>
+          <span className="font-extrabold text-brand">R$ 513,50</span>
+        </div>
+      </div>
+    </Moldura>
+  );
+}
+
+/** 5. a comanda que sai na cozinha quando o garçom lança */
+export function ComandaDoSalao() {
+  return (
+    <div className="mx-auto w-full max-w-[12.5rem] drop-shadow-[0_18px_30px_rgb(0_0_0/0.6)]">
+      <div className="rounded-t-sm bg-[#f7f5ef] px-3 pt-3 pb-2 text-center font-mono text-[0.55rem] leading-[1.5] text-[#15181d]">
+        <p className="text-[0.68rem] font-bold tracking-wide">BURGER DO ZE</p>
+        <p className="mt-2 text-[0.95rem] leading-none font-bold tracking-wide">* MESA 5 *</p>
+        <p className="mt-1 text-[0.52rem]">Garçom: Lucas</p>
+        <p className="my-1.5 overflow-hidden text-[#9aa0a6]">──────────────────────────────</p>
+        <div className="text-left">
+          <div className="flex gap-2 text-[0.5rem] font-bold">
+            <span className="w-6">QTD</span>
+            <span>DESCRIÇÃO</span>
+          </div>
+          <div className="mt-1 flex gap-2">
+            <span className="w-6">2</span>
+            <span className="truncate">X-BURGER</span>
+          </div>
+          <p className="pl-8 text-[0.48rem]">sem cebola</p>
+          <div className="mt-0.5 flex gap-2">
+            <span className="w-6">1</span>
+            <span className="truncate">BATATA FRITA</span>
+          </div>
+        </div>
+        <p className="mt-2.5 text-[0.48rem] text-[#5d646d]">25/10/2026 - 19:24:08</p>
+      </div>
+      <svg viewBox="0 0 120 6" preserveAspectRatio="none" className="block h-2 w-full" aria-hidden="true">
+        <path d="M0 0h120v1L114 6 108 1 102 6 96 1 90 6 84 1 78 6 72 1 66 6 60 1 54 6 48 1 42 6 36 1 30 6 24 1 18 6 12 1 6 6 0 1Z" fill="#f7f5ef" />
+      </svg>
+    </div>
+  );
+}
+
 const LINHAS = [
   ["2x X-Burger", "44,00"],
   ["1x Batata frita", "18,00"],

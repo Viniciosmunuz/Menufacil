@@ -1,6 +1,20 @@
 import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
 
-import { BellRing, Link2, ListChecks, Percent, Printer, ToggleLeft, type LucideIcon } from "lucide-react";
+import {
+  BellRing,
+  ClipboardList,
+  HandPlatter,
+  Link2,
+  ListChecks,
+  Percent,
+  Printer,
+  Receipt,
+  ShieldCheck,
+  Split,
+  ToggleLeft,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 
 // ============================================================
 // O que você muda nesta página
@@ -44,13 +58,15 @@ export type Plano = {
   botao: string;
   /** o cartão em evidência; só um deve ter */
   destaque?: boolean;
+  /** selo acima do nome, quando há o que dizer */
+  selo?: string;
   /** frase curta acima da lista, quando o plano soma ao anterior */
   herda?: string;
 };
 
 export const PLANOS: Plano[] = [
   {
-    nome: "Plano Essencial",
+    nome: "Essencial",
     preco: "R$ 100",
     periodo: "/mês",
     resumo: "O cardápio no link e o pedido chegando no seu WhatsApp.",
@@ -63,10 +79,10 @@ export const PLANOS: Plano[] = [
       "Suporte incluso: chamou, a gente atende",
       "Sem comissão por pedido",
     ],
-    botao: "Quero o plano Essencial",
+    botao: "Quero o Essencial",
   },
   {
-    nome: "Plano 100% Delivery",
+    nome: "100% Delivery",
     preco: "R$ 180",
     periodo: "/mês",
     resumo: "O pedido inteiro dentro do sistema, já pago, sem sair para conversa nenhuma.",
@@ -80,6 +96,24 @@ export const PLANOS: Plano[] = [
       "Continua sem comissão: nem um centavo da venda",
     ],
     botao: "Quero o 100% Delivery",
+  },
+  {
+    nome: "Completo",
+    preco: "R$ 280",
+    periodo: "/mês",
+    resumo: "O delivery e o salão no mesmo sistema, com o mesmo cardápio.",
+    selo: "Delivery + salão",
+    herda: "Tudo do 100% Delivery, e mais:",
+    itens: [
+      "Mapa de mesas: quem está ocupado, há quanto tempo e quanto já consumiu",
+      "Garçom lança o pedido pelo celular, com CPF e senha dele",
+      "Comanda sai na cozinha na hora, separada por setor",
+      "Conta da mesa impressa, com desconto, taxa e divisão por pessoa",
+      "Caixa com abertura, sangria e relatório do dia",
+      "Cada garçom com a permissão que você der",
+      "Totem de autoatendimento disponível (consulte)",
+    ],
+    botao: "Quero o Completo",
     destaque: true,
   },
 ];
@@ -112,10 +146,56 @@ export const BENEFICIOS: { icon: LucideIcon; title: string; text: string }[] = [
   },
   {
     icon: ToggleLeft,
-    title: "Cardápio na sua mão",
-    text: "Acabou um prato? Marque como esgotado e ele some na hora.",
+    title: "Um cardápio só",
+    text: "Acabou um prato? Marque esgotado e ele some do delivery, do salão e do totem ao mesmo tempo.",
   },
 ];
+
+/** o módulo de salão, que é o que o plano Completo acrescenta */
+export const SALAO: { icon: LucideIcon; title: string; text: string }[] = [
+  {
+    icon: HandPlatter,
+    title: "O garçom anota no celular",
+    text: "Ele entra com CPF e senha, escolhe a mesa e lança do mesmo cardápio do delivery. Funciona no celular dele e na maquininha Android.",
+  },
+  {
+    icon: Printer,
+    title: "A cozinha recebe na hora",
+    text: "A comanda sai impressa assim que ele confirma, e cada setor imprime só o que é dele: a chapa os lanches, a copa as bebidas.",
+  },
+  {
+    icon: Split,
+    title: "Conta dividida sem briga",
+    text: "Divida por pessoa ou por item, aplique desconto ou taxa de serviço, e imprima a conta da mesa para o cliente conferir.",
+  },
+  {
+    icon: Wallet,
+    title: "Caixa fechado certo",
+    text: "Abertura, sangria, reforço e o relatório do dia por forma de pagamento. No fim do expediente o sistema diz quanto tem que ter na gaveta.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Cada um com sua permissão",
+    text: "Você escolhe quem pode apagar item, dar desconto, transferir mesa ou fechar a conta. O resto fica bloqueado.",
+  },
+  {
+    icon: Receipt,
+    title: "Histórico de tudo",
+    text: "Toda mesa fechada fica guardada, com o que foi consumido, quem atendeu e como foi pago.",
+  },
+];
+
+/** o totem entra como recurso do plano de cima, sem preço fechado */
+export const TOTEM = {
+  title: "Totem de autoatendimento",
+  text: "O cliente monta o pedido sozinho num tablet no balcão, paga no cartão ou no Pix ali mesmo, e a senha dele aparece no telão. O cardápio é o mesmo: o que você esgota no painel some do totem na hora.",
+  itens: [
+    "Pagamento no cartão pela maquininha ou por Pix na tela",
+    "Senha impressa e chamada no telão do salão",
+    "Funciona junto com o delivery e o salão, sem cadastro em dobro",
+  ],
+  nota: "Disponível no plano Completo. Fale com a gente para montar junto com o seu balcão.",
+};
 
 export const PASSOS = [
   { title: "Deixe seu contato", text: "Leva 1 minuto." },
@@ -133,10 +213,29 @@ export const DUVIDAS = [
     q: "Preciso saber mexer em sistema?",
     a: "Não. A gente monta seu cardápio e te ensina.",
   },
+  {
+    q: "Posso usar só o salão, sem delivery?",
+    a: "Pode. O plano Completo traz os dois, mas nada obriga você a ligar o delivery. Muita gente começa só com as mesas.",
+  },
+  {
+    q: "O garçom precisa de celular da empresa?",
+    a: "Não. Funciona no celular dele mesmo, pelo navegador, com o CPF e a senha que você cadastrar. Se o restaurante tiver maquininha Android, também roda nela.",
+  },
+  {
+    q: "Dá para trocar de plano depois?",
+    a: "Dá, a qualquer momento. Começa no Essencial e sobe quando precisar, sem perder nada do que já está cadastrado.",
+  },
   // TODO: responder sobre fidelidade (enquanto estiver vazio, a pergunta não aparece)
   { q: "Tem fidelidade?", a: "" },
   {
     q: "E se eu tiver problema?",
     a: "O suporte está incluso: é só chamar no WhatsApp.",
   },
+];
+
+/** os três "não" que o dono de restaurante quer ouvir, no alto da página */
+export const PROMESSAS = [
+  { icon: Percent, text: "Sem comissão por pedido" },
+  { icon: ClipboardList, text: "Sem taxa de adesão" },
+  { icon: BellRing, text: "Suporte incluso" },
 ];

@@ -15,7 +15,6 @@ import { useDigitando } from "./digitando";
 export type NavCategory = { slug: string; name: string; icon: string | null };
 
 export const SITE_LINKS = [
-  { href: "/", label: "Início", icon: Home },
   { href: "/restaurantes", label: "Restaurantes", icon: Utensils },
   { href: "/categorias", label: "Categorias", icon: LayoutGrid },
   { href: "/favoritos", label: "Favoritos", icon: Heart },
@@ -118,7 +117,7 @@ export function BottomNav({ store }: { store?: { slug: string } | null }) {
   // A página de venda é uma chegada de fora, do Instagram, e fala com o dono
   // do restaurante, não com quem vai pedir comida. Ali a barra só tiraria a
   // atenção do botão de contato.
-  const venda = pathname === "/cadastre-seu-restaurante";
+  const venda = pathname === "/";
   const menuHref = store ? `/restaurante/${store.slug}` : cart.restaurant ? `/restaurante/${cart.restaurant.slug}` : "/restaurantes";
   // No site geral o carrinho fica no topo. No link do restaurante o topo
   // some no celular, e o carrinho vem para cá, onde o polegar alcança.
@@ -157,7 +156,7 @@ export function BottomNav({ store }: { store?: { slug: string } | null }) {
         ...(chat.ativo ? [conversa] : []),
       ]
     : [
-        { href: "/", label: "Início", icon: Home, active: pathname === "/" },
+        { href: "/restaurantes", label: "Início", icon: Home, active: pathname === "/restaurantes" },
         { href: menuHref, label: "Cardápio", icon: BookOpen, active: pathname.startsWith("/restaurante") },
         orders,
         chat.ativo ? conversa : { href: "/contato", label: "Contato", icon: MessageCircle, active: pathname === "/contato" },

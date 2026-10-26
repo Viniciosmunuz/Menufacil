@@ -194,7 +194,7 @@ export function HowItWorks() {
           </li>
         ))}
       </ol>
-      <Link href="/cadastre-seu-restaurante" className="mt-6 hidden items-center gap-1.5 font-bold text-brand hover:underline sm:inline-flex">
+      <Link href="/" className="mt-6 hidden items-center gap-1.5 font-bold text-brand hover:underline sm:inline-flex">
         Quero cadastrar meu restaurante
         <ArrowRight className="size-4" aria-hidden="true" />
       </Link>

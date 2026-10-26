@@ -20,7 +20,7 @@ export function OwnerCta({ className, compact = false }: { className?: string; c
         Cadastre seu estabelecimento e comece a receber pedidos em poucos minutos.
       </p>
       <Link
-        href="/cadastre-seu-restaurante"
+        href="/"
         className={cn(buttonClasses("primary", compact ? "sm" : "md"), "mt-auto w-full", compact && "h-10 px-2 text-[0.8rem]")}
       >
         Quero cadastrar
@@ -36,7 +36,7 @@ export function OwnerCtaSmall() {
       <ChefHat className="size-8 text-brand" strokeWidth={1.6} aria-hidden="true" />
       <p className="text-lg leading-tight font-extrabold">Seu restaurante aqui!</p>
       <p className="text-sm text-muted">Faça parte da nossa plataforma e alcance mais clientes.</p>
-      <Link href="/cadastre-seu-restaurante" className={buttonClasses("outline", "sm", "mt-2")}>
+      <Link href="/" className={buttonClasses("outline", "sm", "mt-2")}>
         Cadastre seu restaurante
       </Link>
     </div>
