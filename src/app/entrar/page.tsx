@@ -32,10 +32,14 @@ export default async function LoginPage({ searchParams }: PageProps<"/entrar">) 
         <LoginForm returnTo={returnTo} />
       </Card>
 
+      {/* a raiz deixou de ser a lista de restaurantes e virou a página do
+          produto, então o convite daqui mudou de dono: quem chega ao login
+          sem conta não é cliente procurando comida, é dono de restaurante
+          que ainda não é parceiro */}
       <p className="mt-6 max-w-md text-center text-sm text-faint">
-        Quer fazer um pedido? Não precisa de conta.{" "}
+        Ainda não é parceiro?{" "}
         <Link href="/" className="font-bold text-brand hover:underline">
-          Ver restaurantes
+          Conheça o MenuFácil
         </Link>
       </p>
     </main>

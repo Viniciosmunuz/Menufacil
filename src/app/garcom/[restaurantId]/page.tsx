@@ -6,6 +6,7 @@ import { GarcomNav } from "@/components/panel/garcom-nav";
 import { noAr } from "@/lib/features";
 
 import { SalaoNaoLiberado } from "./aviso";
+import { BotaoSair } from "./ajustes/sair";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { mapaDoSalao } from "@/server/salao/mesas";
 import { turnoAberto } from "@/server/salao/turno";
@@ -49,12 +50,18 @@ export default async function GarcomPage({ params }: PageProps<"/garcom/[restaur
   // aplicativo dele.
   if (!turno) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="grid size-20 place-items-center rounded-full bg-brand-soft text-brand">
-          <Lock className="size-9" aria-hidden="true" />
-        </span>
-        <h1 className="text-3xl font-extrabold">Caixa fechado</h1>
-        <p className="text-muted">O caixa ainda não foi aberto. Fale com o balcão: assim que abrirem, suas mesas aparecem aqui.</p>
+      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center px-6 pb-6 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <span className="grid size-20 place-items-center rounded-full bg-brand-soft text-brand">
+            <Lock className="size-9" aria-hidden="true" />
+          </span>
+          <h1 className="text-3xl font-extrabold">Caixa fechado</h1>
+          <p className="text-muted">O caixa ainda não foi aberto. Fale com o balcão: assim que abrirem, suas mesas aparecem aqui.</p>
+        </div>
+        {/* esta tela não tem a barra de baixo, e quem entrou com a conta
+            errada ficaria preso nela: o caminho de volta fica no rodapé,
+            pequeno, para não disputar com o recado */}
+        <BotaoSair nome={null} discreto />
       </main>
     );
   }

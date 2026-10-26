@@ -12,10 +12,34 @@ import { logout } from "@/server/auth/actions";
 // esperando. É o oposto da razão de a sessão se renovar sozinha -- e um
 // toque errado na engrenagem não pode desfazer isso.
 
-export function BotaoSair({ nome }: { nome: string | null }) {
+/**
+ * `discreto` é para as telas em que sair não é o assunto.
+ *
+ * Numa tela de aviso -- caixa fechado, salão não liberado -- quem está ali
+ * quase sempre só quer ler o recado e esperar. Mas quem entrou com a conta
+ * errada fica preso, porque essas telas não têm a barra de baixo. Então o
+ * caminho existe, pequeno, no rodapé: quem procura acha, e quem não está
+ * procurando não esbarra.
+ *
+ * A confirmação continua igual nas duas formas.
+ */
+export function BotaoSair({ nome, discreto = false }: { nome: string | null; discreto?: boolean }) {
   const [confirmando, setConfirmando] = useState(false);
 
   if (!confirmando) {
+    if (discreto) {
+      return (
+        <button
+          type="button"
+          onClick={() => setConfirmando(true)}
+          className="flex min-h-11 items-center justify-center gap-1.5 px-3 text-sm font-bold text-faint transition-colors active:text-danger"
+        >
+          <LogOut className="size-4" aria-hidden="true" />
+          Sair da conta
+        </button>
+      );
+    }
+
     return (
       <button
         type="button"
