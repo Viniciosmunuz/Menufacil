@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, BookOpen, ImageOff, Pencil, Plus, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, ImageOff, Plus, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import { requireRestaurantAccess } from "@/server/auth/dal";
 
 import { moveProduct, toggleProduct, toggleProductOption } from "./actions";
 import { BuscaDeProdutos, type ProdutoDaBusca } from "./busca";
+import { CardapioLayout, type CategoriaResumo } from "./cardapio-layout";
 import { CategoryCard, NewCategoryButton } from "./category-card";
 
 export const metadata: Metadata = { title: "Cardápio" };
@@ -32,15 +33,30 @@ type Product = {
 function Price({ p }: { p: Product }) {
   if (p.promoPriceCents) {
     return (
-      <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
-        <span className="font-extrabold text-brand">{formatCents(p.promoPriceCents)}</span>
-        <s className="text-faint">{formatCents(p.priceCents)}</s>
-      </p>
+      <span className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-sm font-extrabold text-brand">{formatCents(p.promoPriceCents)}</span>
+        <s className="text-xs text-faint">{formatCents(p.priceCents)}</s>
+      </span>
     );
   }
-  return <p className="text-sm font-extrabold">{formatCents(p.priceCents)}</p>;
+  return <span className="text-sm font-extrabold">{formatCents(p.priceCents)}</span>;
 }
 
+/**
+ * A linha de um produto.
+ *
+ * Ela era alta: foto de 64px, nome, descrição, preço, um botão "Editar"
+ * escrito e, embaixo, o interruptor com as duas setas. Dois produtos por
+ * tela de celular, num cardápio de cento e quarenta.
+ *
+ * Agora o nome inteiro é o link da edição -- o botão escrito saiu, não a
+ * ação -- e o interruptor, que é o que mais se toca no meio do movimento,
+ * fica do lado. A descrição sai da lista: ela pertence à edição e ao
+ * cardápio do cliente, não a conferir o que acabou.
+ *
+ * Os dois atributos são o que o filtro da casca enxerga pelo CSS, sem
+ * precisar que esta lista vire componente de cliente.
+ */
 function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p: Product; first: boolean; last: boolean }) {
   const hidden = (
     <>
@@ -49,55 +65,66 @@ function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p:
     </>
   );
   return (
-    <li id={`produto-${p.id}`} className={cn("flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:px-5", !p.available && "bg-bg/40")}>
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className={cn("relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-surface-2 text-faint", !p.available && "opacity-50")}>
+    <li
+      id={`produto-${p.id}`}
+      data-esgotado={p.available ? "nao" : "sim"}
+      data-sem-foto={p.imageUrl ? "nao" : "sim"}
+      className={cn("flex items-center gap-2 px-2.5 py-2", !p.available && "bg-warning/8")}
+    >
+      <Link
+        href={`/painel/${restaurantId}/cardapio/produto/${p.id}`}
+        aria-label={`Editar ${p.name}`}
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-control p-1 transition-colors hover:bg-surface-2"
+      >
+        <span
+          className={cn(
+            "relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-control bg-surface-3 text-faint",
+            !p.available && "opacity-60",
+          )}
+        >
           {p.imageUrl ? (
-            <Image src={p.imageUrl} alt="" fill sizes="64px" className="object-cover" />
+            <Image src={p.imageUrl} alt="" fill sizes="48px" className="object-cover" />
           ) : (
-            <ImageOff className="size-5" aria-hidden="true" />
+            <ImageOff className="size-4" aria-hidden="true" />
           )}
         </span>
-        <div className="min-w-0 flex-1">
-          <p className={cn("flex items-center gap-1.5 font-bold", !p.available && "text-muted")}>
-            <span className="truncate">{p.name}</span>
-            {p.featured && <Star className="size-4 shrink-0 fill-brand text-brand" aria-label="Destaque" />}
-          </p>
-          {p.description && <p className="truncate text-sm text-muted">{p.description}</p>}
-          <Price p={p} />
-        </div>
-        <Link
-          href={`/painel/${restaurantId}/cardapio/produto/${p.id}`}
-          className={buttonClasses("secondary", "sm", "shrink-0")}
-          aria-label={`Editar ${p.name}`}
-        >
-          <Pencil className="size-4" aria-hidden="true" />
-          <span className="hidden md:inline">Editar</span>
-        </Link>
-      </div>
+        <span className="min-w-0 flex-1">
+          <span className={cn("flex items-start gap-1.5 text-sm leading-tight font-bold", !p.available && "text-muted")}>
+            <span className="min-w-0 flex-1">{p.name}</span>
+            {p.featured && <Star className="mt-0.5 size-3.5 shrink-0 fill-brand text-brand" aria-label="Destaque" />}
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Price p={p} />
+            {!p.available && (
+              <span className="rounded-full bg-warning/15 px-1.5 text-[0.65rem] font-extrabold text-warning">esgotado</span>
+            )}
+          </span>
+        </span>
+      </Link>
 
-      <div className="flex items-center justify-between gap-1 pl-[4.75rem] sm:pl-0">
-        <form action={toggleProduct}>
+      <form action={toggleProduct} className="shrink-0">
+        {hidden}
+        <input type="hidden" name="field" value="available" />
+        <SwitchButton checked={p.available} label={p.available ? "Disponível" : "Esgotado"} className="w-32" />
+      </form>
+
+      {/* a ordem do cardápio: discreta, porque se mexe nela uma vez e
+          depois não se mexe mais */}
+      <div className="hidden shrink-0 flex-col sm:flex">
+        <form action={moveProduct}>
           {hidden}
-          <input type="hidden" name="field" value="available" />
-          <SwitchButton checked={p.available} label={p.available ? "Disponível" : "Esgotado"} className="w-36" />
+          <input type="hidden" name="direction" value="up" />
+          <Button type="submit" variant="ghost" size="sm" disabled={first} aria-label={`Subir ${p.name}`} className="min-h-7 px-1.5">
+            <ArrowUp className="size-3.5" aria-hidden="true" />
+          </Button>
         </form>
-        <div className="flex">
-          <form action={moveProduct}>
-            {hidden}
-            <input type="hidden" name="direction" value="up" />
-            <Button type="submit" variant="ghost" size="sm" disabled={first} aria-label={`Subir ${p.name}`}>
-              <ArrowUp className="size-4" aria-hidden="true" />
-            </Button>
-          </form>
-          <form action={moveProduct}>
-            {hidden}
-            <input type="hidden" name="direction" value="down" />
-            <Button type="submit" variant="ghost" size="sm" disabled={last} aria-label={`Descer ${p.name}`}>
-              <ArrowDown className="size-4" aria-hidden="true" />
-            </Button>
-          </form>
-        </div>
+        <form action={moveProduct}>
+          {hidden}
+          <input type="hidden" name="direction" value="down" />
+          <Button type="submit" variant="ghost" size="sm" disabled={last} aria-label={`Descer ${p.name}`} className="min-h-7 px-1.5">
+            <ArrowDown className="size-3.5" aria-hidden="true" />
+          </Button>
+        </form>
       </div>
     </li>
   );
@@ -139,6 +166,16 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
   const productCount = categories.reduce((sum, c) => sum + c.products.length, 0);
   const firstCategory = categories[0];
 
+  // o que a casca precisa para montar os filtros e a coluna das categorias
+  const resumo: CategoriaResumo[] = categories.map((c) => ({
+    id: c.id,
+    nome: c.name,
+    produtos: c.products.length,
+    esgotados: c.products.filter((p) => !p.available).length,
+    semFoto: c.products.filter((p) => !p.imageUrl).length,
+    escondida: !c.active,
+  }));
+
   // a lista reta que a busca filtra no aparelho: leve de propósito, só o
   // que a linha do resultado mostra
   const paraBusca: ProdutoDaBusca[] = categories.flatMap((c) =>
@@ -158,7 +195,7 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Cardápio"
         description={
@@ -200,17 +237,17 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
           toggleAction={toggleProduct}
           toggleOptionAction={toggleProductOption}
         >
-          <div className="flex flex-col gap-5">
+          <CardapioLayout categorias={resumo}>
             {categories.map((c, i) => (
               <CategoryCard
                 key={c.id}
                 restaurantId={restaurant.id}
-                category={{ id: c.id, name: c.name, description: c.description, active: c.active, addons: c.addons, somenteSalao: c.somenteSalao, productCount: c.products.length }}
+                category={{ id: c.id, name: c.name, description: c.description, active: c.active, addons: c.addons, somenteSalao: c.somenteSalao, productCount: c.products.length, esgotados: c.products.filter((p) => !p.available).length }}
                 first={i === 0}
                 last={i === categories.length - 1}
               >
                 {c.products.length === 0 ? (
-                  <p className="px-4 py-5 text-sm text-muted sm:px-5">Nenhum produto nesta categoria ainda.</p>
+                  <p className="px-4 py-5 text-sm text-muted">Nenhum produto nesta categoria ainda.</p>
                 ) : (
                   <ul className="divide-y divide-line">
                     {c.products.map((p, j) => (
@@ -220,7 +257,7 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
                 )}
               </CategoryCard>
             ))}
-          </div>
+          </CardapioLayout>
         </BuscaDeProdutos>
       )}
     </div>

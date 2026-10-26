@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronDown, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, EllipsisVertical, Pencil, Plus, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useSyncExternalStore, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { useOpenUntilSaved } from "@/components/panel/use-open-until-saved";
 import { Alert } from "@/components/ui/alert";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import { deleteMenuCategory, moveMenuCategory, saveMenuCategory, type MenuFormState } from "./actions";
+import { useCardapio } from "./cardapio-layout";
 
 type Category = {
   id: string;
@@ -25,6 +26,7 @@ type Category = {
   addons: boolean;
   somenteSalao: boolean;
   productCount: number;
+  esgotados: number;
 };
 
 function CategoryFields({ category, state }: { category?: Category; state: MenuFormState }) {
@@ -114,6 +116,10 @@ export function NewCategoryButton({ restaurantId, highlight }: { restaurantId: s
  *
  * O que cada aparelho abriu fica guardado nele: quem volta de um produto
  * recém-salvo encontra a categoria como deixou.
+ *
+ * No computador a gaveta dá lugar à coluna: a categoria escolhida na lista
+ * da esquerda é a que aparece, sempre aberta. Lá a largura existe, e abrir
+ * e fechar seria trabalho à toa.
  */
 const abertaKey = (id: string) => `mf_cardapio_${id}`;
 const EVENTO = "mf-cardapio-gaveta";
@@ -161,6 +167,107 @@ function guardar(id: string, aberta: boolean) {
   window.dispatchEvent(new Event(EVENTO));
 }
 
+/**
+ * As ações da categoria, atrás dos três pontinhos.
+ *
+ * Antes elas eram uma faixa de botões dentro de cada categoria aberta --
+ * "Adicionar produto" e "Editar categoria" -- mais duas setas no cabeçalho.
+ * Dezoito categorias, dezoito faixas: era o primeiro que se via ao abrir
+ * uma seção, antes de qualquer produto.
+ */
+function MenuDaCategoria({
+  restaurantId,
+  category,
+  first,
+  last,
+  novoHref,
+  aoEditar,
+}: {
+  restaurantId: string;
+  category: Category;
+  first: boolean;
+  last: boolean;
+  novoHref: string;
+  aoEditar: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
+
+  // clicar fora fecha, como em qualquer menu
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [aberto]);
+
+  const item = "flex min-h-11 w-full items-center gap-2.5 px-3 text-left text-sm font-bold transition-colors hover:bg-surface-2 disabled:opacity-40";
+
+  return (
+    <div ref={caixa} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setAberto((a) => !a)}
+        aria-expanded={aberto}
+        aria-label={`Opções de ${category.name}`}
+        className="grid size-10 place-items-center rounded-control text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+      >
+        <EllipsisVertical className="size-5" aria-hidden="true" />
+      </button>
+
+      {aberto && (
+        <div className="absolute top-full right-0 z-30 mt-1 w-56 overflow-hidden rounded-card border border-line bg-bg py-1 shadow-[0_14px_30px_-12px_rgb(0_0_0/0.3)]">
+          <Link href={novoHref} className={cn(item, "text-brand")} onClick={() => setAberto(false)}>
+            <Plus className="size-4 shrink-0" aria-hidden="true" />
+            Adicionar produto
+          </Link>
+          <button
+            type="button"
+            className={item}
+            onClick={() => {
+              setAberto(false);
+              aoEditar();
+            }}
+          >
+            <Pencil className="size-4 shrink-0" aria-hidden="true" />
+            Editar categoria
+          </button>
+
+          <div className="my-1 border-t border-line" />
+
+          <form action={moveMenuCategory}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input type="hidden" name="id" value={category.id} />
+            <input type="hidden" name="direction" value="up" />
+            <button type="submit" className={item} disabled={first}>
+              <ArrowUp className="size-4 shrink-0" aria-hidden="true" />
+              Subir no cardápio
+            </button>
+          </form>
+          <form action={moveMenuCategory}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input type="hidden" name="id" value={category.id} />
+            <input type="hidden" name="direction" value="down" />
+            <button type="submit" className={item} disabled={last}>
+              <ArrowDown className="size-4 shrink-0" aria-hidden="true" />
+              Descer no cardápio
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CategoryCard({
   restaurantId,
   category,
@@ -178,101 +285,116 @@ export function CategoryCard({
   const [editing, startEditing, stopEditing] = useOpenUntilSaved(state);
   const [deleteState, deleteAction] = useActionState<MenuFormState, FormData>(deleteMenuCategory, {});
   const aberta = useAberta(category.id);
+  const { selecionada, escolher, vazia } = useCardapio();
   const newProductHref = `/painel/${restaurantId}/cardapio/produto/novo?categoria=${category.id}`;
 
   // editar a categoria só faz sentido com ela à vista
   const mostrando = aberta || editing;
+  const escolhida = selecionada === category.id;
+  // o filtro em vigor não acha nada aqui: a categoria sai da frente
+  const some = vazia(category.id);
 
   return (
-    <section id={`categoria-${category.id}`} className="scroll-mt-24 overflow-hidden rounded-card border border-line bg-surface">
-      <header className={cn("flex items-center gap-1 bg-surface-2/60 px-2 py-2 sm:px-3", mostrando && "border-b border-line")}>
-        <h2 className="min-w-0 flex-1 text-lg font-extrabold">
+    <section
+      id={`categoria-${category.id}`}
+      data-escolhida={escolhida ? "sim" : "nao"}
+      className={cn(
+        "scroll-mt-24 overflow-hidden rounded-card border border-line bg-surface",
+        // no computador só a categoria escolhida na coluna da esquerda fica
+        some && "hidden",
+        "lg:data-[escolhida=nao]:hidden",
+      )}
+    >
+      <header className={cn("flex items-center gap-2 px-2.5 py-2.5", (mostrando || escolhida) && "border-b border-line")}>
+        <h2 className="min-w-0 flex-1">
           <button
             type="button"
-            onClick={() => guardar(category.id, !aberta)}
+            onClick={() => {
+              guardar(category.id, !aberta);
+              escolher(category.id);
+            }}
             aria-expanded={aberta}
-            className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left hover:bg-surface-3/60"
+            className="flex w-full items-center gap-2.5 rounded-control px-1.5 py-1 text-left transition-colors hover:bg-surface-2"
           >
-            <ChevronDown
-              className={cn("size-5 shrink-0 text-muted transition-transform duration-200", aberta && "rotate-180")}
-              aria-hidden="true"
-            />
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "grid size-10 shrink-0 place-items-center rounded-full",
+                category.active ? "bg-brand-soft text-brand" : "bg-surface-3 text-faint",
+              )}
+            >
+              <UtensilsCrossed className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2 text-base leading-tight font-extrabold">
                 {category.name}
                 {!category.active && <Badge>Escondida</Badge>}
               </span>
-              <span className="block truncate text-sm font-normal text-faint">
+              <span className="block truncate text-sm font-normal text-muted">
                 {category.productCount} produto{category.productCount === 1 ? "" : "s"}
+                {category.esgotados > 0 ? ` · ${category.esgotados} esgotado${category.esgotados === 1 ? "" : "s"}` : ""}
                 {category.description ? ` · ${category.description}` : ""}
               </span>
             </span>
+            {/* a seta só existe onde a gaveta existe: no computador a
+                categoria escolhida está sempre aberta */}
+            <ChevronDown
+              className={cn("size-5 shrink-0 text-faint transition-transform duration-200 lg:hidden", aberta && "rotate-180")}
+              aria-hidden="true"
+            />
           </button>
         </h2>
-        <form action={moveMenuCategory}>
-          <input type="hidden" name="restaurantId" value={restaurantId} />
-          <input type="hidden" name="id" value={category.id} />
-          <input type="hidden" name="direction" value="up" />
-          <Button type="submit" variant="ghost" size="sm" disabled={first} aria-label={`Subir a categoria ${category.name}`}>
-            <ArrowUp className="size-4" aria-hidden="true" />
-          </Button>
-        </form>
-        <form action={moveMenuCategory}>
-          <input type="hidden" name="restaurantId" value={restaurantId} />
-          <input type="hidden" name="id" value={category.id} />
-          <input type="hidden" name="direction" value="down" />
-          <Button type="submit" variant="ghost" size="sm" disabled={last} aria-label={`Descer a categoria ${category.name}`}>
-            <ArrowDown className="size-4" aria-hidden="true" />
-          </Button>
-        </form>
+
+        <MenuDaCategoria
+          restaurantId={restaurantId}
+          category={category}
+          first={first}
+          last={last}
+          novoHref={newProductHref}
+          aoEditar={() => {
+            if (!aberta) guardar(category.id, true);
+            startEditing();
+          }}
+        />
       </header>
 
-      {!mostrando ? null : (
-        <>
-          {/* as ações da categoria no alto: com dez produtos, procurar o botão
-              lá embaixo da lista custa uma rolagem que não precisa existir */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-5">
-            <Link href={newProductHref} className={buttonClasses("primary", "sm")}>
-              <Plus className="size-4" aria-hidden="true" />
-              Adicionar produto
-            </Link>
-            {!editing && (
-              <Button variant="secondary" size="sm" onClick={startEditing}>
-                <Pencil className="size-4" aria-hidden="true" />
-                Editar categoria
-              </Button>
-            )}
+      <div className={cn(!mostrando && "hidden", escolhida && "lg:block")}>
+        {editing && (
+          <div className="flex flex-col gap-4 border-b border-line p-4 sm:p-5">
+            <form action={action} className="flex flex-col gap-5">
+              <input type="hidden" name="restaurantId" value={restaurantId} />
+              <input type="hidden" name="id" value={category.id} />
+              <CategoryFields category={category} state={state} />
+              <div className="flex flex-wrap gap-2">
+                <SubmitButton>Salvar categoria</SubmitButton>
+                <Button variant="ghost" onClick={stopEditing}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+            <form action={deleteAction} className="flex flex-col gap-2">
+              <input type="hidden" name="restaurantId" value={restaurantId} />
+              <input type="hidden" name="id" value={category.id} />
+              {deleteState.error && <Alert tone="warning">{deleteState.error}</Alert>}
+              <div>
+                <ConfirmButton confirmText="Excluir de vez" size="sm">
+                  Excluir categoria
+                </ConfirmButton>
+              </div>
+            </form>
           </div>
+        )}
 
-          {editing && (
-            <div className="flex flex-col gap-4 border-b border-line p-4 sm:p-5">
-              <form action={action} className="flex flex-col gap-5">
-                <input type="hidden" name="restaurantId" value={restaurantId} />
-                <input type="hidden" name="id" value={category.id} />
-                <CategoryFields category={category} state={state} />
-                <div className="flex flex-wrap gap-2">
-                  <SubmitButton>Salvar categoria</SubmitButton>
-                  <Button variant="ghost" onClick={stopEditing}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-              <form action={deleteAction} className="flex flex-col gap-2">
-                <input type="hidden" name="restaurantId" value={restaurantId} />
-                <input type="hidden" name="id" value={category.id} />
-                {deleteState.error && <Alert tone="warning">{deleteState.error}</Alert>}
-                <div>
-                  <ConfirmButton confirmText="Excluir de vez" size="sm">
-                    Excluir categoria
-                  </ConfirmButton>
-                </div>
-              </form>
-            </div>
-          )}
+        {children}
 
-          {children}
-        </>
-      )}
+        {/* criar produto fica ao pé da lista também: com a categoria
+            aberta, é o passo seguinte mais provável */}
+        <div className="border-t border-line p-2.5">
+          <Link href={newProductHref} className={buttonClasses("secondary", "sm", "w-full sm:w-auto")}>
+            <Plus className="size-4" aria-hidden="true" />
+            Adicionar em {category.name}
+          </Link>
+        </div>
+      </div>
     </section>
   );
 }

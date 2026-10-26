@@ -111,3 +111,12 @@ details.drawer[open]::details-content {
     scroll-behavior: auto !important;
   }
 }
+
+/* O filtro do cardápio.
+   Esconder a linha pelo CSS deixa a lista dos produtos no servidor: ela é
+   a parte grande da tela, e não há motivo para mandar cento e quarenta
+   produtos de novo pelo JavaScript só para sumir com alguns. */
+[data-cardapio-filtro="esgotados"] li[data-esgotado="nao"],
+[data-cardapio-filtro="sem-foto"] li[data-sem-foto="nao"] {
+  display: none;
+}
