@@ -18,6 +18,21 @@ import { cn } from "@/lib/cn";
 // números da visão geral custava três rolagens -- e eles existem justamente
 // para serem lidos de uma vez.
 
+/**
+ * A cor do ícone.
+ *
+ * Com quatro ou cinco cartões lado a lado, tudo laranja vira uma parede: o
+ * olho não separa um número do outro e acaba lendo todos ou nenhum. Um tom
+ * por assunto -- dinheiro, pedido, tempo, gente -- devolve a diferença sem
+ * pintar a tela inteira.
+ */
+const TONS = {
+  brand: "bg-brand-soft text-brand",
+  info: "bg-info/12 text-info",
+  success: "bg-success/12 text-success",
+  warning: "bg-warning/12 text-warning",
+} as const;
+
 export function StatCard({
   label,
   value,
@@ -25,6 +40,7 @@ export function StatCard({
   hint,
   href,
   variacao,
+  tom = "brand",
 }: {
   label: string;
   value: ReactNode;
@@ -33,13 +49,14 @@ export function StatCard({
   href?: string;
   /** quanto mudou contra ontem, em porcento; null quando não dá para comparar */
   variacao?: number | null;
+  tom?: keyof typeof TONS;
 }) {
   const subiu = typeof variacao === "number" && variacao > 0;
   const desceu = typeof variacao === "number" && variacao < 0;
 
   const miolo = (
     <>
-      <span className="grid size-9 shrink-0 place-items-center rounded-control bg-brand-soft text-brand sm:size-11 [&_svg]:size-5">{icon}</span>
+      <span className={cn("grid size-9 shrink-0 place-items-center rounded-full sm:size-11 [&_svg]:size-5", TONS[tom])}>{icon}</span>
       <div className="min-w-0">
         <p className="min-h-10 text-sm font-semibold text-muted sm:min-h-0">{label}</p>
         <p className="mt-0.5 text-xl font-extrabold tabular-nums sm:text-2xl">{value}</p>

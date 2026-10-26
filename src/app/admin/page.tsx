@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { formatCents, formatWhen, startOfDaysAgo } from "@/lib/format";
+import { TIME_ZONE, formatCents, formatWhen, startOfDaysAgo } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { competenciaDe, receitaPrevista, situacaoDaCobranca } from "@/lib/cobranca";
@@ -19,6 +19,17 @@ import { SuporteCard } from "./suporte-card";
 import { TemposPorRestaurante } from "./tempos-restaurantes";
 
 export const metadata: Metadata = { title: "Visão geral" };
+
+/** "segunda-feira, 26 de outubro de 2026", no fuso da casa */
+function hojePorExtenso() {
+  return new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: TIME_ZONE,
+  });
+}
 
 /** quantos dias parado já contam como "sumiu" */
 const DIAS_PARADO = 7;
@@ -111,23 +122,39 @@ export default async function AdminOverviewPage() {
     .sort((a, b) => (a.ultimo?.getTime() ?? 0) - (b.ultimo?.getTime() ?? 0));
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold">Visão geral</h1>
-          <p className="mt-1 text-muted">Como a plataforma está hoje.</p>
+    <div className="flex flex-col gap-5">
+      {/* Cabeçalho baixo de propósito: o primeiro número precisa aparecer
+          sem rolar, como no painel do restaurante. */}
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-muted">MenuFácil · plataforma</p>
+          <h1 className="text-2xl leading-tight font-extrabold sm:text-3xl">Visão geral</h1>
+          <p className="mt-0.5 text-sm text-muted">Como a plataforma está hoje.</p>
         </div>
-        <Link href="/admin/restaurantes/novo" className={buttonClasses("primary")}>
-          Novo restaurante
-        </Link>
-      </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <span className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-bold text-muted first-letter:uppercase">
+            {hojePorExtenso()}
+          </span>
+          <Link href="/admin/restaurantes/novo" className={buttonClasses("primary")}>
+            Novo restaurante
+          </Link>
+        </div>
+      </header>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatCard label="Restaurantes ativos" value={active} icon={<Store />} href="/admin/restaurantes?status=ACTIVE" hint={`${inSetup} em implantação`} />
+        <StatCard
+          label="Restaurantes ativos"
+          value={active}
+          icon={<Store />}
+          tom="success"
+          href="/admin/restaurantes?status=ACTIVE"
+          hint={`${inSetup} em implantação`}
+        />
         <StatCard
           label="Pedidos hoje"
           value={dia.hoje}
           icon={<ReceiptText />}
+          tom="info"
           href="/admin/pedidos"
           variacao={variacao(dia.hoje, dia.ontem)}
           hint={`Ontem, até agora: ${dia.ontem}`}
@@ -143,6 +170,7 @@ export default async function AdminOverviewPage() {
           label="Contatos novos"
           value={openLeads}
           icon={<MessageSquareText />}
+          tom="warning"
           href="/admin/contatos"
           hint="Restaurantes interessados"
         />
@@ -196,7 +224,7 @@ export default async function AdminOverviewPage() {
         </section>
       )}
 
-      <WeekChart dias={semana} titulo="Últimos sete dias" descricao="Pedidos de toda a plataforma, dia a dia." />
+      <WeekChart dias={semana} titulo="Pedidos e vendas" descricao="Últimos sete dias, somando todos os restaurantes." />
 
       <TemposPorRestaurante lista={tempos} />
 
@@ -227,10 +255,12 @@ export default async function AdminOverviewPage() {
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card>
-          <div className="flex items-center gap-2">
-            <Crown className="size-5 shrink-0 text-brand" aria-hidden="true" />
-            <div>
-              <h2 className="text-lg font-extrabold">Quem mais vendeu</h2>
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+              <Crown className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg leading-tight font-extrabold">Quem mais vendeu</h2>
               <p className="text-sm text-muted">Nos últimos 30 dias.</p>
             </div>
           </div>
@@ -265,10 +295,18 @@ export default async function AdminOverviewPage() {
         </Card>
 
         <Card className={parados.length > 0 ? "border-warning/40" : undefined}>
-          <div className="flex items-center gap-2">
-            <Moon className={parados.length > 0 ? "size-5 shrink-0 text-warning" : "size-5 shrink-0 text-faint"} aria-hidden="true" />
-            <div>
-              <h2 className="text-lg font-extrabold">Parados</h2>
+          <div className="flex items-start gap-3">
+            <span
+              className={
+                parados.length > 0
+                  ? "grid size-10 shrink-0 place-items-center rounded-full bg-warning/12 text-warning"
+                  : "grid size-10 shrink-0 place-items-center rounded-full bg-surface-3 text-faint"
+              }
+            >
+              <Moon className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg leading-tight font-extrabold">Parados</h2>
               <p className="text-sm text-muted">No ar, mas sem pedido há mais de {DIAS_PARADO} dias.</p>
             </div>
           </div>
