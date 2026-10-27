@@ -1,6 +1,7 @@
 import { Bike, Clock, DoorClosed, DoorOpen, Store } from "lucide-react";
 import Link from "next/link";
 
+import { LedDaIa } from "@/components/panel/barra-de-baixo";
 import { Card } from "@/components/ui/card";
 import type { OpenMode } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
@@ -43,7 +44,17 @@ type Estado = {
  * Ele só mostra. Quem muda é o cartão de operação, logo abaixo dos
  * números -- apertou lá, o selo daqui vira de cor.
  */
-export function SeloDaOperacao({ open, openMode, today, entregaAtiva, soRetiradaAte }: Omit<Estado, "restaurantId">) {
+export function SeloDaOperacao({
+  open,
+  openMode,
+  today,
+  entregaAtiva,
+  soRetiradaAte,
+  ia = null,
+}: Omit<Estado, "restaurantId"> & {
+  /** Menu Fácil IA: ligada, desligada, ou null quando o restaurante não tem */
+  ia?: { ligada: boolean; href: string } | null;
+}) {
   const pausada = entregaAtiva && soRetiradaAte !== null;
 
   return (
@@ -68,6 +79,8 @@ export function SeloDaOperacao({ open, openMode, today, entregaAtiva, soRetirada
           Entrega pausada
         </span>
       )}
+
+      {ia && <LedDaIa href={ia.href} ligada={ia.ligada} />}
     </div>
   );
 }

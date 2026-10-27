@@ -1,4 +1,4 @@
-import { ChevronDown, MessageSquare } from "lucide-react";
+import { Bot, ChevronDown, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ export const orderSummarySelect = {
   customerName: true,
   customerWhatsapp: true,
   origin: true,
+  feitoPelaIa: true,
   dineIn: true,
   type: true,
   status: true,
@@ -116,6 +117,7 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
         <div>
           <dt className="font-bold text-muted">Cliente</dt>
           <dd className="font-bold">{o.customerName}</dd>
+          {o.feitoPelaIa && <dd className="font-bold text-brand">Anotado pela IA no WhatsApp</dd>}
           {o.customerWhatsapp ? (
             <dd>
               <a href={`https://wa.me/${o.customerWhatsapp}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
@@ -203,6 +205,13 @@ export function OrderDrawer({
             </Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
             {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
+            {/* ninguém do restaurante anotou: foi a IA, na conversa com este número */}
+            {o.feitoPelaIa && (
+              <Badge tone="brand" className="shrink-0 gap-1">
+                <Bot className="size-3.5" aria-hidden="true" />
+                Feito pela IA
+              </Badge>
+            )}
             {/* no 100% Delivery o cliente fala por aqui, não pelo WhatsApp:
                 sem este selo, a mensagem dele ficaria sem resposta dentro de
                 um pedido fechado na lista */}

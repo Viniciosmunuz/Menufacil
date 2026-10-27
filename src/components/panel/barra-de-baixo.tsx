@@ -236,3 +236,25 @@ export function AbertoFechado({ href, openMode, hours }: { href: string; openMod
     </Link>
   );
 }
+
+/**
+ * A bolinha do Menu Fácil IA, ao lado do Aberto/Fechado: verde é ligada,
+ * vermelha é desligada. Só aparece para quem tem o WhatsApp conectado.
+ *
+ * Ligada não quer dizer respondendo: com o restaurante fechado ela fica
+ * quieta de qualquer jeito. Por isso a palavra é só "IA", e o detalhe
+ * fica na aba dela.
+ */
+export function LedDaIa({ href, ligada }: { href: string; ligada: boolean }) {
+  return (
+    <Link
+      href={href}
+      title={ligada ? "Menu Fácil IA ligada" : "Menu Fácil IA desligada"}
+      aria-label={ligada ? "Menu Fácil IA ligada" : "Menu Fácil IA desligada"}
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 text-xs font-extrabold text-ink"
+    >
+      <span className={cn("size-2.5 rounded-full", ligada ? "bg-success" : "bg-danger")} aria-hidden="true" />
+      IA
+    </Link>
+  );
+}

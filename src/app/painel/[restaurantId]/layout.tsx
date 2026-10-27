@@ -1,8 +1,8 @@
-import { BookOpen, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
+import { BookOpen, Bot, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AbertoFechado, SeloDePedidos } from "@/components/panel/barra-de-baixo";
+import { AbertoFechado, LedDaIa, SeloDePedidos } from "@/components/panel/barra-de-baixo";
 import { ImpressaoDoSalao } from "@/components/panel/impressao-do-salao";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
@@ -28,10 +28,18 @@ export default async function RestaurantPanelLayout({
   const [horario, esperando] = await Promise.all([
     db.restaurant.findUnique({
       where: { id: restaurant.id },
-      select: { logoUrl: true, openMode: true, openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
+      select: {
+        logoUrl: true,
+        openMode: true,
+        openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+        atendenteIa: { select: { ativo: true, phoneNumberId: true } },
+      },
     }),
     pedidosEsperando(restaurant.id),
   ]);
+  // a IA só existe para o dono depois que o WhatsApp dele foi conectado
+  // pelo admin; antes disso, nem a aba nem a bolinha aparecem
+  const ia = horario?.atendenteIa?.phoneNumberId ? horario.atendenteIa.ativo : null;
 
   // o admin entra com a própria conta: só um link discreto de volta, ao lado do nome
   const context = viaAdmin ? (
@@ -72,6 +80,7 @@ export default async function RestaurantPanelLayout({
         // conta dele, e era isso que ninguém achava procurando por uma
         // bicicleta
         ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Mercado Pago", icon: <Handshake /> }] : []),
+        ...(ia !== null ? [{ href: `${base}/ia`, label: "Menu Fácil IA", icon: <Bot /> }] : []),
         // por último, e para todos: é a porta de quando algo não vai bem
         { href: `${base}/suporte`, label: "Suporte", icon: <LifeBuoy /> },
       ]}
@@ -88,7 +97,12 @@ export default async function RestaurantPanelLayout({
       barraDeBaixo={{
         fixos: [base, `${base}/pedidos`, `${base}/cardapio`],
         nome: restaurant.name,
-        topo: horario ? <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} /> : undefined,
+        topo: horario ? (
+          <span className="flex shrink-0 items-center gap-2">
+            {ia !== null && <LedDaIa href={`${base}/ia`} ligada={ia} />}
+            <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} />
+          </span>
+        ) : undefined,
         selos: { [`${base}/pedidos`]: <SeloDePedidos restaurantId={restaurant.id} inicial={esperando} /> },
       }}
     >

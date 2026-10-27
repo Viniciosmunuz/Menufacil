@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 
 import { z } from "zod";
 
-import type { OrderType } from "@/generated/prisma/enums";
+import type { OrderStatus, OrderType } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { formatCents, todayKey } from "@/lib/format";
 import { isOpenNow, soRetirada } from "@/lib/opening-hours";
@@ -135,11 +135,16 @@ function orderCode() {
   return Array.from(randomBytes(12), (b) => alphabet[b % alphabet.length]).join("");
 }
 
-export async function placeOrder(params: {
-  slug: string;
-  input: CheckoutInput;
-  items: z.infer<typeof itemsSchema>;
-}) {
+export type OrderItems = z.infer<typeof itemsSchema>;
+
+/**
+ * Confere o pedido e calcula os valores, sem gravar nada.
+ *
+ * É a primeira metade do `placeOrder`, separada para o Menu Fácil IA ler
+ * o resumo ao cliente antes de criar: o total que ela mostra é este, o
+ * mesmo que o pedido vai ter.
+ */
+export async function prepararPedido(params: { slug: string; input: CheckoutInput; items: OrderItems }) {
   const { input, items } = params;
 
   const restaurant = await db.restaurant.findUnique({
@@ -319,7 +324,7 @@ export async function placeOrder(params: {
     throw new OrderError(`O troco precisa ser para um valor igual ou maior que o total (${formatCents(totalCents)}).`, "changeFor");
   }
   // Pix: espera o pagamento; cartão e dinheiro: pagos na entrega ou no balcão
-  const initialStatus = method === "PIX" ? "AWAITING_PAYMENT" : "NEW";
+  const initialStatus: OrderStatus = method === "PIX" ? "AWAITING_PAYMENT" : "NEW";
 
   // freio contra envio repetido/abuso: poucos pedidos por WhatsApp em 10 min
   const recent = await db.order.count({
@@ -328,6 +333,20 @@ export async function placeOrder(params: {
   if (recent >= MAX_RECENT_ORDERS) {
     throw new OrderError("Você fez vários pedidos em pouco tempo. Aguarde alguns minutos ou fale com o restaurante.");
   }
+
+  return { restaurant, type, method, cemPorCento, lines, subtotalCents, deliveryFeeCents, totalCents, changeForCents, initialStatus };
+}
+
+export async function placeOrder(params: {
+  slug: string;
+  input: CheckoutInput;
+  items: OrderItems;
+  /** anotado pelo Menu Fácil IA no WhatsApp, e não pelo cliente no site */
+  pelaIa?: boolean;
+}) {
+  const { input } = params;
+  const { restaurant, type, method, cemPorCento, lines, subtotalCents, deliveryFeeCents, totalCents, changeForCents, initialStatus } =
+    await prepararPedido(params);
 
   const order = await db.$transaction(async (tx) => {
     const customer = await tx.customer.upsert({
@@ -385,7 +404,8 @@ export async function placeOrder(params: {
         deliveryFeeCents,
         totalCents,
         items: { create: lines },
-        statusEvents: { create: { status: initialStatus, note: "Pedido feito pelo site" } },
+        feitoPelaIa: params.pelaIa === true,
+        statusEvents: { create: { status: initialStatus, note: params.pelaIa ? "Pedido anotado pela IA no WhatsApp" : "Pedido feito pelo site" } },
         payment: {
           create: {
             method,

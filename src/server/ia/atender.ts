@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
 import { enviarTexto } from "./kapso";
+import { pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
 
 // O atendimento de uma mensagem que chegou pelo WhatsApp do restaurante.
@@ -16,13 +17,17 @@ import { responder, type Turno } from "./responder";
 // As travas, em ordem:
 //
 // 1. Atendente desligado: só registra, não responde.
-// 2. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
-//    IA não ouve áudio, e responder "não entendi" a um áudio irrita mais do
-//    que ficar quieta.
-// 3. Alguém do restaurante respondeu pelo celular há pouco: a IA não se mete
+// 2. Alguém do restaurante respondeu pelo celular há pouco: a IA não se mete
 //    na conversa de uma pessoa.
-// 4. Muitas respostas da IA para o mesmo cliente em pouco tempo: para. Evita
+// 3. Muitas respostas da IA para o mesmo cliente em pouco tempo: para. Evita
 //    conversa em laço e conta alta por um cliente só.
+// 4. Restaurante fechado (fora do horário ou fechado no botão): fica quieta.
+//    Com a entrega pausada ele continua aberto, e ela responde.
+// 5. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
+//    IA não ouve áudio, e responder "não entendi" a um áudio irrita mais do
+//    que ficar quieta. A exceção é a foto de quem tem Pix em aberto, que é
+//    quase sempre o comprovante: ela avisa que recebeu e que o restaurante
+//    vai conferir, e só.
 
 /** depois que um humano responde, a IA espera este tempo antes de voltar */
 const HUMANO_ASSUMIU_MIN = 30;
@@ -31,6 +36,9 @@ const RESPOSTAS_POR_HORA = 15;
 /** quanto da conversa a IA lê para ter contexto */
 const HISTORICO = 12;
 const TEXTO_MAX = 1500;
+
+const COMPROVANTE_MANUAL = "Recebi o comprovante! O restaurante vai conferir e confirmar o seu pedido. 😊";
+const COMPROVANTE_MERCADO_PAGO = "Recebi! Assim que o Pix cair, o pedido é confirmado sozinho e o restaurante já começa. 😊";
 
 /** o pedaço do aviso da Kapso que o atendimento usa (formato v2) */
 export type MensagemKapso = {
@@ -53,7 +61,7 @@ export async function atender(evento: MensagemKapso) {
 
   const atendente = await db.atendenteIa.findUnique({
     where: { phoneNumberId },
-    select: { restaurantId: true, ativo: true },
+    select: { restaurantId: true, ativo: true, fazPedidos: true },
   });
   if (!atendente) return;
   const { restaurantId } = atendente;
@@ -89,7 +97,6 @@ export async function atender(evento: MensagemKapso) {
   });
 
   if (!atendente.ativo) return;
-  if (m.type !== "text" || !texto) return;
 
   const agora = Date.now();
   const humanoRecente = await db.iaMensagem.count({
@@ -110,8 +117,40 @@ export async function atender(evento: MensagemKapso) {
     return;
   }
 
-  const conhecimento = await conhecimentoDoRestaurante(restaurantId);
-  if (!conhecimento) return;
+  const conhecimento = await conhecimentoDoRestaurante(restaurantId, { comIds: atendente.fazPedidos });
+  if (!conhecimento || !conhecimento.aberto) return;
+
+  /** manda e registra; só se ninguém do restaurante entrou na conversa enquanto isso */
+  const mandar = async (mensagens: string[]) => {
+    // Enquanto a IA pensava, alguém do restaurante pode ter respondido pelo
+    // celular. Aí a resposta dela chega atrasada e atravessa a pessoa: melhor
+    // não mandar.
+    const humanoNoMeio = await db.iaMensagem.count({
+      where: { restaurantId, contato, papel: "HUMANO", createdAt: { gte: recebida.createdAt } },
+    });
+    if (humanoNoMeio > 0) return false;
+    for (const msg of mensagens) {
+      await enviarTexto({ phoneNumberId, telefone, usuario, texto: msg });
+      await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto: msg } });
+    }
+    return true;
+  };
+
+  if (m.type !== "text" || !texto) {
+    // Foto ou PDF de quem tem Pix em aberto: é o comprovante. A IA só
+    // avisa que chegou -- quem confere é o restaurante (ou o Mercado Pago),
+    // e o arquivo já está no WhatsApp do dono.
+    if (!atendente.fazPedidos || !telefone || (m.type !== "image" && m.type !== "document")) return;
+    const pedido = await pixEmAberto(restaurantId, telefone);
+    if (!pedido) return;
+    const aviso = pedido.origin === "FULL_DELIVERY" ? COMPROVANTE_MERCADO_PAGO : COMPROVANTE_MANUAL;
+    // uma vez só: três fotos seguidas não viram três avisos
+    const jaAvisou = await db.iaMensagem.count({
+      where: { restaurantId, contato, papel: "IA", texto: aviso, createdAt: { gte: new Date(agora - 30 * 60_000) } },
+    });
+    if (jaAvisou === 0) await mandar([aviso]);
+    return;
+  }
 
   const recentes = await db.iaMensagem.findMany({
     where: { restaurantId, contato, createdAt: { gte: new Date(agora - 24 * 60 * 60_000) } },
@@ -124,19 +163,14 @@ export async function atender(evento: MensagemKapso) {
     texto: r.texto,
   }));
 
-  const resposta = await responder({ conhecimento, conversa });
+  const resposta = await responder({
+    conhecimento,
+    conversa,
+    pedidos: atendente.fazPedidos ? { restaurantId, slug: conhecimento.slug, contato, telefone } : undefined,
+  });
   if (!resposta) return;
 
-  // Enquanto a IA pensava, alguém do restaurante pode ter respondido pelo
-  // celular. Aí a resposta dela chega atrasada e atravessa a pessoa: melhor
-  // não mandar.
-  const humanoNoMeio = await db.iaMensagem.count({
-    where: { restaurantId, contato, papel: "HUMANO", createdAt: { gte: recebida.createdAt } },
-  });
-  if (humanoNoMeio > 0) return;
-
-  await enviarTexto({ phoneNumberId, telefone, usuario, texto: resposta.texto });
-  await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto: resposta.texto } });
+  await mandar([resposta.texto, ...resposta.anexos]);
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
   console.info(

@@ -263,6 +263,7 @@ model Restaurant {
   /// o atendente de IA no WhatsApp (Menu Facil IA), quando existe
   atendenteIa         AtendenteIa?
   iaMensagens         IaMensagem[]
+  iaRascunhos         IaRascunho[]
   menuCategories      MenuCategory[]
   products            Product[]
   orders              Order[]
@@ -581,6 +582,9 @@ model Order {
 
   /// a comanda da mesa, quando o pedido veio do salao
   comandaId String?
+
+  /// anotado pelo Menu Facil IA na conversa do WhatsApp, e nao pelo cliente no site
+  feitoPelaIa Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1491,6 +1495,8 @@ model AtendenteIa {
   /// assina os avisos que chegam deste numero. Nunca sai do servidor.
   segredoWebhook  String?
   conectadoEm     DateTime?
+  /// a IA pode anotar pedido na conversa. Desligado, ela so manda o link.
+  fazPedidos      Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1522,6 +1528,26 @@ model IaMensagem {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId, contato, createdAt])
+}
+
+/// O pedido que a IA montou e leu para o cliente, esperando o "sim".
+///
+/// O pedido criado e exatamente este, e nao o que o modelo lembrar depois:
+/// o que o cliente confirmou e o que vai para a cozinha.
+model IaRascunho {
+  id           String   @id @default(cuid())
+  restaurantId String
+  contato      String
+  /// o checkout e os itens, no formato que o site manda
+  dados        Json
+  resumo       String
+  totalCents   Int
+
+  createdAt DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, contato])
 }
 
 /// Aviso da Kapso ja tratado. A Kapso reenvia quando nao recebe resposta a

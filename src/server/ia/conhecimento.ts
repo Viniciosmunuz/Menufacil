@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { formatCents, TIME_ZONE } from "@/lib/format";
-import { isOpenNow, WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
+import { isOpenNow, soRetirada as entregaPausada, WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { appUrl } from "@/lib/site";
 
 // O que a IA sabe sobre o restaurante.
@@ -20,10 +20,52 @@ import { appUrl } from "@/lib/site";
 // - **o agora** (que horas são, se está aberto) muda a cada minuto e vai
 //   numa mensagem separada no fim. Se fosse junto do fixo, o cache nunca
 //   seria aproveitado.
+//
+// Quando a IA anota pedidos, o cardápio vem com o código de cada produto e
+// de cada opção: é por eles que ela monta o pedido, e o sistema confere e
+// calcula o preço a partir deles -- nunca a partir do nome ou do valor que
+// ela escreveu.
 
-export type Conhecimento = { fixo: string; agora: string; link: string; nome: string };
+export type Conhecimento = {
+  fixo: string;
+  agora: string;
+  link: string;
+  nome: string;
+  slug: string;
+  /** aberto agora; fechado, a IA não responde */
+  aberto: boolean;
+  /** 100% Delivery: o Pix é o do Mercado Pago, e não a chave */
+  cemPorCento: boolean;
+};
 
-export async function conhecimentoDoRestaurante(restaurantId: string): Promise<Conhecimento | null> {
+type GrupoDeOpcoes = {
+  id: string;
+  name: string;
+  minSelect: number;
+  maxSelect: number;
+  halfHalf: boolean;
+  options: { id: string; name: string; priceCents: number; available: boolean }[];
+};
+
+/** "Tamanho (escolha 1): Pequena [id]; Grande [id] +R$ 5,00" */
+function linhaDoGrupo(g: GrupoDeOpcoes) {
+  const regra =
+    g.minSelect === g.maxSelect
+      ? `escolha ${g.minSelect}`
+      : g.minSelect === 0
+        ? `opcional, até ${g.maxSelect}`
+        : `escolha de ${g.minSelect} a ${g.maxSelect}`;
+  const meio = g.halfHalf ? ", aceita meio a meio com 2" : "";
+  const opcoes = g.options
+    .map((o) => `${o.name} [${o.id}]${o.priceCents > 0 ? ` +${formatCents(o.priceCents)}` : ""}${o.available ? "" : " [ESGOTADO]"}`)
+    .join("; ");
+  return `    ${g.name} (${regra}${meio}): ${opcoes}`;
+}
+
+export async function conhecimentoDoRestaurante(
+  restaurantId: string,
+  { comIds = false }: { comIds?: boolean } = {},
+): Promise<Conhecimento | null> {
   const r = await db.restaurant.findUnique({
     where: { id: restaurantId },
     select: {
@@ -45,6 +87,8 @@ export async function conhecimentoDoRestaurante(restaurantId: string): Promise<C
       deliveryTimeMax: true,
       acceptsCard: true,
       acceptsCash: true,
+      fullDeliveryEnabled: true,
+      deliveryMode: true,
       openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
         // a seção que só o garçom lança (couvert, embalagem) não existe para o cliente
@@ -52,9 +96,31 @@ export async function conhecimentoDoRestaurante(restaurantId: string): Promise<C
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
           name: true,
+          pizzaFlavors: true,
+          addons: true,
           products: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: { name: true, description: true, priceCents: true, promoPriceCents: true, available: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              priceCents: true,
+              promoPriceCents: true,
+              available: true,
+              pizzaFlavors: true,
+              allowAddons: true,
+              optionGroups: {
+                orderBy: { sortOrder: "asc" },
+                select: {
+                  id: true,
+                  name: true,
+                  minSelect: true,
+                  maxSelect: true,
+                  halfHalf: true,
+                  options: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, priceCents: true, available: true } },
+                },
+              },
+            },
           },
         },
       },
@@ -63,6 +129,7 @@ export async function conhecimentoDoRestaurante(restaurantId: string): Promise<C
   if (!r) return null;
 
   const link = `${appUrl()}/restaurante/${r.slug}`;
+  const cemPorCento = r.fullDeliveryEnabled && r.deliveryMode === "FULL_DELIVERY";
   const linhas: string[] = [];
 
   linhas.push(`RESTAURANTE: ${r.name}`);
@@ -88,20 +155,47 @@ export async function conhecimentoDoRestaurante(restaurantId: string): Promise<C
     if (r.deliveryTimeMin && r.deliveryTimeMax) linhas.push(`- Tempo de entrega: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos`);
   }
   if (r.minOrderCents > 0) linhas.push(`- Pedido mínimo: ${formatCents(r.minOrderCents)}`);
-  const formas = ["Pix", r.acceptsCard && "cartão", r.acceptsCash && "dinheiro"].filter(Boolean).join(", ");
+  const formas = ["Pix", r.acceptsCard && "cartão (na entrega ou na retirada)", r.acceptsCash && "dinheiro"].filter(Boolean).join(", ");
   linhas.push(`- Formas de pagamento: ${formas}`);
   linhas.push("");
 
-  linhas.push("CARDÁPIO (preços em reais):");
-  for (const c of r.menuCategories) {
-    if (c.products.length === 0) continue;
-    linhas.push(`\n## ${c.name}`);
-    for (const p of c.products) {
-      const preco = p.promoPriceCents
-        ? `${formatCents(p.promoPriceCents)} (promoção; de ${formatCents(p.priceCents)})`
-        : formatCents(p.priceCents);
-      const descricao = p.description ? ` — ${p.description.slice(0, 160)}` : "";
-      linhas.push(`- ${p.name}: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${descricao}`);
+  if (!comIds) {
+    linhas.push("CARDÁPIO (preços em reais):");
+    for (const c of r.menuCategories) {
+      if (c.products.length === 0) continue;
+      linhas.push(`\n## ${c.name}`);
+      for (const p of c.products) {
+        const preco = p.promoPriceCents
+          ? `${formatCents(p.promoPriceCents)} (promoção; de ${formatCents(p.priceCents)})`
+          : formatCents(p.priceCents);
+        const descricao = p.description ? ` — ${p.description.slice(0, 160)}` : "";
+        linhas.push(`- ${p.name}: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${descricao}`);
+      }
+    }
+  } else {
+    linhas.push("CARDÁPIO PARA ANOTAR (o código entre colchetes é o que vai no pedido; preços em reais):");
+    for (const c of r.menuCategories) {
+      if (c.products.length === 0) continue;
+      const marca = c.pizzaFlavors
+        ? ' — sabores de pizza: entram no campo "sabores" de uma pizza montada'
+        : c.addons
+          ? ' — acompanhamentos: entram no campo "acompanhamentos" de um prato que aceita, ou sozinhos como item'
+          : "";
+      linhas.push(`\n## ${c.name}${marca}`);
+      for (const p of c.products) {
+        const preco = p.promoPriceCents
+          ? `${formatCents(p.promoPriceCents)} (promoção; de ${formatCents(p.priceCents)})`
+          : formatCents(p.priceCents);
+        const extras = [
+          p.pizzaFlavors ? `pizza montada: ${p.pizzaFlavors} sabor(es) e o tamanho; vale o preço do sabor mais caro` : null,
+          p.allowAddons ? "aceita acompanhamentos" : null,
+        ].filter(Boolean);
+        const descricao = p.description ? ` — ${p.description.slice(0, 120)}` : "";
+        linhas.push(
+          `- ${p.name} [${p.id}]: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${extras.length ? ` (${extras.join("; ")})` : ""}${descricao}`,
+        );
+        for (const g of p.optionGroups) linhas.push(linhaDoGrupo(g));
+      }
     }
   }
 
@@ -113,14 +207,14 @@ export async function conhecimentoDoRestaurante(restaurantId: string): Promise<C
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date());
-  const soRetirada = r.pickupOnlyUntil && r.pickupOnlyUntil > new Date();
+  const pausada = r.deliveryEnabled && entregaPausada(r.pickupOnlyUntil);
   const agora = [
     `Agora: ${hora}.`,
     aberto ? "O restaurante está ABERTO e recebendo pedidos." : "O restaurante está FECHADO agora.",
-    soRetirada ? "A entrega está pausada no momento; só retirada no local." : "",
+    pausada ? "A ENTREGA ESTÁ PAUSADA no momento: só retirada no local." : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  return { fixo: linhas.join("\n"), agora, link, nome: r.name };
+  return { fixo: linhas.join("\n"), agora, link, nome: r.name, slug: r.slug, aberto, cemPorCento };
 }

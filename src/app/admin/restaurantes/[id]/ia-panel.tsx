@@ -10,10 +10,11 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import { conferirConexaoDaIa, gerarLinkDaIa, ligarIa } from "./ia-actions";
+import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, ligarIa } from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
+  fazPedidos: boolean;
   linkDeConexao: string | null;
   numeroExibido: string | null;
   conectado: boolean;
@@ -28,13 +29,14 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [gerado, gerar] = useActionState<AdminFormState, FormData>(gerarLinkDaIa, {});
   const [conferido, conferir] = useActionState<AdminFormState, FormData>(conferirConexaoDaIa, {});
   const [ligado, ligar] = useActionState<AdminFormState, FormData>(ligarIa, {});
+  const [pedidos, mudarPedidos] = useActionState<AdminFormState, FormData>(iaFazPedidos, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [ligado, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
-      <SectionTitle description="Atendente no WhatsApp do restaurante. Responde dúvidas e manda o link do cardápio; não anota pedido.">
+      <SectionTitle description="Atendente no WhatsApp do restaurante. Responde dúvidas e manda o link do cardápio; com a chave de pedidos ligada, também anota o pedido e manda o Pix. Só responde com o restaurante aberto.">
         <span className="flex items-center gap-2">
           <Bot className="size-5 text-brand" aria-hidden="true" />
           Menu Fácil IA
@@ -117,6 +119,28 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
               <input type="hidden" name="ligar" value={estado.ativo ? "0" : "1"} />
               <SubmitButton variant={estado.ativo ? "secondary" : "primary"} size="sm">
                 {estado.ativo ? "Desligar a IA" : "Ligar a IA"}
+              </SubmitButton>
+            </form>
+          </div>
+        )}
+
+        {/* 4. pedidos: o passo em que a IA mexe em pedido de verdade */}
+        {estado?.conectado && (
+          <div className="flex flex-col gap-2 border-t border-line pt-4">
+            <p className="flex items-center gap-2 text-sm font-extrabold">
+              4. Pedidos pela IA
+              {estado.fazPedidos ? <Badge tone="success">Ligado</Badge> : <Badge>Desligado</Badge>}
+            </p>
+            <p className="text-sm text-muted">
+              {estado.fazPedidos
+                ? "Se o cliente não conseguir pelo link, a IA anota o pedido, lê o resumo com o total e só cria depois do \"sim\". Também manda o Pix de pedido em aberto e pede o comprovante. Quem confirma o pagamento é o restaurante (ou o Mercado Pago)."
+                : "A IA só tira dúvidas e manda o link do cardápio. Ligado, ela também anota o pedido de quem não conseguir pelo link e ajuda com o Pix."}
+            </p>
+            <form action={mudarPedidos}>
+              <input type="hidden" name="restaurantId" value={restaurantId} />
+              <input type="hidden" name="ligar" value={estado.fazPedidos ? "0" : "1"} />
+              <SubmitButton variant="secondary" size="sm">
+                {estado.fazPedidos ? "Desligar pedidos pela IA" : "Deixar a IA fazer pedidos"}
               </SubmitButton>
             </form>
           </div>

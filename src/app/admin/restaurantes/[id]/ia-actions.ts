@@ -129,3 +129,24 @@ export async function ligarIa(_prev: AdminFormState, formData: FormData): Promis
   refresh();
   return { ok: true, message: ligar ? "IA ligada: ela já responde as próximas mensagens." : "IA desligada." };
 }
+
+/**
+ * Deixa a IA anotar pedido e mandar o Pix na conversa. Desligado, ela só
+ * tira dúvidas e manda o link. É o admin quem decide: é o passo em que a
+ * IA passa a mexer em pedido de verdade.
+ */
+export async function iaFazPedidos(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const ligar = formData.get("ligar") === "1";
+
+  const atendente = await db.atendenteIa.findUnique({ where: { restaurantId }, select: { phoneNumberId: true } });
+  if (!atendente?.phoneNumberId) return { error: "Conecte o WhatsApp antes." };
+
+  await db.atendenteIa.update({ where: { restaurantId }, data: { fazPedidos: ligar } });
+  refresh();
+  return {
+    ok: true,
+    message: ligar ? "A IA agora pode anotar pedidos e mandar o Pix." : "A IA voltou a só tirar dúvidas e mandar o link.",
+  };
+}

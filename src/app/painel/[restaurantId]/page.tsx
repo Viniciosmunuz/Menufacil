@@ -71,6 +71,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           openMode: true,
           deliveryEnabled: true,
           pickupOnlyUntil: true,
+          atendenteIa: { select: { ativo: true, phoneNumberId: true } },
           openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
           // a mensalidade do mês: o dono só descobria que estava devendo
           // quando alguém ligava
@@ -103,6 +104,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           today={todayLabel(details.openingHours)}
           entregaAtiva={details.deliveryEnabled}
           soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
+          ia={details.atendenteIa?.phoneNumberId ? { ligada: details.atendenteIa.ativo, href: `${base}/ia` } : null}
         />
       </header>
 
