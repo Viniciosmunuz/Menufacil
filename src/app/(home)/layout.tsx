@@ -16,12 +16,24 @@ import { MenuDoTopo, type LinkDoMenu } from "@/components/venda/menu-topo";
 // Quem entrou pelo link de um restaurante nunca chega aqui: o proxy manda
 // de volta para o restaurante dele antes (ver src/proxy.ts).
 
+// A barra do topo leva três links, não seis.
+//
+// Tinha Início, Recursos, Planos, Totem, Depoimentos e Dúvidas -- e um menu
+// de seis itens não ajuda a escolher, atrapalha: quem chega aqui tem uma
+// pergunta só ("isso serve para mim e quanto custa?") e o excesso espalha a
+// atenção. O que saiu continua na página e no rodapé, que é onde se procura
+// o detalhe.
 const LINKS: LinkDoMenu[] = [
   { href: `#${SECOES.topo}`, label: "Início" },
   { href: `#${SECOES.recursos}`, label: "Recursos" },
   { href: `#${SECOES.planos}`, label: "Planos" },
-  { href: `#${SECOES.totem}`, label: "Totem" },
-  // depoimento só entra no menu quando existe um de verdade
+];
+
+/** o rodapé ainda lista tudo: lá o espaço sobra e quem procura, procura */
+const LINKS_RODAPE: LinkDoMenu[] = [
+  ...LINKS,
+  { href: `#${SECOES.adicionais}`, label: "Adicionais" },
+  // depoimento só entra quando existe um de verdade
   ...(DEPOIMENTOS.length ? [{ href: `#${SECOES.depoimentos}`, label: "Depoimentos" }] : []),
   { href: `#${SECOES.duvidas}`, label: "Dúvidas" },
 ];
@@ -45,7 +57,7 @@ export default function HomeLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-6 sm:py-14">{children}</main>
 
       <footer className="border-t border-line [--color-bg:#141211] [--color-faint:#8a857f] [--color-ink:#f4f2ef] [--color-line:#2f2b28] [--color-muted:#bdb8b1] bg-bg text-ink">
         <div className="mx-auto flex max-w-6xl flex-col gap-7 px-4 py-9 sm:px-6">
@@ -61,7 +73,7 @@ export default function HomeLayout({ children }: LayoutProps<"/">) {
             </div>
 
             <nav aria-label="Rodapé" className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-bold text-muted">
-              {LINKS.map(({ href, label }) => (
+              {LINKS_RODAPE.map(({ href, label }) => (
                 <a key={href} href={href} className="hover:text-ink">
                   {label}
                 </a>

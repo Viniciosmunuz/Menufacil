@@ -1,241 +1,197 @@
-import { BellRing, Plus, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-// Maquetes das três telas do sistema, desenhadas aqui mesmo em HTML: não
-// desbotam, acompanham o tema e continuam legíveis numa tela de 390px.
+// As telas do sistema na página de venda.
 //
-// TODO (opcional): trocar por prints de verdade do sistema. Seriam três:
-//   1. cardápio aberto no celular do cliente
-//   2. painel de pedidos com um pedido novo chegando
-//   3. foto da via saindo da impressora térmica
-// Se um dia entrarem, salve em /public/vitrine/ e troque o miolo de cada
-// <Moldura> por <Image src="/vitrine/....webp" .../>.
+// Antes eram maquetes desenhadas em HTML: um cardápio de mentira, um painel
+// de mentira. Funcionavam, mas vendiam uma ilusão do produto em vez do
+// produto. Agora são **capturas reais** do MenuFácil rodando, em
+// /public/venda/, dentro de molduras de aparelho desenhadas aqui.
+//
+// A moldura fica em código, e não numa foto de celular comprada, por três
+// motivos: pesa alguns bytes em vez de alguns megabytes, acompanha o tema
+// claro e escuro, e não envelhece junto com o modelo de aparelho da moda.
+//
+// As capturas são do restaurante de demonstração, não de cliente real --
+// nenhum dado de quem paga aparece aqui.
 
-/** moldura de celular, com o entalhe em cima */
-function Moldura({ children, className }: { children: ReactNode; className?: string }) {
+// ─── as capturas ──────────────────────────────────────────────────────
+
+type Captura = { src: string; w: number; h: number; alt: string };
+
+const TELAS = {
+  cardapio: {
+    src: "/venda/cardapio-cliente.webp",
+    w: 780,
+    h: 1688,
+    alt: "Cardápio do restaurante aberto no celular do cliente, com fotos e preços dos pratos",
+  },
+  painel: {
+    src: "/venda/painel-celular.webp",
+    w: 780,
+    h: 1688,
+    alt: "Painel do restaurante no celular, mostrando as vendas do dia e os pedidos em andamento",
+  },
+  salao: {
+    src: "/venda/salao-mesas.webp",
+    w: 780,
+    h: 1688,
+    alt: "Mapa do salão no celular do garçom, com as mesas livres e uma mesa aberta",
+  },
+  comanda: {
+    src: "/venda/comanda-mesa.webp",
+    w: 390,
+    h: 844,
+    alt: "Comanda da mesa com os itens lançados e o total da conta",
+  },
+  computador: {
+    src: "/venda/painel-computador.webp",
+    w: 800,
+    h: 560,
+    alt: "Painel do MenuFácil no computador, com o gráfico de vendas e os pedidos do dia",
+  },
+} satisfies Record<string, Captura>;
+
+// ─── as molduras ──────────────────────────────────────────────────────
+
+/**
+ * Celular.
+ *
+ * Corpo escuro com cantos bem arredondados, moldura fina e a pastilha do
+ * alto-falante. A proporção vem da própria captura, então o miolo nunca
+ * estica nem corta.
+ */
+export function Celular({
+  tela,
+  className,
+  priority,
+  sizes = "(min-width: 1024px) 20vw, 45vw",
+}: {
+  tela: Captura;
+  className?: string;
+  priority?: boolean;
+  sizes?: string;
+}) {
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[13.5rem] rounded-[1.75rem] border border-line-strong bg-surface-3 p-1.5",
-        "shadow-[0_18px_40px_-12px_rgb(0_0_0/0.7)]",
+        "relative rounded-[2rem] bg-[#15171c] p-[0.35rem] shadow-[0_24px_50px_-18px_rgb(0_0_0/0.45)] ring-1 ring-black/10 sm:rounded-[2.3rem] sm:p-[0.4rem]",
         className,
       )}
     >
-      <div className="overflow-hidden rounded-[1.35rem] bg-bg">
-        <div className="flex justify-center pt-1.5 pb-0.5">
-          <span className="h-1 w-10 rounded-full bg-surface-3" aria-hidden="true" />
-        </div>
-        {children}
+      {/* os botões laterais: dois traços, o suficiente para o olho ler
+          "aparelho" sem virar enfeite */}
+      <span aria-hidden="true" className="absolute top-[22%] -left-[2px] h-9 w-[2px] rounded-l bg-[#2b2e35]" />
+      <span aria-hidden="true" className="absolute top-[34%] -left-[2px] h-14 w-[2px] rounded-l bg-[#2b2e35]" />
+      <span aria-hidden="true" className="absolute top-[26%] -right-[2px] h-12 w-[2px] rounded-r bg-[#2b2e35]" />
+
+      <div className="relative overflow-hidden rounded-[1.7rem] bg-bg sm:rounded-[2rem]">
+        <Image
+          src={tela.src}
+          alt={tela.alt}
+          width={tela.w}
+          height={tela.h}
+          sizes={sizes}
+          priority={priority}
+          className="block h-auto w-full"
+        />
+        {/* a pastilha do alto-falante, por cima da captura */}
+        <span
+          aria-hidden="true"
+          className="absolute top-[0.45rem] left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[#15171c]/70"
+        />
       </div>
     </div>
   );
 }
 
-const PRATOS = [
-  { nome: "X-Burger", preco: "22,00", foto: "/demo/burger/x-burger.webp" },
-  { nome: "Batata frita", preco: "18,00", foto: "/demo/burger/batata-frita.webp" },
-  { nome: "Milkshake", preco: "14,00", foto: "/demo/burger/milkshake.webp" },
-];
-
-/** 1. o cardápio como o cliente vê */
-export function TelaDoCardapio() {
+/**
+ * Notebook.
+ *
+ * Tela com moldura escura, dobradiça e base. A base é mais larga que a
+ * tela de propósito: é o que faz o desenho ler como um notebook de lado,
+ * e não como um monitor flutuando.
+ */
+export function Notebook({
+  tela,
+  className,
+  priority,
+  sizes = "(min-width: 1024px) 45vw, 90vw",
+}: {
+  tela: Captura;
+  className?: string;
+  priority?: boolean;
+  sizes?: string;
+}) {
   return (
-    <Moldura>
-      <div className="flex items-center gap-1.5 px-2.5 py-2">
-        <Image src="/demo/burger/logo.webp" alt="" width={48} height={48} className="size-6 shrink-0 rounded-full object-cover" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.6rem] leading-tight font-extrabold">Burger do Zé</span>
-          <span className="block text-[0.5rem] leading-tight text-success">Aberto agora</span>
-        </span>
-      </div>
-      <div className="flex gap-1 px-2.5 pb-1.5">
-        {["Lanches", "Porções", "Bebidas"].map((c, i) => (
-          <span
-            key={c}
-            className={cn(
-              "rounded-full px-1.5 py-0.5 text-[0.48rem] font-bold",
-              i === 0 ? "bg-brand text-brand-ink" : "bg-surface-2 text-muted",
-            )}
-          >
-            {c}
-          </span>
-        ))}
-      </div>
-      <ul className="flex flex-col gap-1 px-2 pb-1.5">
-        {PRATOS.map((p) => (
-          <li key={p.nome} className="flex items-center gap-1.5 rounded-lg border border-line bg-surface p-1">
-            <Image src={p.foto} alt="" width={80} height={80} className="size-8 shrink-0 rounded-md object-cover" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[0.55rem] leading-tight font-bold">{p.nome}</span>
-              <span className="block text-[0.55rem] leading-tight font-extrabold text-brand">R$ {p.preco}</span>
-            </span>
-            <span className="grid size-4 shrink-0 place-items-center rounded-md bg-brand text-brand-ink" aria-hidden="true">
-              <Plus className="size-2.5" strokeWidth={3} />
-            </span>
-          </li>
-        ))}
-      </ul>
-      <div className="px-2 pb-2">
-        <span className="flex h-6 items-center justify-center gap-1 rounded-lg bg-brand text-[0.55rem] font-extrabold text-brand-ink">
-          <ShoppingBag className="size-2.5" aria-hidden="true" />
-          Ver carrinho · R$ 54,00
-        </span>
-      </div>
-    </Moldura>
-  );
-}
-
-/** 2. o painel do restaurante quando entra pedido */
-export function TelaDoPainel() {
-  return (
-    <Moldura>
-      <div className="flex items-center justify-between px-2.5 py-2">
-        <span className="text-[0.6rem] font-extrabold">Pedidos</span>
-        <span className="relative grid size-5 place-items-center rounded-full bg-brand-soft text-brand" aria-hidden="true">
-          <BellRing className="size-3" />
-          <span className="absolute -top-0.5 -right-0.5 size-1.5 animate-pulse rounded-full bg-danger" />
-        </span>
-      </div>
-      <div className="px-2 pb-2">
-        <div className="rounded-lg border border-brand/60 bg-brand-soft p-1.5">
-          <div className="flex items-center justify-between">
-            <span className="rounded-full bg-brand px-1.5 py-px text-[0.45rem] font-extrabold text-brand-ink">PEDIDO NOVO</span>
-            <span className="text-[0.5rem] font-bold text-muted">19:24</span>
-          </div>
-          <p className="mt-1 text-[0.6rem] font-extrabold">#42 · Entrega</p>
-          <p className="text-[0.5rem] leading-tight text-muted">Maria · Rua das Flores, 120</p>
-          <ul className="mt-1 flex flex-col gap-px border-t border-line pt-1 text-[0.52rem] leading-tight">
-            <li className="flex justify-between gap-1">
-              <span className="truncate">2x X-Burger</span>
-              <span className="font-bold">44,00</span>
-            </li>
-            <li className="pl-2 text-[0.46rem] text-faint">sem cebola</li>
-            <li className="flex justify-between gap-1">
-              <span className="truncate">1x Batata frita</span>
-              <span className="font-bold">18,00</span>
-            </li>
-          </ul>
-          <div className="mt-1 flex justify-between border-t border-line pt-1 text-[0.58rem] font-extrabold">
-            <span>Total</span>
-            <span className="text-brand">R$ 62,00</span>
-          </div>
-        </div>
-        <span className="mt-1.5 flex h-6 items-center justify-center rounded-lg bg-brand text-[0.55rem] font-extrabold text-brand-ink">
-          Aceitar pedido
-        </span>
-      </div>
-      {/* pedido antigo, só para dar profundidade à lista */}
-      <div className="border-t border-line px-2 py-1.5 opacity-50">
-        <div className="flex justify-between text-[0.52rem]">
-          <span className="font-bold">#41 · Retirada</span>
-          <span className="text-success">Pronto</span>
+    <div className={cn("w-full", className)}>
+      <div className="rounded-t-[0.9rem] bg-[#15171c] px-[0.4rem] pt-[0.7rem] pb-[0.4rem] shadow-[0_24px_50px_-20px_rgb(0_0_0/0.45)]">
+        {/* a câmera */}
+        <span
+          aria-hidden="true"
+          className="mx-auto mb-[0.4rem] block size-[3px] rounded-full bg-[#3a3e46]"
+        />
+        <div className="overflow-hidden rounded-[0.35rem] bg-bg">
+          <Image
+            src={tela.src}
+            alt={tela.alt}
+            width={tela.w}
+            height={tela.h}
+            sizes={sizes}
+            priority={priority}
+            className="block h-auto w-full"
+          />
         </div>
       </div>
-    </Moldura>
-  );
-}
-
-const MESAS = [
-  { n: 1, estado: "ocupada", valor: "86,00", tempo: "42min" },
-  { n: 2, estado: "livre" },
-  { n: 3, estado: "ocupada", valor: "154,50", tempo: "1h10" },
-  { n: 4, estado: "conta", valor: "61,00", tempo: "55min" },
-  { n: 5, estado: "livre" },
-  { n: 6, estado: "ocupada", valor: "212,00", tempo: "18min" },
-] as const;
-
-/** 4. o mapa de mesas, no celular do garçom e no painel do caixa */
-export function TelaDoSalao() {
-  return (
-    <Moldura>
-      <div className="flex items-center justify-between px-2.5 py-2">
-        <span className="text-[0.6rem] font-extrabold">Salão</span>
-        <span className="rounded-full bg-success/15 px-1.5 py-px text-[0.45rem] font-extrabold text-success">
-          Caixa aberto
-        </span>
+      {/* a base, com o entalhe de abrir */}
+      <div className="relative mx-auto h-[0.6rem] w-[106%] rounded-b-[0.5rem] bg-[#1f2228]">
+        <span
+          aria-hidden="true"
+          className="absolute top-0 left-1/2 h-[0.18rem] w-[14%] -translate-x-1/2 rounded-b-full bg-[#2f333b]"
+        />
       </div>
-      <ul className="grid grid-cols-3 gap-1 px-2 pb-2">
-        {MESAS.map((m) => {
-          const livre = m.estado === "livre";
-          const conta = m.estado === "conta";
-          return (
-            <li
-              key={m.n}
-              className={cn(
-                "flex flex-col items-center justify-center gap-px rounded-lg border px-1 py-1.5",
-                livre && "border-line bg-surface text-faint",
-                m.estado === "ocupada" && "border-brand/60 bg-brand-soft",
-                conta && "border-success/60 bg-success/10",
-              )}
-            >
-              <span className={cn("text-[0.62rem] leading-none font-extrabold", conta && "text-success")}>{m.n}</span>
-              {livre ? (
-                <span className="text-[0.42rem] leading-tight font-bold">livre</span>
-              ) : (
-                <>
-                  <span className="text-[0.45rem] leading-tight font-extrabold text-brand">{m.valor}</span>
-                  <span className="text-[0.4rem] leading-tight text-muted">{m.tempo}</span>
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="border-t border-line px-2 py-1.5">
-        <div className="flex items-center justify-between text-[0.5rem]">
-          <span className="text-muted">4 mesas abertas</span>
-          <span className="font-extrabold text-brand">R$ 513,50</span>
-        </div>
-      </div>
-    </Moldura>
-  );
-}
-
-/** 5. a comanda que sai na cozinha quando o garçom lança */
-export function ComandaDoSalao() {
-  return (
-    <div className="mx-auto w-full max-w-[12.5rem] drop-shadow-[0_18px_30px_rgb(0_0_0/0.6)]">
-      <div className="rounded-t-sm bg-[#f7f5ef] px-3 pt-3 pb-2 text-center font-mono text-[0.55rem] leading-[1.5] text-[#15181d]">
-        <p className="text-[0.68rem] font-bold tracking-wide">BURGER DO ZE</p>
-        <p className="mt-2 text-[0.95rem] leading-none font-bold tracking-wide">* MESA 5 *</p>
-        <p className="mt-1 text-[0.52rem]">Garçom: Lucas</p>
-        <p className="my-1.5 overflow-hidden text-[#9aa0a6]">──────────────────────────────</p>
-        <div className="text-left">
-          <div className="flex gap-2 text-[0.5rem] font-bold">
-            <span className="w-6">QTD</span>
-            <span>DESCRIÇÃO</span>
-          </div>
-          <div className="mt-1 flex gap-2">
-            <span className="w-6">2</span>
-            <span className="truncate">X-BURGER</span>
-          </div>
-          <p className="pl-8 text-[0.48rem]">sem cebola</p>
-          <div className="mt-0.5 flex gap-2">
-            <span className="w-6">1</span>
-            <span className="truncate">BATATA FRITA</span>
-          </div>
-        </div>
-        <p className="mt-2.5 text-[0.48rem] text-[#5d646d]">25/10/2026 - 19:24:08</p>
-      </div>
-      <svg viewBox="0 0 120 6" preserveAspectRatio="none" className="block h-2 w-full" aria-hidden="true">
-        <path d="M0 0h120v1L114 6 108 1 102 6 96 1 90 6 84 1 78 6 72 1 66 6 60 1 54 6 48 1 42 6 36 1 30 6 24 1 18 6 12 1 6 6 0 1Z" fill="#f7f5ef" />
-      </svg>
     </div>
   );
 }
+
+/**
+ * Totem de balcão: a mesma tela do cliente, de pé, num pedestal.
+ */
+export function TotemAparelho({ className }: { className?: string }) {
+  return (
+    <div className={cn("w-full", className)}>
+      <div className="rounded-[1.2rem] bg-[#15171c] p-[0.45rem] shadow-[0_22px_44px_-20px_rgb(0_0_0/0.45)]">
+        <div className="overflow-hidden rounded-[0.85rem] bg-bg">
+          <Image
+            src={TELAS.cardapio.src}
+            alt="Totem de autoatendimento com o cardápio do restaurante na tela"
+            width={TELAS.cardapio.w}
+            height={TELAS.cardapio.h}
+            sizes="140px"
+            className="block h-auto w-full"
+          />
+        </div>
+      </div>
+      {/* o pé */}
+      <div aria-hidden="true" className="mx-auto h-5 w-[14%] bg-[#1f2228]" />
+      <div aria-hidden="true" className="mx-auto h-[0.4rem] w-[62%] rounded-full bg-[#1f2228]" />
+    </div>
+  );
+}
+
+// ─── a via de papel ───────────────────────────────────────────────────
 
 const LINHAS = [
   ["2x X-Burger", "44,00"],
   ["1x Batata frita", "18,00"],
 ];
 
-/** 3. a via que sai na impressora do balcão */
+/** a via que sai na impressora do balcão: papel, não aparelho */
 export function ViaImpressa() {
   return (
-    <div className="mx-auto w-full max-w-[12.5rem] drop-shadow-[0_18px_30px_rgb(0_0_0/0.6)]">
+    <div className="mx-auto w-full max-w-[12.5rem] drop-shadow-[0_18px_30px_rgb(0_0_0/0.35)]">
       <div className="rounded-t-sm bg-[#f7f5ef] px-3 pt-3 pb-2 font-mono text-[0.55rem] leading-[1.5] text-[#15181d]">
         <p className="text-center text-[0.72rem] font-bold tracking-wide">BURGER DO ZE</p>
         <p className="text-center">Rua Principal, 45</p>
@@ -267,119 +223,61 @@ export function ViaImpressa() {
       </div>
       {/* borda serrilhada: o papel destacado da bobina */}
       <svg viewBox="0 0 120 6" preserveAspectRatio="none" className="block h-2 w-full" aria-hidden="true">
-        <path d="M0 0h120v1L114 6 108 1 102 6 96 1 90 6 84 1 78 6 72 1 66 6 60 1 54 6 48 1 42 6 36 1 30 6 24 1 18 6 12 1 6 6 0 1Z" fill="#f7f5ef" />
+        <path
+          d="M0 0h120v1L114 6 108 1 102 6 96 1 90 6 84 1 78 6 72 1 66 6 60 1 54 6 48 1 42 6 36 1 30 6 24 1 18 6 12 1 6 6 0 1Z"
+          fill="#f7f5ef"
+        />
       </svg>
     </div>
   );
 }
 
-// ─── as composições do topo e dos recursos ────────────────────────────
-//
-// O mockup da página mostra o sistema rodando em três lugares ao mesmo
-// tempo: o painel no computador, o cardápio no celular e a comanda saindo
-// no papel. É o argumento inteiro numa imagem só -- e por isso vale montar
-// aqui, em HTML, em vez de uma foto: acompanha o tema e não desfoca.
-
-const PEDIDOS_DO_PAINEL = [
-  { n: "#42", tipo: "Entrega", quem: "Maria Souza", valor: "62,00", estado: "Novo" },
-  { n: "#41", tipo: "Retirada", quem: "João Batista", valor: "38,50", estado: "Na cozinha" },
-  { n: "#40", tipo: "Entrega", quem: "Ana Clara", valor: "91,00", estado: "Saiu" },
-  { n: "#39", tipo: "Mesa 5", quem: "Salão", valor: "154,50", estado: "Aberta" },
-];
-
-const COR_DO_ESTADO: Record<string, string> = {
-  Novo: "bg-brand text-brand-ink",
-  "Na cozinha": "bg-surface-2 text-muted",
-  Saiu: "bg-info/15 text-info",
-  Aberta: "bg-success/15 text-success",
-};
-
-/** o painel do restaurante, na tela do computador */
-export function TelaDoPainelLargo() {
-  return (
-    <div className="w-full">
-      <div className="rounded-[0.9rem] border border-line-strong bg-surface-3 p-1.5 shadow-[0_22px_45px_-18px_rgb(0_0_0/0.55)]">
-        <div className="flex overflow-hidden rounded-[0.6rem] bg-bg">
-          {/* o menu lateral, reduzido ao essencial */}
-          <div className="flex w-10 shrink-0 flex-col gap-2 border-r border-line bg-surface px-2 py-2.5 sm:w-12">
-            <span className="h-3 w-full rounded-sm bg-brand/80" aria-hidden="true" />
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="h-2 w-full rounded-sm bg-surface-3" aria-hidden="true" />
-            ))}
-          </div>
-
-          <div className="min-w-0 flex-1 px-2.5 py-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[0.6rem] font-extrabold">Pedidos</span>
-              <span className="rounded-full bg-brand px-1.5 py-px text-[0.42rem] font-extrabold text-brand-ink">1 novo</span>
-            </div>
-
-            <ul className="mt-1.5 flex flex-col gap-1">
-              {PEDIDOS_DO_PAINEL.map((p) => (
-                <li key={p.n} className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-1.5 py-1">
-                  <span className="w-6 shrink-0 text-[0.5rem] font-extrabold">{p.n}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.5rem] leading-tight font-bold">{p.quem}</span>
-                    <span className="block text-[0.44rem] leading-tight text-faint">{p.tipo}</span>
-                  </span>
-                  <span className="shrink-0 text-[0.5rem] font-extrabold">R$ {p.valor}</span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-1 py-px text-[0.4rem] font-extrabold",
-                      COR_DO_ESTADO[p.estado] ?? "bg-surface-2 text-muted",
-                    )}
-                  >
-                    {p.estado}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-      {/* a base do notebook */}
-      <div className="mx-auto h-1.5 w-[72%] rounded-b-md bg-line-strong" aria-hidden="true" />
-    </div>
-  );
-}
+// ─── as composições ───────────────────────────────────────────────────
 
 /**
- * Notebook, celular e papel juntos: a imagem do topo.
- *
- * O papel só entra a partir do tablet. No celular a coluna é estreita, e a
- * via, que é alta por natureza, subia por cima do texto do topo em vez de
- * ficar embaixo do notebook -- o canto de baixo não segura um elemento
- * mais alto que o espaço que sobra.
+ * O topo: o painel no notebook, o cardápio no celular por cima, e a via
+ * saindo no papel. É o argumento inteiro numa imagem — o mesmo sistema nos
+ * três lugares onde o restaurante trabalha.
  */
 export function ComposicaoDoTopo() {
   return (
-    <div className="relative w-full pb-4 sm:pb-10" aria-hidden="true">
-      <div className="w-[88%]">
-        <TelaDoPainelLargo />
+    <div className="relative w-full pt-3 pb-6 sm:pb-12">
+      <div className="w-[86%]">
+        <Notebook tela={TELAS.computador} priority sizes="(min-width: 1024px) 42vw, 80vw" />
       </div>
-      <div className="absolute top-[18%] -right-1 w-[36%] drop-shadow-[0_16px_28px_rgb(0_0_0/0.5)] sm:right-2">
-        <TelaDoCardapio />
+      <div className="absolute top-[12%] right-0 w-[34%] sm:right-2 sm:w-[32%]">
+        <Celular tela={TELAS.cardapio} priority sizes="(min-width: 1024px) 15vw, 32vw" />
       </div>
-      <div className="absolute bottom-0 left-[8%] hidden w-[26%] rotate-[-6deg] opacity-95 sm:block">
+      <div className="absolute bottom-0 left-[6%] hidden w-[24%] rotate-[-7deg] sm:block">
         <ViaImpressa />
       </div>
     </div>
   );
 }
 
-/** celular, salão e papel: a imagem da seção de recursos */
+/** salão, comanda e painel: a imagem da seção de recursos */
 export function ComposicaoDeRecursos() {
   return (
-    <div className="relative flex w-full items-start justify-center gap-3" aria-hidden="true">
-      <div className="w-[38%] max-w-[9.5rem]">
-        <TelaDoCardapio />
+    <div className="relative flex w-full items-start justify-center gap-3 sm:gap-4">
+      <div className="w-[38%] max-w-[10rem]">
+        <Celular tela={TELAS.salao} sizes="(min-width: 1024px) 11vw, 36vw" />
       </div>
-      <div className="w-[38%] max-w-[9.5rem] pt-8">
-        <TelaDoSalao />
+      <div className="w-[38%] max-w-[10rem] pt-10">
+        <Celular tela={TELAS.painel} sizes="(min-width: 1024px) 11vw, 36vw" />
       </div>
-      <div className="w-[26%] max-w-[7rem] pt-4">
-        <ComandaDoSalao />
+      <div className="hidden w-[24%] max-w-[7rem] pt-5 sm:block">
+        <ViaImpressa />
       </div>
     </div>
+  );
+}
+
+/** o cardápio do cliente, sozinho, para onde a página precisar */
+export function TelaDoCardapio({ children }: { children?: ReactNode }) {
+  return (
+    <>
+      <Celular tela={TELAS.cardapio} sizes="(min-width: 1024px) 14vw, 40vw" />
+      {children}
+    </>
   );
 }

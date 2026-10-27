@@ -1,0 +1,31 @@
+{
+  "unit": "restaurante-mês (uma assinatura ativa, um mês)",
+  "price": 180.0,
+  "variable": {
+    "infraestrutura_por_restaurante": 0.0,
+    "suporte_tempo_do_fundador": 0.0
+  },
+  "fixed_monthly": {
+    "dominio_menufacildelivery_com_br": 3.5,
+    "vercel": 0.0,
+    "banco_neon": 0.0
+  },
+  "startup": {
+    "dominio_primeiro_ano": 40.0
+  },
+  "plan_per_day": 0.33,
+  "ramp_per_day": [
+    0.066, 0.1, 0.1, 0.133, 0.166, 0.2,
+    0.2, 0.233, 0.266, 0.3, 0.3, 0.333
+  ],
+  "capacity_per_day": 0.46,
+  "_notas": {
+    "price": "100% Delivery R$ 180/mes. O Essencial e R$ 100. Modelado no plano de cima; o cenario de mix esta no cfo.md.",
+    "variable": "Ele respondeu que hoje nao custa nada por restaurante: Vercel, Neon e Mercado Pago estao em faixa gratuita com 2 clientes. ESTIMATIVA DELE, verdadeira hoje e falsa a partir de certo volume - ver cfo.md.",
+    "suporte": "3 h por semana no total, para os 2 clientes, 'e olhe la, quase nunca'. Nao entra como custo em dinheiro porque ele nao se paga salario; entra como limite de capacidade.",
+    "fixed_monthly": "Dominio .com.br ~R$ 40/ano = R$ 3,33/mes. Arredondado para 3,50. Vercel e Neon em plano gratuito HOJE.",
+    "plan_per_day": "10 restaurantes ativos = 10 unidades/mes = 0,33 por dia. A unidade e mensal, entao 'por dia' aqui e so a conversao que a ferramenta pede.",
+    "capacity_per_day": "14 restaurantes/mes = 0,46/dia. Teto calculado pelo suporte: 1,5 h por cliente por semana x 14 = 21 h/semana, que e o maximo sustentavel sem parar de programar. Ver cfo.md.",
+    "ramp_per_day": "2 clientes hoje (mes 0). Meta dele: 10 em 12 meses. Rampa linear de ~0,7 cliente novo por mes, sem churn modelado - nao ha historico de churn para estimar."
+  }
+}

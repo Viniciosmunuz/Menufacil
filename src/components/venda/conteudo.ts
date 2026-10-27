@@ -2,6 +2,7 @@ import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
 
 import {
   BadgePercent,
+  Bot,
   BookOpen,
   Bike,
   ChefHat,
@@ -18,6 +19,8 @@ import {
   ShieldCheck,
   Smartphone,
   Split,
+  Store,
+  UtensilsCrossed,
   ToggleLeft,
   Wallet,
   type LucideIcon,
@@ -62,6 +65,7 @@ export const SECOES = {
   topo: "topo",
   recursos: "recursos",
   planos: "planos",
+  adicionais: "adicionais",
   totem: "totem",
   depoimentos: "depoimentos",
   duvidas: "duvidas",
@@ -187,11 +191,16 @@ export type Plano = {
   nome: string;
   preco: string;
   periodo: string;
+  icone: LucideIcon;
   /** uma linha dizendo para quem é */
   resumo: string;
+  /** o título da lista: "Inclui" no primeiro, "Tudo do X, mais" nos outros */
+  tituloDosItens: string;
   itens: string[];
   /** o que aparece no botão */
   botao: string;
+  /** a mensagem que abre no WhatsApp quando ele clica */
+  mensagem: string;
   /** o cartão em evidência; só um deve ter */
   destaque?: boolean;
   /** selo acima do nome, quando há o que dizer */
@@ -200,56 +209,141 @@ export type Plano = {
 
 export const PLANOS: Plano[] = [
   {
-    nome: "Essencial",
-    preco: "R$ 100",
-    periodo: "/mês",
-    resumo: "Pedidos pelo WhatsApp",
+    nome: 'Essencial',
+    preco: 'R$ 100',
+    periodo: '/mês',
+    icone: UtensilsCrossed,
+    resumo: 'Para restaurantes que estão começando no delivery digital.',
+    tituloDosItens: 'Inclui',
     itens: [
-      "Cardápio digital com link próprio",
-      "Pedidos no WhatsApp",
-      "Painel de pedidos com aviso sonoro",
-      "Impressão de comandas",
-      "Montagem do cardápio feita por nós",
-      "Suporte incluso",
+      'Cardápio digital com link próprio',
+      'Pedidos direcionados ao WhatsApp',
+      'Painel de pedidos com aviso sonoro',
+      'Impressão de comandas',
+      'Cadastro e montagem inicial do cardápio',
+      'Suporte e atualizações',
     ],
-    botao: "Quero o Essencial",
+    botao: 'Quero o Essencial',
+    mensagem: 'Olá! Quero o plano Essencial (R$ 100/mês) do MenuFácil para o meu restaurante.',
   },
   {
-    nome: "100% Delivery",
-    preco: "R$ 180",
-    periodo: "/mês",
-    resumo: "Gestão completa do delivery",
-    selo: "Mais escolhido",
+    nome: 'Delivery Pro',
+    preco: 'R$ 180',
+    periodo: '/mês',
+    icone: Bike,
+    resumo: 'Para quem quer automatizar e profissionalizar o delivery.',
+    tituloDosItens: 'Tudo do Essencial, mais',
+    selo: 'Recomendado',
     itens: [
-      "Tudo do plano Essencial",
-      "Pagamento por Pix na própria tela",
-      "O dinheiro cai direto na sua conta do Mercado Pago",
-      "Cliente acompanha cada passo do pedido",
-      "Conversa com o cliente dentro do pedido",
-      "Sem comissão: nem um centavo da venda",
+      'Checkout e gestão de pedidos pelo próprio sistema',
+      'Pagamento por Pix integrado ao Mercado Pago',
+      'Recebimento direto na conta do restaurante',
+      'Acompanhamento do pedido pelo cliente',
+      'Conversa com o cliente dentro do pedido',
+      'Gestão das modalidades de entrega e retirada',
     ],
-    botao: "Quero o 100% Delivery",
+    botao: 'Quero o Delivery Pro',
+    mensagem: 'Olá! Quero o plano Delivery Pro (R$ 180/mês) do MenuFácil para o meu restaurante.',
     destaque: true,
   },
   {
-    nome: "Completo",
-    preco: "R$ 280",
-    periodo: "/mês",
-    resumo: "Delivery + salão",
+    nome: 'Completo',
+    preco: 'R$ 280',
+    periodo: '/mês',
+    icone: Store,
+    resumo: 'Para restaurantes que operam delivery e salão.',
+    tituloDosItens: 'Tudo do Delivery Pro, mais',
     itens: [
-      "Tudo do 100% Delivery",
-      "Gestão de mesas e garçons",
-      "Comanda na cozinha separada por setor",
-      "Conta da mesa, desconto, taxa e divisão",
-      "Caixa com abertura, sangria e relatório",
-      "Totem de autoatendimento (opcional)",
+      'Gestão de mesas e garçons',
+      'Comandas da cozinha separadas por setor',
+      'Fechamento de contas, descontos e divisão',
+      'Caixa com abertura, sangria e relatórios',
+      'Permissões por garçom',
     ],
-    botao: "Quero o Completo",
+    botao: 'Quero o Completo',
+    mensagem: 'Olá! Quero o plano Completo (R$ 280/mês) do MenuFácil para o meu restaurante.',
   },
 ];
 
 /** a frase manuscrita ao lado dos planos */
 export const RECADO_PLANOS = "Temos o plano certo para cada momento do seu negócio!";
+
+// ─── adicionais ───────────────────────────────────────────────────────
+//
+// Recurso que se contrata à parte, fora da mensalidade do plano.
+//
+//  é o que separa o que já existe do que ainda vai
+// existir: o cartão continua na página, mas sem preço, com o selo "Em
+// breve" e um botão de aviso em vez de um botão de compra. Vender o que
+// não está pronto é o tipo de coisa que, descoberta uma vez, derruba a
+// confiança no resto -- e quem vende sistema para o vizinho não tem como se
+// dar a esse luxo.
+
+export type Adicional = {
+  nome: string;
+  resumo: string;
+  icone: LucideIcon;
+  /** 'brand' | 'info': o tom do ícone, para os dois não se confundirem */
+  tom: 'brand' | 'info';
+  /** vazio quando ainda não há preço definido */
+  preco: string;
+  periodo: string;
+  /** o que dizer no lugar do preço quando ele não existe */
+  notaDePreco: string;
+  itens: string[];
+  botao: string;
+  mensagem: string;
+  /** false: ainda não está pronto, e a página diz isso */
+  disponivel: boolean;
+};
+
+export const ADICIONAIS: Adicional[] = [
+  {
+    nome: 'Menu Fácil Totem',
+    resumo: 'Autoatendimento presencial no restaurante.',
+    icone: Monitor,
+    tom: 'brand',
+    preco: '',
+    periodo: '',
+    notaDePreco: 'Preço sob consulta',
+    itens: [
+      'Tela de autoatendimento no balcão',
+      'Mesmo cardápio do delivery e do salão',
+      'Senha impressa e chamada no telão',
+      'Pagamento na maquininha ou por Pix na tela',
+      'Impressora térmica e terminal compatíveis',
+    ],
+    botao: 'Quero o Totem',
+    mensagem: 'Olá! Quero saber mais sobre o Menu Fácil Totem para o meu restaurante.',
+    disponivel: true,
+  },
+  {
+    nome: 'Menu Fácil IA',
+    resumo: 'Atendimento inteligente pelo WhatsApp.',
+    icone: Bot,
+    tom: 'info',
+    preco: '',
+    periodo: '',
+    notaDePreco: 'Ainda em desenvolvimento',
+    itens: [
+      'Atendimento automático inicial',
+      'Envio do link do cardápio na conversa',
+      'Respostas sobre cardápio e funcionamento',
+      'Montagem do pedido pela conversa',
+      'Transferência para atendimento humano',
+    ],
+    botao: 'Quero ser avisado',
+    mensagem: 'Olá! Quero entrar na lista de espera do Menu Fácil IA.',
+    disponivel: false,
+  },
+];
+
+export const ADICIONAIS_TEXTO = {
+  etiqueta: 'Adicionais',
+  titulo: 'Potencialize ainda mais o seu restaurante.',
+  texto: 'Contrate os adicionais que fazem sentido para o seu negócio.',
+  nota: 'Os adicionais são contratados à parte da mensalidade e podem ser ligados a qualquer momento.',
+};
 
 export const PLANOS_TEXTO = {
   titulo: "Escolha o plano ideal para o seu restaurante.",

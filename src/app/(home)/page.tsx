@@ -7,6 +7,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { linkDoWhatsapp, PLANOS, SECOES } from "@/components/venda/conteudo";
 import { LeadForm } from "@/components/venda/lead-form";
 import {
+  Adicionais,
   ChamadaFinal,
   ComoFunciona,
   Depoimentos,
@@ -15,7 +16,6 @@ import {
   Planos,
   Recursos,
   Topo,
-  Totem,
 } from "@/components/venda/sections";
 import { getCurrentUser } from "@/server/auth/dal";
 import { listRestaurants } from "@/server/public/restaurants";
@@ -57,16 +57,16 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const whatsapp = linkDoWhatsapp();
 
   return (
-    <div className="flex w-full flex-col gap-11 sm:gap-16">
+    // o espaço entre as seções é o que dá o ar de produto caro: cada bloco
+    // precisa terminar antes de o próximo começar, e não encostar nele
+    <div className="flex w-full flex-col gap-16 sm:gap-24">
       <Topo />
       <ComoFunciona />
       <Recursos />
       <Planos />
+      <Adicionais />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Totem />
-        <ChamadaFinal whatsapp={whatsapp} />
-      </div>
+      <ChamadaFinal whatsapp={whatsapp} />
 
       <Depoimentos />
 
