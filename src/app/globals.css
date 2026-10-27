@@ -99,6 +99,13 @@
   }
 }
 
+/* a faixa de restaurantes passando: anda meia largura (uma volta) e recomeça */
+@keyframes esteira {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 /* <details class="drawer">: abre e fecha deslizando onde o navegador permite */
 details.drawer {
   interpolate-size: allow-keywords;

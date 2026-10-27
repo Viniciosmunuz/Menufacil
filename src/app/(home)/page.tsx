@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { LogoIcon } from "@/components/brand/logo";
-import { linkDoWhatsapp, PLANOS } from "@/components/venda/conteudo";
+import { linkDoWhatsapp, PLANOS, VITRINE } from "@/components/venda/conteudo";
 import { BarraDeContato } from "@/components/venda/contato-rapido";
 import {
   Adicionais,
@@ -53,33 +50,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     redirect(user.role === "ADMIN" ? "/admin" : "/painel");
   }
 
-  // sem cidade: aqui a lista não é vitrine, é prova -- mostrar todos é o certo
-  const parceiros = await listRestaurants({ take: 8 });
+  // só os escolhidos (ver VITRINE): restaurante de teste também fica ativo
+  const parceiros = await listRestaurants({ slugs: VITRINE });
   const whatsapp = linkDoWhatsapp();
 
   return (
     <>
       <Topo />
 
-      <QuemJaUsa total={parceiros.length}>
-        {parceiros.map((r) => (
-          <li key={r.id}>
-            <Link
-              href={`/restaurante/${r.slug}`}
-              className="flex items-center gap-2.5 rounded-full border border-line bg-bg py-1.5 pr-4 pl-1.5 text-sm font-extrabold transition-colors hover:border-line-strong"
-            >
-              <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-surface">
-                {r.logoUrl ? (
-                  <Image src={r.logoUrl} alt="" fill sizes="32px" className="object-cover" />
-                ) : (
-                  <LogoIcon className="h-5 opacity-60" />
-                )}
-              </span>
-              {r.name}
-            </Link>
-          </li>
-        ))}
-      </QuemJaUsa>
+      <QuemJaUsa restaurantes={parceiros} />
 
       <div className="mt-14 sm:mt-20">
         <AntesEDepois />

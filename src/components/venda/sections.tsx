@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Store,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -169,20 +170,81 @@ export function Topo() {
 }
 
 /** logo abaixo do topo: os quatro vistos (no celular) e os restaurantes que já usam */
-export function QuemJaUsa({ children, total }: { children: ReactNode; total: number }) {
+export type NaVitrine = { slug: string; name: string; logoUrl: string | null };
+
+/**
+ * Um restaurante na esteira. A cada dois, um vem cheio (logo colorida, o
+ * cartão) e o outro só no traço: contorno, logo apagada, nome em cinza --
+ * com um cliente só, é o que faz a faixa andar sem parecer o mesmo
+ * adesivo colado várias vezes.
+ */
+function Selo({ r, traco, escondido }: { r: NaVitrine; traco: boolean; escondido: boolean }) {
+  return (
+    <Link
+      href={`/restaurante/${r.slug}`}
+      tabIndex={traco || escondido ? -1 : undefined}
+      aria-hidden={traco || escondido || undefined}
+      className={cn(
+        "flex shrink-0 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap transition-colors",
+        traco
+          ? "border border-dashed border-line-strong text-faint"
+          : "border border-line bg-bg hover:border-line-strong",
+      )}
+    >
+      <span
+        className={cn(
+          "relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full",
+          traco ? "border border-line-strong" : "bg-surface",
+        )}
+      >
+        {r.logoUrl ? (
+          <Image
+            src={r.logoUrl}
+            alt=""
+            fill
+            sizes="32px"
+            className={cn("object-cover", traco && "opacity-35 grayscale")}
+          />
+        ) : (
+          <LogoIcon className={cn("h-5", traco ? "opacity-30 grayscale" : "opacity-60")} />
+        )}
+      </span>
+      {r.name}
+    </Link>
+  );
+}
+
+/** logo abaixo do topo: os quatro vistos (no celular) e os restaurantes passando */
+export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
+  // Uma volta da esteira precisa ser mais larga que a tela, senão abre um
+  // buraco antes de ela recomeçar: os restaurantes se repetem até dar 14 (uns 2.100px, mais que uma tela larga).
+  const volta = Array.from({ length: 14 }, (_, i) => restaurantes[i % Math.max(restaurantes.length, 1)]);
   return (
     <section className="pt-9 sm:pt-12">
       <Miolo>
         <Promessas className="mx-auto max-w-md lg:hidden" />
-        {total > 0 && (
-          <div className="mt-10 border-t border-line pt-9 lg:mt-0 lg:border-0 lg:pt-0">
-            <p className="text-center text-[0.72rem] font-extrabold tracking-[0.16em] text-faint uppercase">
-              Restaurantes que já usam o MenuFácil
-            </p>
-            <ul className="mt-5 flex flex-wrap justify-center gap-2.5 sm:gap-3">{children}</ul>
-          </div>
-        )}
       </Miolo>
+      {restaurantes.length > 0 && (
+        <div className="mt-10 border-t border-line pt-9 lg:mt-0 lg:border-0 lg:pt-0">
+          <p className="px-5 text-center text-[0.72rem] font-extrabold tracking-[0.16em] text-faint uppercase">
+            Restaurantes que já usam o MenuFácil
+          </p>
+          {/* duas voltas iguais lado a lado: quando a primeira sai, a
+              segunda está no lugar dela, e a animação recomeça sem salto.
+              As bordas somem num degradê para ninguém ver a emenda. */}
+          <div className="group mt-5 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
+            <div className="flex w-max animate-[esteira_45s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none">
+              {[0, 1].map((copia) => (
+                <div key={copia} className="flex gap-3 pr-3" aria-hidden={copia === 1 || undefined}>
+                  {volta.map((r, i) => (
+                    <Selo key={i} r={r} traco={i % 2 === 1} escondido={copia === 1} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

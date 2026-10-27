@@ -55,6 +55,14 @@ export const NOME_DO_APP = "Menu Fácil para PC";
 // TODO: trocar por /restaurante/demonstracao quando o restaurante de demonstração existir
 export const DEMO_URL = "/restaurante/papaleguas";
 
+/**
+ * Os restaurantes da faixa "já usam o MenuFácil", pelo endereço (slug).
+ *
+ * Escolhidos à mão, e não "todos os ativos": restaurante de teste também
+ * fica ativo, e a faixa é vitrine -- só entra quem é cliente de verdade.
+ */
+export const VITRINE = ["papaleguas"];
+
 /** de onde o MenuFácil atende: aparece no rodapé */
 export const PRACA = "Presidente Figueiredo · AM";
 
