@@ -192,8 +192,8 @@ export function QuemJaUsa({ children, total }: { children: ReactNode; total: num
 /** o alto do cartão "sem": as mensagens que chegam no meio da correria */
 function Bagunca() {
   const recados = [
-    { t: "Moço, cadê meu pedido??", c: "top-12 left-4 -rotate-3" },
-    { t: "Era SEM cebola 😤", c: "top-8 right-4 rotate-2" },
+    { t: "Moço, cadê meu pedido??", c: "top-[4.3rem] left-5 -rotate-3" },
+    { t: "Era SEM cebola!", c: "top-5 right-4 rotate-2" },
     { t: "Ainda tem a de calabresa?", c: "bottom-5 left-8 rotate-1" },
     { t: "Oi? Alguém aí?", c: "bottom-9 right-6 -rotate-2" },
   ];
