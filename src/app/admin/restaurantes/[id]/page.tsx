@@ -25,6 +25,7 @@ import { SaudePanel } from "./saude-panel";
 import { DeletePanel } from "./delete-panel";
 import { FeaturesPanel } from "./features-panel";
 import { FullDeliveryPanel } from "./full-delivery-panel";
+import { IaPanel } from "./ia-panel";
 import { OwnersPanel } from "./owners-panel";
 import { StatusPanel } from "./status-panel";
 
@@ -60,6 +61,8 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
         },
       },
       _count: { select: { products: true, orders: true, menuCategories: true } },
+      // o segredo do webhook e o id da Kapso nunca descem para a tela
+      atendenteIa: { select: { ativo: true, linkDeConexao: true, numeroExibido: true, phoneNumberId: true } },
     },
   });
   if (!restaurant) notFound();
@@ -196,6 +199,20 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
               salaoEnabled: restaurant.salaoEnabled,
             }}
+          />
+
+          <IaPanel
+            restaurantId={restaurant.id}
+            estado={
+              restaurant.atendenteIa
+                ? {
+                    ativo: restaurant.atendenteIa.ativo,
+                    linkDeConexao: restaurant.atendenteIa.linkDeConexao,
+                    numeroExibido: restaurant.atendenteIa.numeroExibido,
+                    conectado: Boolean(restaurant.atendenteIa.phoneNumberId),
+                  }
+                : null
+            }
           />
 
           {/* o quadro do 100% Delivery só aparece depois de o recurso ser

@@ -260,6 +260,9 @@ model Restaurant {
   categories          PlatformCategory[]
   owners              RestaurantOwner[]
   openingHours        OpeningHour[]
+  /// o atendente de IA no WhatsApp (Menu Facil IA), quando existe
+  atendenteIa         AtendenteIa?
+  iaMensagens         IaMensagem[]
   menuCategories      MenuCategory[]
   products            Product[]
   orders              Order[]
@@ -1455,4 +1458,75 @@ model SupportTicket {
 enum SupportStatus {
   ABERTO
   RESOLVIDO
+}
+
+// ============================================================
+// Menu Facil IA: atendente no WhatsApp do restaurante
+// ============================================================
+//
+// Tudo isolado em tabelas proprias: nada aqui toca pedido, pagamento ou
+// cardapio. A IA so le o cardapio para responder e escreve nas tabelas
+// dela. Apagar estas tres tabelas devolve o sistema a como era.
+//
+// O numero do restaurante e conectado pela Kapso, que fala com a Meta. Cada
+// restaurante conecta o proprio numero, em modo de coexistencia: o dono
+// continua usando o WhatsApp Business no celular.
+
+/// A ligacao de um restaurante com a Kapso, e se a IA responde por ele.
+model AtendenteIa {
+  id           String  @id @default(cuid())
+  restaurantId String  @unique
+  /// nasce desligado: conectar o numero nao liga a IA sozinho
+  ativo        Boolean @default(false)
+
+  /// o cliente do restaurante dentro da conta Kapso do MenuFacil
+  kapsoCustomerId String?
+  /// o link que o dono abre para conectar o WhatsApp
+  linkDeConexao   String?
+  /// o numero na Meta, depois de conectado; e por ele que o webhook chega
+  phoneNumberId   String?   @unique
+  numeroExibido   String?
+  /// o webhook registrado na Kapso para este numero (evita registrar duas vezes)
+  kapsoWebhookId  String?
+  /// assina os avisos que chegam deste numero. Nunca sai do servidor.
+  segredoWebhook  String?
+  conectadoEm     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+enum IaPapel {
+  /// o cliente escreveu
+  CLIENTE
+  /// a IA respondeu
+  IA
+  /// alguem do restaurante respondeu pelo celular
+  HUMANO
+}
+
+/// O que foi dito na conversa, para a IA lembrar do contexto e para saber
+/// quando uma pessoa do restaurante assumiu o atendimento.
+model IaMensagem {
+  id           String  @id @default(cuid())
+  restaurantId String
+  /// quem esta do outro lado: o telefone, ou o id da Meta quando nao ha telefone
+  contato      String
+  papel        IaPapel
+  texto        String
+
+  createdAt DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, contato, createdAt])
+}
+
+/// Aviso da Kapso ja tratado. A Kapso reenvia quando nao recebe resposta a
+/// tempo; sem isto, cada reenvio virava uma resposta em dobro para o cliente.
+model IaEventoProcessado {
+  chave     String   @id
+  createdAt DateTime @default(now())
 }
