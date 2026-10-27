@@ -1,5 +1,4 @@
 import Image from "next/image";
-import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -21,7 +20,7 @@ import { cn } from "@/lib/cn";
 
 type Captura = { src: string; w: number; h: number; alt: string };
 
-const TELAS = {
+export const TELAS = {
   cardapio: {
     src: "/venda/cardapio-cliente.webp",
     w: 780,
@@ -57,11 +56,13 @@ const TELAS = {
 // ─── as molduras ──────────────────────────────────────────────────────
 
 /**
- * Celular.
+ * Celular, no desenho de um iPhone.
  *
- * Corpo escuro com cantos bem arredondados, moldura fina e a pastilha do
- * alto-falante. A proporção vem da própria captura, então o miolo nunca
- * estica nem corta.
+ * Borda de titânio, a moldura preta fina, a tela com os cantos do aparelho,
+ * a Dynamic Island, a barra de status e os botões laterais. Tudo em
+ * porcentagem da largura (e o texto da barra em cqw), então o desenho é o
+ * mesmo com 8rem ou com 14rem -- a moldura anterior tinha medidas fixas e,
+ * pequena, ficava com borda grossa e cantos errados.
  */
 export function Celular({
   tela,
@@ -74,34 +75,54 @@ export function Celular({
   priority?: boolean;
   sizes?: string;
 }) {
+  const botao = "absolute w-[1.6%] min-w-[2px] bg-gradient-to-b from-[#5b5e66] to-[#34363c]";
   return (
-    <div
-      className={cn(
-        "relative rounded-[2rem] bg-[#15171c] p-[0.35rem] shadow-[0_24px_50px_-18px_rgb(0_0_0/0.45)] ring-1 ring-black/10 sm:rounded-[2.3rem] sm:p-[0.4rem]",
-        className,
-      )}
-    >
-      {/* os botões laterais: dois traços, o suficiente para o olho ler
-          "aparelho" sem virar enfeite */}
-      <span aria-hidden="true" className="absolute top-[22%] -left-[2px] h-9 w-[2px] rounded-l bg-[#2b2e35]" />
-      <span aria-hidden="true" className="absolute top-[34%] -left-[2px] h-14 w-[2px] rounded-l bg-[#2b2e35]" />
-      <span aria-hidden="true" className="absolute top-[26%] -right-[2px] h-12 w-[2px] rounded-r bg-[#2b2e35]" />
+    <div className={cn("relative drop-shadow-[0_28px_40px_rgb(0_0_0/0.4)]", className)}>
+      {/* os botões: ação e volume à esquerda, o de ligar à direita */}
+      <span aria-hidden="true" className={cn(botao, "top-[16%] -left-[1.2%] h-[4%] rounded-l-sm")} />
+      <span aria-hidden="true" className={cn(botao, "top-[23%] -left-[1.2%] h-[7.5%] rounded-l-sm")} />
+      <span aria-hidden="true" className={cn(botao, "top-[32%] -left-[1.2%] h-[7.5%] rounded-l-sm")} />
+      <span aria-hidden="true" className={cn(botao, "top-[26%] -right-[1.2%] h-[11%] rounded-r-sm")} />
 
-      <div className="relative overflow-hidden rounded-[1.7rem] bg-bg sm:rounded-[2rem]">
-        <Image
-          src={tela.src}
-          alt={tela.alt}
-          width={tela.w}
-          height={tela.h}
-          sizes={sizes}
-          priority={priority}
-          className="block h-auto w-full"
-        />
-        {/* a pastilha do alto-falante, por cima da captura */}
-        <span
-          aria-hidden="true"
-          className="absolute top-[0.45rem] left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[#15171c]/70"
-        />
+      {/* a borda de titânio */}
+      <div className="rounded-[17%/7.9%] bg-gradient-to-br from-[#6b6e76] via-[#2e3036] to-[#5a5d65] p-[1.3%]">
+        {/* a moldura preta */}
+        <div className="rounded-[16%/7.4%] bg-black p-[3.4%]">
+          {/* a tela */}
+          <div className="@container relative overflow-hidden rounded-[12.5%/5.8%] bg-bg">
+            {/* barra de status: a hora, o sinal e a bateria */}
+            <div
+              aria-hidden="true"
+              className="flex h-[13cqw] items-center justify-between px-[8cqw] pt-[1.5cqw] text-[3.9cqw] font-extrabold text-ink"
+            >
+              <span>9:41</span>
+              <span className="flex items-center gap-[1.4cqw]">
+                <span className="flex items-end gap-[0.6cqw]">
+                  {[35, 55, 75, 100].map((h) => (
+                    <span key={h} className="w-[0.9cqw] rounded-[0.3cqw] bg-ink" style={{ height: `${h * 0.028}cqw` }} />
+                  ))}
+                </span>
+                <span className="relative h-[3cqw] w-[6cqw] rounded-[0.9cqw] border-[0.35cqw] border-ink/50 p-[0.35cqw]">
+                  <span className="block h-full w-[78%] rounded-[0.4cqw] bg-ink" />
+                </span>
+              </span>
+            </div>
+            {/* a Dynamic Island, por cima de tudo */}
+            <span
+              aria-hidden="true"
+              className="absolute top-[2.6cqw] left-1/2 h-[8.4cqw] w-[30cqw] -translate-x-1/2 rounded-full bg-black"
+            />
+            <Image
+              src={tela.src}
+              alt={tela.alt}
+              width={tela.w}
+              height={tela.h}
+              sizes={sizes}
+              priority={priority}
+              className="block h-auto w-full"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -229,55 +250,5 @@ export function ViaImpressa() {
         />
       </svg>
     </div>
-  );
-}
-
-// ─── as composições ───────────────────────────────────────────────────
-
-/**
- * O topo: o painel no notebook, o cardápio no celular por cima, e a via
- * saindo no papel. É o argumento inteiro numa imagem — o mesmo sistema nos
- * três lugares onde o restaurante trabalha.
- */
-export function ComposicaoDoTopo() {
-  return (
-    <div className="relative w-full pt-3 pb-6 sm:pb-12">
-      <div className="w-[86%]">
-        <Notebook tela={TELAS.computador} priority sizes="(min-width: 1024px) 42vw, 80vw" />
-      </div>
-      <div className="absolute top-[12%] right-0 w-[34%] sm:right-2 sm:w-[32%]">
-        <Celular tela={TELAS.cardapio} priority sizes="(min-width: 1024px) 15vw, 32vw" />
-      </div>
-      <div className="absolute bottom-0 left-[6%] hidden w-[24%] rotate-[-7deg] sm:block">
-        <ViaImpressa />
-      </div>
-    </div>
-  );
-}
-
-/** salão, comanda e painel: a imagem da seção de recursos */
-export function ComposicaoDeRecursos() {
-  return (
-    <div className="relative flex w-full items-start justify-center gap-3 sm:gap-4">
-      <div className="w-[38%] max-w-[10rem]">
-        <Celular tela={TELAS.salao} sizes="(min-width: 1024px) 11vw, 36vw" />
-      </div>
-      <div className="w-[38%] max-w-[10rem] pt-10">
-        <Celular tela={TELAS.painel} sizes="(min-width: 1024px) 11vw, 36vw" />
-      </div>
-      <div className="hidden w-[24%] max-w-[7rem] pt-5 sm:block">
-        <ViaImpressa />
-      </div>
-    </div>
-  );
-}
-
-/** o cardápio do cliente, sozinho, para onde a página precisar */
-export function TelaDoCardapio({ children }: { children?: ReactNode }) {
-  return (
-    <>
-      <Celular tela={TELAS.cardapio} sizes="(min-width: 1024px) 14vw, 40vw" />
-      {children}
-    </>
   );
 }

@@ -1,4 +1,14 @@
-import { ArrowRight, Check, ChevronDown, ExternalLink, MessageCircle } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  Check,
+  CircleCheck,
+  CircleX,
+  ChevronDown,
+  ExternalLink,
+  MessageCircle,
+  Store,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -7,38 +17,47 @@ import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { linkWhatsappMenuFacil } from "@/lib/contato";
 
+import { CadastroRapido } from "./contato-rapido";
 import {
   ADICIONAIS,
   ADICIONAIS_TEXTO,
+  ANTES_DEPOIS,
   DEMO_URL,
   DEPOIMENTOS,
   DUVIDAS,
   FINAL,
-  PASSOS,
   PLANOS,
   PLANOS_TEXTO,
   PROMESSAS,
-  RECADO_RECURSOS,
-  RECURSOS,
   SECOES,
+  SEGMENTOS,
+  SEGMENTOS_TEXTO,
+  SOLUCOES_TEXTO,
   TOPO,
   type Adicional,
+  type Contraste,
   type Plano,
 } from "./conteudo";
-import { ComposicaoDeRecursos, ComposicaoDoTopo } from "./mockups";
+import { Celular, TELAS } from "./mockups";
+import { Solucoes as AbasDeSolucoes } from "./solucoes";
 
 // A página do MenuFácil: é a home e é a página de venda, porque são a mesma
 // coisa. Quem chega aqui é dono de restaurante, quase sempre pelo Instagram
 // e pelo celular.
 //
-// O desenho é de propósito sóbrio: fundo claro, pouca cor, muito espaço em
-// branco e uma coisa por vez. A versão anterior empilhava faixa escura,
-// foto de fundo, brilho laranja e painel preto dos planos -- cada pedaço
-// chamando atenção para si, e o olho sem saber onde pousar. Quem decide
-// comprar software não decide por efeito visual; decide por entender.
+// A estrutura segue a das páginas de sistema para restaurante que ele usou
+// de referência: topo escuro com o cadastro de um campo só, o antes e
+// depois, as soluções em abas, os tipos de negócio e uma chamada final
+// escura. As cores e os textos são do MenuFácil, e nenhum número, cliente
+// ou depoimento aparece sem existir de verdade.
 //
 // Os textos que mudam com o tempo (preço, plano, links, perguntas) estão em
 // conteudo.ts.
+
+/** a largura do conteúdo, com a margem do celular */
+function Miolo({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("mx-auto w-full max-w-6xl px-5 sm:px-6", className)}>{children}</div>;
+}
 
 function BotaoDoForm({
   children,
@@ -50,40 +69,61 @@ function BotaoDoForm({
   variante?: "primary" | "secondary";
 }) {
   return (
-    <a href={`#${SECOES.comece}`} className={cn(buttonClasses(variante, "lg"), className)}>
+    <a href={`#${SECOES.cadastro}`} className={cn(buttonClasses(variante, "lg"), className)}>
       {children}
     </a>
   );
 }
 
-/** o cabeçalho de uma seção: etiqueta pequena, título, uma linha de apoio */
+/** a etiqueta quadriculada que abre cada seção */
+function Etiqueta({ children }: { children: ReactNode }) {
+  return (
+    <p className="etiqueta-grade mx-auto mb-5 w-fit rounded-2xl border border-brand/25 bg-brand-soft px-5 py-2 text-[0.92rem] font-bold text-ink">
+      {children}
+    </p>
+  );
+}
+
+/** o cabeçalho de uma seção: etiqueta, título com destaque, uma linha de apoio */
 function Titulo({
   children,
+  destaque,
   sub,
   etiqueta,
-  centro,
 }: {
   children: ReactNode;
+  destaque?: string;
   sub?: string;
   etiqueta?: string;
-  centro?: boolean;
 }) {
   return (
-    <div className={cn("mb-7 sm:mb-10", centro && "mx-auto max-w-2xl text-center")}>
-      {etiqueta && (
-        <p className="mb-2.5 text-[0.68rem] font-extrabold tracking-[0.16em] text-brand uppercase sm:text-xs">
-          {etiqueta}
-        </p>
-      )}
-      <h2 className="text-[1.6rem] leading-[1.15] font-extrabold tracking-tight text-balance sm:text-[2.1rem]">
+    <div className="mx-auto mb-9 max-w-2xl text-center sm:mb-12">
+      {etiqueta && <Etiqueta>{etiqueta}</Etiqueta>}
+      <h2 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.6rem]">
         {children}
+        {destaque && (
+          <>
+            {" "}
+            <span className="text-brand">{destaque}</span>
+          </>
+        )}
       </h2>
-      {sub && (
-        <p className={cn("mt-2.5 max-w-xl text-[0.95rem] text-pretty text-muted sm:text-base", centro && "mx-auto")}>
-          {sub}
-        </p>
-      )}
+      {sub && <p className="mx-auto mt-4 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-muted sm:text-lg">{sub}</p>}
     </div>
+  );
+}
+
+/** os quatro "sem" e "com", com o visto verde */
+function Promessas({ className, escuro }: { className?: string; escuro?: boolean }) {
+  return (
+    <ul className={cn("grid grid-cols-2 gap-x-4 gap-y-3.5", className)}>
+      {PROMESSAS.map(({ title }) => (
+        <li key={title} className="flex items-start gap-2">
+          <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+          <span className={cn("text-[0.88rem] leading-snug", escuro ? "text-white/75" : "text-muted")}>{title}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -91,131 +131,207 @@ function Titulo({
 
 export function Topo() {
   return (
-    <section id={SECOES.topo} className="scroll-mt-20 pt-2 sm:pt-6">
-      <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-14">
-        <div className="min-w-0 lg:max-w-[32rem] lg:flex-1">
-          <p className="text-[0.68rem] font-extrabold tracking-[0.16em] text-brand uppercase sm:text-xs">
-            {TOPO.etiqueta}
+    <section id={SECOES.topo} className="palco-noite scroll-mt-20 text-white">
+      <Miolo className="grid items-center gap-12 pt-12 pb-14 sm:pt-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:py-24">
+        <div className="min-w-0 text-center lg:text-left">
+          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm text-white/80 lg:mx-0">
+            <Store className="size-4 text-brand" aria-hidden="true" />
+            <strong className="font-extrabold text-white">{TOPO.etiqueta}</strong>
           </p>
 
-          <h1 className="mt-4 text-[2.1rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-[3rem] lg:text-[3.3rem]">
-            {TOPO.titulo}
-            <br className="hidden sm:block" />{" "}
-            <span className="text-brand">{TOPO.tituloDestaque}</span>
+          <h1 className="mt-6 text-[2.35rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-[3.2rem] lg:text-[3.5rem]">
+            {TOPO.titulo} <span className="text-brand">{TOPO.tituloDestaque}</span>
           </h1>
 
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-pretty text-muted sm:text-lg">{TOPO.texto}</p>
+          <p className="mx-auto mt-5 max-w-lg text-[1.05rem] leading-relaxed text-pretty text-white/70 sm:text-lg lg:mx-0">
+            {TOPO.texto}
+          </p>
 
-          {/* os dois caminhos de quem chega: falar com a gente, ou ver
-              funcionando antes de falar. O segundo abre um cardápio real --
-              é a demonstração que existe, e vale mais que vídeo */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <BotaoDoForm className="w-full sm:w-auto">{TOPO.botao}</BotaoDoForm>
-            <Link
-              href={DEMO_URL}
-              target="_blank"
-              rel="noopener"
-              className={cn(buttonClasses("secondary", "lg"), "w-full sm:w-auto")}
-            >
-              {TOPO.secundario}
-              <ExternalLink className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
-
-          <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-3">
-            {PROMESSAS.map(({ icon: Icon, title }) => (
-              <li key={title} className="flex items-center gap-2">
-                <Icon className="size-4 shrink-0 text-brand" strokeWidth={2.4} aria-hidden="true" />
-                <span className="text-[0.82rem] leading-tight font-bold text-muted">{title}</span>
-              </li>
-            ))}
-          </ul>
+          <Promessas escuro className="mt-9 hidden max-w-md lg:grid" />
         </div>
 
-        {/* no celular o mockup vem depois do texto e ocupa a largura toda;
-            no computador divide a linha */}
-        <div className="relative min-w-0 lg:flex-1">
-          <span className="absolute -top-1 right-1 z-10 flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[0.7rem] font-extrabold text-brand-ink shadow-[0_10px_24px_-10px_rgb(249_104_11/0.9)] sm:text-xs">
-            <span className="size-1.5 animate-pulse rounded-full bg-brand-ink" aria-hidden="true" />
-            {TOPO.selo}
-          </span>
-          <ComposicaoDoTopo />
+        <div className="min-w-0">
+          <CadastroRapido />
+          {/* para quem quer ver antes de falar: um cardápio de verdade */}
+          <Link
+            href={DEMO_URL}
+            target="_blank"
+            rel="noopener"
+            className="mx-auto mt-5 flex w-fit items-center gap-1.5 text-sm font-bold text-white/70 underline-offset-4 hover:text-white hover:underline"
+          >
+            {TOPO.secundario}
+            <ExternalLink className="size-3.5" aria-hidden="true" />
+          </Link>
         </div>
-      </div>
+      </Miolo>
     </section>
   );
 }
 
-// ─── 2. como funciona ─────────────────────────────────────────────────
-
-export function ComoFunciona() {
+/** logo abaixo do topo: os quatro vistos (no celular) e os restaurantes que já usam */
+export function QuemJaUsa({ children, total }: { children: ReactNode; total: number }) {
   return (
-    <section>
-      <Titulo centro sub="Do pedido do cliente até a comanda na cozinha, sem ninguém anotar nada à mão.">
-        Como funciona
-      </Titulo>
+    <section className="pt-9 sm:pt-12">
+      <Miolo>
+        <Promessas className="mx-auto max-w-md lg:hidden" />
+        {total > 0 && (
+          <div className="mt-10 border-t border-line pt-9 lg:mt-0 lg:border-0 lg:pt-0">
+            <p className="text-center text-[0.72rem] font-extrabold tracking-[0.16em] text-faint uppercase">
+              Restaurantes que já usam o MenuFácil
+            </p>
+            <ul className="mt-5 flex flex-wrap justify-center gap-2.5 sm:gap-3">{children}</ul>
+          </div>
+        )}
+      </Miolo>
+    </section>
+  );
+}
 
-      {/* Passos numerados, sem cartão colorido nem ícone dentro de círculo:
-          antes cada passo tinha número E ícone E moldura, três coisas
-          disputando o mesmo olhar. Aqui o número conduz e o resto acompanha. */}
-      <ol className="grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
-        {PASSOS.map(({ icon: Icon, title, text }, i) => (
-          <li key={title} className="relative flex gap-4 lg:flex-col lg:gap-0">
-            <div className="flex shrink-0 items-center gap-3 lg:mb-4 lg:w-full">
-              <span className="text-[1.6rem] leading-none font-extrabold text-brand tabular-nums">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <Icon className="size-5 text-faint" strokeWidth={1.9} aria-hidden="true" />
-              {/* a linha que liga os passos, só onde eles ficam lado a lado */}
-              <span aria-hidden="true" className="hidden h-px flex-1 bg-line lg:block" />
-            </div>
+// ─── 2. antes e depois ────────────────────────────────────────────────
+
+/** o alto do cartão "sem": as mensagens que chegam no meio da correria */
+function Bagunca() {
+  const recados = [
+    { t: "Moço, cadê meu pedido??", c: "top-12 left-4 -rotate-3" },
+    { t: "Era SEM cebola 😤", c: "top-8 right-4 rotate-2" },
+    { t: "Ainda tem a de calabresa?", c: "bottom-5 left-8 rotate-1" },
+    { t: "Oi? Alguém aí?", c: "bottom-9 right-6 -rotate-2" },
+  ];
+  return (
+    <div className="relative h-44 overflow-hidden bg-[radial-gradient(70%_80%_at_50%_100%,rgb(220_38_38/0.25),transparent_70%),linear-gradient(160deg,#2a1714,#120c0a)]">
+      {recados.map(({ t, c }) => (
+        <span
+          key={t}
+          aria-hidden="true"
+          className={cn(
+            "absolute rounded-2xl rounded-bl-sm bg-white/12 px-3 py-1.5 text-[0.8rem] font-bold whitespace-nowrap text-white/80 backdrop-blur-sm",
+            c,
+          )}
+        >
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** o alto do cartão "com": o painel de verdade */
+function Organizado() {
+  return (
+    <div className="palco-noite relative h-44 overflow-hidden">
+      <div className="absolute top-6 right-5 w-[8.5rem] rotate-3">
+        <Celular tela={TELAS.painel} sizes="9rem" />
+      </div>
+    </div>
+  );
+}
+
+function CartaoDeContraste({ tipo, itens }: { tipo: "sem" | "com"; itens: Contraste[] }) {
+  const sem = tipo === "sem";
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-[1.6rem] border bg-bg shadow-[0_24px_50px_-36px_rgb(0_0_0/0.4)]",
+        sem ? "border-danger/20" : "border-success/25",
+      )}
+    >
+      <div className="relative">
+        {sem ? <Bagunca /> : <Organizado />}
+        <span
+          className={cn(
+            "absolute top-5 left-5 flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[0.78rem] font-extrabold tracking-[0.08em] uppercase backdrop-blur",
+            sem ? "border-danger/40 bg-[#3b1210]/80 text-[#ffb4a8]" : "border-success/40 bg-[#0f3520]/80 text-[#a7f3c0]",
+          )}
+        >
+          {sem ? <CircleX className="size-4" aria-hidden="true" /> : <CircleCheck className="size-4" aria-hidden="true" />}
+          {sem ? "Sem MenuFácil" : "Com MenuFácil"}
+        </span>
+      </div>
+
+      <ul className="flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
+        {itens.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="flex items-center gap-4">
+            <span
+              className={cn(
+                "grid size-12 shrink-0 place-items-center rounded-full",
+                sem ? "bg-danger/8 text-danger" : "bg-success/10 text-success",
+              )}
+            >
+              <Icon className="size-5" aria-hidden="true" />
+            </span>
             <div className="min-w-0">
               <p className="leading-tight font-extrabold">{title}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">{text}</p>
+              <p className="mt-1 text-[0.92rem] leading-snug text-muted">{text}</p>
             </div>
           </li>
         ))}
-      </ol>
+      </ul>
+    </div>
+  );
+}
+
+export function AntesEDepois() {
+  return (
+    <section id={SECOES.antes} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta={ANTES_DEPOIS.etiqueta} sub={ANTES_DEPOIS.texto}>
+          {ANTES_DEPOIS.titulo}
+        </Titulo>
+        <div className="mx-auto grid max-w-5xl items-center gap-5 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
+          <CartaoDeContraste tipo="sem" itens={ANTES_DEPOIS.sem} />
+          <span className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand">
+            <ArrowDown className="size-5 lg:-rotate-90" aria-hidden="true" />
+          </span>
+          <CartaoDeContraste tipo="com" itens={ANTES_DEPOIS.com} />
+        </div>
+      </Miolo>
     </section>
   );
 }
 
-// ─── 3. tudo em um só lugar ───────────────────────────────────────────
+// ─── 3. soluções ──────────────────────────────────────────────────────
 
-export function Recursos() {
+export function Solucoes() {
   return (
-    <section id={SECOES.recursos} className="scroll-mt-20">
-      <Titulo etiqueta="Recursos" sub="Delivery, salão, totem e impressão no mesmo cadastro de produtos.">
-        Tudo o que o seu restaurante precisa
-      </Titulo>
+    <section id={SECOES.recursos} className="scroll-mt-20 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta={SOLUCOES_TEXTO.etiqueta} destaque={SOLUCOES_TEXTO.tituloDestaque} sub={SOLUCOES_TEXTO.texto}>
+          {SOLUCOES_TEXTO.titulo}
+        </Titulo>
+        <AbasDeSolucoes />
+      </Miolo>
+    </section>
+  );
+}
 
-      <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-14">
-        <ul className="grid min-w-0 flex-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          {RECURSOS.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="flex gap-3.5">
-              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-                <Icon className="size-[1.1rem]" aria-hidden="true" />
+// ─── 4. tipos de negócio ──────────────────────────────────────────────
+
+export function Segmentos() {
+  return (
+    <section id={SECOES.segmentos} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta={SEGMENTOS_TEXTO.etiqueta} destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
+          {SEGMENTOS_TEXTO.titulo}
+        </Titulo>
+        <ul className="mx-auto grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+          {SEGMENTOS.map(({ icon: Icon, nome }) => (
+            <li
+              key={nome}
+              className="flex flex-col items-center gap-4 rounded-[1.4rem] border border-line/70 bg-bg px-3 py-7 text-center"
+            >
+              <span className="grid size-16 place-items-center rounded-full bg-bg shadow-[0_6px_20px_-8px_rgb(0_0_0/0.25)] ring-1 ring-line/60">
+                <Icon className="size-7 text-muted" strokeWidth={1.7} aria-hidden="true" />
               </span>
-              <div className="min-w-0">
-                <p className="leading-tight font-extrabold">{title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted">{text}</p>
-              </div>
+              <span className="font-extrabold text-ink/85">{nome}</span>
             </li>
           ))}
         </ul>
-
-        <div className="relative min-w-0 lg:w-[22rem] lg:shrink-0">
-          <p className="mb-2 text-center font-script text-xl leading-tight text-brand sm:text-2xl lg:text-right">
-            {RECADO_RECURSOS}
-          </p>
-          <ComposicaoDeRecursos />
-        </div>
-      </div>
+      </Miolo>
     </section>
   );
 }
 
-// ─── 4. planos e adicionais ───────────────────────────────────────────
+// ─── 5. planos e adicionais ───────────────────────────────────────────
 
 /**
  * O botão de um plano ou adicional.
@@ -223,7 +339,7 @@ export function Recursos() {
  * Vai para o WhatsApp com a mensagem já escrita, dizendo qual plano a
  * pessoa clicou -- sem isso, toda conversa começava com "qual plano você
  * quer?" e metade das pessoas não respondia. Sem WhatsApp configurado, cai
- * no formulário da página, que é o caminho que sempre existiu.
+ * no cadastro do topo.
  */
 function BotaoComercial({
   mensagem,
@@ -261,7 +377,7 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col rounded-card bg-surface p-6 sm:p-7",
+        "relative flex h-full flex-col rounded-[1.6rem] bg-bg p-6 sm:p-7",
         destaque
           ? "border-2 border-brand shadow-[0_24px_60px_-28px_rgb(249_104_11/0.6)] lg:-my-4 lg:py-10"
           : "border border-line",
@@ -316,23 +432,25 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
 
 export function Planos() {
   return (
-    <section id={SECOES.planos} className="scroll-mt-20">
-      <Titulo centro etiqueta="Planos" sub={PLANOS_TEXTO.texto}>
-        {PLANOS_TEXTO.titulo}
-      </Titulo>
+    <section id={SECOES.planos} className="scroll-mt-20 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta="Planos" sub={PLANOS_TEXTO.texto}>
+          {PLANOS_TEXTO.titulo}
+        </Titulo>
 
-      {/* No computador os três se comparam lado a lado e o destacado cresce
-          para fora da linha. No celular empilham, e aí o destaque vira só a
-          borda: crescer não diz nada quando se vê um de cada vez. */}
-      <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-        {PLANOS.map((plano) => (
-          <CartaoDoPlano key={plano.nome} plano={plano} />
-        ))}
-      </div>
+        {/* No computador os três se comparam lado a lado e o destacado cresce
+            para fora da linha. No celular empilham, e aí o destaque vira só a
+            borda: crescer não diz nada quando se vê um de cada vez. */}
+        <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+          {PLANOS.map((plano) => (
+            <CartaoDoPlano key={plano.nome} plano={plano} />
+          ))}
+        </div>
 
-      <p className="mt-7 text-center text-sm text-muted">
-        Sem taxa de adesão e sem comissão por pedido. Troque de plano quando quiser.
-      </p>
+        <p className="mt-7 text-center text-sm text-muted">
+          Sem taxa de adesão e sem comissão por pedido. Troque de plano quando quiser.
+        </p>
+      </Miolo>
     </section>
   );
 }
@@ -340,7 +458,7 @@ export function Planos() {
 function CartaoDoAdicional({ adicional }: { adicional: Adicional }) {
   const { icone: Icone, tom, disponivel } = adicional;
   return (
-    <div className="flex h-full flex-col rounded-card border border-line bg-surface p-6 sm:p-7">
+    <div className="flex h-full flex-col rounded-[1.6rem] border border-line bg-bg p-6 sm:p-7">
       <div className="flex items-start gap-3">
         <span
           className={cn(
@@ -400,122 +518,118 @@ function CartaoDoAdicional({ adicional }: { adicional: Adicional }) {
 
 export function Adicionais() {
   return (
-    <section
-      id={SECOES.adicionais}
-      className="-mx-5 scroll-mt-20 bg-surface-2 px-5 py-10 sm:-mx-6 sm:px-6 sm:py-14 lg:rounded-card"
-    >
-      <Titulo centro etiqueta={ADICIONAIS_TEXTO.etiqueta} sub={ADICIONAIS_TEXTO.texto}>
-        {ADICIONAIS_TEXTO.titulo}
-      </Titulo>
+    <section id={SECOES.adicionais} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta={ADICIONAIS_TEXTO.etiqueta} sub={ADICIONAIS_TEXTO.texto}>
+          {ADICIONAIS_TEXTO.titulo}
+        </Titulo>
 
-      <div className="mx-auto grid max-w-4xl items-stretch gap-5 sm:grid-cols-2">
-        {ADICIONAIS.map((adicional) => (
-          <CartaoDoAdicional key={adicional.nome} adicional={adicional} />
-        ))}
-      </div>
+        <div className="mx-auto grid max-w-4xl items-stretch gap-5 sm:grid-cols-2">
+          {ADICIONAIS.map((adicional) => (
+            <CartaoDoAdicional key={adicional.nome} adicional={adicional} />
+          ))}
+        </div>
 
-      <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-muted">{ADICIONAIS_TEXTO.nota}</p>
+        <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-muted">{ADICIONAIS_TEXTO.nota}</p>
+      </Miolo>
     </section>
   );
 }
 
-// ─── 5. totem, quem já usa, conversa ──────────────────────────────────
+// ─── 6. depoimentos e dúvidas ─────────────────────────────────────────
 
 /** o depoimento só aparece quando existe um de verdade (ver conteudo.ts) */
 export function Depoimentos() {
   if (!DEPOIMENTOS.length) return null;
   return (
-    <section id={SECOES.depoimentos} className="scroll-mt-20">
-      <Titulo centro sub="Restaurantes que confiam no MenuFácil.">
-        Quem já usa
-      </Titulo>
-      <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {DEPOIMENTOS.map((d) => (
-          <li key={d.restaurante} className="flex flex-col rounded-card border border-line bg-surface p-6">
-            <p className="text-[0.95rem] leading-relaxed text-pretty">“{d.texto}”</p>
-            <div className="mt-5 flex items-center gap-3 border-t border-line pt-5">
-              <LogoIcon className="h-8 shrink-0" />
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-extrabold">{d.restaurante}</span>
-                <span className="block truncate text-xs text-faint">{d.quem ? `${d.quem} · ${d.praca}` : d.praca}</span>
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <section id={SECOES.depoimentos} className="scroll-mt-20 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta="Depoimentos" sub="Restaurantes que confiam no MenuFácil.">
+          Quem já usa
+        </Titulo>
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {DEPOIMENTOS.map((d) => (
+            <li key={d.restaurante} className="flex flex-col rounded-[1.6rem] border border-line bg-bg p-6">
+              <p className="text-[0.95rem] leading-relaxed text-pretty">“{d.texto}”</p>
+              <div className="mt-5 flex items-center gap-3 border-t border-line pt-5">
+                <LogoIcon className="h-8 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-extrabold">{d.restaurante}</span>
+                  <span className="block truncate text-xs text-faint">{d.quem ? `${d.quem} · ${d.praca}` : d.praca}</span>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Miolo>
     </section>
   );
 }
-
-export function Parceiros({ children, total }: { children: ReactNode; total: number }) {
-  if (!total) return null;
-  return (
-    <section>
-      <Titulo
-        centro
-        etiqueta="Quem já usa"
-        sub="Abra um e faça um pedido: é exatamente assim que o seu vai ficar."
-      >
-        {total === 1 ? "Nosso parceiro" : "Nossos parceiros"}
-      </Titulo>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{children}</div>
-    </section>
-  );
-}
-
-// ─── 6. dúvidas ───────────────────────────────────────────────────────
 
 export function Duvidas() {
   const perguntas = DUVIDAS.filter((d) => d.a.trim());
   if (!perguntas.length) return null;
   return (
-    <section id={SECOES.duvidas} className="scroll-mt-20">
-      <Titulo centro>Perguntas frequentes</Titulo>
-      <div className="mx-auto flex max-w-2xl flex-col gap-2.5">
-        {perguntas.map(({ q, a }) => (
-          <details key={q} className="drawer group rounded-card border border-line bg-surface">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 font-extrabold [&::-webkit-details-marker]:hidden">
-              {q}
-              <ChevronDown
-                className="size-5 shrink-0 text-faint transition-transform group-open:rotate-180"
-                aria-hidden="true"
-              />
-            </summary>
-            <p className="px-5 pb-5 text-[0.95rem] leading-relaxed text-muted">{a}</p>
-          </details>
-        ))}
-      </div>
+    <section id={SECOES.duvidas} className="scroll-mt-20 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta="Dúvidas">Perguntas frequentes</Titulo>
+        <div className="mx-auto flex max-w-2xl flex-col gap-2.5">
+          {perguntas.map(({ q, a }) => (
+            <details key={q} className="drawer group rounded-[1.2rem] border border-line bg-bg">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 font-extrabold [&::-webkit-details-marker]:hidden">
+                {q}
+                <ChevronDown
+                  className="size-5 shrink-0 text-faint transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="px-5 pb-5 text-[0.95rem] leading-relaxed text-muted">{a}</p>
+            </details>
+          ))}
+        </div>
+      </Miolo>
     </section>
   );
 }
 
-// ─── 7. a conversa final ──────────────────────────────────────────────
+// ─── 7. a chamada final ───────────────────────────────────────────────
 
 export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
+  const botao =
+    "flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#ffe3cf] px-8 text-[1.1rem] font-extrabold text-[#8a3300] transition-colors hover:bg-[#ffd5b8] sm:w-auto";
   return (
-    <section className="flex flex-col gap-6 rounded-card bg-brand px-6 py-8 text-brand-ink sm:px-9 sm:py-10">
-      <div className="min-w-0">
-        <p className="font-script text-2xl leading-none sm:text-3xl">{FINAL.recado}</p>
-        <h2 className="mt-2.5 text-[1.35rem] leading-tight font-extrabold text-balance sm:text-[1.75rem]">
-          {FINAL.titulo}
+    <section className="palco-noite py-20 text-white sm:py-28">
+      <Miolo className="flex flex-col items-center text-center">
+        <LogoIcon className="h-14 opacity-60" />
+        <h2 className="mt-8 max-w-2xl text-[2.1rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.8rem]">
+          {FINAL.titulo} <span className="text-brand">{FINAL.tituloDestaque}</span>?
         </h2>
-        <p className="mt-2 text-sm text-pretty opacity-85 sm:text-base">{FINAL.texto}</p>
-      </div>
-      {whatsapp ? (
-        <a
-          href={whatsapp}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex min-h-13 w-full shrink-0 items-center justify-center gap-2 rounded-control bg-brand-ink px-6 font-extrabold text-bg transition-opacity hover:opacity-90 sm:w-auto sm:self-start"
-        >
-          <MessageCircle className="size-5" aria-hidden="true" />
-          {FINAL.botao}
-        </a>
-      ) : (
-        <BotaoDoForm variante="secondary" className="w-full sm:w-auto sm:self-start">
-          {FINAL.botao}
-        </BotaoDoForm>
-      )}
+        <p className="mt-5 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-white/70 sm:text-lg">{FINAL.texto}</p>
+
+        <div className="mt-10 w-full sm:w-auto">
+          {whatsapp ? (
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={botao}>
+              <MessageCircle className="size-5" aria-hidden="true" />
+              {FINAL.botao}
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </a>
+          ) : (
+            <a href={`#${SECOES.cadastro}`} className={botao}>
+              {FINAL.botao}
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </a>
+          )}
+        </div>
+
+        <ul className="mt-9 flex max-w-xl flex-wrap justify-center gap-x-7 gap-y-3">
+          {FINAL.garantias.map((g) => (
+            <li key={g} className="flex items-center gap-2 text-[0.92rem] text-white/65">
+              <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+              {g}
+            </li>
+          ))}
+        </ul>
+      </Miolo>
     </section>
   );
 }

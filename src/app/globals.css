@@ -87,6 +87,18 @@
   }
 }
 
+/* a frase que troca embaixo das telas, na página de venda */
+@keyframes surgir {
+  from {
+    transform: translateY(0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 /* <details class="drawer">: abre e fecha deslizando onde o navegador permite */
 details.drawer {
   interpolate-size: allow-keywords;
@@ -119,4 +131,21 @@ details.drawer[open]::details-content {
 [data-cardapio-filtro="esgotados"] li[data-esgotado="nao"],
 [data-cardapio-filtro="sem-foto"] li[data-sem-foto="nao"] {
   display: none;
+}
+
+/* o fundo escuro da página de venda: o topo, a chamada final e o rodapé */
+.palco-noite {
+  background-color: #120d0a;
+  background-image:
+    radial-gradient(55% 45% at 92% 88%, rgb(249 104 11 / 0.32), transparent 70%),
+    radial-gradient(45% 35% at 0% 0%, rgb(249 104 11 / 0.1), transparent 70%),
+    linear-gradient(168deg, #20160f, #0f0b08);
+}
+
+/* o quadriculado leve das etiquetas de seção */
+.etiqueta-grade {
+  background-image:
+    linear-gradient(rgb(249 104 11 / 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(249 104 11 / 0.1) 1px, transparent 1px);
+  background-size: 9px 9px;
 }

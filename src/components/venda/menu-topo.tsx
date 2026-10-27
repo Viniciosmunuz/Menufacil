@@ -61,7 +61,7 @@ export function MenuDoTopo({ links }: { links: LinkDoMenu[] }) {
           Entrar
         </Link>
 
-        <a href={`#${SECOES.comece}`} className={buttonClasses("primary", "sm", "shrink-0")}>
+        <a href={`#${SECOES.cadastro}`} className={buttonClasses("primary", "sm", "shrink-0")}>
           Quero conhecer
         </a>
 

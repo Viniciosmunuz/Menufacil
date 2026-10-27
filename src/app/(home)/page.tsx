@@ -1,20 +1,21 @@
-import { MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { RestaurantMiniCard } from "@/components/public/restaurant-mini-card";
-import { buttonClasses } from "@/components/ui/button";
-import { linkDoWhatsapp, PLANOS, SECOES } from "@/components/venda/conteudo";
-import { LeadForm } from "@/components/venda/lead-form";
+import { LogoIcon } from "@/components/brand/logo";
+import { linkDoWhatsapp, PLANOS } from "@/components/venda/conteudo";
+import { BarraDeContato } from "@/components/venda/contato-rapido";
 import {
   Adicionais,
+  AntesEDepois,
   ChamadaFinal,
-  ComoFunciona,
   Depoimentos,
   Duvidas,
-  Parceiros,
   Planos,
-  Recursos,
+  QuemJaUsa,
+  Segmentos,
+  Solucoes,
   Topo,
 } from "@/components/venda/sections";
 import { getCurrentUser } from "@/server/auth/dal";
@@ -28,7 +29,7 @@ import { listRestaurants } from "@/server/public/restaurants";
 // restaurante vende a dele --, e dois endereços dividiam a mesma visita,
 // cada um contando metade da história.
 //
-// Os restaurantes continuam na página, mas abaixo do produto e com outro
+// Os restaurantes continuam na página, logo abaixo do topo e com outro
 // papel: prova de quem já usa, e um cardápio de verdade para o dono abrir
 // e ver funcionando antes de falar com a gente.
 
@@ -57,46 +58,41 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const whatsapp = linkDoWhatsapp();
 
   return (
-    // o espaço entre as seções é o que dá o ar de produto caro: cada bloco
-    // precisa terminar antes de o próximo começar, e não encostar nele
-    <div className="flex w-full flex-col gap-16 sm:gap-24">
+    <>
       <Topo />
-      <ComoFunciona />
-      <Recursos />
+
+      <QuemJaUsa total={parceiros.length}>
+        {parceiros.map((r) => (
+          <li key={r.id}>
+            <Link
+              href={`/restaurante/${r.slug}`}
+              className="flex items-center gap-2.5 rounded-full border border-line bg-bg py-1.5 pr-4 pl-1.5 text-sm font-extrabold transition-colors hover:border-line-strong"
+            >
+              <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-surface">
+                {r.logoUrl ? (
+                  <Image src={r.logoUrl} alt="" fill sizes="32px" className="object-cover" />
+                ) : (
+                  <LogoIcon className="h-5 opacity-60" />
+                )}
+              </span>
+              {r.name}
+            </Link>
+          </li>
+        ))}
+      </QuemJaUsa>
+
+      <div className="mt-14 sm:mt-20">
+        <AntesEDepois />
+      </div>
+      <Solucoes />
+      <Segmentos />
       <Planos />
       <Adicionais />
-
+      <Depoimentos />
+      <Duvidas />
       <ChamadaFinal whatsapp={whatsapp} />
 
-      <Depoimentos />
-
-      <Parceiros total={parceiros.length}>
-        {parceiros.map((r, i) => (
-          <RestaurantMiniCard key={r.id} data={r} priority={i === 0} />
-        ))}
-      </Parceiros>
-
-      <Duvidas />
-
-      <section id={SECOES.comece} className="scroll-mt-20">
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-[1.45rem] leading-tight font-extrabold sm:text-[2rem]">Comece agora</h2>
-          <p className="mt-1 text-sm text-muted sm:text-base">Te chamamos no WhatsApp em até 24h.</p>
-        </div>
-        <LeadForm
-          submitLabel="Quero o MenuFácil no meu restaurante"
-          successTitle="Recebemos!"
-          successText="Vamos te chamar no WhatsApp em breve."
-          footer={
-            whatsapp ? (
-              <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "lg", "w-full")}>
-                <MessageCircle className="size-5" aria-hidden="true" />
-                Prefiro falar no WhatsApp
-              </a>
-            ) : null
-          }
-        />
-      </section>
-    </div>
+      <BarraDeContato />
+    </>
   );
 }

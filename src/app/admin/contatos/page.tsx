@@ -79,7 +79,7 @@ export default async function AdminLeadsPage({ searchParams }: PageProps<"/admin
             <li key={lead.id} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-5">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-lg font-extrabold">{lead.restaurantName}</p>
+                  <p className="text-lg font-extrabold">{lead.restaurantName || "Só o WhatsApp"}</p>
                   <p className="text-sm text-muted">{lead.contactName}</p>
                 </div>
                 {lead.handled ? <Badge tone="success">Atendido</Badge> : <Badge tone="brand">Novo</Badge>}

@@ -2,6 +2,21 @@ import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
 
 import {
   BadgePercent,
+  Beer,
+  Building2,
+  CalendarClock,
+  Cherry,
+  Coffee,
+  CookingPot,
+  Croissant,
+  FileX,
+  Hamburger,
+  IceCreamCone,
+  MessageSquareWarning,
+  PackageX,
+  Pizza,
+  Sandwich,
+  Truck,
   Bot,
   BookOpen,
   Bike,
@@ -17,7 +32,6 @@ import {
   Printer,
   Receipt,
   ShieldCheck,
-  Smartphone,
   Split,
   Store,
   UtensilsCrossed,
@@ -63,7 +77,11 @@ export const linkDoWhatsapp = () => linkWhatsappMenuFacil(WHATSAPP_MSG);
 /** as âncoras da página, usadas pelo menu do topo e pelos botões */
 export const SECOES = {
   topo: "topo",
+  /** o cartão do cadastro rápido, no topo */
+  cadastro: "cadastro",
+  antes: "antes-e-depois",
   recursos: "recursos",
+  segmentos: "segmentos",
   planos: "planos",
   adicionais: "adicionais",
   totem: "totem",
@@ -80,9 +98,8 @@ export const TOPO = {
   tituloDestaque: "Seus pedidos sob controle.",
   texto:
     "Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido.",
-  botao: "Quero conhecer o sistema",
-  secundario: "Ver como funciona",
-  selo: "Pedidos chegando!",
+  /** o link abaixo do cartão, para quem quer ver antes de falar */
+  secundario: "Ver um cardápio funcionando",
 };
 
 /** os quatro "sem" e "com" que o dono quer ouvir logo de cara */
@@ -93,27 +110,146 @@ export const PROMESSAS: { icon: LucideIcon; title: string }[] = [
   { icon: ChefHat, title: "Atendimento rápido e humanizado" },
 ];
 
-// ─── como funciona ────────────────────────────────────────────────────
+// ─── antes e depois ───────────────────────────────────────────────────
+//
+// A rotina sem e com o sistema. Do lado "com", só o que o MenuFácil faz de
+// verdade hoje: cada linha tem de poder ser mostrada no painel.
 
-export const PASSOS: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Smartphone, title: "Cliente faz o pedido", text: "Pelo link, pelo cardápio no WhatsApp ou no totem." },
-  { icon: ClipboardList, title: "Pedido chega no restaurante", text: "Aparece no painel e apita, com som que se ouve no salão." },
-  { icon: Printer, title: "Cozinha prepara", text: "A comanda sai impressa sozinha, com itens e observações." },
-  { icon: Bike, title: "Entrega ou retirada", text: "O cliente acompanha e recebe. E pronto." },
+export type Contraste = { icon: LucideIcon; title: string; text: string };
+
+export const ANTES_DEPOIS: {
+  etiqueta: string;
+  titulo: string;
+  texto: string;
+  sem: Contraste[];
+  com: Contraste[];
+} = {
+  etiqueta: "Antes e depois",
+  titulo: "Veja a diferença no seu dia a dia",
+  texto: "Compare a rotina do restaurante com e sem o MenuFácil.",
+  sem: [
+    { icon: MessageSquareWarning, title: "Pedido perdido no WhatsApp", text: "Conversa misturada, pedido esquecido e cliente cobrando." },
+    { icon: FileX, title: "Anotando tudo à mão", text: "Item trocado, observação esquecida e letra que a cozinha não entende." },
+    { icon: Percent, title: "Comissão em cada pedido", text: "O aplicativo leva uma fatia de toda venda, até da que o cliente já era seu." },
+    { icon: PackageX, title: "Cardápio desatualizado", text: "Acabou o prato e o cliente pede mesmo assim. Aí é ligar e pedir desculpa." },
+    { icon: CalendarClock, title: "Caixa fechado no chute", text: "No fim da noite, ninguém sabe quanto tinha que ter na gaveta." },
+  ],
+  com: [
+    { icon: ClipboardList, title: "Todo pedido no painel, com aviso", text: "Chegou, apitou. Nada se perde no meio das conversas." },
+    { icon: Printer, title: "Comanda impressa sozinha", text: "Itens, observações, endereço e troco calculado, sem ninguém anotar." },
+    { icon: Link2, title: "Seu canal, sem comissão", text: "Cardápio com link próprio, e o cliente paga direto para você." },
+    { icon: ToggleLeft, title: "Esgotou? Um toque", text: "O prato some do delivery, do salão e do totem ao mesmo tempo." },
+    { icon: Wallet, title: "Caixa fechado certo", text: "Relatório do dia por forma de pagamento e o valor que tem que ter na gaveta." },
+  ],
+};
+
+// ─── soluções ─────────────────────────────────────────────────────────
+//
+// As abas da seção "Um sistema. Tudo conectado." Cada aba tem uma imagem
+// (as telas reais, em solucoes.tsx) e frases que se revezam embaixo dela.
+
+export type Solucao = {
+  id: "delivery" | "salao" | "impressao" | "painel" | "totem";
+  nome: string;
+  titulo: string;
+  icon: LucideIcon;
+  frases: string[];
+};
+
+export const SOLUCOES_TEXTO = {
+  etiqueta: "Soluções",
+  titulo: "Um sistema.",
+  tituloDestaque: "Tudo conectado.",
+  texto: "Delivery, salão, impressão e totem no mesmo cadastro de produtos. Mudou num lugar, mudou em todos.",
+};
+
+export const SOLUCOES: Solucao[] = [
+  {
+    id: "delivery",
+    nome: "Delivery",
+    titulo: "Cardápio digital",
+    icon: Bike,
+    frases: [
+      "Seu cardápio com link próprio, sua logo e suas fotos. Coloque no Instagram e no WhatsApp.",
+      "O cliente escolhe tamanho, sabor e adicionais, e confere tudo antes de enviar.",
+      "Sem comissão por pedido: o cliente paga direto para você.",
+      "Pix integrado ao Mercado Pago, com o dinheiro direto na conta do restaurante.",
+      "O cliente acompanha o pedido pelo celular, do preparo à entrega.",
+    ],
+  },
+  {
+    id: "salao",
+    nome: "Salão e mesas",
+    titulo: "Gestão de mesas",
+    icon: HandPlatter,
+    frases: [
+      "O mapa do salão mostra as mesas livres, as abertas e há quanto tempo cada uma está ocupada.",
+      "O garçom lança o pedido no próprio celular ou na maquininha Android.",
+      "Conta dividida por pessoa ou por item, com desconto e taxa de serviço.",
+      "Caixa com abertura, sangria e relatório por forma de pagamento.",
+      "Você decide quem pode dar desconto, transferir mesa ou fechar a conta.",
+    ],
+  },
+  {
+    id: "impressao",
+    nome: "Impressão",
+    titulo: "Comandas impressas",
+    icon: Printer,
+    frases: [
+      "A comanda sai sozinha na impressora do balcão assim que o pedido chega.",
+      "Itens, observações, endereço e troco calculado, numa letra que a cozinha entende.",
+      "Cada setor imprime só o que é dele: a chapa os lanches, a copa as bebidas.",
+    ],
+  },
+  {
+    id: "painel",
+    nome: "Painel",
+    titulo: "Painel do restaurante",
+    icon: LayoutDashboard,
+    frases: [
+      "Vendas do dia, ticket médio e pedidos em andamento logo na tela inicial.",
+      "Pedido novo apita, com um som que se ouve no salão.",
+      "Abra, feche ou pause a entrega com um toque, do celular.",
+      "Acabou um prato? Marque esgotado e ele some de todos os cardápios.",
+    ],
+  },
+  {
+    id: "totem",
+    nome: "Totem",
+    titulo: "Autoatendimento",
+    icon: Monitor,
+    frases: [
+      "O cliente pede e paga sozinho no balcão, sem fila no caixa.",
+      "Pagamento no cartão pela maquininha ou por Pix na tela.",
+      "Senha impressa e chamada no telão do salão.",
+      "O mesmo cardápio do delivery e do salão, sem cadastro em dobro.",
+    ],
+  },
 ];
 
-// ─── tudo em um só lugar ──────────────────────────────────────────────
+// ─── tipos de negócio ─────────────────────────────────────────────────
 
-export const RECURSOS: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Bike, title: "Delivery", text: "Pedidos pelo link do seu cardápio, com entrega e retirada." },
-  { icon: HandPlatter, title: "Salão", text: "Mesas, comandas e garçons, no plano Completo." },
-  { icon: Printer, title: "Impressão de comandas", text: "Sai sozinha no balcão e na cozinha, separada por setor." },
-  { icon: Monitor, title: "Totem de autoatendimento", text: "O cliente pede e paga sozinho no balcão. Opcional." },
-  { icon: LayoutDashboard, title: "Painel administrativo", text: "Vendas, pedidos, cardápio e relatórios no seu celular." },
+export const SEGMENTOS_TEXTO = {
+  etiqueta: "Para todo tipo de cardápio",
+  titulo: "Feito para o",
+  tituloDestaque: "seu tipo de negócio",
+  texto: "Pizza meio a meio, açaí montado, marmita do dia: o cardápio se monta do jeito que você vende.",
+};
+
+export const SEGMENTOS: { icon: LucideIcon; nome: string }[] = [
+  { icon: UtensilsCrossed, nome: "Restaurante" },
+  { icon: Pizza, nome: "Pizzaria" },
+  { icon: Hamburger, nome: "Hamburgueria" },
+  { icon: Sandwich, nome: "Lanchonete" },
+  { icon: Cherry, nome: "Açaiteria" },
+  { icon: IceCreamCone, nome: "Sorveteria" },
+  { icon: Coffee, nome: "Cafeteria" },
+  { icon: Croissant, nome: "Padaria" },
+  { icon: Beer, nome: "Bar" },
+  { icon: CookingPot, nome: "Marmitaria" },
+  { icon: Truck, nome: "Food truck" },
+  { icon: Building2, nome: "Dark kitchen" },
 ];
-
-/** a frase manuscrita ao lado das telas */
-export const RECADO_RECURSOS = "Mais praticidade no seu dia a dia!";
 
 // ─── o delivery, em detalhe ───────────────────────────────────────────
 
@@ -436,8 +572,13 @@ export const DUVIDAS = [
 // ─── chamada final ────────────────────────────────────────────────────
 
 export const FINAL = {
-  recado: "Vamos conversar?",
-  titulo: "Mais tempo para o que realmente importa: seus clientes.",
-  texto: "Fale agora com a nossa equipe e tire suas dúvidas sobre o sistema.",
-  botao: "Quero falar no WhatsApp",
+  titulo: "Pronto para",
+  tituloDestaque: "organizar o seu restaurante",
+  texto: "Fale com a nossa equipe, tire as suas dúvidas e veja o sistema funcionando com o seu cardápio.",
+  botao: "Falar no WhatsApp",
+  /** o que vem embaixo do botão: só o que já é verdade em todos os planos */
+  garantias: ["Sem comissão por pedido", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
 };
+
+/** o e-mail do rodapé */
+export const EMAIL = "contato@menufacildelivery.com.br";
