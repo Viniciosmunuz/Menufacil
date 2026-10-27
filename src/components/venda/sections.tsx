@@ -173,8 +173,9 @@ export function Topo() {
 export type NaVitrine = { slug: string; name: string; logoUrl: string | null };
 
 /**
- * Um restaurante na esteira. A cada dois, um vem cheio (logo colorida, o
- * cartão) e o outro só no traço: contorno, logo apagada, nome em cinza --
+ * Um restaurante na esteira: a logo e o nome soltos, sem moldura em volta
+ * (com moldura parecia botão). A cada dois, um vem cheio (logo colorida) e o
+ * outro só no traço: contorno na logo, logo apagada, nome em cinza --
  * com um cliente só, é o que faz a faixa andar sem parecer o mesmo
  * adesivo colado várias vezes.
  */
@@ -185,10 +186,8 @@ function Selo({ r, traco, escondido }: { r: NaVitrine; traco: boolean; escondido
       tabIndex={traco || escondido ? -1 : undefined}
       aria-hidden={traco || escondido || undefined}
       className={cn(
-        "flex shrink-0 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap transition-colors",
-        traco
-          ? "border border-dashed border-line-strong text-faint"
-          : "border border-line bg-bg hover:border-line-strong",
+        "flex shrink-0 items-center gap-2.5 px-3 py-1.5 text-sm font-extrabold whitespace-nowrap transition-colors",
+        traco ? "text-faint" : "hover:text-brand",
       )}
     >
       <span
