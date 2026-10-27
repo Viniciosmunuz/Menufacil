@@ -39,7 +39,6 @@ import {
   type Contraste,
   type Plano,
 } from "./conteudo";
-import { Celular, TELAS } from "./mockups";
 import { Solucoes as AbasDeSolucoes } from "./solucoes";
 
 // A página do MenuFácil: é a home e é a página de venda, porque são a mesma
@@ -250,39 +249,38 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
 
 // ─── 2. antes e depois ────────────────────────────────────────────────
 
-/** o alto do cartão "sem": as mensagens que chegam no meio da correria */
-function Bagunca() {
-  const recados = [
-    { t: "Moço, cadê meu pedido??", c: "top-[4.3rem] left-5 -rotate-3" },
-    { t: "Era SEM cebola!", c: "top-5 right-4 rotate-2" },
-    { t: "Ainda tem a de calabresa?", c: "bottom-5 left-8 rotate-1" },
-    { t: "Oi? Alguém aí?", c: "bottom-9 right-6 -rotate-2" },
-  ];
-  return (
-    <div className="relative h-44 overflow-hidden bg-[radial-gradient(70%_80%_at_50%_100%,rgb(220_38_38/0.25),transparent_70%),linear-gradient(160deg,#2a1714,#120c0a)]">
-      {recados.map(({ t, c }) => (
-        <span
-          key={t}
-          aria-hidden="true"
-          className={cn(
-            "absolute rounded-2xl rounded-bl-sm bg-white/12 px-3 py-1.5 text-[0.8rem] font-bold whitespace-nowrap text-white/80 backdrop-blur-sm",
-            c,
-          )}
-        >
-          {t}
-        </span>
-      ))}
-    </div>
-  );
-}
+/**
+ * As fotos do alto dos cartões. São de banco de imagens gratuito (Pexels,
+ * licença livre para uso comercial, sem crédito obrigatório):
+ *  - sem: https://www.pexels.com/photo/man-with-laptop-in-restaurant-5163390/
+ *  - com: https://www.pexels.com/photo/exited-ethnic-waitress-working-with-cash-desk-in-cozy-cafeteria-4473496/
+ */
+const FOTOS = {
+  sem: { src: "/venda/sem-menufacil.jpg", alt: "Dono de restaurante com as mãos na cabeça, preocupado, numa mesa cheia de papéis", posicao: "object-[50%_30%]" },
+  com: { src: "/venda/com-menufacil.jpg", alt: "Atendente sorrindo enquanto lança um pedido na tela do caixa", posicao: "object-[60%_35%]" },
+};
 
-/** o alto do cartão "com": o painel de verdade */
-function Organizado() {
+function FotoDoCartao({ tipo }: { tipo: "sem" | "com" }) {
+  const foto = FOTOS[tipo];
   return (
-    <div className="palco-noite relative h-44 overflow-hidden">
-      <div className="absolute top-6 right-5 w-[8.5rem] rotate-3">
-        <Celular tela={TELAS.painel} sizes="9rem" />
-      </div>
+    <div className="relative h-48 overflow-hidden sm:h-56">
+      <Image
+        src={foto.src}
+        alt={foto.alt}
+        fill
+        sizes="(min-width: 1024px) 30rem, 92vw"
+        className={cn("object-cover", foto.posicao)}
+      />
+      {/* um véu por cima, para a etiqueta ler bem em qualquer foto */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0",
+          tipo === "sem"
+            ? "bg-gradient-to-b from-black/55 via-black/25 to-black/40"
+            : "bg-gradient-to-b from-black/45 via-transparent to-black/20",
+        )}
+      />
     </div>
   );
 }
@@ -297,7 +295,7 @@ function CartaoDeContraste({ tipo, itens }: { tipo: "sem" | "com"; itens: Contra
       )}
     >
       <div className="relative">
-        {sem ? <Bagunca /> : <Organizado />}
+        <FotoDoCartao tipo={tipo} />
         <span
           className={cn(
             "absolute top-5 left-5 flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[0.78rem] font-extrabold tracking-[0.08em] uppercase backdrop-blur",
