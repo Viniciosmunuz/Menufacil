@@ -133,6 +133,15 @@ export async function avisarMensagemDoCliente(params: { restaurantId: string; or
   });
 }
 
+/** Menu Fácil IA: um cliente pediu para falar com uma pessoa no WhatsApp */
+export async function avisarClienteChamou(params: { restaurantId: string; quem: string }) {
+  return enviarParaORestaurante(params.restaurantId, {
+    titulo: "Cliente quer falar com você",
+    corpo: `${params.quem} pediu para falar com uma pessoa no WhatsApp. A IA avisou que você já vai responder.`,
+    tag: `chamou-${params.quem}`,
+  });
+}
+
 /** o dono apertou "testar": mesmo caminho de um pedido de verdade */
 export async function avisarTeste(restaurantId: string) {
   return enviarParaORestaurante(restaurantId, {

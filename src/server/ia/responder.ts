@@ -37,9 +37,34 @@ const COM_RESERVA = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fable-5
 /** idas e voltas com as ferramentas numa resposta só; passou disso, algo deu errado */
 const MAX_RODADAS = 6;
 
-const CHAMAR_EQUIPE = '"Vou chamar alguém da equipe para te ajudar, só um instante."';
+/**
+ * Passar a conversa para uma pessoa. É uma ferramenta, e não só uma frase,
+ * porque o código precisa saber que aconteceu: a IA fica quieta naquela
+ * conversa e o dono recebe um aviso no celular.
+ */
+const CHAMAR_PESSOA: Anthropic.Beta.BetaTool = {
+  name: "chamar_pessoa",
+  description:
+    "Passa a conversa para alguém do restaurante: avisa o dono e você para de responder este cliente. Use quando o cliente pedir para falar com o dono, com um atendente ou com uma pessoa, ou nos casos das regras.",
+  input_schema: {
+    type: "object",
+    properties: { motivo: { type: "string", description: "em poucas palavras, ex.: quer falar com o dono" } },
+    required: ["motivo"],
+  },
+};
 
-const COMO_RESPONDER = `Você é o atendente virtual do restaurante no WhatsApp.
+function quemVoceE(nome: string, dono: string | null) {
+  const quem = dono ? `chamar ${dono} (com o artigo certo: "o ${dono}" ou "a ${dono}")` : "chamar alguém da equipe";
+  return `Quem é você:
+- Você é o assistente virtual do ${nome} no WhatsApp. Se perguntarem, diga isso. Nunca finja ser uma pessoa nem o dono.
+
+Chamar uma pessoa:
+- Se o cliente pedir para falar com o dono${dono ? ` (${dono})` : ""}, com um atendente, com o restaurante ou com uma pessoa, chame a ferramenta chamar_pessoa e responda, de forma simpática, que você é o assistente virtual do ${nome} e que vai ${quem}, só um instante.
+  Exemplo: "Oi! Eu sou o assistente virtual do ${nome} 😊 Vou ${dono ? `chamar o ${dono}` : "chamar alguém da equipe"} pra falar com você, só um instante!"
+- Depois de chamar, não continue o atendimento: a pessoa assume a conversa.`;
+}
+
+const COMO_RESPONDER = `Como você atende:
 
 Como responder:
 - Em português do Brasil, simpático e direto, como uma mensagem de WhatsApp: curto, no máximo 3 ou 4 frases (o resumo de um pedido pode ser mais longo).
@@ -51,10 +76,9 @@ Como responder:
 const SO_DUVIDAS = `Para pedir:
 - Você NÃO anota pedido pela conversa. Para pedir, mande o link do cardápio do restaurante.
 
-Chame alguém da equipe (responda: ${CHAMAR_EQUIPE}) quando:
+Chame uma pessoa (chamar_pessoa) também quando:
 - a pergunta não puder ser respondida com as informações do bloco;
-- o assunto for um pedido já feito, atraso, reclamação, troca, cancelamento ou reembolso;
-- o cliente pedir para falar com uma pessoa.
+- o assunto for um pedido já feito, atraso, reclamação, troca, cancelamento ou reembolso.
 
 Nunca:
 - peça, confirme ou informe dados de pagamento (chave Pix, cartão, comprovante);
@@ -76,11 +100,10 @@ Pix:
 - O código Pix ou a chave seguem numa mensagem separada, que o sistema manda logo depois da sua. Não repita o código nem a chave no seu texto.
 - Quando for a chave Pix do restaurante, peça o comprovante e diga que o restaurante vai conferir.
 
-Chame alguém da equipe (responda: ${CHAMAR_EQUIPE}) quando:
+Chame uma pessoa (chamar_pessoa) também quando:
 - a pergunta não puder ser respondida com as informações do bloco;
 - o assunto for atraso, reclamação, troca, cancelamento, reembolso ou mudar um pedido já criado;
-- uma ferramenta der um erro que você não consegue resolver com o cliente;
-- o cliente pedir para falar com uma pessoa.
+- uma ferramenta der um erro que você não consegue resolver com o cliente.
 
 Nunca:
 - peça dados de cartão;
@@ -94,6 +117,8 @@ export type Resposta = {
   texto: string;
   /** mensagens que vão do jeito que estão, depois do texto (o código do Pix, a chave) */
   anexos: string[];
+  /** a IA passou a conversa para uma pessoa */
+  chamouPessoa: boolean;
   modelo: string;
   tokens: { entrada: number; saida: number; cache: number };
 };
@@ -140,8 +165,10 @@ export async function responder(params: {
     { role: "system", content: params.conhecimento.agora },
   ];
 
-  const regras = `${COMO_RESPONDER}\n\n${pedidos ? FAZ_PEDIDOS : SO_DUVIDAS}`;
+  const { nome, dono } = params.conhecimento;
+  const regras = `${quemVoceE(nome, dono)}\n\n${COMO_RESPONDER}\n\n${pedidos ? FAZ_PEDIDOS : SO_DUVIDAS}`;
   const anexos: string[] = [];
+  let chamouPessoa = false;
   const tokens = { entrada: 0, saida: 0, cache: 0 };
 
   try {
@@ -153,7 +180,7 @@ export async function responder(params: {
         // e mais barato, e o pensamento conta dentro do max_tokens.
         output_config: { effort: "low" },
         ...(COM_RESERVA.has(modelo) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
-        ...(pedidos ? { tools: FERRAMENTAS_DE_PEDIDO } : {}),
+        tools: pedidos ? [CHAMAR_PESSOA, ...FERRAMENTAS_DE_PEDIDO] : [CHAMAR_PESSOA],
         // As regras e o cardápio vão juntos num bloco guardado em cache: da
         // segunda mensagem em diante, esta parte custa uma fração do preço.
         system: [
@@ -174,17 +201,23 @@ export async function responder(params: {
         return null;
       }
 
-      if (resposta.stop_reason === "tool_use" && pedidos) {
+      if (resposta.stop_reason === "tool_use") {
         // a resposta volta inteira, com o pensamento junto: a API exige
         mensagens.push({ role: "assistant", content: resposta.content });
         const resultados: Anthropic.Beta.BetaToolResultBlockParam[] = [];
         for (const bloco of resposta.content) {
           if (bloco.type !== "tool_use") continue;
-          const r = await executarFerramenta(pedidos, bloco.name, bloco.input);
-          if (r.anexos) anexos.push(...r.anexos);
+          const r =
+            bloco.name === "chamar_pessoa"
+              ? ((chamouPessoa = true),
+                { texto: "Pronto, o restaurante foi avisado. Escreva agora a mensagem ao cliente; depois dela você não responde mais esta conversa." })
+              : pedidos
+                ? await executarFerramenta(pedidos, bloco.name, bloco.input)
+                : { texto: "Ferramenta indisponível.", erro: true };
+          if ("anexos" in r && r.anexos) anexos.push(...r.anexos);
           // só o nome da ferramenta e se deu certo: nada do pedido no log
-          console.info(`[ia] ferramenta ${bloco.name}: ${r.erro ? "recusada" : "ok"}`);
-          resultados.push({ type: "tool_result", tool_use_id: bloco.id, content: r.texto, ...(r.erro ? { is_error: true } : {}) });
+          console.info(`[ia] ferramenta ${bloco.name}: ${"erro" in r && r.erro ? "recusada" : "ok"}`);
+          resultados.push({ type: "tool_result", tool_use_id: bloco.id, content: r.texto, ...("erro" in r && r.erro ? { is_error: true } : {}) });
         }
         mensagens.push({ role: "user", content: resultados });
         continue;
@@ -195,13 +228,13 @@ export async function responder(params: {
         .map((b) => b.text)
         .join("\n")
         .trim();
-      if (!texto) return semTexto(anexos, modelo, tokens);
+      if (!texto) return semTexto(anexos, modelo, tokens, chamouPessoa);
 
-      return { texto, anexos, modelo: resposta.model, tokens };
+      return { texto, anexos, chamouPessoa, modelo: resposta.model, tokens };
     }
 
     console.warn("[ia] idas e voltas demais com as ferramentas; a conversa fica para o restaurante");
-    return semTexto(anexos, modelo, tokens);
+    return semTexto(anexos, modelo, tokens, chamouPessoa);
   } catch (erro) {
     // do mais específico para o mais geral: o que é passageiro e o que é
     // configuração errada pedem atitudes diferentes de quem lê o log
@@ -216,16 +249,22 @@ export async function responder(params: {
     } else {
       console.error("[ia] falha ao chamar a Anthropic:", erro);
     }
-    return semTexto(anexos, modelo, tokens);
+    return semTexto(anexos, modelo, tokens, chamouPessoa);
   }
 }
 
 /**
- * A IA parou no meio, depois de uma ferramenta já ter gerado um Pix. O
- * código não pode ficar sem chegar -- nem chegar sozinho, sem explicação.
- * Sem Pix no meio, o silêncio deixa a conversa para o dono, como sempre.
+ * A IA parou no meio, depois de uma ferramenta já ter feito algo que o
+ * cliente precisa saber: gerado um Pix (o código não pode ficar sem chegar,
+ * nem chegar sozinho) ou chamado uma pessoa (o dono já foi avisado).
+ * Sem nada disso, o silêncio deixa a conversa para o dono, como sempre.
  */
-function semTexto(anexos: string[], modelo: string, tokens: Resposta["tokens"]): Resposta | null {
-  if (anexos.length === 0) return null;
-  return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, modelo, tokens };
+function semTexto(anexos: string[], modelo: string, tokens: Resposta["tokens"], chamouPessoa: boolean): Resposta | null {
+  if (anexos.length > 0) {
+    return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, chamouPessoa, modelo, tokens };
+  }
+  if (chamouPessoa) {
+    return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, chamouPessoa, modelo, tokens };
+  }
+  return null;
 }

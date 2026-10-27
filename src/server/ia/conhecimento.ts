@@ -4,13 +4,15 @@ import { db } from "@/lib/db";
 import { formatCents, TIME_ZONE } from "@/lib/format";
 import { isOpenNow, soRetirada as entregaPausada, WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { appUrl } from "@/lib/site";
+import { maisPedidos } from "@/server/public/restaurants";
 
 // O que a IA sabe sobre o restaurante.
 //
 // Só leitura: monta um texto a partir do cadastro, do horário e do
-// cardápio, e não grava nada. É o mesmo cardápio que o cliente vê pelo
-// link -- o que está esgotado aparece como esgotado, e a seção que é só do
-// salão nem entra.
+// cardápio, e não grava nada. É o que o cliente vê na página do
+// restaurante pelo link -- endereço, Instagram, pagamento, horários, o selo
+// "mais pedido", o cardápio com o que está esgotado --, mais o nome de quem
+// é dono, para a IA saber quem chamar. A seção que é só do salão nem entra.
 //
 // Dividido em duas partes de propósito:
 //
@@ -31,6 +33,8 @@ export type Conhecimento = {
   agora: string;
   link: string;
   nome: string;
+  /** o primeiro nome do dono, quando há um só: "vou chamar o Lucivan" */
+  dono: string | null;
   slug: string;
   /** aberto agora; fechado, a IA não responde */
   aberto: boolean;
@@ -77,6 +81,19 @@ export async function conhecimentoDoRestaurante(
       city: true,
       street: true,
       number: true,
+      complement: true,
+      state: true,
+      phone: true,
+      instagram: true,
+      paymentInstructions: true,
+      ratingAverage: true,
+      ratingCount: true,
+      // quem é dono de verdade: o admin da plataforma e os garçons ficam de fora
+      owners: {
+        where: { role: "OWNER", user: { role: "RESTAURANT_OWNER", status: "ACTIVE" } },
+        orderBy: { id: "asc" },
+        select: { user: { select: { name: true } } },
+      },
       openMode: true,
       deliveryEnabled: true,
       pickupEnabled: true,
@@ -129,14 +146,28 @@ export async function conhecimentoDoRestaurante(
   if (!r) return null;
 
   const link = `${appUrl()}/restaurante/${r.slug}`;
+  const destaques = new Set(await maisPedidos(restaurantId));
+  const donos = r.owners.map((o) => o.user.name.trim()).filter(Boolean);
   const cemPorCento = r.fullDeliveryEnabled && r.deliveryMode === "FULL_DELIVERY";
   const linhas: string[] = [];
 
   linhas.push(`RESTAURANTE: ${r.name}`);
   if (r.description) linhas.push(`Sobre: ${r.description}`);
-  const endereco = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood, r.city].filter(Boolean).join(" - ");
+  const endereco = [
+    r.street && `${r.street}${r.number ? `, ${r.number}` : ""}${r.complement ? ` (${r.complement})` : ""}`,
+    r.neighborhood,
+    r.city && `${r.city}${r.state ? `/${r.state}` : ""}`,
+  ]
+    .filter(Boolean)
+    .join(" - ");
   if (endereco) linhas.push(`Endereço: ${endereco}`);
   linhas.push(`Link do cardápio para pedir: ${link}`);
+  if (r.instagram) linhas.push(`Instagram: @${instagramDe(r.instagram)}`);
+  if (r.phone) linhas.push(`Telefone: ${r.phone}`);
+  if (r.ratingAverage && r.ratingCount > 0) {
+    linhas.push(`Avaliação dos clientes: ${r.ratingAverage.toFixed(1).replace(".", ",")} de 5 (${r.ratingCount} avaliações)`);
+  }
+  if (donos.length) linhas.push(`Dono do restaurante: ${donos.join(", ")}`);
   linhas.push("");
 
   linhas.push("HORÁRIO DE FUNCIONAMENTO:");
@@ -157,6 +188,7 @@ export async function conhecimentoDoRestaurante(
   if (r.minOrderCents > 0) linhas.push(`- Pedido mínimo: ${formatCents(r.minOrderCents)}`);
   const formas = ["Pix", r.acceptsCard && "cartão (na entrega ou na retirada)", r.acceptsCash && "dinheiro"].filter(Boolean).join(", ");
   linhas.push(`- Formas de pagamento: ${formas}`);
+  if (r.paymentInstructions) linhas.push(`- Sobre o pagamento: ${r.paymentInstructions.slice(0, 300)}`);
   linhas.push("");
 
   if (!comIds) {
@@ -169,7 +201,7 @@ export async function conhecimentoDoRestaurante(
           ? `${formatCents(p.promoPriceCents)} (promoção; de ${formatCents(p.priceCents)})`
           : formatCents(p.priceCents);
         const descricao = p.description ? ` — ${p.description.slice(0, 160)}` : "";
-        linhas.push(`- ${p.name}: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${descricao}`);
+        linhas.push(`- ${p.name}: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${destaques.has(p.id) ? " [MAIS PEDIDO]" : ""}${descricao}`);
       }
     }
   } else {
@@ -192,7 +224,7 @@ export async function conhecimentoDoRestaurante(
         ].filter(Boolean);
         const descricao = p.description ? ` — ${p.description.slice(0, 120)}` : "";
         linhas.push(
-          `- ${p.name} [${p.id}]: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${extras.length ? ` (${extras.join("; ")})` : ""}${descricao}`,
+          `- ${p.name} [${p.id}]: ${preco}${p.available ? "" : " [ESGOTADO HOJE]"}${destaques.has(p.id) ? " [MAIS PEDIDO]" : ""}${extras.length ? ` (${extras.join("; ")})` : ""}${descricao}`,
         );
         for (const g of p.optionGroups) linhas.push(linhaDoGrupo(g));
       }
@@ -216,5 +248,16 @@ export async function conhecimentoDoRestaurante(
     .filter(Boolean)
     .join(" ");
 
-  return { fixo: linhas.join("\n"), agora, link, nome: r.name, slug: r.slug, aberto, cemPorCento };
+  // com mais de um dono, a IA não escolhe sozinha quem chamar
+  const dono = donos.length === 1 ? donos[0].split(/\s+/)[0] : null;
+  return { fixo: linhas.join("\n"), agora, link, nome: r.name, dono, slug: r.slug, aberto, cemPorCento };
+}
+
+/** "@papaleguas", venha o cadastro como "@papaleguas" ou como o endereço inteiro */
+function instagramDe(valor: string) {
+  return valor
+    .trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+    .replace(/[/?#].*$/, "")
+    .replace(/^@/, "");
 }

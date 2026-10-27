@@ -2,6 +2,9 @@ import "server-only";
 
 import { db } from "@/lib/db";
 
+import { formatPhone } from "@/lib/format";
+import { avisarClienteChamou } from "@/server/push/avisos";
+
 import { conhecimentoDoRestaurante } from "./conhecimento";
 import { enviarTexto } from "./kapso";
 import { pixEmAberto } from "./pedido";
@@ -23,7 +26,10 @@ import { responder, type Turno } from "./responder";
 //    conversa em laço e conta alta por um cliente só.
 // 4. Restaurante fechado (fora do horário ou fechado no botão): fica quieta.
 //    Com a entrega pausada ele continua aberto, e ela responde.
-// 5. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
+// 5. A própria IA passou a conversa para uma pessoa (o cliente pediu o
+//    dono, um atendente...): conta como se alguém do restaurante tivesse
+//    assumido, e ela fica quieta pelo mesmo tempo.
+// 6. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
 //    IA não ouve áudio, e responder "não entendi" a um áudio irrita mais do
 //    que ficar quieta. A exceção é a foto de quem tem Pix em aberto, que é
 //    quase sempre o comprovante: ela avisa que recebeu e que o restaurante
@@ -170,7 +176,16 @@ export async function atender(evento: MensagemKapso) {
   });
   if (!resposta) return;
 
-  await mandar([resposta.texto, ...resposta.anexos]);
+  const mandou = await mandar([resposta.texto, ...resposta.anexos]);
+
+  if (mandou && resposta.chamouPessoa) {
+    // um registro de "humano" é o que já faz a IA ficar quieta; o texto
+    // fica no histórico para quem ler a conversa depois
+    await db.iaMensagem.create({ data: { restaurantId, contato, papel: "HUMANO", texto: "[a IA chamou alguém do restaurante]" } });
+    await avisarClienteChamou({ restaurantId, quem: telefone ? formatPhone(telefone) : "Um cliente" }).catch((erro) =>
+      console.error("[ia] falha ao avisar o dono:", erro),
+    );
+  }
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
   console.info(
