@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -9,12 +10,57 @@ import { Celular, Notebook, TELAS, TotemAparelho, ViaImpressa } from "./mockups"
 
 // "Um sistema. Tudo conectado.": as abas com as soluções.
 //
-// Cada aba mostra as telas reais daquela parte do sistema num palco escuro,
-// e embaixo delas uma frase de cada vez, trocando sozinha. Tocar num ponto
-// ou arrastar para o lado passa a frase na mão -- e aí a troca automática
-// para, porque quem está lendo não quer o texto fugindo.
+// Cada aba começa pelas telas reais daquela parte do sistema, num palco
+// escuro; as frases seguintes vêm cada uma com uma foto da situação de que
+// ela fala. Uma frase de cada vez, trocando sozinha. Tocar num ponto ou
+// arrastar para o lado passa a frase na mão -- e aí a troca automática para,
+// porque quem está lendo não quer o texto fugindo.
 
 const INTERVALO_MS = 5000;
+
+type Foto = { src: string; alt: string };
+
+/**
+ * As fotos das frases 2 em diante de cada aba, na ordem das frases em
+ * conteudo.ts (a primeira é sempre o palco com as telas). Mexeu numa frase,
+ * confira se a foto ainda conversa com ela.
+ *
+ * Todas do Pexels, licença livre para uso comercial, sem crédito
+ * obrigatório. O número é o da foto: pexels.com/photo/<número>.
+ */
+const FOTOS: Record<Solucao["id"], Foto[]> = {
+  delivery: [
+    // 4008580, 6605251, 6925809, 12203654
+    { src: "/venda/solucoes/delivery-2.jpg", alt: "Cliente escolhendo lanches num cardápio aberto no celular" },
+    { src: "/venda/solucoes/delivery-3.jpg", alt: "Pizzaiolo sorrindo ao entregar as caixas de pizza ao cliente" },
+    { src: "/venda/solucoes/delivery-4.jpg", alt: "Cliente pagando com o celular no balcão" },
+    { src: "/venda/solucoes/delivery-5.jpg", alt: "Entregador de moto levando o pedido na bolsa térmica" },
+  ],
+  salao: [
+    // 37594386, 6816417, 37594404, 36729739
+    { src: "/venda/solucoes/salao-2.jpg", alt: "Garçom anotando o pedido da mesa num aparelho de mão" },
+    { src: "/venda/solucoes/salao-3.jpg", alt: "Garçom com a maquininha na mesa para os clientes pagarem a conta" },
+    { src: "/venda/solucoes/salao-4.jpg", alt: "Atendente fechando o caixa na tela do balcão" },
+    { src: "/venda/solucoes/salao-5.jpg", alt: "Dona do restaurante de braços cruzados no balcão" },
+  ],
+  impressao: [
+    // 38181070, 15646686
+    { src: "/venda/solucoes/impressao-2.jpg", alt: "Comanda impressa com os itens do pedido saindo na cozinha" },
+    { src: "/venda/solucoes/impressao-3.jpg", alt: "Cozinheiros preparando os pedidos na chapa" },
+  ],
+  painel: [
+    // 12935057, 6612691, 4921260
+    { src: "/venda/solucoes/painel-2.jpg", alt: "Cozinheiro olhando os pedidos numa tela" },
+    { src: "/venda/solucoes/painel-3.jpg", alt: "Atendente cuidando dos pedidos pelo tablet e pelo celular" },
+    { src: "/venda/solucoes/painel-4.jpg", alt: "Dedo tocando num prato do cardápio na tela" },
+  ],
+  totem: [
+    // 11344562, 29179404, 12935078
+    { src: "/venda/solucoes/totem-2.jpg", alt: "Maquininha de cartão no balcão, ao lado de um café" },
+    { src: "/venda/solucoes/totem-3.jpg", alt: "Cliente esperando o pedido no balcão de retirada" },
+    { src: "/venda/solucoes/totem-4.jpg", alt: "Tela de autoatendimento com o cardápio num restaurante" },
+  ],
+};
 
 /** as telas de cada aba, montadas no palco */
 function Palco({ id }: { id: Solucao["id"] }) {
@@ -139,7 +185,24 @@ export function Solucoes() {
             if (Math.abs(dx) > 40) irPara(frase + (dx < 0 ? 1 : -1));
           }}
         >
-          <Palco id={atual.id} />
+          {/* As camadas ficam todas montadas, uma por cima da outra, e só a
+              da frase atual aparece: a troca vira um esmaecer, sem piscar
+              branco enquanto a foto seguinte carrega. */}
+          <div className={cn("absolute inset-0 transition-opacity duration-500", frase === 0 ? "opacity-100" : "opacity-0")}>
+            <Palco id={atual.id} />
+          </div>
+          {FOTOS[atual.id].map((foto, i) => (
+            <div
+              key={foto.src}
+              aria-hidden={frase !== i + 1}
+              className={cn(
+                "absolute inset-0 transition-opacity duration-500",
+                frase === i + 1 ? "opacity-100" : "opacity-0",
+              )}
+            >
+              <Image src={foto.src} alt={foto.alt} fill sizes="(min-width: 768px) 46rem, 92vw" className="object-cover" />
+            </div>
+          ))}
 
           {/* a frase, por cima das telas */}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0f0b08] via-[#0f0b08]/90 to-transparent px-5 pt-24 pb-5 sm:px-7 sm:pb-6">
