@@ -1170,6 +1170,9 @@ model ChatMessage {
   /// nome mostrado na bolha, guardado no momento da mensagem
   authorName     String?
   body           String
+  /// A foto que acompanha a mensagem: o comprovante do Pix, a foto do que
+  /// chegou errado. Mensagem pode ter so texto, so foto, ou os dois.
+  imageUrl       String?
   /// quando o outro lado leu
   readAt         DateTime?
 

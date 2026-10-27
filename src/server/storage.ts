@@ -16,7 +16,7 @@ import sharp, { type Sharp } from "sharp";
 // quando existe BLOB_READ_WRITE_TOKEN. Outro provedor (S3/R2) entra aqui sem
 // mudar quem chama saveImage.
 
-export type ImageKind = "logo" | "cover" | "product" | "descanso";
+export type ImageKind = "logo" | "cover" | "product" | "descanso" | "chat";
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
@@ -31,6 +31,11 @@ const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   // o cartaz do totem é feito à parte, muitas vezes em pé (o tablet fica
   // em pé no balcão): aqui não se corta nada, só se limita o tamanho
   descanso: (img) => img.resize(1400, 2000, { fit: "inside", withoutEnlargement: true }),
+  // O que entra pela conversa quase sempre é print de comprovante, e
+  // comprovante tem letra miúda: cortar o tamanho embaixo de 1200 deixa o
+  // valor e o nome ilegíveis justamente na hora de conferir. Em pé ou
+  // deitada, a foto cabe dentro do quadrado sem perder proporção.
+  chat: (img) => img.resize(1200, 1600, { fit: "inside", withoutEnlargement: true }),
 };
 
 export class ImageError extends Error {}

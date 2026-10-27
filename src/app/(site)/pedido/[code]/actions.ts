@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { enviarComoCliente, marcarLidoPeloCliente } from "@/server/chat/chat";
 import { credenciaisDePagamento } from "@/server/pagamentos/conta";
+import { ImageError, saveImage } from "@/server/storage";
 import { pixDoPedido } from "@/server/pagamentos/pix";
 import { cancelarPagamento } from "@/server/mercado-pago/api";
 
@@ -124,9 +125,29 @@ export async function lerConversaDoPedido(code: string) {
 export async function enviarMensagem(_prev: EstadoDaConversa, formData: FormData): Promise<EstadoDaConversa> {
   const code = String(formData.get("code") ?? "");
   const texto = String(formData.get("texto") ?? "");
-  if (!texto.trim()) return { error: "Escreva a mensagem antes de enviar." };
+  const foto = formData.get("foto");
 
-  const resultado = await enviarComoCliente(code, texto);
+  // a foto é opcional, mas mensagem sem nada não existe
+  const temFoto = foto instanceof File && foto.size > 0;
+  if (!texto.trim() && !temFoto) return { error: "Escreva a mensagem ou envie uma foto." };
+
+  // A foto é guardada antes de a mensagem existir, e com o restaurante do
+  // próprio pedido: quem tem o link do pedido não escolhe em que pasta
+  // escreve.
+  let imagem: string | null = null;
+  if (temFoto) {
+    const pedido = await db.order.findUnique({ where: { code }, select: { restaurantId: true } });
+    if (!pedido) return { error: "Pedido não encontrado." };
+    try {
+      imagem = await saveImage({ restaurantId: pedido.restaurantId, kind: "chat", file: foto });
+    } catch (erro) {
+      if (erro instanceof ImageError) return { error: erro.message };
+      console.error("[chat] não deu para guardar a foto do cliente:", erro);
+      return { error: "Não consegui enviar a foto. Tente de novo." };
+    }
+  }
+
+  const resultado = await enviarComoCliente(code, texto, imagem);
   if ("erro" in resultado) return { error: resultado.erro };
 
   refresh();

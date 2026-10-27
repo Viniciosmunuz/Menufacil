@@ -42,6 +42,8 @@ export type MensagemDoChat = {
   autor: "CUSTOMER" | "RESTAURANT";
   autorNome: string | null;
   texto: string;
+  /// a foto da mensagem, quando tem; o texto pode vir vazio
+  imagem: string | null;
   em: Date;
   lida: boolean;
 };
@@ -66,7 +68,7 @@ export async function conversaDoPedido(orderId: string): Promise<ConversaDoPedid
       messages: {
         orderBy: { createdAt: "asc" },
         take: 200,
-        select: { id: true, author: true, authorName: true, body: true, createdAt: true, readAt: true },
+        select: { id: true, author: true, authorName: true, body: true, imageUrl: true, createdAt: true, readAt: true },
       },
     },
   });
@@ -81,6 +83,7 @@ export async function conversaDoPedido(orderId: string): Promise<ConversaDoPedid
       autor: m.author,
       autorNome: m.authorName,
       texto: m.body,
+      imagem: m.imageUrl,
       em: m.createdAt,
       lida: m.readAt !== null,
     })),
@@ -115,9 +118,12 @@ async function gravar(params: {
   autorNome: string | null;
   autorUserId: string | null;
   texto: string;
+  imagem?: string | null;
 }): Promise<Gravada> {
   const texto = limpar(params.texto);
-  if (!texto) return { erro: "Escreva a mensagem antes de enviar." };
+  const imagem = params.imagem ?? null;
+  // uma das duas basta: foto sem legenda e recado sem foto valem iguais
+  if (!texto && !imagem) return { erro: "Escreva a mensagem ou envie uma foto." };
 
   const agora = new Date();
   const conversa = await db.chatConversation.upsert({
@@ -139,8 +145,9 @@ async function gravar(params: {
         authorName: params.autorNome,
         authorUserId: params.autorUserId,
         body: texto,
+        imageUrl: imagem,
       },
-      select: { id: true, author: true, authorName: true, body: true, createdAt: true, readAt: true },
+      select: { id: true, author: true, authorName: true, body: true, imageUrl: true, createdAt: true, readAt: true },
     });
     await tx.chatConversation.update({
       where: { id: conversa.id },
@@ -161,6 +168,7 @@ async function gravar(params: {
       autor: mensagem.author,
       autorNome: mensagem.authorName,
       texto: mensagem.body,
+      imagem: mensagem.imageUrl,
       em: mensagem.createdAt,
       lida: false,
     },
@@ -174,7 +182,7 @@ async function gravar(params: {
  * conversa de pedido entregue na semana passada não serve para ninguém e
  * viraria caixa de entrada que o balcão nunca lê.
  */
-export async function enviarComoCliente(code: string, texto: string): Promise<Gravada> {
+export async function enviarComoCliente(code: string, texto: string, imagem?: string | null): Promise<Gravada> {
   const pedido = await db.order.findUnique({
     where: { code },
     select: { id: true, restaurantId: true, number: true, origin: true, status: true, customerName: true },
@@ -190,6 +198,7 @@ export async function enviarComoCliente(code: string, texto: string): Promise<Gr
     autorNome: pedido.customerName,
     autorUserId: null,
     texto,
+    imagem,
   });
   if ("erro" in gravada) return gravada;
 
@@ -201,7 +210,7 @@ export async function enviarComoCliente(code: string, texto: string): Promise<Gr
       await avisarMensagemDoCliente({
         restaurantId: pedido.restaurantId,
         orderNumber: pedido.number,
-        texto: gravada.mensagem.texto,
+        texto: gravada.mensagem.texto || "Enviou uma foto.",
       });
     } catch (erro) {
       console.error("[chat] não deu para avisar o restaurante:", erro);
@@ -218,6 +227,7 @@ export async function enviarComoRestaurante(params: {
   userId: string;
   userName: string;
   texto: string;
+  imagem?: string | null;
 }): Promise<Gravada> {
   const pedido = await db.order.findFirst({
     where: { id: params.orderId, restaurantId: params.restaurantId },
@@ -233,6 +243,7 @@ export async function enviarComoRestaurante(params: {
     autorNome: params.userName,
     autorUserId: params.userId,
     texto: params.texto,
+    imagem: params.imagem,
   });
 }
 

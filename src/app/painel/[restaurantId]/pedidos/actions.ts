@@ -9,6 +9,7 @@ import { PAPER_WIDTHS } from "@/lib/ticket";
 import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { enviarComoRestaurante, marcarLidoPeloRestaurante } from "@/server/chat/chat";
+import { ImageError, saveImage } from "@/server/storage";
 import { setOrderStatus, updateOrderDetails, type OrderFormState } from "@/server/orders/update-order";
 import { pairDevice, setDeviceRole, unpairDevice } from "@/server/print/devices";
 import { avisarTeste, esquecerAparelho, guardarAparelho } from "@/server/push/avisos";
@@ -34,7 +35,21 @@ async function access(formData: FormData) {
 export async function responderNoChat(_prev: EstadoDaConversa, formData: FormData): Promise<EstadoDaConversa> {
   const { restaurantId, user } = await access(formData);
   const texto = String(formData.get("texto") ?? "");
-  if (!texto.trim()) return { error: "Escreva a mensagem antes de enviar." };
+  const foto = formData.get("foto");
+
+  const temFoto = foto instanceof File && foto.size > 0;
+  if (!texto.trim() && !temFoto) return { error: "Escreva a mensagem ou envie uma foto." };
+
+  let imagem: string | null = null;
+  if (temFoto) {
+    try {
+      imagem = await saveImage({ restaurantId, kind: "chat", file: foto });
+    } catch (erro) {
+      if (erro instanceof ImageError) return { error: erro.message };
+      console.error("[chat] não deu para guardar a foto do balcão:", erro);
+      return { error: "Não consegui enviar a foto. Tente de novo." };
+    }
+  }
 
   const resultado = await enviarComoRestaurante({
     orderId: String(formData.get("orderId") ?? ""),
@@ -42,6 +57,7 @@ export async function responderNoChat(_prev: EstadoDaConversa, formData: FormDat
     userId: user.id,
     userName: user.name,
     texto,
+    imagem,
   });
   if ("erro" in resultado) return { error: resultado.erro };
 
