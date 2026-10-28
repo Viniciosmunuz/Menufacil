@@ -59,6 +59,15 @@ function toCard(r: CardRow): PublicRestaurantCard {
   };
 }
 
+/** os bairros que o restaurante atende agora; vazio = atende qualquer um */
+export async function areasDeEntrega(restaurantId: string) {
+  return db.deliveryArea.findMany({
+    where: { restaurantId, active: true },
+    orderBy: [{ position: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, feeCents: true },
+  });
+}
+
 export async function listRestaurants(filters: {
   q?: string | null;
   category?: string | null;

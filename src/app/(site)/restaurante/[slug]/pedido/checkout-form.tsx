@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { copyToClipboard } from "@/components/ui/copy-button";
-import { Field, Input, Textarea } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { MoneyInput } from "@/components/ui/money-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { CardType, PaymentMethod } from "@/generated/prisma/enums";
@@ -52,9 +52,18 @@ type RestaurantInfo = {
   pixOnline: boolean;
   /** mostrada antes do pedido e copiada ao fazer o pedido (só no fluxo do WhatsApp) */
   pix: { key: string; display: string; holder: string | null } | null;
+  /**
+   * Os bairros atendidos, com a taxa de cada um. Lista vazia quer dizer
+   * que o restaurante ainda não cadastrou área de entrega: aí o bairro é
+   * digitado e a taxa é a única do restaurante, como sempre foi.
+   */
+  areas: { id: string; name: string; feeCents: number }[];
   /** produtos que dá para pedir agora e as opções de cada um */
   menu: Record<string, OptionGroupData[]>;
 };
+
+/** o que o cliente escolhe quando o bairro dele não está na lista */
+const FORA = "__fora__";
 
 const choiceClasses = (selected: boolean, enabled = true) =>
   cn(
@@ -83,6 +92,8 @@ const SAVED_FIELDS = ["customerName", "customerWhatsapp", "street", "number", "c
 
 export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const cart = useCart();
+  /** o bairro escolhido na lista; "" enquanto ninguém escolheu */
+  const [bairro, setBairro] = useState("");
   const savedRaw = useSyncExternalStore(noop, readSaved, () => null);
   const saved: Record<string, string> = (() => {
     try {
@@ -153,8 +164,30 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const firstError = state.error ?? (state.fieldErrors ? Object.values(state.fieldErrors)[0] : undefined);
 
   const subtotal = cartSubtotal(cart);
-  const fee = type === "DELIVERY" ? restaurant.deliveryFeeCents : 0;
+  // Com área cadastrada, a taxa é a do bairro escolhido. Antes de
+  // escolher, mostra a mais barata -- prometer a mais cara espanta, e
+  // prometer grátis para depois cobrar é pior ainda.
+  const porArea = restaurant.areas.length > 0;
+  const areaEscolhida = restaurant.areas.find((a) => a.name === bairro) ?? null;
+  const fee =
+    type !== "DELIVERY"
+      ? 0
+      : porArea
+        ? (areaEscolhida?.feeCents ?? Math.min(...restaurant.areas.map((a) => a.feeCents)))
+        : restaurant.deliveryFeeCents;
   const total = subtotal + fee;
+  // O cartão "Entrega" promete um valor antes de o cliente dizer onde mora.
+  // Com bairros, o honesto é "a partir de": o barato ele vai ver, e o caro
+  // não chega como surpresa no fim.
+  const taxaNoCartao = !porArea
+    ? restaurant.deliveryFeeCents > 0
+      ? formatCents(restaurant.deliveryFeeCents)
+      : "Grátis"
+    : areaEscolhida
+      ? areaEscolhida.feeCents > 0
+        ? formatCents(areaEscolhida.feeCents)
+        : "Grátis"
+      : `A partir de ${formatCents(Math.min(...restaurant.areas.map((a) => a.feeCents)))}`;
   const missing = Math.max(0, restaurant.minOrderCents - subtotal);
   const err = state.fieldErrors ?? {};
   const v = (key: string) => state.values?.[key] ?? saved[key] ?? "";
@@ -318,7 +351,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                     "DELIVERY",
                     restaurant.deliveryEnabled,
                     "Entrega",
-                    `${restaurant.deliveryFeeCents > 0 ? formatCents(restaurant.deliveryFeeCents) : "Grátis"}${restaurant.deliveryTime ? ` · ${restaurant.deliveryTime}` : ""}`,
+                    `${taxaNoCartao}${restaurant.deliveryTime ? ` · ${restaurant.deliveryTime}` : ""}`,
                     Bike,
                   )}
                 {option("PICKUP", restaurant.pickupEnabled, "Retirada no local", restaurant.address ?? "Busque no restaurante.", Store)}
@@ -339,8 +372,34 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                   <Field label="Número" htmlFor="number" error={err.number} className="sm:col-span-2">
                     <Input id="number" name="number" required maxLength={20} defaultValue={v("number")} aria-invalid={!!err.number} />
                   </Field>
-                  <Field label="Bairro" htmlFor="neighborhood" error={err.neighborhood} className="sm:col-span-3">
-                    <Input id="neighborhood" name="neighborhood" required maxLength={80} defaultValue={v("neighborhood")} aria-invalid={!!err.neighborhood} />
+                  <Field
+                    label="Bairro"
+                    htmlFor="neighborhood"
+                    error={err.neighborhood}
+                    hint={porArea && areaEscolhida ? `Entrega ${areaEscolhida.feeCents > 0 ? formatCents(areaEscolhida.feeCents) : "grátis"}.` : undefined}
+                    className="sm:col-span-3"
+                  >
+                    {porArea ? (
+                      <Select
+                        id="neighborhood"
+                        name="neighborhood"
+                        required
+                        value={bairro}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBairro(e.target.value)}
+                        aria-invalid={!!err.neighborhood}
+                      >
+                        <option value="">Escolha o seu bairro</option>
+                        {restaurant.areas.map((a) => (
+                          <option key={a.id} value={a.name}>
+                            {a.name}
+                            {a.feeCents > 0 ? ` — ${formatCents(a.feeCents)}` : " — grátis"}
+                          </option>
+                        ))}
+                        <option value={FORA}>Meu bairro não está na lista</option>
+                      </Select>
+                    ) : (
+                      <Input id="neighborhood" name="neighborhood" required maxLength={80} defaultValue={v("neighborhood")} aria-invalid={!!err.neighborhood} />
+                    )}
                   </Field>
                   <Field label="Complemento" htmlFor="complement" error={err.complement} hint="Opcional." className="sm:col-span-3">
                     <Input id="complement" name="complement" maxLength={80} autoComplete="address-line2" defaultValue={v("complement")} />
@@ -362,6 +421,26 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                       aria-invalid={!!err.reference}
                     />
                   </Field>
+                  {bairro === FORA && (
+                    <Alert tone="warning" className="flex flex-col items-start gap-3 sm:col-span-6">
+                      <span>
+                        <strong>Ainda não entregamos no seu bairro.</strong> Você pode retirar no local
+                        {restaurant.address ? `: ${restaurant.address}` : ""}.
+                      </span>
+                      {restaurant.pickupEnabled && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setType("PICKUP");
+                            setBairro("");
+                          }}
+                        >
+                          Quero retirar no local
+                        </Button>
+                      )}
+                    </Alert>
+                  )}
                 </div>
               )}
             </Card>

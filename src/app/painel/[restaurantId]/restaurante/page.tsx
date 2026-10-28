@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { isOpenNow } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
-import { AddressSection, ContactSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection, PizzaSection } from "./forms";
+import { AddressSection, ContactSection, DeliveryAreasSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection, PizzaSection } from "./forms";
 
 export const metadata: Metadata = { title: "Meu restaurante" };
 
@@ -16,6 +16,7 @@ const sections = [
   { href: "#endereco", label: "Endereço" },
   { href: "#horarios", label: "Horários" },
   { href: "#entrega", label: "Entrega" },
+  { href: "#area", label: "Bairros" },
   { href: "#pagamento", label: "Pix" },
   { href: "#pizza", label: "Pizza" },
 ];
@@ -33,6 +34,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, name: true, pizzaFlavors: true, _count: { select: { products: true } } },
       },
+      deliveryAreas: { orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, name: true, feeCents: true } },
     },
   });
 
@@ -87,6 +89,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
           <AddressSection r={{ ...r, hours, menuCategories }} />
           <HoursSection r={{ ...r, hours, menuCategories }} />
           <DeliverySection r={{ ...r, hours, menuCategories }} />
+          <DeliveryAreasSection r={{ ...r, hours, menuCategories }} areas={r.deliveryAreas} />
           <PaymentSection r={{ ...r, hours, menuCategories }} />
           <PaymentMethodsSection r={{ ...r, hours, menuCategories }} />
           <PizzaSection r={{ ...r, hours, menuCategories }} />

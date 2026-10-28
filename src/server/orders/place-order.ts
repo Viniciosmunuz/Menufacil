@@ -144,12 +144,30 @@ export type OrderItems = z.infer<typeof itemsSchema>;
  * o resumo ao cliente antes de criar: o total que ela mostra é este, o
  * mesmo que o pedido vai ter.
  */
+/** o bairro do cliente na lista do restaurante, comparando sem acento nem caixa */
+export function areaDoPedido<T extends { name: string }>(areas: T[], bairro: string | null | undefined) {
+  if (!bairro) return null;
+  const limpo = chave(bairro);
+  return areas.find((a) => chave(a.name) === limpo) ?? null;
+}
+
+const chave = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .toLowerCase();
+
 export async function prepararPedido(params: { slug: string; input: CheckoutInput; items: OrderItems }) {
   const { input, items } = params;
 
   const restaurant = await db.restaurant.findUnique({
     where: { slug: params.slug },
-    include: { openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
+    include: {
+      openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+      deliveryAreas: { where: { active: true }, select: { id: true, name: true, feeCents: true } },
+    },
   });
   if (!restaurant || restaurant.status !== "ACTIVE") throw new OrderError("Este restaurante não está recebendo pedidos.");
   if (!isOpenNow(restaurant.openMode, restaurant.openingHours)) {
@@ -316,7 +334,15 @@ export async function prepararPedido(params: { slug: string; input: CheckoutInpu
   if (subtotalCents < restaurant.minOrderCents) {
     throw new OrderError(`O pedido mínimo deste restaurante é ${formatCents(restaurant.minOrderCents)}.`);
   }
-  const deliveryFeeCents = type === "DELIVERY" ? restaurant.deliveryFeeCents : 0;
+  // A taxa nunca vem do formulário: ou é a do bairro escolhido, ou é a
+  // única do restaurante. Com a lista cadastrada, bairro de fora dela não
+  // passa daqui -- é esta linha que impede o pedido que o balcão não tem
+  // como entregar.
+  const area = type === "DELIVERY" ? areaDoPedido(restaurant.deliveryAreas, input.neighborhood) : null;
+  if (type === "DELIVERY" && restaurant.deliveryAreas.length > 0 && !area) {
+    throw new OrderError("Ainda não entregamos neste bairro. Dá para retirar no local.", "neighborhood");
+  }
+  const deliveryFeeCents = type === "DELIVERY" ? (area ? area.feeCents : restaurant.deliveryFeeCents) : 0;
   const totalCents = subtotalCents + deliveryFeeCents;
 
   const changeForCents = method === "CASH" && input.needsChange === "sim" ? parseMoneyToCents(input.changeFor) : null;

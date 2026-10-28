@@ -283,9 +283,37 @@ model Restaurant {
   chats               ChatConversation[]
   payments            RestaurantPayment[]
   chamados            SupportTicket[]
+  deliveryAreas       DeliveryArea[]
 
   @@index([status])
   @@index([city])
+}
+
+/// Um bairro que o restaurante atende, com a taxa dele.
+///
+/// Enquanto a lista estiver vazia, a entrega funciona como sempre: o
+/// cliente digita o bairro e paga a taxa unica do restaurante. Isso e de
+/// proposito -- ligar a area de entrega para todo mundo de uma vez
+/// deixaria sem entregar todo restaurante que ainda nao cadastrou os
+/// bairros dele. A lista so passa a mandar quando existe.
+model DeliveryArea {
+  id           String  @id @default(cuid())
+  restaurantId String
+  name         String
+  feeCents     Int     @default(0)
+  /// Desligar guarda o bairro e a taxa para quando voltar a entregar la;
+  /// apagar perde os dois. Bairro desligado nao aparece para o cliente.
+  active       Boolean @default(true)
+  /// a ordem em que aparecem na lista do cliente
+  position     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId, active])
 }
 
 enum OwnerRole {

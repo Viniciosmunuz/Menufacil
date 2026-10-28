@@ -17,7 +17,7 @@ import { formatCents } from "@/lib/format";
 import { soRetirada } from "@/lib/opening-hours";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
-import { getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
+import { areasDeEntrega, getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
 import { lockedStore } from "@/server/public/store";
 
 export async function generateMetadata({ params }: PageProps<"/restaurante/[slug]">): Promise<Metadata> {
@@ -58,6 +58,16 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   const data = await getPublicRestaurant(slug, sp.previa === "1");
   if (!data) notFound();
   const { restaurant: r, isPreview, open } = data;
+
+  // Com bairros cadastrados a taxa deixa de ser uma só: aqui, antes de o
+  // cliente dizer onde mora, o honesto é anunciar a mais barata como
+  // "a partir de".
+  const areas = await areasDeEntrega(r.id);
+  const taxaAnunciada = areas.length
+    ? `Entrega a partir de ${formatCents(Math.min(...areas.map((a) => a.feeCents)))}`
+    : r.deliveryFeeCents > 0
+      ? `Entrega ${formatCents(r.deliveryFeeCents)}`
+      : "Entrega grátis";
   // o selo "Mais pedido" dos pratos que mais saíram no mês
   const campeoes = await maisPedidos(r.id);
   // entrou pelo link do restaurante: nada que leve aos outros (voltar, favoritos)
@@ -170,7 +180,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                   <>
                     {time && <Chip icon={Clock}>{time}</Chip>}
                     {r.deliveryEnabled && !entregaPausada && (
-                      <Chip icon={Bike}>{r.deliveryFeeCents > 0 ? `Entrega ${formatCents(r.deliveryFeeCents)}` : "Entrega grátis"}</Chip>
+                      <Chip icon={Bike}>{taxaAnunciada}</Chip>
                     )}
                     {r.pickupEnabled && <Chip icon={ShoppingBag}>Retirada</Chip>}
                     {r.minOrderCents > 0 && <Chip icon={Wallet}>Mínimo {formatCents(r.minOrderCents)}</Chip>}

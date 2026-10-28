@@ -283,6 +283,40 @@ export async function saveDelivery(_prev: SectionState, formData: FormData): Pro
   return saved();
 }
 
+// ---- Área de entrega ----------------------------------------------------
+//
+// A lista inteira é gravada de uma vez: apaga e regrava dentro de uma
+// transação. É mais simples do que casar linha por linha, e o volume é de
+// algumas dezenas de bairros -- não de milhares.
+//
+// Lista vazia tem significado: quer dizer "entrego em qualquer endereço",
+// que é como o sistema sempre funcionou. Por isso dá para salvar vazia.
+
+export async function saveDeliveryAreas(_prev: SectionState, formData: FormData): Promise<SectionState> {
+  const acc = await access(formData);
+  const nomes = formData.getAll("areaName").map((v) => String(v).trim());
+  const taxas = formData.getAll("areaFee").map((v) => String(v));
+
+  const areas: { name: string; feeCents: number; position: number }[] = [];
+  const vistos = new Set<string>();
+  for (let i = 0; i < nomes.length; i++) {
+    const name = nomes[i];
+    if (!name) continue; // linha em branco é linha que o dono desistiu de preencher
+    if (name.length > 60) return { fieldErrors: { areas: `"${name.slice(0, 20)}..." é um nome longo demais para um bairro.` } };
+    const chave = name.toLowerCase();
+    if (vistos.has(chave)) return { fieldErrors: { areas: `"${name}" está na lista duas vezes.` } };
+    vistos.add(chave);
+    areas.push({ name, feeCents: parseMoneyToCents(taxas[i]) ?? 0, position: areas.length });
+  }
+
+  await db.$transaction([
+    db.deliveryArea.deleteMany({ where: { restaurantId: acc.restaurant.id } }),
+    ...(areas.length ? [db.deliveryArea.createMany({ data: areas.map((a) => ({ ...a, restaurantId: acc.restaurant.id })) })] : []),
+  ]);
+  await panelAudit(acc, "restaurant.delivery_areas");
+  return saved();
+}
+
 // ---- Pagamento (Pix) ----------------------------------------------------
 
 const paymentSchema = z.object({

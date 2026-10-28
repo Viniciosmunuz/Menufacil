@@ -6,7 +6,7 @@ import { deliveryTimeLabel } from "@/components/public/restaurant-card";
 import { soRetirada } from "@/lib/opening-hours";
 import { formatPixKey } from "@/lib/pix";
 import { prontoParaCobrar } from "@/server/pagamentos/conta";
-import { getPublicRestaurant } from "@/server/public/restaurants";
+import { areasDeEntrega, getPublicRestaurant } from "@/server/public/restaurants";
 
 import { CheckoutForm } from "./checkout-form";
 
@@ -23,6 +23,8 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
   // chave para mostrar, porque neste modo não existe comprovante por fora.
   const cemPorCento = r.fullDeliveryEnabled && r.deliveryMode === "FULL_DELIVERY";
   const pixOnline = cemPorCento && (await prontoParaCobrar(r.id));
+  // os bairros atendidos; lista vazia = entrega em qualquer endereço
+  const areas = await areasDeEntrega(r.id);
 
   const address = [r.street && `${r.street}${r.number ? `, ${r.number}` : ""}`, r.neighborhood].filter(Boolean).join(" - ") || null;
   // cardápio atual (só o que dá para pedir): o checkout confere o carrinho antes de enviar
@@ -42,6 +44,7 @@ export default async function CheckoutPage({ params }: PageProps<"/restaurante/[
           pickupEnabled: r.pickupEnabled,
           soRetirada: soRetirada(r.pickupOnlyUntil),
           deliveryFeeCents: r.deliveryFeeCents,
+          areas,
           minOrderCents: r.minOrderCents,
           deliveryTime: deliveryTimeLabel(r.deliveryTimeMin, r.deliveryTimeMax),
           address,

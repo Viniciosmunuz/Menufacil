@@ -1,9 +1,12 @@
 "use client";
 
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
 import { SectionForm } from "@/components/panel/section-form";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { MoneyInput, centsToInput } from "@/components/ui/money-input";
@@ -13,7 +16,7 @@ import { formatPhone } from "@/lib/format";
 import { WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { PIX_KEY_TYPES, formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
-import { saveAddress, saveContact, saveDelivery, saveHours, saveInfo, savePayment, savePaymentMethods, savePizza } from "./actions";
+import { saveAddress, saveContact, saveDelivery, saveDeliveryAreas, saveHours, saveInfo, savePayment, savePaymentMethods, savePizza } from "./actions";
 
 export type RestaurantFormData = {
   id: string;
@@ -251,6 +254,84 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
               />
             ))}
           </div>
+        </>
+      )}
+    </SectionForm>
+  );
+}
+
+export type AreaData = { id: string; name: string; feeCents: number };
+
+/**
+ * Os bairros que o restaurante atende.
+ *
+ * Enquanto a lista está vazia, o cliente digita o bairro e paga a taxa
+ * única -- é como o sistema sempre funcionou. Cadastrou o primeiro bairro,
+ * a lista passa a mandar: quem não está nela não consegue pedir entrega, e
+ * cada bairro cobra a sua taxa.
+ *
+ * O aviso em cima disso não é decoração: é a única chance de o dono
+ * entender que uma lista pela metade deixa cliente de fora.
+ */
+export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; areas: AreaData[] }) {
+  const [linhas, setLinhas] = useState(() =>
+    areas.length ? areas.map((a) => ({ chave: a.id, name: a.name, fee: centsToInput(a.feeCents) })) : [],
+  );
+  const nova = () => setLinhas((l) => [...l, { chave: `novo-${Date.now()}-${l.length}`, name: "", fee: centsToInput(r.deliveryFeeCents) }]);
+
+  return (
+    <SectionForm id="area" title="Bairros que você atende" action={saveDeliveryAreas} restaurantId={r.id}>
+      {(s) => (
+        <>
+          {linhas.length === 0 ? (
+            <Alert tone="info">
+              Sem bairro cadastrado, você entrega para <strong>qualquer endereço</strong> e todo mundo paga a mesma taxa. Cadastre os
+              bairros para que só quem mora neles consiga pedir entrega.
+            </Alert>
+          ) : (
+            <Alert tone="warning">
+              Quem não estiver em um destes bairros <strong>não consegue pedir entrega</strong> — o site oferece a retirada no local.
+              Confira se não faltou nenhum.
+            </Alert>
+          )}
+
+          {linhas.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <div className="hidden grid-cols-[1fr_9rem_2.75rem] gap-3 text-xs font-extrabold tracking-wide text-faint uppercase sm:grid">
+                <span>Bairro</span>
+                <span>Taxa de entrega</span>
+                <span className="sr-only">Remover</span>
+              </div>
+              {linhas.map((linha, i) => (
+                <div key={linha.chave} className="grid grid-cols-[1fr_2.75rem] items-center gap-3 sm:grid-cols-[1fr_9rem_2.75rem]">
+                  <Input
+                    name="areaName"
+                    aria-label={`Bairro ${i + 1}`}
+                    maxLength={60}
+                    placeholder="Ex.: Centro"
+                    defaultValue={linha.name}
+                    className="col-span-2 sm:col-span-1"
+                  />
+                  <MoneyInput name="areaFee" aria-label={`Taxa do bairro ${i + 1}`} defaultValue={linha.fee} />
+                  <button
+                    type="button"
+                    onClick={() => setLinhas((l) => l.filter((x) => x.chave !== linha.chave))}
+                    aria-label={`Tirar ${linha.name || `o bairro ${i + 1}`} da lista`}
+                    className="grid size-11 place-items-center rounded-control border border-line text-faint transition-colors hover:border-danger hover:text-danger"
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {s.fieldErrors?.areas && <p className="text-sm text-danger">{s.fieldErrors.areas}</p>}
+
+          <Button type="button" variant="secondary" size="sm" onClick={nova} className="self-start">
+            <Plus className="size-4" aria-hidden="true" />
+            Adicionar bairro
+          </Button>
         </>
       )}
     </SectionForm>
