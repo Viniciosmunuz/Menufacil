@@ -9,6 +9,7 @@ import {
   ChamadaFinal,
   Depoimentos,
   Duvidas,
+  Filme,
   Planos,
   QuemJaUsa,
   Segmentos,
@@ -60,9 +61,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       <QuemJaUsa restaurantes={parceiros} />
 
-      <div className="mt-14 sm:mt-20">
-        <AntesEDepois />
-      </div>
+      <Filme />
+      <AntesEDepois />
       <Solucoes />
       <Segmentos />
       <Planos />

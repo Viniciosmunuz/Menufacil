@@ -34,6 +34,7 @@ const LINKS: LinkDoMenu[] = [
 /** o rodapé ainda lista tudo: lá o espaço sobra e quem procura, procura */
 const LINKS_RODAPE: LinkDoMenu[] = [
   ...LINKS,
+  { href: `#${SECOES.filme}`, label: "Vídeo" },
   { href: `#${SECOES.antes}`, label: "Antes e depois" },
   { href: `#${SECOES.adicionais}`, label: "Adicionais" },
   // depoimento só entra quando existe um de verdade

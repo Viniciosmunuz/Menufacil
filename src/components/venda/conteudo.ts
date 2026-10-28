@@ -87,6 +87,7 @@ export const SECOES = {
   topo: "topo",
   /** o cartão do cadastro rápido, no topo */
   cadastro: "cadastro",
+  filme: "video",
   antes: "antes-e-depois",
   recursos: "recursos",
   segmentos: "segmentos",

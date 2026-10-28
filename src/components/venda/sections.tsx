@@ -247,7 +247,48 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
   );
 }
 
-// ─── 2. antes e depois ────────────────────────────────────────────────
+// ─── 2. o filme ───────────────────────────────────────────────────────
+
+/**
+ * O vídeo de lançamento.
+ *
+ * Não começa sozinho: ele tem narração, e vídeo que fala sem ninguém pedir
+ * é o tipo de coisa que faz a pessoa fechar a aba. Fica parado na capa, com
+ * o controle do navegador, e só toca quando o visitante quiser.
+ *
+ * `preload="none"` para não baixar 2,7 MB de quem nunca vai apertar o play;
+ * a capa é uma imagem de 50 KB que já mostra o sistema.
+ */
+export function Filme() {
+  return (
+    <section id={SECOES.filme} className="scroll-mt-20 py-16 sm:py-24">
+      <Miolo>
+        <Titulo etiqueta="Em 55 segundos" sub="Do pedido do cliente à comanda na cozinha, com o sistema rodando de verdade.">
+          Veja o MenuFácil funcionando
+        </Titulo>
+        <figure className="mx-auto max-w-4xl">
+          <div className="overflow-hidden rounded-[1.6rem] border border-line bg-[#0a0706] shadow-[0_40px_90px_-50px_rgb(0_0_0/0.6)]">
+            <video
+              className="block aspect-video w-full"
+              controls
+              playsInline
+              preload="none"
+              poster="/venda/lancamento-poster.jpg"
+            >
+              <source src="/venda/lancamento.mp4" type="video/mp4" />
+              O seu navegador não abre vídeo. Fale com a gente no WhatsApp que mostramos o sistema por chamada.
+            </video>
+          </div>
+          <figcaption className="mt-4 text-center text-sm text-muted">
+            As telas do vídeo são as do sistema, gravadas como ele funciona hoje.
+          </figcaption>
+        </figure>
+      </Miolo>
+    </section>
+  );
+}
+
+// ─── 3. antes e depois ────────────────────────────────────────────────
 
 /**
  * As fotos do alto dos cartões. São de banco de imagens gratuito (Pexels,
@@ -348,7 +389,7 @@ export function AntesEDepois() {
   );
 }
 
-// ─── 3. soluções ──────────────────────────────────────────────────────
+// ─── 4. soluções ──────────────────────────────────────────────────────
 
 export function Solucoes() {
   return (
@@ -363,7 +404,7 @@ export function Solucoes() {
   );
 }
 
-// ─── 4. tipos de negócio ──────────────────────────────────────────────
+// ─── 5. tipos de negócio ──────────────────────────────────────────────
 
 export function Segmentos() {
   return (
@@ -390,7 +431,7 @@ export function Segmentos() {
   );
 }
 
-// ─── 5. planos e adicionais ───────────────────────────────────────────
+// ─── 6. planos e adicionais ───────────────────────────────────────────
 
 /**
  * O botão de um plano ou adicional.
@@ -595,7 +636,7 @@ export function Adicionais() {
   );
 }
 
-// ─── 6. depoimentos e dúvidas ─────────────────────────────────────────
+// ─── 7. depoimentos e dúvidas ─────────────────────────────────────────
 
 /** o depoimento só aparece quando existe um de verdade (ver conteudo.ts) */
 export function Depoimentos() {
@@ -651,7 +692,7 @@ export function Duvidas() {
   );
 }
 
-// ─── 7. a chamada final ───────────────────────────────────────────────
+// ─── 8. a chamada final ───────────────────────────────────────────────
 
 export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
   const botao =
