@@ -8,6 +8,7 @@ import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
+import { isOpenNow } from "@/lib/opening-hours";
 import { requireDono } from "@/server/auth/dal";
 import { pedidosEsperando } from "@/server/stats";
 
@@ -99,7 +100,7 @@ export default async function RestaurantPanelLayout({
         nome: restaurant.name,
         topo: horario ? (
           <span className="flex shrink-0 items-center gap-2">
-            {ia === true && <LedDaIa href={`${base}/ia`} ligada />}
+            {ia === true && isOpenNow(horario.openMode, horario.openingHours) && <LedDaIa href={`${base}/ia`} ligada />}
             <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} />
           </span>
         ) : undefined,

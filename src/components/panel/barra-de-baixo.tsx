@@ -240,10 +240,13 @@ export function AbertoFechado({ href, openMode, hours }: { href: string; openMod
 /**
  * A bolinha do Menu Fácil IA, antes do Aberto/Fechado.
  *
- * Só aparece quando a IA está ligada: é a informação que muda o dia do
- * restaurante ("tem alguém atendendo o WhatsApp por mim agora"). Desligada,
- * a casa trabalha como sempre trabalhou, e um selo vermelho fixo na tela
- * seria enfeite. Quem quiser ligar de volta entra na aba Menu Fácil IA.
+ * Só aparece quando ela está de fato atendendo: ligada E com o
+ * restaurante aberto. É a informação que muda o dia ("tem alguém
+ * atendendo o WhatsApp por mim agora").
+ *
+ * Com a casa fechada a IA fica muda, então a bolinha some junto -- verde
+ * com a loja fechada seria mentira. A chave continua ligada: quando o
+ * restaurante abre, ela volta sozinha, e a bolinha também.
  *
  * Ligada não quer dizer respondendo: com o restaurante fechado ela fica
  * quieta de qualquer jeito. Por isso a palavra é só "IA", e o detalhe

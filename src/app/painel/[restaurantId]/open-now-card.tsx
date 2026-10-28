@@ -59,7 +59,7 @@ export function SeloDaOperacao({
 
   return (
     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-      {ia?.ligada && <LedDaIa href={ia.href} ligada />}
+      {ia?.ligada && open && <LedDaIa href={ia.href} ligada />}
 
       <span
         className={cn(
