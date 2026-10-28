@@ -98,11 +98,22 @@ export async function numeroDoCliente(customerId: string): Promise<NumeroKapso |
 }
 
 /**
+ * Os avisos que o MenuFácil quer de cada número.
+ *
+ * - **recebida:** o cliente escreveu, e a IA tem de responder.
+ * - **enviada:** alguém do restaurante respondeu pelo celular, e a IA tem de
+ *   ficar quieta.
+ * - **falhou:** a Meta recusou a entrega. Sem este, uma mensagem recusada é
+ *   indistinguível de uma entregue -- o envio volta 200 nos dois casos, e o
+ *   motivo da Meta só existe aqui.
+ */
+const EVENTOS = ["whatsapp.message.received", "whatsapp.message.sent", "whatsapp.message.failed"];
+
+/**
  * Pede à Kapso que avise o MenuFácil a cada mensagem deste número.
  *
- * Recebida (o cliente escreveu) e enviada (para saber quando alguém do
- * restaurante respondeu pelo celular e a IA tem de ficar quieta). Sem lote:
- * mensagem a mensagem, para a resposta não esperar janela de agrupamento.
+ * Sem lote: mensagem a mensagem, para a resposta não esperar janela de
+ * agrupamento.
  */
 export async function registrarWebhook(params: { phoneNumberId: string; url: string; segredo: string }) {
   const r = await chamar<{ data: { id: string } }>(
@@ -113,7 +124,7 @@ export async function registrarWebhook(params: { phoneNumberId: string; url: str
         whatsapp_webhook: {
           url: params.url,
           kind: "kapso",
-          events: ["whatsapp.message.received", "whatsapp.message.sent"],
+          events: EVENTOS,
           secret_key: params.segredo,
           active: true,
           buffer_enabled: false,
@@ -122,6 +133,19 @@ export async function registrarWebhook(params: { phoneNumberId: string; url: str
     },
   );
   return r.data.id;
+}
+
+/**
+ * Põe o webhook de um número já conectado na lista de avisos de hoje.
+ *
+ * Os números conectados antes assinaram a lista da época deles. A lista
+ * enviada substitui a anterior, então vai inteira.
+ */
+export async function atualizarEventosDoWebhook(params: { phoneNumberId: string; webhookId: string }) {
+  await chamar(
+    `${BASE_PLATFORM}/whatsapp/phone_numbers/${encodeURIComponent(params.phoneNumberId)}/webhooks/${encodeURIComponent(params.webhookId)}`,
+    { method: "PATCH", body: JSON.stringify({ whatsapp_webhook: { events: EVENTOS } }) },
+  );
 }
 
 /** só os quatro últimos dígitos: o bastante para conferir, pouco para vazar */

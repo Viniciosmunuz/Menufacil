@@ -60,6 +60,21 @@ export async function POST(request: NextRequest) {
   }
 
   const evento = request.headers.get("x-webhook-event");
+
+  // A Meta recusou a entrega. É o único lugar onde o motivo existe: o envio
+  // já tinha voltado 200, e sem isto a mensagem some em silêncio. Vai para o
+  // log o código e o título da Meta, não o que estava escrito.
+  if (evento === "whatsapp.message.failed") {
+    for (const e of eventos) {
+      const erro = e.message?.kapso?.statuses?.flatMap((s) => s.errors ?? []).at(-1);
+      console.error(
+        `[kapso] a Meta não entregou ${e.message?.id ?? "uma mensagem"}:`,
+        erro ? `${erro.code ?? "sem código"} ${erro.title ?? ""} ${erro.message ?? ""}`.trim() : "sem motivo no aviso",
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (evento !== "whatsapp.message.received" && evento !== "whatsapp.message.sent") {
     return NextResponse.json({ ok: true });
   }

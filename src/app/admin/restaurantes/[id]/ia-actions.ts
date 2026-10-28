@@ -14,6 +14,7 @@ import {
   criarLinkDeConexao,
   kapsoConfigurado,
   numeroDoCliente,
+  atualizarEventosDoWebhook,
   registrarWebhook,
 } from "@/server/ia/kapso";
 
@@ -90,13 +91,18 @@ export async function conferirConexaoDaIa(_prev: AdminFormState, formData: FormD
     // Segredo novo só na primeira vez: trocar depois faria os avisos já
     // assinados com o antigo pararem de passar.
     const segredo = atendente.segredoWebhook ?? randomBytes(32).toString("hex");
-    const webhookId =
-      atendente.kapsoWebhookId ??
-      (await registrarWebhook({
+    let webhookId = atendente.kapsoWebhookId;
+    if (webhookId) {
+      // Já conectado: só garante que ele assina os avisos de hoje. Um número
+      // ligado antes de um aviso novo ficaria sem ele para sempre.
+      await atualizarEventosDoWebhook({ phoneNumberId: numero.phone_number_id, webhookId });
+    } else {
+      webhookId = await registrarWebhook({
         phoneNumberId: numero.phone_number_id,
         url: `${appUrl()}/api/kapso/webhook`,
         segredo,
-      }));
+      });
+    }
 
     await db.atendenteIa.update({
       where: { restaurantId },

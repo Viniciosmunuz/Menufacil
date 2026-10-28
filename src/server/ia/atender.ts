@@ -72,7 +72,12 @@ export type MensagemKapso = {
     from?: string;
     from_user_id?: string;
     text?: { body?: string };
-    kapso?: { direction?: string; origin?: string };
+    kapso?: {
+      direction?: string;
+      origin?: string;
+      /** o histórico cru da Meta; quando a entrega falha, o motivo vem aqui */
+      statuses?: { errors?: { code?: number; title?: string; message?: string }[] }[];
+    };
   };
   conversation?: { phone_number?: string; business_scoped_user_id?: string };
 };
