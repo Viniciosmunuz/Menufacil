@@ -238,8 +238,12 @@ export function AbertoFechado({ href, openMode, hours }: { href: string; openMod
 }
 
 /**
- * A bolinha do Menu Fácil IA, ao lado do Aberto/Fechado: verde é ligada,
- * vermelha é desligada. Só aparece para quem tem o WhatsApp conectado.
+ * A bolinha do Menu Fácil IA, antes do Aberto/Fechado.
+ *
+ * Só aparece quando a IA está ligada: é a informação que muda o dia do
+ * restaurante ("tem alguém atendendo o WhatsApp por mim agora"). Desligada,
+ * a casa trabalha como sempre trabalhou, e um selo vermelho fixo na tela
+ * seria enfeite. Quem quiser ligar de volta entra na aba Menu Fácil IA.
  *
  * Ligada não quer dizer respondendo: com o restaurante fechado ela fica
  * quieta de qualquer jeito. Por isso a palavra é só "IA", e o detalhe

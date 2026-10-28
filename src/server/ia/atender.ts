@@ -19,7 +19,7 @@ import { responder, type Turno } from "./responder";
 //
 // As travas, em ordem:
 //
-// 1. Atendente desligado: só registra, não responde.
+// 1. Atendente desligado: não responde e não guarda nada.
 // 2. Alguém do restaurante respondeu pelo celular há pouco: a IA não se mete
 //    na conversa de uma pessoa.
 // 3. Muitas respostas da IA para o mesmo cliente em pouco tempo: para. Evita
@@ -79,6 +79,11 @@ export async function atender(evento: MensagemKapso) {
   const contato = telefone ?? usuario;
   if (!contato) return;
 
+  // Desligada: nada é respondido e nada é guardado. A conversa é do
+  // restaurante com o cliente dele, e sem a IA no ar não há o que fazer
+  // com ela.
+  if (!atendente.ativo) return;
+
   const texto = (m.text?.body ?? "").slice(0, TEXTO_MAX).trim();
   const direcao = m.kapso?.direction;
 
@@ -101,8 +106,6 @@ export async function atender(evento: MensagemKapso) {
     data: { restaurantId, contato, papel: "CLIENTE", texto: texto || `[${m.type ?? "mídia"}]` },
     select: { createdAt: true },
   });
-
-  if (!atendente.ativo) return;
 
   const agora = Date.now();
   const humanoRecente = await db.iaMensagem.count({

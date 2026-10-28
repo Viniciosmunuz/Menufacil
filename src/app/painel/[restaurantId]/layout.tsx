@@ -99,7 +99,7 @@ export default async function RestaurantPanelLayout({
         nome: restaurant.name,
         topo: horario ? (
           <span className="flex shrink-0 items-center gap-2">
-            {ia !== null && <LedDaIa href={`${base}/ia`} ligada={ia} />}
+            {ia === true && <LedDaIa href={`${base}/ia`} ligada />}
             <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} />
           </span>
         ) : undefined,
