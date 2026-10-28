@@ -124,17 +124,31 @@ export async function registrarWebhook(params: { phoneNumberId: string; url: str
   return r.data.id;
 }
 
+/** só os quatro últimos dígitos: o bastante para conferir, pouco para vazar */
+const fim = (n: string | null | undefined) => (n ? `…${n.replace(/\D/g, "").slice(-4)}` : "sem número");
+
+/** o recibo que a Meta devolve quando aceita a mensagem */
+type ReciboEnvio = {
+  contacts?: { input?: string; wa_id?: string }[];
+  messages?: { id?: string; message_status?: string }[];
+};
+
 /**
  * Manda texto para o cliente.
  *
  * Por telefone quando ele vem no aviso; senão, pelo id que a Meta dá ao
  * usuário (BSUID) -- os avisos novos podem chegar sem telefone.
+ *
+ * O recibo vai para o log. Sem ele, uma mensagem que a Meta aceita e nunca
+ * entrega fica igual a uma entregue: a chamada volta 200 dos dois jeitos, e
+ * o silêncio do cliente é a única pista. Vai o id da mensagem, o status e os
+ * quatro últimos dígitos do destino -- nada do que foi escrito.
  */
 export async function enviarTexto(params: { phoneNumberId: string; telefone: string | null; usuario: string | null; texto: string }) {
   const destino = params.telefone ? { to: params.telefone } : params.usuario ? { recipient: params.usuario } : null;
   if (!destino) throw new KapsoError("Sem telefone nem identificação do cliente para responder.");
 
-  await chamar(`${BASE_WHATSAPP}/${encodeURIComponent(params.phoneNumberId)}/messages`, {
+  const recibo = await chamar<ReciboEnvio>(`${BASE_WHATSAPP}/${encodeURIComponent(params.phoneNumberId)}/messages`, {
     method: "POST",
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -144,4 +158,14 @@ export async function enviarTexto(params: { phoneNumberId: string; telefone: str
       text: { body: params.texto, preview_url: true },
     }),
   });
+
+  const msg = recibo?.messages?.[0];
+  // O wa_id é o número como a Meta o conhece. Quando ele não bate com o que
+  // pedimos, a mensagem foi para outro lugar -- no Brasil é o nono dígito.
+  const waId = recibo?.contacts?.[0]?.wa_id;
+  const pedido = params.telefone?.replace(/\D/g, "");
+  const confere = !waId || !pedido || waId.replace(/\D/g, "") === pedido ? "" : ` (a Meta resolveu para ${fim(waId)})`;
+  console.info(
+    `[kapso] envio aceito para ${fim(params.telefone)}: ${msg?.id ?? "sem id"}, status ${msg?.message_status ?? "não informado"}${confere}`,
+  );
 }
