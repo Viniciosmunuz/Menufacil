@@ -392,7 +392,6 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                         {restaurant.areas.map((a) => (
                           <option key={a.id} value={a.name}>
                             {a.name}
-                            {a.feeCents > 0 ? ` — ${formatCents(a.feeCents)}` : " — grátis"}
                           </option>
                         ))}
                         <option value={FORA}>Meu bairro não está na lista</option>

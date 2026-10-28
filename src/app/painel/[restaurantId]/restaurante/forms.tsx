@@ -1,7 +1,7 @@
 "use client";
 
 import { ClipboardList, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
 import { SectionForm } from "@/components/panel/section-form";
@@ -273,6 +273,56 @@ export type AreaData = { id: string; name: string; feeCents: number };
  * O aviso em cima disso não é decoração: é a única chance de o dono
  * entender que uma lista pela metade deixa cliente de fora.
  */
+type Linha = { chave: string; name: string; fee: string };
+
+/**
+ * Uma linha da lista de bairros.
+ *
+ * Vive fora da seção e passa por memo de propósito: sem isso, uma letra
+ * digitada em qualquer bairro redesenha todas as linhas, e com dezessete
+ * delas num celular mediano a digitação engasga. As funções que ela
+ * recebe são estáveis (useCallback), senão o memo não serve para nada.
+ */
+const LinhaDeBairro = memo(function LinhaDeBairro({
+  linha,
+  numero,
+  mexer,
+  tirar,
+}: {
+  linha: Linha;
+  numero: number;
+  mexer: (chave: string, campo: "name" | "fee", valor: string) => void;
+  tirar: (chave: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_2.75rem] items-center gap-3 sm:grid-cols-[1fr_9rem_2.75rem]">
+      <Input
+        name="areaName"
+        aria-label={`Bairro ${numero}`}
+        maxLength={60}
+        placeholder="Ex.: Centro"
+        value={linha.name}
+        onChange={(e) => mexer(linha.chave, "name", e.target.value)}
+        className="col-span-2 sm:col-span-1"
+      />
+      <MoneyInput
+        name="areaFee"
+        aria-label={`Taxa do bairro ${numero}`}
+        value={linha.fee}
+        onChange={(e) => mexer(linha.chave, "fee", e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => tirar(linha.chave)}
+        aria-label={`Tirar ${linha.name || `o bairro ${numero}`} da lista`}
+        className="grid size-11 place-items-center rounded-control border border-line text-faint transition-colors hover:border-danger hover:text-danger"
+      >
+        <Trash2 className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+});
+
 export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; areas: AreaData[] }) {
   const [linhas, setLinhas] = useState(() =>
     areas.length ? areas.map((a) => ({ chave: a.id, name: a.name, fee: centsToInput(a.feeCents) })) : [],
@@ -298,8 +348,12 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
    * ajusta as linhas depois.
    */
   /** muda um campo de uma linha; é o estado que manda, não o DOM */
-  const mexer = (chave: string, campo: "name" | "fee", valor: string) =>
-    setLinhas((l) => l.map((x) => (x.chave === chave ? { ...x, [campo]: valor } : x)));
+  const mexer = useCallback(
+    (chave: string, campo: "name" | "fee", valor: string) =>
+      setLinhas((l) => l.map((x) => (x.chave === chave ? { ...x, [campo]: valor } : x))),
+    [],
+  );
+  const tirar = useCallback((chave: string) => setLinhas((l) => l.filter((x) => x.chave !== chave)), []);
 
   const colar = () => {
     const nomes = colado
@@ -343,31 +397,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
                 <span className="sr-only">Remover</span>
               </div>
               {linhas.map((linha, i) => (
-                <div key={linha.chave} className="grid grid-cols-[1fr_2.75rem] items-center gap-3 sm:grid-cols-[1fr_9rem_2.75rem]">
-                  <Input
-                    name="areaName"
-                    aria-label={`Bairro ${i + 1}`}
-                    maxLength={60}
-                    placeholder="Ex.: Centro"
-                    value={linha.name}
-                    onChange={(e) => mexer(linha.chave, "name", e.target.value)}
-                    className="col-span-2 sm:col-span-1"
-                  />
-                  <MoneyInput
-                    name="areaFee"
-                    aria-label={`Taxa do bairro ${i + 1}`}
-                    value={linha.fee}
-                    onChange={(e) => mexer(linha.chave, "fee", e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setLinhas((l) => l.filter((x) => x.chave !== linha.chave))}
-                    aria-label={`Tirar ${linha.name || `o bairro ${i + 1}`} da lista`}
-                    className="grid size-11 place-items-center rounded-control border border-line text-faint transition-colors hover:border-danger hover:text-danger"
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </button>
-                </div>
+                <LinhaDeBairro key={linha.chave} linha={linha} numero={i + 1} mexer={mexer} tirar={tirar} />
               ))}
             </div>
           )}
