@@ -297,6 +297,10 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
    * com a mesma taxa, que é o caso comum -- quem cobra diferente por bairro
    * ajusta as linhas depois.
    */
+  /** muda um campo de uma linha; é o estado que manda, não o DOM */
+  const mexer = (chave: string, campo: "name" | "fee", valor: string) =>
+    setLinhas((l) => l.map((x) => (x.chave === chave ? { ...x, [campo]: valor } : x)));
+
   const colar = () => {
     const nomes = colado
       .split(/[\n,;]+/)
@@ -345,10 +349,16 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
                     aria-label={`Bairro ${i + 1}`}
                     maxLength={60}
                     placeholder="Ex.: Centro"
-                    defaultValue={linha.name}
+                    value={linha.name}
+                    onChange={(e) => mexer(linha.chave, "name", e.target.value)}
                     className="col-span-2 sm:col-span-1"
                   />
-                  <MoneyInput name="areaFee" aria-label={`Taxa do bairro ${i + 1}`} defaultValue={linha.fee} />
+                  <MoneyInput
+                    name="areaFee"
+                    aria-label={`Taxa do bairro ${i + 1}`}
+                    value={linha.fee}
+                    onChange={(e) => mexer(linha.chave, "fee", e.target.value)}
+                  />
                   <button
                     type="button"
                     onClick={() => setLinhas((l) => l.filter((x) => x.chave !== linha.chave))}
