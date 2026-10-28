@@ -99,6 +99,11 @@ export async function conhecimentoDoRestaurante(
       pickupEnabled: true,
       pickupOnlyUntil: true,
       deliveryFeeCents: true,
+      deliveryAreas: {
+        where: { active: true },
+        orderBy: [{ position: "asc" }, { name: "asc" }],
+        select: { name: true, feeCents: true },
+      },
       minOrderCents: true,
       deliveryTimeMin: true,
       deliveryTimeMax: true,
@@ -182,8 +187,24 @@ export async function conhecimentoDoRestaurante(
   linhas.push(`- Entrega: ${r.deliveryEnabled ? "sim" : "não"}`);
   linhas.push(`- Retirada no local: ${r.pickupEnabled ? "sim" : "não"}`);
   if (r.deliveryEnabled) {
-    linhas.push(`- Taxa de entrega: ${r.deliveryFeeCents > 0 ? formatCents(r.deliveryFeeCents) : "grátis"}`);
+    // Lista vazia quer dizer "entrega em qualquer endereço", que é como o
+    // sistema sempre funcionou. Com bairros cadastrados, a taxa é a de cada
+    // um -- e a lista vira o limite da entrega.
+    const areas = r.deliveryAreas;
+    const umaTaxaSo = areas.length > 0 && areas.every((a) => a.feeCents === areas[0].feeCents);
+    if (areas.length === 0) {
+      linhas.push(`- Taxa de entrega: ${r.deliveryFeeCents > 0 ? formatCents(r.deliveryFeeCents) : "grátis"}`);
+    } else if (umaTaxaSo) {
+      linhas.push(`- Taxa de entrega: ${areas[0].feeCents > 0 ? formatCents(areas[0].feeCents) : "grátis"}, em qualquer bairro atendido`);
+    }
     if (r.deliveryTimeMin && r.deliveryTimeMax) linhas.push(`- Tempo de entrega: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos`);
+    if (areas.length > 0) {
+      linhas.push(`- BAIRROS ATENDIDOS (a entrega só vai nestes; fora deles, só retirada):`);
+      for (const a of areas) {
+        linhas.push(`  - ${a.name}${umaTaxaSo ? "" : `: ${a.feeCents > 0 ? formatCents(a.feeCents) : "grátis"}`}`);
+      }
+      linhas.push("  - Se o cliente disser um bairro que não está nesta lista, não anote entrega: diga que ali ainda não há entrega e ofereça a retirada no local.");
+    }
   }
   if (r.minOrderCents > 0) linhas.push(`- Pedido mínimo: ${formatCents(r.minOrderCents)}`);
   const formas = ["Pix", r.acceptsCard && "cartão (na entrega ou na retirada)", r.acceptsCash && "dinheiro"].filter(Boolean).join(", ");
