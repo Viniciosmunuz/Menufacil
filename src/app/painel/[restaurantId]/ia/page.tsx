@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/format";
 import { requireDono } from "@/server/auth/dal";
 
+import { ListasDaIa } from "./ignorados";
 import { LigarIa } from "./ligar";
 
 export const metadata: Metadata = { title: "Menu Fácil IA" };
@@ -19,19 +20,31 @@ export const metadata: Metadata = { title: "Menu Fácil IA" };
 // aqui o dono só liga e desliga -- dia de movimento estranho, cardápio
 // mudando, ou simplesmente quer atender ele mesmo.
 
-export default async function IaPage({ params }: PageProps<"/painel/[restaurantId]/ia">) {
+export default async function IaPage({
+  params,
+}: PageProps<"/painel/[restaurantId]/ia">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireDono(restaurantId);
 
   const atendente = await db.atendenteIa.findUnique({
     where: { restaurantId: restaurant.id },
-    select: { ativo: true, fazPedidos: true, phoneNumberId: true, numeroExibido: true },
+    select: {
+      ativo: true,
+      fazPedidos: true,
+      phoneNumberId: true,
+      numeroExibido: true,
+      ignorados: true,
+      semEspera: true,
+    },
   });
   if (!atendente?.phoneNumberId) notFound();
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Menu Fácil IA" description="O atendente que responde os clientes no WhatsApp do restaurante." />
+      <PageHeader
+        title="Menu Fácil IA"
+        description="O atendente que responde os clientes no WhatsApp do restaurante."
+      />
 
       <Card className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -39,8 +52,14 @@ export default async function IaPage({ params }: PageProps<"/painel/[restaurantI
             className={`size-3.5 shrink-0 rounded-full ${atendente.ativo ? "bg-success" : "bg-danger"}`}
             aria-hidden="true"
           />
-          <p className="text-lg font-extrabold">{atendente.ativo ? "Ligada" : "Desligada"}</p>
-          {atendente.numeroExibido && <span className="text-sm text-muted">no WhatsApp {formatPhone(atendente.numeroExibido)}</span>}
+          <p className="text-lg font-extrabold">
+            {atendente.ativo ? "Ligada" : "Desligada"}
+          </p>
+          {atendente.numeroExibido && (
+            <span className="text-sm text-muted">
+              no WhatsApp {formatPhone(atendente.numeroExibido)}
+            </span>
+          )}
         </div>
 
         <p className="text-sm text-muted">
@@ -55,14 +74,28 @@ export default async function IaPage({ params }: PageProps<"/painel/[restaurantI
       <Card className="flex flex-col gap-2">
         <p className="flex flex-wrap items-center gap-2 font-extrabold">
           O que ela faz
-          {atendente.fazPedidos ? <Badge tone="success">Anota pedidos</Badge> : <Badge>Só tira dúvidas</Badge>}
+          {atendente.fazPedidos ? (
+            <Badge tone="success">Anota pedidos</Badge>
+          ) : (
+            <Badge>Só tira dúvidas</Badge>
+          )}
         </p>
         <p className="text-sm text-muted">
           {atendente.fazPedidos
-            ? "Tira dúvidas e manda o link do cardápio. Se o cliente não conseguir pedir pelo link, ela anota o pedido, lê o resumo com o total e só cria depois do \"sim\" — o pedido chega em Pedidos com o selo \"Feito pela IA\". Também manda o Pix de pedido em aberto e pede o comprovante, mas quem confirma o pagamento é você (ou o Mercado Pago)."
+            ? 'Tira dúvidas e manda o link do cardápio. Se o cliente não conseguir pedir pelo link, ela anota o pedido, lê o resumo com o total e só cria depois do "sim" — o pedido chega em Pedidos com o selo "Feito pela IA". Também manda o Pix de pedido em aberto e pede o comprovante, mas quem confirma o pagamento é você (ou o Mercado Pago).'
             : "Tira dúvidas sobre o cardápio, horário, entrega e pagamento, e manda o link do cardápio para o cliente pedir."}
         </p>
-        <p className="text-sm text-muted">Para mudar isso, fale com o suporte do MenuFácil.</p>
+        <p className="text-sm text-muted">
+          Para mudar isso, fale com o suporte do MenuFácil.
+        </p>
+      </Card>
+
+      <Card>
+        <ListasDaIa
+          restaurantId={restaurant.id}
+          ignorados={atendente.ignorados}
+          semEspera={atendente.semEspera}
+        />
       </Card>
     </div>
   );

@@ -1522,6 +1522,22 @@ model AtendenteIa {
   kapsoWebhookId  String?
   /// assina os avisos que chegam deste numero. Nunca sai do servidor.
   segredoWebhook  String?
+
+  /// Numeros que a IA nunca responde, so digitos com DDI.
+  ///
+  /// O WhatsApp do restaurante costuma ser o celular do dono: a familia e
+  /// os amigos escrevem no mesmo numero. Quem esta nesta lista nao recebe
+  /// resposta da IA e nem tem a mensagem guardada -- a conversa fica so
+  /// entre eles, como se a IA nao existisse.
+  ignorados       String[]
+
+  /// Numeros de teste: o freio dos 30 minutos nao vale para eles.
+  ///
+  /// Quando alguem do restaurante responde pelo celular, a IA cala naquela
+  /// conversa por um tempo, para nao falar por cima da pessoa. E o certo
+  /// no dia a dia, e atrapalha quem esta testando com um conhecido,
+  /// trocando mensagem dos dois lados.
+  semEspera       String[]
   conectadoEm     DateTime?
   /// a IA pode anotar pedido na conversa. Desligado, ela so manda o link.
   fazPedidos      Boolean   @default(false)

@@ -43,8 +43,25 @@ const RESPOSTAS_POR_HORA = 15;
 const HISTORICO = 12;
 const TEXTO_MAX = 1500;
 
-const COMPROVANTE_MANUAL = "Recebi o comprovante! O restaurante vai conferir e confirmar o seu pedido. 😊";
-const COMPROVANTE_MERCADO_PAGO = "Recebi! Assim que o Pix cair, o pedido é confirmado sozinho e o restaurante já começa. 😊";
+const COMPROVANTE_MANUAL =
+  "Recebi o comprovante! O restaurante vai conferir e confirmar o seu pedido. 😊";
+const COMPROVANTE_MERCADO_PAGO =
+  "Recebi! Assim que o Pix cair, o pedido é confirmado sozinho e o restaurante já começa. 😊";
+
+/** só os dígitos, e com o 9 do celular tirado, para comparar os dois jeitos */
+const semNove = (t: string) => {
+  const d = t.replace(/\D/g, "");
+  // 55 + DDD + 9 + 8 dígitos: o mesmo número aparece das duas formas por aí
+  return d.length === 13 && d.startsWith("55") && d[4] === "9"
+    ? d.slice(0, 4) + d.slice(5)
+    : d;
+};
+
+/** o número está na lista de quem a IA não responde? */
+export function estaNaLista(lista: string[], telefone: string) {
+  const alvo = semNove(telefone);
+  return lista.some((n) => semNove(n) === alvo);
+}
 
 /** o pedaço do aviso da Kapso que o atendimento usa (formato v2) */
 export type MensagemKapso = {
@@ -67,15 +84,25 @@ export async function atender(evento: MensagemKapso) {
 
   const atendente = await db.atendenteIa.findUnique({
     where: { phoneNumberId },
-    select: { restaurantId: true, ativo: true, fazPedidos: true },
+    select: {
+      restaurantId: true,
+      ativo: true,
+      fazPedidos: true,
+      ignorados: true,
+      semEspera: true,
+    },
   });
   if (!atendente) return;
   const { restaurantId } = atendente;
 
   // Quem está do outro lado. O telefone é o que serve para responder; os
   // avisos novos da Meta podem vir só com o id do usuário.
-  const telefone = evento.conversation?.phone_number || (m.kapso?.direction === "inbound" ? m.from : null) || null;
-  const usuario = evento.conversation?.business_scoped_user_id || m.from_user_id || null;
+  const telefone =
+    evento.conversation?.phone_number ||
+    (m.kapso?.direction === "inbound" ? m.from : null) ||
+    null;
+  const usuario =
+    evento.conversation?.business_scoped_user_id || m.from_user_id || null;
   const contato = telefone ?? usuario;
   if (!contato) return;
 
@@ -83,6 +110,10 @@ export async function atender(evento: MensagemKapso) {
   // restaurante com o cliente dele, e sem a IA no ar não há o que fazer
   // com ela.
   if (!atendente.ativo) return;
+
+  // Número da lista do dono (a família, os amigos): a IA não existe para
+  // eles. Nem responde, nem guarda.
+  if (telefone && estaNaLista(atendente.ignorados, telefone)) return;
 
   const texto = (m.text?.body ?? "").slice(0, TEXTO_MAX).trim();
   const direcao = m.kapso?.direction;
@@ -94,7 +125,12 @@ export async function atender(evento: MensagemKapso) {
     // IA mandou pela API também volta como aviso, e esse se ignora.
     if (m.kapso?.origin === "business_app") {
       await db.iaMensagem.create({
-        data: { restaurantId, contato, papel: "HUMANO", texto: texto || "[mídia]" },
+        data: {
+          restaurantId,
+          contato,
+          papel: "HUMANO",
+          texto: texto || "[mídia]",
+        },
       });
     }
     return;
@@ -103,30 +139,49 @@ export async function atender(evento: MensagemKapso) {
 
   // ─── o cliente escreveu ────────────────────────────────────────────
   const recebida = await db.iaMensagem.create({
-    data: { restaurantId, contato, papel: "CLIENTE", texto: texto || `[${m.type ?? "mídia"}]` },
+    data: {
+      restaurantId,
+      contato,
+      papel: "CLIENTE",
+      texto: texto || `[${m.type ?? "mídia"}]`,
+    },
     select: { createdAt: true },
   });
 
   const agora = Date.now();
-  const humanoRecente = await db.iaMensagem.count({
-    where: {
-      restaurantId,
-      contato,
-      papel: "HUMANO",
-      createdAt: { gte: new Date(agora - HUMANO_ASSUMIU_MIN * 60_000) },
-    },
-  });
+  // Número de teste: o dono está conversando dos dois lados de propósito,
+  // e o freio só atrapalharia.
+  const eTeste = telefone ? estaNaLista(atendente.semEspera, telefone) : false;
+  const humanoRecente = eTeste
+    ? 0
+    : await db.iaMensagem.count({
+        where: {
+          restaurantId,
+          contato,
+          papel: "HUMANO",
+          createdAt: { gte: new Date(agora - HUMANO_ASSUMIU_MIN * 60_000) },
+        },
+      });
   if (humanoRecente > 0) return;
 
   const respostasNaHora = await db.iaMensagem.count({
-    where: { restaurantId, contato, papel: "IA", createdAt: { gte: new Date(agora - 60 * 60_000) } },
+    where: {
+      restaurantId,
+      contato,
+      papel: "IA",
+      createdAt: { gte: new Date(agora - 60 * 60_000) },
+    },
   });
   if (respostasNaHora >= RESPOSTAS_POR_HORA) {
-    console.warn(`[ia] teto de respostas atingido para um cliente do restaurante ${restaurantId}`);
+    console.warn(
+      `[ia] teto de respostas atingido para um cliente do restaurante ${restaurantId}`,
+    );
     return;
   }
 
-  const conhecimento = await conhecimentoDoRestaurante(restaurantId, { comIds: atendente.fazPedidos });
+  const conhecimento = await conhecimentoDoRestaurante(restaurantId, {
+    comIds: atendente.fazPedidos,
+  });
   if (!conhecimento || !conhecimento.aberto) return;
 
   /** manda e registra; só se ninguém do restaurante entrou na conversa enquanto isso */
@@ -134,13 +189,22 @@ export async function atender(evento: MensagemKapso) {
     // Enquanto a IA pensava, alguém do restaurante pode ter respondido pelo
     // celular. Aí a resposta dela chega atrasada e atravessa a pessoa: melhor
     // não mandar.
-    const humanoNoMeio = await db.iaMensagem.count({
-      where: { restaurantId, contato, papel: "HUMANO", createdAt: { gte: recebida.createdAt } },
-    });
+    const humanoNoMeio = eTeste
+      ? 0
+      : await db.iaMensagem.count({
+          where: {
+            restaurantId,
+            contato,
+            papel: "HUMANO",
+            createdAt: { gte: recebida.createdAt },
+          },
+        });
     if (humanoNoMeio > 0) return false;
     for (const msg of mensagens) {
       await enviarTexto({ phoneNumberId, telefone, usuario, texto: msg });
-      await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto: msg } });
+      await db.iaMensagem.create({
+        data: { restaurantId, contato, papel: "IA", texto: msg },
+      });
     }
     return true;
   };
@@ -149,20 +213,38 @@ export async function atender(evento: MensagemKapso) {
     // Foto ou PDF de quem tem Pix em aberto: é o comprovante. A IA só
     // avisa que chegou -- quem confere é o restaurante (ou o Mercado Pago),
     // e o arquivo já está no WhatsApp do dono.
-    if (!atendente.fazPedidos || !telefone || (m.type !== "image" && m.type !== "document")) return;
+    if (
+      !atendente.fazPedidos ||
+      !telefone ||
+      (m.type !== "image" && m.type !== "document")
+    )
+      return;
     const pedido = await pixEmAberto(restaurantId, telefone);
     if (!pedido) return;
-    const aviso = pedido.origin === "FULL_DELIVERY" ? COMPROVANTE_MERCADO_PAGO : COMPROVANTE_MANUAL;
+    const aviso =
+      pedido.origin === "FULL_DELIVERY"
+        ? COMPROVANTE_MERCADO_PAGO
+        : COMPROVANTE_MANUAL;
     // uma vez só: três fotos seguidas não viram três avisos
     const jaAvisou = await db.iaMensagem.count({
-      where: { restaurantId, contato, papel: "IA", texto: aviso, createdAt: { gte: new Date(agora - 30 * 60_000) } },
+      where: {
+        restaurantId,
+        contato,
+        papel: "IA",
+        texto: aviso,
+        createdAt: { gte: new Date(agora - 30 * 60_000) },
+      },
     });
     if (jaAvisou === 0) await mandar([aviso]);
     return;
   }
 
   const recentes = await db.iaMensagem.findMany({
-    where: { restaurantId, contato, createdAt: { gte: new Date(agora - 24 * 60 * 60_000) } },
+    where: {
+      restaurantId,
+      contato,
+      createdAt: { gte: new Date(agora - 24 * 60 * 60_000) },
+    },
     orderBy: { createdAt: "desc" },
     take: HISTORICO,
     select: { papel: true, texto: true },
@@ -175,7 +257,9 @@ export async function atender(evento: MensagemKapso) {
   const resposta = await responder({
     conhecimento,
     conversa,
-    pedidos: atendente.fazPedidos ? { restaurantId, slug: conhecimento.slug, contato, telefone } : undefined,
+    pedidos: atendente.fazPedidos
+      ? { restaurantId, slug: conhecimento.slug, contato, telefone }
+      : undefined,
   });
   if (!resposta) return;
 
@@ -184,10 +268,18 @@ export async function atender(evento: MensagemKapso) {
   if (mandou && resposta.chamouPessoa) {
     // um registro de "humano" é o que já faz a IA ficar quieta; o texto
     // fica no histórico para quem ler a conversa depois
-    await db.iaMensagem.create({ data: { restaurantId, contato, papel: "HUMANO", texto: "[a IA chamou alguém do restaurante]" } });
-    await avisarClienteChamou({ restaurantId, quem: telefone ? formatPhone(telefone) : "Um cliente" }).catch((erro) =>
-      console.error("[ia] falha ao avisar o dono:", erro),
-    );
+    await db.iaMensagem.create({
+      data: {
+        restaurantId,
+        contato,
+        papel: "HUMANO",
+        texto: "[a IA chamou alguém do restaurante]",
+      },
+    });
+    await avisarClienteChamou({
+      restaurantId,
+      quem: telefone ? formatPhone(telefone) : "Um cliente",
+    }).catch((erro) => console.error("[ia] falha ao avisar o dono:", erro));
   }
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
