@@ -62,6 +62,25 @@ type RestaurantInfo = {
   menu: Record<string, OptionGroupData[]>;
 };
 
+/**
+ * Dois nomes de bairro são o mesmo?
+ *
+ * Compara sem acento e sem caixa, igual o servidor faz na hora de aceitar
+ * o pedido -- o endereço guardado pode ter sido digitado à mão, antes de
+ * a lista existir.
+ */
+const mesmoBairro = (a: string, b: string) =>
+  a
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase() ===
+  b
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
 /** o que o cliente escolhe quando o bairro dele não está na lista */
 const FORA = "__fora__";
 
@@ -92,8 +111,8 @@ const SAVED_FIELDS = ["customerName", "customerWhatsapp", "street", "number", "c
 
 export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const cart = useCart();
-  /** o bairro escolhido na lista; "" enquanto ninguém escolheu */
-  const [bairro, setBairro] = useState("");
+  /** null enquanto ele não mexeu na lista; aí vale o bairro do último pedido */
+  const [bairroEscolhido, setBairro] = useState<string | null>(null);
   const savedRaw = useSyncExternalStore(noop, readSaved, () => null);
   const saved: Record<string, string> = (() => {
     try {
@@ -168,6 +187,14 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   // escolher, mostra a mais barata -- prometer a mais cara espanta, e
   // prometer grátis para depois cobrar é pior ainda.
   const porArea = restaurant.areas.length > 0;
+  // O bairro do último pedido só volta se o restaurante ainda atender lá:
+  // o dono pode ter tirado o bairro da lista desde então, e aí é melhor o
+  // campo vir vazio do que mandar a pessoa para um pedido que vai ser
+  // recusado no fim.
+  const bairroLembrado = porArea
+    ? (restaurant.areas.find((a) => mesmoBairro(a.name, state.values?.neighborhood ?? saved.neighborhood ?? ""))?.name ?? "")
+    : "";
+  const bairro = bairroEscolhido ?? bairroLembrado;
   const areaEscolhida = restaurant.areas.find((a) => a.name === bairro) ?? null;
   const fee =
     type !== "DELIVERY"
