@@ -1,0 +1,15 @@
+{
+  "id": "app.menufacil.tv",
+  "version": "0.0.1",
+  "vendor": "MenuFácil",
+  "type": "web",
+  "main": "index.html",
+  "title": "Menu Fácil",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#ffffff",
+  "iconColor": "#f9680b",
+  "disableBackHistoryAPI": true,
+  "supportPortraitMode": false,
+  "requiredACG": []
+}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1920, initial-scale=1" />
+    <title>Menu Fácil</title>
+    <link rel="stylesheet" href="estilo.css" />
+  </head>
+  <body>
+    <!-- As únicas telas que moram dentro do aplicativo. Depois que a TV
+         entra, quem manda na tela é o cardápio do site. É o mesmo desenho
+         do totem: abrir, conectar e sair da frente. -->
+
+    <section id="tela-abrindo" class="tela centro">
+      <img class="marca" src="largeIcon.png" alt="" />
+      <h1>Menu Fácil</h1>
+      <p class="chamada">Conectando…</p>
+      <div class="pulsando"></div>
+    </section>
+
+    <section id="tela-sem-internet" class="tela centro" hidden>
+      <img class="marca" src="largeIcon.png" alt="" />
+      <h1>Um instante</h1>
+      <p class="chamada">Estamos tentando conectar de novo.</p>
+      <div class="pulsando"></div>
+      <p class="ajuda">
+        Confira se a TV está na internet.
+        Botão <span class="tecla vermelha">vermelho</span> para trocar o endereço.
+      </p>
+    </section>
+
+    <section id="tela-endereco" class="tela" hidden>
+      <div class="caixa">
+        <h1>Endereço do cardápio</h1>
+        <p class="ajuda">
+          É o mesmo endereço que você abre no computador. Precisa começar com https://
+        </p>
+        <label for="endereco">Endereço</label>
+        <input id="endereco" type="url" autocomplete="off" />
+        <div class="botoes">
+          <button id="botao-salvar" class="principal">Salvar e abrir</button>
+          <button id="botao-cancelar" class="secundario">Voltar</button>
+        </div>
+        <p id="recado" class="erro" role="alert"></p>
+      </div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>
