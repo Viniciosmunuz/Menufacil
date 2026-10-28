@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
@@ -277,7 +277,43 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
   const [linhas, setLinhas] = useState(() =>
     areas.length ? areas.map((a) => ({ chave: a.id, name: a.name, fee: centsToInput(a.feeCents) })) : [],
   );
-  const nova = () => setLinhas((l) => [...l, { chave: `novo-${Date.now()}-${l.length}`, name: "", fee: centsToInput(r.deliveryFeeCents) }]);
+  const [colando, setColando] = useState(false);
+  const [colado, setColado] = useState("");
+  /**
+   * A taxa que a próxima linha já vem preenchida.
+   *
+   * É a da última linha, não a taxa única do restaurante: quem cobra o
+   * mesmo em toda a cidade -- o caso comum -- digita o valor uma vez e o
+   * resto vem junto. Quem cobra diferente por bairro troca linha a linha.
+   */
+  const taxaPadrao = linhas.length ? linhas[linhas.length - 1].fee : centsToInput(r.deliveryFeeCents);
+  const nova = () => setLinhas((l) => [...l, { chave: `novo-${Date.now()}-${l.length}`, name: "", fee: taxaPadrao }]);
+
+  /**
+   * Cola uma lista inteira de uma vez.
+   *
+   * Aceita um bairro por linha e também separados por vírgula, porque é
+   * assim que a lista costuma chegar: copiada de um WhatsApp. Todos entram
+   * com a mesma taxa, que é o caso comum -- quem cobra diferente por bairro
+   * ajusta as linhas depois.
+   */
+  const colar = () => {
+    const nomes = colado
+      .split(/[\n,;]+/)
+      .map((t) => t.trim().replace(/^(bairro|b\.)\s+/i, ""))
+      .filter(Boolean);
+    const jaTem = new Set(linhas.map((l) => l.name.trim().toLowerCase()));
+    const novas: typeof linhas = [];
+    for (const name of nomes) {
+      const chave = name.toLowerCase();
+      if (jaTem.has(chave)) continue; // colou duas vezes: não duplica
+      jaTem.add(chave);
+      novas.push({ chave: `colado-${Date.now()}-${novas.length}`, name, fee: taxaPadrao });
+    }
+    setLinhas((l) => [...l, ...novas]);
+    setColado("");
+    setColando(false);
+  };
 
   return (
     <SectionForm id="area" title="Bairros que você atende" action={saveDeliveryAreas} restaurantId={r.id}>
@@ -328,10 +364,42 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
 
           {s.fieldErrors?.areas && <p className="text-sm text-danger">{s.fieldErrors.areas}</p>}
 
-          <Button type="button" variant="secondary" size="sm" onClick={nova} className="self-start">
-            <Plus className="size-4" aria-hidden="true" />
-            Adicionar bairro
-          </Button>
+          {colando ? (
+            <div className="flex flex-col gap-3">
+              <Field
+                label="Cole a lista de bairros"
+                htmlFor="colar-bairros"
+                hint={`Um por linha, ou separados por vírgula. Todos entram com a taxa de ${taxaPadrao}, e dá para mudar depois.`}
+              >
+                <Textarea
+                  id="colar-bairros"
+                  rows={5}
+                  value={colado}
+                  onChange={(e) => setColado(e.target.value)}
+                  placeholder={"Centro\nSão José\nVila Nova"}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={colar} disabled={!colado.trim()}>
+                  Pôr na lista
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setColando(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={nova}>
+                <Plus className="size-4" aria-hidden="true" />
+                Adicionar bairro
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setColando(true)}>
+                <ClipboardList className="size-4" aria-hidden="true" />
+                Colar vários
+              </Button>
+            </div>
+          )}
         </>
       )}
     </SectionForm>

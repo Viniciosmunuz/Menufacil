@@ -19,6 +19,8 @@ export type RestaurantCardData = {
   ratingCount: number;
   deliveryEnabled: boolean;
   deliveryFeeCents: number;
+  /** a taxa mais barata entre os bairros atendidos; null quando não há bairro cadastrado */
+  deliveryFeeFromCents?: number | null;
   deliveryTimeMin: number | null;
   deliveryTimeMax: number | null;
 };
@@ -102,7 +104,11 @@ export function RestaurantCard({ data, href }: { data: RestaurantCardData; href?
           {data.deliveryEnabled && (
             <span className="flex items-center gap-1.5">
               <Bike className="size-4 text-faint" aria-hidden="true" />
-              {data.deliveryFeeCents > 0 ? formatCents(data.deliveryFeeCents) : "Entrega grátis"}
+              {data.deliveryFeeFromCents != null
+                ? `A partir de ${formatCents(data.deliveryFeeFromCents)}`
+                : data.deliveryFeeCents > 0
+                  ? formatCents(data.deliveryFeeCents)
+                  : "Entrega grátis"}
             </span>
           )}
         </div>

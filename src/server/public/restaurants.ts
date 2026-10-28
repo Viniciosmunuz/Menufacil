@@ -28,6 +28,8 @@ const cardSelect = {
   ratingCount: true,
   deliveryEnabled: true,
   deliveryFeeCents: true,
+  // só a taxa: é o menor valor dela que o cartão anuncia
+  deliveryAreas: { where: { active: true }, select: { feeCents: true } },
   deliveryTimeMin: true,
   deliveryTimeMax: true,
   categories: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { name: true } },
@@ -54,6 +56,9 @@ function toCard(r: CardRow): PublicRestaurantCard {
     ratingCount: r.ratingCount,
     deliveryEnabled: r.deliveryEnabled,
     deliveryFeeCents: r.deliveryFeeCents,
+    // com bairros cadastrados a taxa deixa de ser uma só, e o cartão passa
+    // a anunciar a mais barata como "a partir de"
+    deliveryFeeFromCents: r.deliveryAreas.length ? Math.min(...r.deliveryAreas.map((a) => a.feeCents)) : null,
     deliveryTimeMin: r.deliveryTimeMin,
     deliveryTimeMax: r.deliveryTimeMax,
   };
