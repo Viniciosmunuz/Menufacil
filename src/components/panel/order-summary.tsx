@@ -7,6 +7,7 @@ import { formatCents, formatPhone, formatWhen } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone, paymentStatusLabel } from "@/lib/labels";
 import { paymentHint, paymentText } from "@/lib/payment";
 
+import { AcaoNaLinha } from "./acao-na-linha";
 import type { EditableOrder } from "./order-actions";
 
 // Resumo de um pedido (itens, valores, cliente, entrega, pagamento) e a
@@ -178,11 +179,14 @@ export function OrderDrawer({
   prefix,
   /** mensagens do cliente esperando resposta (100% Delivery) */
   naoLidas = 0,
+  /** o botão do próximo passo, na própria linha, sem abrir o pedido */
+  acao,
   children,
 }: {
   order: OrderSummaryData;
   prefix?: string;
   naoLidas?: number;
+  acao?: ReactNode;
   children: ReactNode;
 }) {
   const delivery = o.type === "DELIVERY";
@@ -201,11 +205,18 @@ export function OrderDrawer({
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <span className="min-w-0 truncate font-bold sm:max-w-56 sm:shrink-0">{o.customerName}</span>
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-1 sm:flex-nowrap">
-            {/* a motinha verde é o que se procura na lista cheia: diz "este
-                já está na rua" antes de ler o nome do status */}
-            <Badge tone={orderStatusTone[o.status]} className="shrink-0 gap-1.5">
-              {o.status === "OUT_FOR_DELIVERY" && <Bike className="size-3.5" aria-hidden="true" />}
-              {orderStatusLabel[o.status]}
+            {/* Em rota, a motinha verde sozinha: é o que se procura na lista
+                cheia, e o nome do status não acrescenta nada ao desenho.
+                Quem usa leitor de tela continua ouvindo o nome. */}
+            <Badge tone={orderStatusTone[o.status]} className={o.status === "OUT_FOR_DELIVERY" ? "shrink-0 px-2.5" : "shrink-0"}>
+              {o.status === "OUT_FOR_DELIVERY" ? (
+                <>
+                  <Bike className="size-4" aria-hidden="true" />
+                  <span className="sr-only">{orderStatusLabel[o.status]}</span>
+                </>
+              ) : (
+                orderStatusLabel[o.status]
+              )}
             </Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
             {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
@@ -230,6 +241,10 @@ export function OrderDrawer({
         </span>
 
         <span className="mt-0.5 shrink-0 font-extrabold tabular-nums sm:mt-0">{formatCents(o.totalCents)}</span>
+        {/* O mesmo botão que a tabela do computador tem na linha. Fica de
+            fora do celular de verdade: em 390px a linha já está cheia, e lá
+            o passo continua dentro da gaveta, com espaço para o dedo. */}
+        {acao && <AcaoNaLinha className="hidden shrink-0 sm:block">{acao}</AcaoNaLinha>}
         <ChevronDown
           className="mt-0.5 size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180 sm:mt-0"
           aria-hidden="true"

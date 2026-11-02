@@ -189,11 +189,18 @@ export function TabelaDePedidos<T extends Pedido>({
                   <td className="px-4 py-3 align-middle text-sm text-muted">{relogio(p.createdAt)}</td>
 
                   <td className="px-4 py-3 align-middle">
-                    {/* a motinha verde é o que se procura na lista cheia: diz
-                        "este já está na rua" antes de ler o nome do status */}
+                    {/* Em rota, a motinha verde sozinha: é o que se procura na
+                        lista cheia, e o nome do status não acrescenta nada ao
+                        desenho. Quem usa leitor de tela continua ouvindo. */}
                     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold", COR[p.status])}>
-                      {emRota(p) && <Bike className="size-3.5" aria-hidden="true" />}
-                      {orderStatusLabel[p.status]}
+                      {emRota(p) ? (
+                        <>
+                          <Bike className="size-4" aria-hidden="true" />
+                          <span className="sr-only">{orderStatusLabel[p.status]}</span>
+                        </>
+                      ) : (
+                        orderStatusLabel[p.status]
+                      )}
                     </span>
                   </td>
 

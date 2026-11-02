@@ -7,6 +7,7 @@ import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
+import { StepButton } from "@/components/panel/step-button";
 import { PrintSettings } from "@/components/panel/print-settings";
 import { PushAvisos } from "@/components/panel/push-avisos";
 import { OrdersLive } from "@/components/panel/orders-live";
@@ -20,7 +21,7 @@ import { formatTime } from "@/lib/format";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
+import { EXCLUDE_UNPAID, FINAL_ORDER_STATUSES, esperaAceite, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
@@ -159,6 +160,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // dela. Nas outras abas a ordem é a de sempre: ali é histórico.
   const lista = filter === "andamento" ? [...orders].sort((a, b) => Number(emRota(a)) - Number(emRota(b))) : orders;
   const hidden = { restaurantId: restaurant.id };
+  // o passo que vai no botão da própria linha, igual ao da tabela: o que
+  // falta fazer neste pedido, ou nada quando ele já terminou
+  const passoDaLinha = (o: (typeof lista)[number]) =>
+    FINAL_ORDER_STATUSES.includes(o.status) ? null : nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
   // o passo que a seleção em lote pode dar neste pedido: o mesmo do botão
   // dele, e nunca "confirmar pagamento", que pede olhar um por um
   const passoEmLote = (o: (typeof lista)[number]): PassoDoPedido | null => {
@@ -273,6 +278,24 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                           {(naoLidas.get(p.id) ?? 0) > 0 ? `Responder (${naoLidas.get(p.id)})` : "Conversa"}
                         </Link>
                       )}
+                      {/* a mesma via do cartão do celular: com o Menu Fácil PC
+                          ligado o botão manda imprimir no balcão, senão abre a
+                          via para o aparelho de quem tocou */}
+                      {printFacilLigado ? (
+                        <form action={reprintOrder}>
+                          <input type="hidden" name="restaurantId" value={restaurant.id} />
+                          <input type="hidden" name="orderId" value={p.id} />
+                          <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
+                            <Printer className="size-4" aria-hidden="true" />
+                            Imprimir
+                          </SubmitButton>
+                        </form>
+                      ) : (
+                        <a href={`${base}/${p.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
+                          <Printer className="size-4" aria-hidden="true" />
+                          Imprimir
+                        </a>
+                      )}
                     </div>
                   </>
                 )}
@@ -305,7 +328,26 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                   <div className="flex items-start gap-2">
                     <MarcarPedido passo={passoEmLote(o)} />
                     <div className="min-w-0 flex-1">
-                      <OrderDrawer order={o} naoLidas={naoLidas.get(o.id) ?? 0}>
+                      <OrderDrawer
+                        order={o}
+                        naoLidas={naoLidas.get(o.id) ?? 0}
+                        acao={
+                          // Só o passo do dia a dia, como na tabela do
+                          // computador: cancelar continua dentro do pedido,
+                          // onde se para para olhar antes de desfazer.
+                          passoDaLinha(o) ? (
+                            <form action={stepRestaurantOrder}>
+                              <input type="hidden" name="orderId" value={o.id} />
+                              <input type="hidden" name="from" value={o.status} />
+                              <input type="hidden" name="to" value={passoDaLinha(o)!.to} />
+                              {Object.entries(hidden).map(([nome, valor]) => (
+                                <input key={nome} type="hidden" name={nome} value={valor} />
+                              ))}
+                              <StepButton label={passoDaLinha(o)!.label} notify={nextStatusNotice(o, restaurant)} size="sm" />
+                            </form>
+                          ) : null
+                        }
+                      >
                         <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
