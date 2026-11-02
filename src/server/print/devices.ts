@@ -120,6 +120,26 @@ export function listDevices(restaurantId: string) {
   });
 }
 
+/** sem notícia por este tempo, o computador está desligado */
+const SUMIU_MS = 2 * 60_000;
+
+/**
+ * Tem computador do restaurante acordado agora?
+ *
+ * Quem responde é o servidor, e não a tela: ler o relógio no meio do
+ * desenho dá resultado diferente a cada vez que a página se redesenha.
+ *
+ * Mesma lista do listDevices -- só os que imprimem o delivery. O Menu
+ * Fácil PC, que cuida do salão, não conta aqui.
+ */
+export async function algumComputadorAcordado(restaurantId: string) {
+  const device = await db.printDevice.findFirst({
+    where: { restaurantId, appKey: null, lastSeenAt: { gt: new Date(Date.now() - SUMIU_MS) } },
+    select: { id: true },
+  });
+  return device !== null;
+}
+
 /** desligar um computador do restaurante (perdeu, trocou de máquina) */
 export function unpairDevice(id: string, restaurantId: string) {
   return db.printDevice.deleteMany({ where: { id, restaurantId } });

@@ -13,6 +13,7 @@ import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
@@ -22,7 +23,7 @@ import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
-import { listDevices } from "@/server/print/devices";
+import { algumComputadorAcordado, listDevices } from "@/server/print/devices";
 import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
@@ -76,7 +77,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // tela dele, com o mapa das mesas.
   const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, printFacilLigado] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
@@ -110,6 +111,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // só no 100% Delivery existe conversa: nos outros o cliente fala pelo
     // WhatsApp, e o recado nunca passa por aqui
     restaurant.fullDeliveryEnabled ? recadosEsperando(restaurant.id) : Promise.resolve([]),
+    // com um computador acordado, o botão Imprimir de cada pedido manda a
+    // via de volta para ele em vez de tentar imprimir no aparelho de quem
+    // tocou -- que no celular não tem impressora nenhuma
+    algumComputadorAcordado(restaurant.id),
   ]);
 
   // uma consulta só para a página inteira, em vez de uma por linha
@@ -254,10 +259,26 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                                 {(naoLidas.get(o.id) ?? 0) > 0 ? `Responder (${naoLidas.get(o.id)})` : "Conversa"}
                               </Link>
                             )}
-                            <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                              <Printer className="size-4" aria-hidden="true" />
-                              Imprimir
-                            </a>
+                            {/* Com o Menu Fácil PC ligado, quem tem a
+                                impressora é ele: o botão destrava a via e ela
+                                sai no balcão. Abrir a via aqui só imprimiria
+                                no aparelho de quem tocou -- e quem toca
+                                costuma estar no celular, longe da bobina. */}
+                            {printFacilLigado ? (
+                              <form action={reprintOrder}>
+                                <input type="hidden" name="restaurantId" value={restaurant.id} />
+                                <input type="hidden" name="orderId" value={o.id} />
+                                <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
+                                  <Printer className="size-4" aria-hidden="true" />
+                                  Imprimir
+                                </SubmitButton>
+                              </form>
+                            ) : (
+                              <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
+                                <Printer className="size-4" aria-hidden="true" />
+                                Imprimir
+                              </a>
+                            )}
                             <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
                               <ExternalLink className="size-4" aria-hidden="true" />
                               Abrir pedido
