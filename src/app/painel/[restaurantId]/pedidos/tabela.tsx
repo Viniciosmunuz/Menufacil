@@ -40,6 +40,25 @@ const COR: Record<OrderStatus, string> = {
   CANCELED: "bg-surface-3 text-muted",
 };
 
+/**
+ * A tarja na ponta esquerda do cartão, na mesma cor do selo do status.
+ *
+ * É o que dá para ler de longe, sem chegar perto do monitor: a fila inteira
+ * se lê pela faixa de cor, e o nome do status só quando se para num pedido.
+ */
+const BARRA: Record<OrderStatus, string> = {
+  NEW: "[&>td:first-child]:border-l-brand",
+  PAID: "[&>td:first-child]:border-l-brand",
+  PAYMENT_SENT: "[&>td:first-child]:border-l-brand",
+  CONFIRMED: "[&>td:first-child]:border-l-brand",
+  AWAITING_PAYMENT: "[&>td:first-child]:border-l-warning",
+  PREPARING: "[&>td:first-child]:border-l-info",
+  READY: "[&>td:first-child]:border-l-info",
+  OUT_FOR_DELIVERY: "[&>td:first-child]:border-l-success",
+  COMPLETED: "[&>td:first-child]:border-l-success",
+  CANCELED: "[&>td:first-child]:border-l-line-strong",
+};
+
 /** saiu do restaurante: o que falta é o entregador chegar */
 const emRota = (p?: { status: OrderStatus }) => p?.status === "OUT_FOR_DELIVERY";
 
@@ -89,12 +108,15 @@ export function TabelaDePedidos<T extends Pedido>({
   /** o que aparece quando a linha abre: o mesmo resumo do cartão antigo */
   detalhe: (p: T) => React.ReactNode;
 }) {
-  const cabecalho = "px-4 py-3 text-left text-xs font-extrabold tracking-wide text-muted uppercase";
+  const cabecalho = "px-4 pb-1 text-left text-xs font-extrabold tracking-wide text-muted uppercase";
 
   return (
-    <div className="overflow-hidden rounded-card border border-line bg-surface">
-      <table className="w-full border-collapse">
-        <thead className="border-b border-line bg-surface-2/60">
+    // Cada pedido no seu próprio cartão, com um vão entre eles -- como na
+    // lista do celular. Numa tabela corrida o olho escorrega de uma linha
+    // para a outra; separados, cada pedido é um bloco que se lê inteiro.
+    <div>
+      <table className="w-full border-separate border-spacing-y-2">
+        <thead>
           <tr>
             <th scope="col" className={cabecalho}>Pedido</th>
             <th scope="col" className={cabecalho}>Cliente</th>
@@ -133,6 +155,7 @@ export function TabelaDePedidos<T extends Pedido>({
                 )}
                 <LinhaDePedido
                   colunas={7}
+                  barra={BARRA[p.status]}
                   rotulo={`o pedido #${p.number}`}
                   acoes={
                     // Só o passo do dia a dia: aceitar, pronto, saiu para
