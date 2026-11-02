@@ -222,22 +222,30 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         })}
       />
 
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
-        {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
-          <Link
-            key={key}
-            href={href(key)}
-            aria-current={key === filter ? "page" : undefined}
-            className={cn(
-              "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold",
-              key === filter ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
-            )}
-          >
-            {FILTERS[key].label}
-            <span className="tabular-nums opacity-80">{countOf(key)}</span>
-          </Link>
-        ))}
-      </nav>
+      {/* O sino das movimentações na mesma linha das abas, na outra ponta:
+          sozinho ele comia uma faixa da tela só para ele, e a lista de
+          pedidos começava mais embaixo sem nada ter aparecido. */}
+      <div className="flex items-center gap-3">
+        <nav className="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
+          {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
+            <Link
+              key={key}
+              href={href(key)}
+              aria-current={key === filter ? "page" : undefined}
+              className={cn(
+                "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+                key === filter ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
+              )}
+            >
+              {FILTERS[key].label}
+              <span className="tabular-nums opacity-80">{countOf(key)}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="hidden shrink-0 lg:block">
+          <AvisosDeMovimento movimentos={movimentos} base={base} />
+        </div>
+      </div>
 
       {orders.length === 0 ? (
         <EmptyState icon={<ReceiptText />} title="Nada por aqui">
@@ -250,9 +258,6 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
               cartões -- sete colunas não cabem em 390px, e o balcão no
               celular lê um pedido de cada vez. */}
           <div className="hidden flex-col gap-3 lg:flex">
-            <div className="flex justify-end">
-              <AvisosDeMovimento movimentos={movimentos} base={base} />
-            </div>
             <div className="min-w-0">
               <TabelaDePedidos
                 pedidos={lista}
