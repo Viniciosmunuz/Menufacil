@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, MessageSquare } from "lucide-react";
+import { Bike, Bot, ChevronDown, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -201,7 +201,10 @@ export function OrderDrawer({
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <span className="min-w-0 truncate font-bold sm:max-w-56 sm:shrink-0">{o.customerName}</span>
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-1 sm:flex-nowrap">
-            <Badge tone={orderStatusTone[o.status]} className="shrink-0">
+            {/* a motinha verde é o que se procura na lista cheia: diz "este
+                já está na rua" antes de ler o nome do status */}
+            <Badge tone={orderStatusTone[o.status]} className="shrink-0 gap-1.5">
+              {o.status === "OUT_FOR_DELIVERY" && <Bike className="size-3.5" aria-hidden="true" />}
               {orderStatusLabel[o.status]}
             </Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}

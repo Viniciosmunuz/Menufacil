@@ -72,7 +72,8 @@ export const orderStatusTone: Record<OrderStatus, "info" | "success" | "warning"
   CONFIRMED: "info",
   PREPARING: "info",
   READY: "success",
-  OUT_FOR_DELIVERY: "info",
+  // na rua, com o entregador: verde, a cor de quem ja saiu daqui
+  OUT_FOR_DELIVERY: "success",
   COMPLETED: "neutral",
   CANCELED: "danger",
 };

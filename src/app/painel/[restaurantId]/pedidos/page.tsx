@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, ReceiptText } from "lucide-react";
+import { Bike, ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -295,7 +295,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                   {emRota(o) && !emRota(lista[i - 1]) && (
                     <p className="mt-5 mb-2 flex items-center gap-3 text-xs font-bold tracking-widest text-faint uppercase">
                       <span className="h-px flex-1 bg-line" />
-                      em rota
+                      <span className="flex items-center gap-1.5 text-success">
+                        <Bike className="size-4" aria-hidden="true" />
+                        em rota
+                      </span>
                       <span className="h-px flex-1 bg-line" />
                     </p>
                   )}
