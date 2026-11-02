@@ -1,7 +1,6 @@
 import { Bike, Clock, DoorClosed, DoorOpen, Store } from "lucide-react";
 import Link from "next/link";
 
-import { LedDaIa } from "@/components/panel/barra-de-baixo";
 import { Card } from "@/components/ui/card";
 import type { OpenMode } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
@@ -30,62 +29,10 @@ type Estado = {
   soRetiradaAte: Date | null;
 };
 
-/**
- * O selo do canto de cima: em que pé o restaurante está agora.
- *
- * Verde escrito "Aberto", vermelho escrito "Fechado", âmbar escrito
- * "Entrega pausada". A cor sozinha não serve -- daltônico não a separa, e
- * de relance ninguém lembra qual é qual --, então a palavra vai dentro
- * dela.
- *
- * São dois selos e não um com três cores porque o terceiro estado convive
- * com os outros dois: dá para estar aberto e sem entregador.
- *
- * Ele só mostra. Quem muda é o cartão de operação, logo abaixo dos
- * números -- apertou lá, o selo daqui vira de cor.
- */
-export function SeloDaOperacao({
-  open,
-  openMode,
-  today,
-  entregaAtiva,
-  soRetiradaAte,
-  ia = null,
-}: Omit<Estado, "restaurantId"> & {
-  /** Menu Fácil IA: ligada, desligada, ou null quando o restaurante não tem */
-  ia?: { ligada: boolean; href: string } | null;
-}) {
-  const pausada = entregaAtiva && soRetiradaAte !== null;
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-      {ia?.ligada && open && <LedDaIa href={ia.href} ligada />}
-
-      <span
-        className={cn(
-          "flex min-h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-extrabold text-white",
-          open ? "bg-success" : "bg-danger",
-        )}
-        title={openMode === "AUTO" ? today : openMode === "OPEN" ? "Aberto manualmente" : "Fechado manualmente"}
-      >
-        <span className="size-1.5 rounded-full bg-white/80" aria-hidden="true" />
-        {open ? "Aberto" : "Fechado"}
-      </span>
-
-      {pausada && (
-        <span
-          className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-warning px-3.5 text-sm font-extrabold text-white"
-          title={`O cliente só consegue pedir para retirar. Volta sozinho às ${formatTime(soRetiradaAte)}.`}
-        >
-          <Bike className="size-4" aria-hidden="true" />
-          Entrega pausada
-        </span>
-      )}
-
-    </div>
-  );
-}
-
+// O selo de aberto que ficava aqui subiu para a barra do alto, junto do
+// Menu Fácil IA e da entrega pausada: eram dois "Aberto" na mesma tela, e
+// o de cima, calculado no navegador, nem sempre concordava com este.
+//
 // Aberto ou fechado agora, com a troca em um toque (dia de chuva, acabou o
 // gás, fechou mais cedo...).
 //

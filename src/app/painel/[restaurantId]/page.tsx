@@ -18,7 +18,7 @@ import { ComoEstaODia, DesempenhoCard } from "./desempenho";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
-import { OperacaoCard, SeloDaOperacao } from "./open-now-card";
+import { OperacaoCard } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
 export const metadata: Metadata = { title: "Início" };
@@ -91,22 +91,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
   return (
     <div className="flex flex-col gap-5">
-      {/* No lugar da saudação e da data, o interruptor.
-
-          Esta faixa trazia "Boa tarde", "Visão geral" e o dia por extenso
-          -- três linhas que ninguém lê duas vezes, empurrando o primeiro
-          número para baixo. O que fica aqui agora é o que a mão procura ao
-          abrir o painel: aberto ou fechado, e a entrega. */}
-      <header>
-        <SeloDaOperacao
-          open={isOpenNow(details.openMode, details.openingHours)}
-          openMode={details.openMode}
-          today={todayLabel(details.openingHours)}
-          entregaAtiva={details.deliveryEnabled}
-          soRetiradaAte={soRetirada(details.pickupOnlyUntil) ? details.pickupOnlyUntil : null}
-          ia={details.atendenteIa?.phoneNumberId ? { ligada: details.atendenteIa.ativo, href: `${base}/ia` } : null}
-        />
-      </header>
+      {/* Esta faixa já trouxe a saudação e a data, e depois o selo de
+          aberto. O selo subiu para a barra do alto, que acompanha a
+          rolagem e vale em todas as telas: aqui ele era um segundo
+          "Aberto" na mesma tela, e os dois nem sempre concordavam. O que
+          muda o estado continua logo abaixo, no cartão de operação. */}
 
       {/* o atraso vem antes de tudo: é o único aviso aqui que não é sobre o
           movimento de hoje, e some sozinho quando o pagamento for registrado */}

@@ -2,13 +2,13 @@ import { BookOpen, Bot, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorC
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AbertoFechado, LedDaIa, SeloDePedidos } from "@/components/panel/barra-de-baixo";
+import { AbertoFechado, EntregaPausada, LedDaIa, SeloDePedidos } from "@/components/panel/barra-de-baixo";
 import { ImpressaoDoSalao } from "@/components/panel/impressao-do-salao";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
 import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
-import { isOpenNow } from "@/lib/opening-hours";
+import { isOpenNow, soRetirada } from "@/lib/opening-hours";
 import { requireDono } from "@/server/auth/dal";
 import { pedidosEsperando } from "@/server/stats";
 
@@ -34,6 +34,10 @@ export default async function RestaurantPanelLayout({
         openMode: true,
         openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
         atendenteIa: { select: { ativo: true, phoneNumberId: true } },
+        // a entrega pausada é estado de agora, como o aberto: fica na mesma
+        // faixa do alto, em todas as telas do painel
+        deliveryEnabled: true,
+        pickupOnlyUntil: true,
       },
     }),
     pedidosEsperando(restaurant.id),
@@ -101,6 +105,9 @@ export default async function RestaurantPanelLayout({
         topo: horario ? (
           <span className="flex shrink-0 items-center gap-2">
             {ia === true && isOpenNow(horario.openMode, horario.openingHours) && <LedDaIa href={`${base}/ia`} ligada />}
+            {horario.deliveryEnabled && soRetirada(horario.pickupOnlyUntil) && horario.pickupOnlyUntil && (
+              <EntregaPausada href={base} ate={horario.pickupOnlyUntil} />
+            )}
             <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} />
           </span>
         ) : undefined,

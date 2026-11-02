@@ -1,11 +1,12 @@
 "use client";
 
-import { Ellipsis, LogOut, X } from "lucide-react";
+import { Bike, Ellipsis, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useReducer, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import { formatTime } from "@/lib/format";
 import { isOpenNow, type OpeningHourData } from "@/lib/opening-hours";
 import type { OpenMode } from "@/generated/prisma/enums";
 import { logout } from "@/server/auth/actions";
@@ -214,14 +215,23 @@ export function SeloDePedidos({ restaurantId, inicial }: { restaurantId: string;
  * É a primeira coisa que o dono confere ao abrir o painel. Recalcula a cada
  * minuto, porque a virada das 18h acontece com a tela aberta. Tocar leva
  * ao Início, onde ficam os botões de abrir e fechar.
+ *
+ * O aberto é calculado a cada desenho, nunca guardado. Guardado no estado,
+ * ele congelava no primeiro desenho: o dono apertava "Abrir agora", o
+ * servidor mandava o modo novo, e o selo só concordava no tique seguinte --
+ * até um minuto inteiro mostrando o contrário do que o restaurante estava.
+ * O contador abaixo não decide nada; só obriga a conta a refazer quando o
+ * relógio anda sem ninguém tocar em nada.
  */
 export function AbertoFechado({ href, openMode, hours }: { href: string; openMode: OpenMode; hours: OpeningHourData[] }) {
-  const [aberto, setAberto] = useState(() => isOpenNow(openMode, hours));
+  const [, passouUmMinuto] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
-    const timer = setInterval(() => setAberto(isOpenNow(openMode, hours)), 60_000);
+    const timer = setInterval(passouUmMinuto, 60_000);
     return () => clearInterval(timer);
-  }, [openMode, hours]);
+  }, []);
+
+  const aberto = isOpenNow(openMode, hours);
 
   return (
     <Link
@@ -233,6 +243,29 @@ export function AbertoFechado({ href, openMode, hours }: { href: string; openMod
     >
       <span className={cn("size-2 rounded-full", aberto ? "bg-success" : "bg-faint")} aria-hidden="true" />
       {aberto ? "Aberto" : "Fechado"}
+    </Link>
+  );
+}
+
+/**
+ * Entrega pausada, ao lado do Aberto.
+ *
+ * Convive com o aberto em vez de substituí-lo: dá para estar aberto e sem
+ * entregador. Morava na tela de Início, junto de um segundo "Aberto" que
+ * repetia o daqui -- veio para cá com o estado todo, e a tela de Início
+ * ficou só com os botões.
+ *
+ * Quem muda é o cartão de operação, no Início. Tocar leva até lá.
+ */
+export function EntregaPausada({ href, ate }: { href: string; ate: Date }) {
+  return (
+    <Link
+      href={href}
+      title={`O cliente só consegue pedir para retirar. Volta sozinho às ${formatTime(ate)}.`}
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-warning/40 bg-warning/12 px-3 text-xs font-extrabold text-warning"
+    >
+      <Bike className="size-3.5 shrink-0" aria-hidden="true" />
+      Entrega pausada
     </Link>
   );
 }
