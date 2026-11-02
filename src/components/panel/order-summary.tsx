@@ -203,8 +203,11 @@ export function OrderDrawer({
         <span className="mt-0.5 shrink-0 font-extrabold tabular-nums text-muted sm:mt-0 sm:w-14">#{o.number}</span>
 
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-          <span className="min-w-0 truncate font-bold sm:max-w-56 sm:shrink-0">{o.customerName}</span>
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-1 sm:flex-nowrap">
+          {/* Com o botão do passo na linha o espaço aperta, e aí o nome
+              também cede: antes ele era o único que não cedia, e o selo
+              acabava passando por cima do total. Cada um corta um pouco. */}
+          <span className="min-w-0 truncate font-bold sm:max-w-56">{o.customerName}</span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-auto sm:flex-nowrap">
             {/* Em rota, a motinha verde sozinha: é o que se procura na lista
                 cheia, e o nome do status não acrescenta nada ao desenho.
                 Quem usa leitor de tela continua ouvindo o nome. */}
