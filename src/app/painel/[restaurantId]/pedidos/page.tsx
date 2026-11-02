@@ -16,10 +16,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
+import { formatTime } from "@/lib/format";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep } from "@/lib/order-flow";
+import { EXCLUDE_UNPAID, esperaAceite, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
@@ -28,6 +29,9 @@ import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
 import { AvisoDePagosSemPedido } from "../totem/pagos";
+import { GavetaDeAvisos, type Movimento } from "./avisos";
+import { Decorrido } from "./relogio";
+import { TabelaDePedidos } from "./tabela";
 import { MarcarPedido, SelecaoDePedidos, type PassoDoPedido } from "./selecao";
 import {
   avancarPedidosEmLote,
@@ -77,7 +81,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // tela dele, com o mapa das mesas.
   const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, printFacilLigado] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, printFacilLigado, ultimos] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
@@ -101,7 +105,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         customerName: true,
         customerWhatsapp: true,
         // no 100% Delivery, a hora que conta para o sino é a do pagamento
-        payment: { select: { confirmedAt: true } },
+        payment: { select: { confirmedAt: true, status: true } },
       },
     }),
     listDevices(restaurant.id),
@@ -115,6 +119,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // via de volta para ele em vez de tentar imprimir no aparelho de quem
     // tocou -- que no celular não tem impressora nenhuma
     algumComputadorAcordado(restaurant.id),
+    // o que se mexeu por último, para a gaveta do lado. Vem da própria
+    // ordem dos pedidos: o histórico de status só é gravado em parte do
+    // sistema, e uma lista com buracos seria pior que nenhuma
+    db.order.findMany({
+      where: { restaurantId: restaurant.id, origin: { not: "SALAO" } },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+      select: { id: true, number: true, customerName: true, status: true, updatedAt: true },
+    }),
   ]);
 
   // uma consulta só para a página inteira, em vez de uma por linha
@@ -133,6 +146,14 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     return s ? `${base}?${s}` : base;
   };
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const movimentos: Movimento[] = ultimos.map((o) => ({
+    orderId: o.id,
+    numero: o.number,
+    cliente: o.customerName,
+    status: o.status,
+    quando: formatTime(o.updatedAt),
+  }));
   // Em andamento, quem já saiu com o entregador desce para o fim da lista.
   // Sem isto a divisória cairia no meio, com pedido do restaurante depois
   // dela. Nas outras abas a ordem é a de sempre: ali é histórico.
@@ -142,7 +163,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // dele, e nunca "confirmar pagamento", que pede olhar um por um
   const passoEmLote = (o: (typeof lista)[number]): PassoDoPedido | null => {
     if (filter !== "andamento") return null;
-    const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
+    const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
     if (!step || step.label === "Confirmar pagamento") return null;
     return { orderId: o.id, from: o.status, to: step.to, label: step.label };
   };
@@ -183,7 +204,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         }))}
         orders={openOrders.map((o) => {
           // o aviso da tela só traz o aceite; o resto do atendimento fica na lista
-          const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
+          const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
           return {
             id: o.id,
             number: o.number,
@@ -219,8 +240,25 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         </EmptyState>
       ) : (
         <>
+          {/* No computador: a tabela à esquerda e as movimentações à direita.
+              No celular continua a lista de cartões -- sete colunas não cabem
+              em 390px, e o balcão no celular lê um pedido de cada vez. */}
+          <div className="flex items-start gap-4">
+            <div className="min-w-0 flex-1">
+              <TabelaDePedidos
+                pedidos={lista}
+                base={base}
+                action={stepRestaurantOrder}
+                hidden={hidden}
+                notify={(p) => nextStatusNotice(p, restaurant)}
+                relogio={(desde) => <Decorrido desde={desde.toISOString()} />}
+              />
+            </div>
+            <GavetaDeAvisos movimentos={movimentos} base={base} />
+          </div>
+
           <SelecaoDePedidos restaurantId={restaurant.id} acao={avancarPedidosEmLote} disponivel={filter === "andamento"}>
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-2 lg:hidden">
               {lista.map((o, i) => (
                 <li key={o.id}>
                   {/* Uma linha fina separa o que ainda está aqui dentro do que

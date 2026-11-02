@@ -1,4 +1,4 @@
-import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
+import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
 
 // Caminho do atendimento de um pedido, do pagamento até a entrega. No Pix,
 // o primeiro passo é conferir o pagamento; no cartão e no dinheiro, aceitar
@@ -14,6 +14,16 @@ export const FINAL_ORDER_STATUSES: OrderStatus[] = ["COMPLETED", "CANCELED"];
 
 /** o pedido veio do fluxo 100% Delivery? */
 export const isFullDelivery = (origin: OrderOrigin | null | undefined) => origin === "FULL_DELIVERY";
+
+/**
+ * O dinheiro já entrou?
+ *
+ * Vale tanto para o Mercado Pago, que confirma sozinho, quanto para o dono
+ * que deu baixa na mão. Um pedido sem registro de pagamento ainda não foi
+ * pago -- é o caso do dinheiro na entrega.
+ */
+export const pagamentoConfirmado = (payment: { status: PaymentStatus } | null | undefined) =>
+  payment?.status === "CONFIRMED";
 
 /**
  * Filtro do Prisma que tira da lista o pedido do 100% Delivery que ainda
@@ -84,12 +94,21 @@ function nextFullDeliveryStep(status: OrderStatus, type: OrderType): { to: Order
   }
 }
 
-/** o próximo passo, para o botão principal do atendimento */
+/**
+ * O próximo passo, para o botão principal do atendimento.
+ *
+ * No Pix o botão pergunta pelo dinheiro -- menos quando o dinheiro já
+ * entrou. Com o Mercado Pago ligado, quem confirma é ele: o pedido chega
+ * pago, e pedir ao dono que "confirme o pagamento" é mandá-lo carimbar o
+ * que já está carimbado. Aí o que falta mesmo é aceitar o pedido.
+ */
 export function nextOrderStep(
   status: OrderStatus,
   type: OrderType,
   method: PaymentMethod,
   origin?: OrderOrigin | null,
+  /** o pagamento já está confirmado (o Mercado Pago aprovou, ou o dono deu baixa) */
+  pagamentoConfirmado?: boolean,
 ): { to: OrderStatus; label: string } | null {
   if (isFullDelivery(origin)) return nextFullDeliveryStep(status, type);
 
@@ -98,7 +117,10 @@ export function nextOrderStep(
     case "AWAITING_PAYMENT":
     case "PAID":
     case "PAYMENT_SENT":
-      return { to: "CONFIRMED", label: method === "PIX" ? "Confirmar pagamento" : "Aceitar pedido" };
+      return {
+        to: "CONFIRMED",
+        label: method === "PIX" && !pagamentoConfirmado ? "Confirmar pagamento" : "Aceitar pedido",
+      };
     // aceito o pedido, o próximo toque é o que interessa ao cliente: saiu
     // para entrega ou, na retirada, pronto para buscar
     case "CONFIRMED":

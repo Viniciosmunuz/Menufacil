@@ -33,6 +33,7 @@ export const orderSummarySelect = {
   deliveryFeeCents: true,
   totalCents: true,
   createdAt: true,
+  updatedAt: true,
   paymentMethod: true,
   items: {
     orderBy: { id: "asc" },

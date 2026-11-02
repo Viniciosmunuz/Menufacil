@@ -67,8 +67,8 @@ export function PanelShell({
    * Passando nada, o menu fica aberto em todas, como era antes.
    */
   menuAberto?: string;
-  /** trecho do endereço em que o conteúdo usa a largura toda (o salão) */
-  larga?: string;
+  /** trechos do endereço em que o conteúdo usa a largura toda */
+  larga?: string | string[];
   /**
    * A foto de perfil do restaurante, no lugar do logo do Menu Fácil.
    *
@@ -80,9 +80,10 @@ export function PanelShell({
 }) {
   const pathname = usePathname();
   const compacto = !!menuAberto && pathname !== menuAberto;
-  // o menu em ícones devolve largura para o conteúdo, mas quem usa a tela
-  // inteira é só o salão: num formulário, linha de 1600px não se lê
-  const larguraToda = !!larga && pathname.includes(larga);
+  // O menu em ícones devolve largura para o conteúdo, mas nem toda tela
+  // quer: num formulário, linha de 1600px não se lê. Quem usa a tela
+  // inteira é quem tem tabela -- o salão e os pedidos.
+  const larguraToda = (Array.isArray(larga) ? larga : larga ? [larga] : []).some((t) => pathname.includes(t));
 
   // a foto redonda, do tamanho do ícone que ela substitui
   const marca = foto ? (

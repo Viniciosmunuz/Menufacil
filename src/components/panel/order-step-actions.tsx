@@ -1,6 +1,6 @@
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
-import { FINAL_ORDER_STATUSES, nextOrderStep } from "@/lib/order-flow";
+import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
+import { FINAL_ORDER_STATUSES, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 
 import { StepButton, type StatusNotice } from "./step-button";
 
@@ -16,7 +16,16 @@ export function OrderStepActions({
 }: {
   // a origem manda no caminho: o pedido do 100% Delivery tem passo a mais
   // (recebido, em preparo) porque o cliente acompanha cada um deles
-  order: { id: string; status: OrderStatus; type: OrderType; paymentMethod: PaymentMethod; origin?: OrderOrigin | null };
+  // o pagamento decide o nome do botão no Pix: confirmado pelo Mercado
+  // Pago, o que falta é aceitar o pedido, não confirmar o dinheiro
+  order: {
+    id: string;
+    status: OrderStatus;
+    type: OrderType;
+    paymentMethod: PaymentMethod;
+    origin?: OrderOrigin | null;
+    payment?: { status: PaymentStatus } | null;
+  };
   action: (formData: FormData) => Promise<void>;
   hidden?: Record<string, string>;
   size?: "sm" | "md";
@@ -24,7 +33,7 @@ export function OrderStepActions({
   notify?: StatusNotice | null;
 }) {
   if (FINAL_ORDER_STATUSES.includes(order.status)) return null;
-  const step = nextOrderStep(order.status, order.type, order.paymentMethod, order.origin);
+  const step = nextOrderStep(order.status, order.type, order.paymentMethod, order.origin, pagamentoConfirmado(order.payment));
 
   const fields = (to: OrderStatus) => (
     <>

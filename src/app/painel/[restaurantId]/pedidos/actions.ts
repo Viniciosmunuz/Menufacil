@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import type { EstadoDaConversa } from "@/components/chat/conversa";
 import { db } from "@/lib/db";
-import { nextOrderStep } from "@/lib/order-flow";
+import { nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 import { PAPER_WIDTHS } from "@/lib/ticket";
 import { audit } from "@/server/audit";
 import { requireRestaurantAccess } from "@/server/auth/dal";
@@ -120,9 +120,11 @@ export async function avancarPedidosEmLote(restaurantId: string, passos: PassoEm
   for (const passo of passos.slice(0, MAXIMO_DO_LOTE)) {
     const pedido = await db.order.findFirst({
       where: { id: String(passo.orderId), restaurantId: id },
-      select: { status: true, type: true, paymentMethod: true, origin: true },
+      select: { status: true, type: true, paymentMethod: true, origin: true, payment: { select: { status: true } } },
     });
-    const proximo = pedido ? nextOrderStep(pedido.status, pedido.type, pedido.paymentMethod, pedido.origin) : null;
+    const proximo = pedido
+      ? nextOrderStep(pedido.status, pedido.type, pedido.paymentMethod, pedido.origin, pagamentoConfirmado(pedido.payment))
+      : null;
     if (!pedido || !proximo || proximo.to !== passo.to || proximo.label === "Confirmar pagamento") {
       pulados++;
       continue;

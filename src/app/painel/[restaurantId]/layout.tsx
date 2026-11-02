@@ -65,7 +65,7 @@ export default async function RestaurantPanelLayout({
       menuAberto={base}
       // o salão é o único que usa a tela inteira: ali o mapa e o cardápio
       // disputam cada centímetro
-      larga="/salao"
+      larga={["/salao", "/pedidos"]}
       homeHref={base}
       context={context}
       // a foto de perfil do restaurante no lugar do logo do Menu Fácil
