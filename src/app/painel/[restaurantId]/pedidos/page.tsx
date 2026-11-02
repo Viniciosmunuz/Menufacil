@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AvisosDeMensagem } from "@/components/panel/avisos-de-mensagem";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
-import { OrderDrawer, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
+import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
 import { PrintSettings } from "@/components/panel/print-settings";
 import { PushAvisos } from "@/components/panel/push-avisos";
@@ -29,7 +29,7 @@ import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
 import { AvisoDePagosSemPedido } from "../totem/pagos";
-import { GavetaDeAvisos, type Movimento } from "./avisos";
+import { AvisosDeMovimento, type Movimento } from "./avisos";
 import { Decorrido } from "./relogio";
 import { TabelaDePedidos } from "./tabela";
 import { MarcarPedido, SelecaoDePedidos, type PassoDoPedido } from "./selecao";
@@ -240,11 +240,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         </EmptyState>
       ) : (
         <>
-          {/* No computador: a tabela à esquerda e as movimentações à direita.
-              No celular continua a lista de cartões -- sete colunas não cabem
-              em 390px, e o balcão no celular lê um pedido de cada vez. */}
-          <div className="flex items-start gap-4">
-            <div className="min-w-0 flex-1">
+          {/* No computador: a tabela na largura toda, com o sino das
+              movimentações por cima dela. No celular continua a lista de
+              cartões -- sete colunas não cabem em 390px, e o balcão no
+              celular lê um pedido de cada vez. */}
+          <div className="hidden flex-col gap-3 lg:flex">
+            <div className="flex justify-end">
+              <AvisosDeMovimento movimentos={movimentos} base={base} />
+            </div>
+            <div className="min-w-0">
               <TabelaDePedidos
                 pedidos={lista}
                 base={base}
@@ -252,9 +256,28 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                 hidden={hidden}
                 notify={(p) => nextStatusNotice(p, restaurant)}
                 relogio={(desde) => <Decorrido desde={desde.toISOString()} />}
+                detalhe={(p) => (
+                  // o mesmo miolo do cartão do celular: itens, endereço,
+                  // pagamento, e as ações que não cabem na linha
+                  <>
+                    <OrderSummary order={p} />
+                    <OrderStepActions order={p} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(p, restaurant)} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <OrderActions order={editableOrder(p)} updateAction={updateRestaurantOrder} hidden={hidden} />
+                      {p.origin === "FULL_DELIVERY" && (
+                        <Link
+                          href={`${base}/${p.id}#conversa`}
+                          className={buttonClasses((naoLidas.get(p.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
+                        >
+                          <MessagesSquare className="size-4" aria-hidden="true" />
+                          {(naoLidas.get(p.id) ?? 0) > 0 ? `Responder (${naoLidas.get(p.id)})` : "Conversa"}
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
               />
             </div>
-            <GavetaDeAvisos movimentos={movimentos} base={base} />
           </div>
 
           <SelecaoDePedidos restaurantId={restaurant.id} acao={avancarPedidosEmLote} disponivel={filter === "andamento"}>

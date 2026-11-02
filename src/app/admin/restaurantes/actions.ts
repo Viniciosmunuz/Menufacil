@@ -405,7 +405,7 @@ export async function deleteRestaurant(_prev: AdminFormState, formData: FormData
 
 const planoSchema = z.object({
   restaurantId: z.string().min(1),
-  plan: z.enum(["", "ESSENCIAL", "FULL_DELIVERY"]),
+  plan: z.enum(["", "DELIVERY", "IA"]),
   billingDay: z.string().trim(),
 });
 

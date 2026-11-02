@@ -1,24 +1,18 @@
 "use client";
 
-import { Bell, Bike, CheckCircle2, ChefHat, ChevronRight, CircleX, ReceiptText } from "lucide-react";
+import { Bell, Bike, CheckCircle2, ChefHat, CircleX, ReceiptText, X } from "lucide-react";
 import Link from "next/link";
-import type { ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 
 import type { OrderStatus } from "@/generated/prisma/enums";
-import { useStored, write } from "@/lib/aviso-local";
 import { cn } from "@/lib/cn";
 
-// A gaveta das últimas movimentações, ao lado da tabela.
+// As últimas movimentações, num pop-up.
 //
-// O balcão não fica olhando a lista inteira: ele quer saber o que mudou
-// desde a última vez que olhou. Aqui estão os pedidos recentes com o que
-// aconteceu com cada um e a que horas.
-//
-// A setinha fecha a gaveta e devolve a largura para a tabela. Fica fechada
-// ou aberta do jeito que a pessoa deixou -- é preferência de quem olha a
-// tela, então mora no próprio aparelho e não no banco.
-
-const CHAVE = "mf:avisos-abertos";
+// Já foi uma gaveta fixa ao lado da tabela, e era espaço tirado da tabela o
+// dia inteiro para uma informação que se olha de vez em quando -- mesmo
+// fechada, a coluna continuava lá. Agora é um sino: fechado não ocupa nada,
+// e aberto passa por cima.
 
 export type Movimento = {
   orderId: string;
@@ -41,68 +35,89 @@ const CARA: Record<OrderStatus, { icone: ComponentType<{ className?: string }>; 
   CANCELED: { icone: CircleX, cor: "bg-surface-3 text-muted", frase: (n) => `Pedido #${n} foi cancelado` },
 };
 
-export function GavetaDeAvisos({ movimentos, base }: { movimentos: Movimento[]; base: string }) {
-  // No servidor ninguém sabe o que este aparelho escolheu, então a gaveta
-  // nasce aberta e o navegador corrige sozinho se ela estava fechada.
-  const guardado = useStored(CHAVE);
-  const aberta = guardado !== "0";
-  const trocar = () => write(CHAVE, aberta ? "0" : "1");
+export function AvisosDeMovimento({ movimentos, base }: { movimentos: Movimento[]; base: string }) {
+  const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
 
-  if (!aberta) {
-    return (
-      <button
-        type="button"
-        onClick={trocar}
-        aria-label="Abrir as últimas movimentações"
-        className="hidden h-fit shrink-0 items-center gap-2 rounded-card border border-line bg-surface px-3 py-4 text-sm font-extrabold text-muted hover:text-ink lg:flex"
-      >
-        <Bell className="size-4" aria-hidden="true" />
-        <ChevronRight className="size-4 rotate-180" aria-hidden="true" />
-      </button>
-    );
-  }
+  // clicar fora fecha, e Esc também: é um pop-up, não uma tela
+  useEffect(() => {
+    if (!aberto) return;
+    const foraOuEsc = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent) {
+        if (e.key === "Escape") setAberto(false);
+        return;
+      }
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", foraOuEsc);
+    document.addEventListener("keydown", foraOuEsc);
+    return () => {
+      document.removeEventListener("mousedown", foraOuEsc);
+      document.removeEventListener("keydown", foraOuEsc);
+    };
+  }, [aberto]);
 
   return (
-    <aside className="hidden h-fit w-80 shrink-0 flex-col rounded-card border border-line bg-surface lg:flex xl:w-96">
-      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3.5">
-        <p className="flex items-center gap-2 font-extrabold">
-          <Bell className="size-4 text-brand" aria-hidden="true" />
-          Últimas movimentações
-        </p>
-        <button
-          type="button"
-          onClick={trocar}
-          aria-label="Fechar as últimas movimentações"
-          className="grid size-8 place-items-center rounded-control text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-        >
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
-      </div>
+    <div ref={caixa} className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto((a) => !a)}
+        aria-expanded={aberto}
+        className={cn(
+          "flex h-10 items-center gap-2 rounded-control border px-3 text-sm font-extrabold transition-colors",
+          aberto ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:border-line-strong hover:text-ink",
+        )}
+      >
+        <Bell className="size-4" aria-hidden="true" />
+        Movimentações
+      </button>
 
-      {movimentos.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-muted">Nada se mexeu ainda hoje.</p>
-      ) : (
-        <ul className="flex flex-col">
-          {movimentos.map((m) => {
-            const cara = CARA[m.status];
-            const Icone = cara.icone;
-            return (
-              <li key={m.orderId} className="border-b border-line/70 last:border-0">
-                <Link href={`${base}/${m.orderId}`} className="flex items-start gap-3 px-4 py-3 hover:bg-surface-2/50">
-                  <span className={cn("mt-0.5 grid size-8 shrink-0 place-items-center rounded-full", cara.cor)}>
-                    <Icone className="size-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold">{cara.frase(m.numero)}</span>
-                    <span className="block truncate text-xs text-muted">{m.cliente}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted tabular-nums">{m.quando}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      {aberto && (
+        <div className="absolute right-0 top-full z-30 mt-2 w-96 overflow-hidden rounded-card border border-line bg-surface shadow-2xl shadow-black/20">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+            <p className="font-extrabold">Últimas movimentações</p>
+            <button
+              type="button"
+              onClick={() => setAberto(false)}
+              aria-label="Fechar as movimentações"
+              className="grid size-8 place-items-center rounded-control text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+
+          {movimentos.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted">Nada se mexeu ainda hoje.</p>
+          ) : (
+            // alto o bastante para caber o dia, e com rolagem própria quando
+            // o movimento passa disso
+            <ul className="flex max-h-96 flex-col overflow-y-auto">
+              {movimentos.map((m) => {
+                const cara = CARA[m.status];
+                const Icone = cara.icone;
+                return (
+                  <li key={m.orderId} className="border-b border-line/70 last:border-0">
+                    <Link
+                      href={`${base}/${m.orderId}`}
+                      onClick={() => setAberto(false)}
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-surface-2/50"
+                    >
+                      <span className={cn("mt-0.5 grid size-8 shrink-0 place-items-center rounded-full", cara.cor)}>
+                        <Icone className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-bold">{cara.frase(m.numero)}</span>
+                        <span className="block truncate text-xs text-muted">{m.cliente}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-muted tabular-nums">{m.quando}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
-    </aside>
+    </div>
   );
 }

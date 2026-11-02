@@ -1,7 +1,9 @@
-import { Banknote, CreditCard, Eye, QrCode } from "lucide-react";
+import { Banknote, CreditCard, ExternalLink, QrCode } from "lucide-react";
 import Link from "next/link";
 
 import { StepButton, type StatusNotice } from "@/components/panel/step-button";
+
+import { LinhaDePedido } from "./linha";
 import { buttonClasses } from "@/components/ui/button";
 import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
@@ -69,6 +71,7 @@ export function TabelaDePedidos<T extends Pedido>({
   hidden,
   notify,
   relogio,
+  detalhe,
 }: {
   pedidos: T[];
   base: string;
@@ -78,11 +81,13 @@ export function TabelaDePedidos<T extends Pedido>({
   notify: (p: T) => StatusNotice | null;
   /** o contador de tempo; vem de fora porque é componente de navegador */
   relogio: (desde: Date) => React.ReactNode;
+  /** o que aparece quando a linha abre: o mesmo resumo do cartão antigo */
+  detalhe: (p: T) => React.ReactNode;
 }) {
   const cabecalho = "px-4 py-3 text-left text-xs font-extrabold tracking-wide text-muted uppercase";
 
   return (
-    <div className="hidden overflow-hidden rounded-card border border-line bg-surface lg:block">
+    <div className="overflow-hidden rounded-card border border-line bg-surface">
       <table className="w-full border-collapse">
         <thead className="border-b border-line bg-surface-2/60">
           <tr>
@@ -102,7 +107,39 @@ export function TabelaDePedidos<T extends Pedido>({
             const Icone = forma.icone;
 
             return (
-              <tr key={p.id} className="border-b border-line/70 last:border-0 hover:bg-surface-2/40">
+              <LinhaDePedido
+                key={p.id}
+                colunas={7}
+                rotulo={`o pedido #${p.number}`}
+                acoes={
+                  // Só o passo do dia a dia: aceitar, pronto, saiu para
+                  // entrega. Cancelar não entra aqui -- é decisão de parar e
+                  // olhar o pedido, não de tocar de passagem numa linha de
+                  // tabela, onde o dedo erra de alvo.
+                  passo(p) ? (
+                    <form action={action}>
+                      <input type="hidden" name="orderId" value={p.id} />
+                      <input type="hidden" name="from" value={p.status} />
+                      <input type="hidden" name="to" value={passo(p)!.to} />
+                      {Object.entries(hidden ?? {}).map(([nome, valor]) => (
+                        <input key={nome} type="hidden" name={nome} value={valor} />
+                      ))}
+                      <StepButton label={passo(p)!.label} notify={notify(p)} size="sm" />
+                    </form>
+                  ) : null
+                }
+                detalhe={
+                  <>
+                    {detalhe(p)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`${base}/${p.id}`} className={buttonClasses("secondary", "sm")}>
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        Abrir o pedido inteiro
+                      </Link>
+                    </div>
+                  </>
+                }
+              >
                 <td className="px-4 py-3 align-middle">
                   <p className="font-extrabold tabular-nums">#{p.number}</p>
                   <p className="text-xs text-muted">
@@ -134,33 +171,7 @@ export function TabelaDePedidos<T extends Pedido>({
                   </span>
                 </td>
 
-                <td className="px-4 py-3 align-middle">
-                  <div className="flex items-center justify-end gap-2">
-                    {/* Só o passo do dia a dia: aceitar, pronto, saiu para
-                        entrega. Cancelar não entra aqui -- é decisão de parar
-                        e olhar o pedido, não de tocar de passagem numa linha
-                        de tabela, onde o dedo erra de alvo. */}
-                    {passo(p) && (
-                      <form action={action}>
-                        <input type="hidden" name="orderId" value={p.id} />
-                        <input type="hidden" name="from" value={p.status} />
-                        <input type="hidden" name="to" value={passo(p)!.to} />
-                        {Object.entries(hidden ?? {}).map(([nome, valor]) => (
-                          <input key={nome} type="hidden" name={nome} value={valor} />
-                        ))}
-                        <StepButton label={passo(p)!.label} notify={notify(p)} size="sm" />
-                      </form>
-                    )}
-                    <Link
-                      href={`${base}/${p.id}`}
-                      aria-label={`Abrir o pedido #${p.number}`}
-                      className={buttonClasses("ghost", "sm")}
-                    >
-                      <Eye className="size-4" aria-hidden="true" />
-                    </Link>
-                  </div>
-                </td>
-              </tr>
+              </LinhaDePedido>
             );
           })}
         </tbody>

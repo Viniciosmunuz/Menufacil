@@ -352,61 +352,52 @@ export type Plano = {
   selo?: string;
 };
 
+// Dois planos, e o que separa um do outro é a IA. Salão e Totem saíram
+// daqui: viraram soluções sob consulta, logo abaixo, porque dependem de
+// equipamento e do jeito que cada casa atende -- preço de tabela ali enganava
+// mais do que ajudava.
 export const PLANOS: Plano[] = [
   {
-    nome: 'Essencial',
-    preco: 'R$ 100',
+    nome: 'Menu Fácil Delivery',
+    preco: 'R$ 120',
     periodo: '/mês',
-    icone: UtensilsCrossed,
-    resumo: 'Para restaurantes que estão começando no delivery digital.',
+    icone: Bike,
+    resumo: 'Para o restaurante que quer vender pelo próprio link, sem comissão por pedido.',
     tituloDosItens: 'Inclui',
     itens: [
       'Cardápio digital com link próprio',
-      'Pedidos direcionados ao WhatsApp',
+      'Pedido e fechamento dentro do sistema',
+      'Pagamento por Pix dentro do próprio aplicativo',
+      'Dinheiro cai direto na conta do restaurante',
       'Painel de pedidos com aviso sonoro',
-      'Impressão de comandas',
-      'Cadastro e montagem inicial do cardápio',
+      'Impressão automática das comandas',
+      'Acompanhamento do pedido pelo cliente',
       'Suporte e atualizações',
     ],
-    botao: 'Quero o Essencial',
-    mensagem: 'Olá! Quero o plano Essencial (R$ 100/mês) do MenuFácil para o meu restaurante.',
-  },
-  {
-    nome: 'Delivery Pro',
-    preco: 'R$ 180',
-    periodo: '/mês',
-    icone: Bike,
-    resumo: 'Para quem quer automatizar e profissionalizar o delivery.',
-    tituloDosItens: 'Tudo do Essencial, mais',
-    selo: 'Recomendado',
-    itens: [
-      'Checkout e gestão de pedidos pelo próprio sistema',
-      'Pagamento por Pix integrado ao Mercado Pago',
-      'Recebimento direto na conta do restaurante',
-      'Acompanhamento do pedido pelo cliente',
-      'Conversa com o cliente dentro do pedido',
-      'Gestão das modalidades de entrega e retirada',
-    ],
-    botao: 'Quero o Delivery Pro',
-    mensagem: 'Olá! Quero o plano Delivery Pro (R$ 180/mês) do MenuFácil para o meu restaurante.',
+    botao: 'Quero o Menu Fácil Delivery',
+    mensagem: 'Olá! Quero o plano Menu Fácil Delivery (R$ 120/mês) para o meu restaurante.',
     destaque: true,
   },
   {
-    nome: 'Completo',
-    preco: 'R$ 280',
+    nome: 'Menu Fácil IA',
+    preco: 'R$ 199,90',
     periodo: '/mês',
-    icone: Store,
-    resumo: 'Para restaurantes que operam delivery e salão.',
-    tituloDosItens: 'Tudo do Delivery Pro, mais',
+    icone: Bot,
+    // A IA já anota pedido e manda Pix, mas ainda não está atendendo
+    // cliente de verdade. Vender como pronta queimaria a confiança de quem
+    // assinasse hoje e não visse resposta nenhuma.
+    selo: 'Em implantação',
+    resumo: 'Tudo do Delivery, com a IA atendendo o WhatsApp do restaurante.',
+    tituloDosItens: 'Tudo do Delivery, mais',
     itens: [
-      'Gestão de mesas e garçons',
-      'Comandas da cozinha separadas por setor',
-      'Fechamento de contas, descontos e divisão',
-      'Caixa com abertura, sangria e relatórios',
-      'Permissões por garçom',
+      'Atendimento automático no WhatsApp',
+      'Respostas sobre o cardápio e o funcionamento',
+      'Pedido anotado pela própria conversa',
+      'Envio do Pix e aviso do comprovante recebido',
+      'Passagem para uma pessoa quando o cliente pede',
     ],
-    botao: 'Quero o Completo',
-    mensagem: 'Olá! Quero o plano Completo (R$ 280/mês) do MenuFácil para o meu restaurante.',
+    botao: 'Quero saber do Menu Fácil IA',
+    mensagem: 'Olá! Quero saber do plano Menu Fácil IA (R$ 199,90/mês) para o meu restaurante.',
   },
 ];
 
@@ -463,31 +454,31 @@ export const ADICIONAIS: Adicional[] = [
     disponivel: true,
   },
   {
-    nome: 'Menu Fácil IA',
-    resumo: 'Atendimento inteligente pelo WhatsApp.',
-    icone: Bot,
+    nome: 'Menu Fácil Salão',
+    resumo: 'Mesas, comandas e caixa do atendimento presencial.',
+    icone: Store,
     tom: 'info',
     preco: '',
     periodo: '',
-    notaDePreco: 'Ainda em desenvolvimento',
+    notaDePreco: 'Preço sob consulta',
     itens: [
-      'Atendimento automático inicial',
-      'Envio do link do cardápio na conversa',
-      'Respostas sobre cardápio e funcionamento',
-      'Montagem do pedido pela conversa',
-      'Transferência para atendimento humano',
+      'Mesas e comandas abertas pelo garçom',
+      'Comanda da cozinha separada por setor',
+      'Fechamento de conta, desconto e divisão',
+      'Caixa com abertura, sangria e relatório',
+      'Permissão por garçom',
     ],
-    botao: 'Quero ser avisado',
-    mensagem: 'Olá! Quero entrar na lista de espera do Menu Fácil IA.',
-    disponivel: false,
+    botao: 'Quero saber do Salão',
+    mensagem: 'Olá! Quero saber mais sobre o Menu Fácil Salão para o meu restaurante.',
+    disponivel: true,
   },
 ];
 
 export const ADICIONAIS_TEXTO = {
-  etiqueta: 'Adicionais',
-  titulo: 'Potencialize ainda mais o seu restaurante.',
-  texto: 'Contrate os adicionais que fazem sentido para o seu negócio.',
-  nota: 'Os adicionais são contratados à parte da mensalidade e podem ser ligados a qualquer momento.',
+  etiqueta: 'Sob consulta',
+  titulo: 'Soluções para o atendimento presencial.',
+  texto: 'O Salão e o Totem dependem do tamanho da casa e do equipamento, então o preço sai depois da conversa.',
+  nota: 'Ligados à parte da mensalidade, a qualquer momento, sem mexer no que já está funcionando.',
 };
 
 export const PLANOS_TEXTO = {
@@ -568,7 +559,7 @@ export const DUVIDAS = [
   },
   {
     q: "Dá para trocar de plano depois?",
-    a: "Dá, a qualquer momento. Começa no Essencial e sobe quando precisar, sem perder nada do que já está cadastrado.",
+    a: "Dá, a qualquer momento. Começa no Delivery e sobe para o Menu Fácil IA quando precisar, sem perder nada do que já está cadastrado.",
   },
   // TODO: responder sobre fidelidade (enquanto estiver vazio, a pergunta não aparece)
   { q: "Tem fidelidade?", a: "" },

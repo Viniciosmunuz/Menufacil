@@ -130,6 +130,27 @@ export function CobrancaPanel({
             />
           </Field>
         </div>
+        {/* o que cada plano entrega, para quem está vendendo não precisar
+            lembrar de cor na hora de combinar com o dono */}
+        <ul className="flex flex-col gap-2">
+          {(Object.keys(PLANOS) as Plan[]).map((p) => (
+            <li key={p} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <span className="font-extrabold">{PLANOS[p].nome}</span>
+              <span className="font-bold text-brand">{formatCents(PLANOS[p].centavos)}/mês</span>
+              <span className="text-muted">{PLANOS[p].resumo}</span>
+            </li>
+          ))}
+          {/* Salão e Totem não são planos: são módulos combinados caso a
+              caso, e ligados nas chaves do restaurante, logo abaixo nesta
+              mesma tela. Ficam aqui só para quem vende não procurá-los na
+              lista de planos. */}
+          <li className="flex flex-wrap items-baseline gap-x-2 border-t border-line pt-2 text-sm">
+            <span className="font-extrabold">Salão e Totem</span>
+            <span className="font-bold text-muted">sob consulta</span>
+            <span className="text-muted">Combinados à parte e ligados nas chaves deste restaurante.</span>
+          </li>
+        </ul>
+
         <SubmitButton variant="secondary" size="sm" pendingText="Salvando...">
           Salvar plano
         </SubmitButton>

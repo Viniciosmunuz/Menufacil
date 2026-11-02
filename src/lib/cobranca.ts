@@ -9,9 +9,29 @@ import { TIME_ZONE } from "./format";
 // lembra o que foi recebido e avisa quem passou do dia. Cortar restaurante
 // aberto por engano de cadastro custaria muito mais do que o atraso.
 
-export const PLANOS: Record<Plan, { nome: string; centavos: number }> = {
-  ESSENCIAL: { nome: "Essencial", centavos: 100_00 },
-  FULL_DELIVERY: { nome: "100% Delivery", centavos: 180_00 },
+/**
+ * Os dois planos que o MenuFácil vende.
+ *
+ * O que separa um do outro é a IA: o Delivery é o cardápio, os pedidos e o
+ * Pix dentro do aplicativo; o IA é tudo isso com o atendimento automático
+ * no WhatsApp. Salão e Totem não são planos -- são módulos sob consulta,
+ * combinados caso a caso e ligados pelas chaves do restaurante.
+ *
+ * O plano manda só na mensalidade. Quem liga recurso são as chaves do
+ * restaurante (fullDeliveryEnabled, salaoEnabled, totemEnabled...), e é por
+ * isso que trocar de plano não tira nada de ninguém.
+ */
+export const PLANOS: Record<Plan, { nome: string; centavos: number; resumo: string }> = {
+  DELIVERY: {
+    nome: "Menu Fácil Delivery",
+    centavos: 120_00,
+    resumo: "Cardápio digital, pedidos pelo link e Pix pago dentro do próprio aplicativo.",
+  },
+  IA: {
+    nome: "Menu Fácil IA",
+    centavos: 199_90,
+    resumo: "Tudo do Delivery, com a Menu Fácil IA atendendo o WhatsApp do restaurante.",
+  },
 };
 
 /** "2026-10": o mês a que uma mensalidade se refere */

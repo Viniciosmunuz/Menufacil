@@ -33,13 +33,14 @@ import { listRestaurants } from "@/server/public/restaurants";
 
 // o preço vem do mesmo lugar que a página mostra: escrito duas vezes, ele
 // desencontra na primeira troca -- e foi o que aconteceu
-const essencial = PLANOS[0];
+// o mais barato da lista, para o "a partir de" da descrição
+const maisBarato = PLANOS[0];
 
 export const metadata: Metadata = {
   // absoluto: o título da raiz já termina em "MenuFácil", e o padrão da
   // aplicação acrescentaria outro
   title: { absolute: "MenuFácil · Sistema de delivery e salão para restaurantes" },
-  description: `Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido. A partir de ${essencial.preco}${essencial.periodo}.`,
+  description: `Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido. A partir de ${maisBarato.preco}${maisBarato.periodo}.`,
 };
 
 export default async function HomePage({ searchParams }: PageProps<"/">) {

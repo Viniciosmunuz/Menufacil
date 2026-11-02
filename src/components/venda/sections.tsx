@@ -541,7 +541,7 @@ export function Planos() {
         {/* No computador os três se comparam lado a lado e o destacado cresce
             para fora da linha. No celular empilham, e aí o destaque vira só a
             borda: crescer não diz nada quando se vê um de cada vez. */}
-        <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+        <div className="mx-auto grid max-w-4xl items-stretch gap-5 sm:grid-cols-2 lg:gap-6">
           {PLANOS.map((plano) => (
             <CartaoDoPlano key={plano.nome} plano={plano} />
           ))}
@@ -577,7 +577,7 @@ function CartaoDoAdicional({ adicional }: { adicional: Adicional }) {
                 disponivel ? "bg-surface-2 text-muted" : "bg-warning/15 text-warning",
               )}
             >
-              {disponivel ? "Adicional" : "Em breve"}
+              {disponivel ? "Sob consulta" : "Em breve"}
             </span>
           </div>
           <p className="mt-1 text-sm leading-snug text-muted">{adicional.resumo}</p>

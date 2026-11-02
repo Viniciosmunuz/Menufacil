@@ -96,8 +96,8 @@ model VerificationToken {
 // ============================================================
 
 enum Plan {
-  ESSENCIAL // cardapio e pedido pelo WhatsApp
-  FULL_DELIVERY // 100% Delivery: pagamento e acompanhamento dentro do MenuFacil
+  DELIVERY // cardapio, pedidos e Pix dentro do proprio aplicativo
+  IA // tudo do Delivery, mais o atendimento por IA no WhatsApp
 }
 
 enum RestaurantStatus {
