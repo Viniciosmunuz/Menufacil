@@ -22,6 +22,7 @@ export type DadosDoEntregador = {
   telefone: string;
   senha?: string;
   moto?: string;
+  cor?: string;
   placa?: string;
   fotoUrl?: string | null;
 };
@@ -62,6 +63,7 @@ function conferir(dados: DadosDoEntregador, { comSenha }: { comSenha: boolean })
       nome,
       telefone,
       moto: dados.moto?.trim() || null,
+      corDaMoto: dados.cor?.trim() || null,
       placa: dados.placa?.trim().toUpperCase() || null,
       fotoUrl: dados.fotoUrl || null,
     },
@@ -71,7 +73,7 @@ function conferir(dados: DadosDoEntregador, { comSenha }: { comSenha: boolean })
 export async function criarEntregador(restaurantId: string, slug: string, entrada: DadosDoEntregador): Promise<ResultadoDoEntregador> {
   const conferido = conferir(entrada, { comSenha: true });
   if (conferido.error) return { ok: false, error: conferido.error };
-  const { nome, telefone, moto, placa, fotoUrl } = conferido.dados;
+  const { nome, telefone, moto, corDaMoto, placa, fotoUrl } = conferido.dados;
 
   const jaTem = await db.entregador.findUnique({ where: { restaurantId_telefone: { restaurantId, telefone } }, select: { id: true } });
   if (jaTem) return { ok: false, error: "Esse telefone já está cadastrado neste restaurante." };
@@ -91,7 +93,7 @@ export async function criarEntregador(restaurantId: string, slug: string, entrad
         passwordHash,
         status: "ACTIVE",
         mustChangePassword: false,
-        entregador: { create: { restaurantId, nome, telefone, moto, placa, fotoUrl } },
+        entregador: { create: { restaurantId, nome, telefone, moto, corDaMoto, placa, fotoUrl } },
       },
       select: { id: true },
     });
@@ -105,7 +107,7 @@ export async function criarEntregador(restaurantId: string, slug: string, entrad
       passwordHash,
       role: "RESTAURANT_OWNER",
       mustChangePassword: false,
-      entregador: { create: { restaurantId, nome, telefone, moto, placa, fotoUrl } },
+      entregador: { create: { restaurantId, nome, telefone, moto, corDaMoto, placa, fotoUrl } },
     },
     select: { id: true },
   });
@@ -124,7 +126,7 @@ export async function atualizarEntregador(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const conferido = conferir(entrada, { comSenha: false });
   if (conferido.error) return { ok: false, error: conferido.error };
-  const { nome, telefone, moto, placa, fotoUrl } = conferido.dados;
+  const { nome, telefone, moto, corDaMoto, placa, fotoUrl } = conferido.dados;
 
   const atual = await db.entregador.findFirst({ where: { id: entregadorId, restaurantId }, select: { id: true, userId: true, telefone: true } });
   if (!atual) return { ok: false, error: "Esse entregador não está mais no cadastro." };
@@ -135,7 +137,7 @@ export async function atualizarEntregador(
   }
 
   await db.$transaction([
-    db.entregador.update({ where: { id: atual.id }, data: { nome, telefone, moto, placa, fotoUrl } }),
+    db.entregador.update({ where: { id: atual.id }, data: { nome, telefone, moto, corDaMoto, placa, fotoUrl } }),
     db.user.update({ where: { id: atual.userId }, data: { name: nome, email: loginDoEntregador(telefone, slug) } }),
   ]);
   return { ok: true };

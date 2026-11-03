@@ -16,6 +16,7 @@ export type EntregadorNaTela = {
   telefone: string;
   fotoUrl: string | null;
   moto: string | null;
+  corDaMoto: string | null;
   placa: string | null;
   ativo: boolean;
   disponibilidade: "DISPONIVEL" | "INDISPONIVEL" | "PAUSA";
@@ -51,6 +52,7 @@ export async function quadroDeEntregas(restaurantId: string): Promise<QuadroDeEn
         telefone: true,
         fotoUrl: true,
         moto: true,
+        corDaMoto: true,
         placa: true,
         ativo: true,
         disponibilidade: true,
@@ -70,6 +72,7 @@ export async function quadroDeEntregas(restaurantId: string): Promise<QuadroDeEn
       telefone: e.telefone,
       fotoUrl: e.fotoUrl,
       moto: e.moto,
+      corDaMoto: e.corDaMoto,
       placa: e.placa,
       ativo: e.ativo,
       disponibilidade: e.disponibilidade,

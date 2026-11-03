@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
       destinoLat: true,
       destinoLng: true,
       restaurant: { select: { entregadorEnabled: true } },
-      entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, latitude: true, longitude: true, posicaoEm: true } },
+      entregador: { select: { nome: true, fotoUrl: true, moto: true, corDaMoto: true, placa: true, latitude: true, longitude: true, posicaoEm: true } },
     },
   });
 
@@ -42,7 +42,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
     destino: pedido.destinoLat != null && pedido.destinoLng != null ? { lat: pedido.destinoLat, lng: pedido.destinoLng } : null,
     nome: e.nome,
     fotoUrl: e.fotoUrl,
-    moto: e.moto,
+    moto: [e.moto, e.corDaMoto].filter(Boolean).join(" ") || null,
     placa: e.placa,
     // sem posição recente a tela mostra o entregador sem mapa: é melhor
     // não ter bolinha do que ter uma bolinha parada mentindo onde ele está

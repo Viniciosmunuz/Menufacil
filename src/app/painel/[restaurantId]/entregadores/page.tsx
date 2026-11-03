@@ -131,7 +131,7 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
               <li key={e.id}>
                 <Gaveta
                   titulo={e.nome}
-                  resumo={[formatPhone(e.telefone), e.moto, e.placa].filter(Boolean).join(" · ")}
+                  resumo={[formatPhone(e.telefone), [e.moto, e.corDaMoto].filter(Boolean).join(" "), e.placa].filter(Boolean).join(" · ")}
                   icone={
                     // a foto com a bolinha do estado: de longe, a lista
                     // inteira se lê pelas bolinhas
@@ -162,7 +162,7 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
                       </div>
                       <div>
                         <dt className="font-bold text-muted">Moto</dt>
-                        <dd>{[e.moto, e.placa].filter(Boolean).join(" · ") || "—"}</dd>
+                        <dd>{[[e.moto, e.corDaMoto].filter(Boolean).join(" "), e.placa].filter(Boolean).join(" · ") || "—"}</dd>
                       </div>
                       <div>
                         <dt className="font-bold text-muted">Último acesso</dt>

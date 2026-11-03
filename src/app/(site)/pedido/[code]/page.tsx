@@ -73,7 +73,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
         },
       },
       // quem está levando; vazio enquanto ninguém pegou o pedido
-      entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, telefone: true } },
+      entregador: { select: { nome: true, fotoUrl: true, moto: true, corDaMoto: true, placa: true, telefone: true } },
     },
   });
   if (!order) notFound();
@@ -304,7 +304,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           inicial={{
             nome: quemLeva.nome,
             fotoUrl: quemLeva.fotoUrl,
-            moto: quemLeva.moto,
+            moto: [quemLeva.moto, quemLeva.corDaMoto].filter(Boolean).join(" ") || null,
             placa: quemLeva.placa,
           }}
         />

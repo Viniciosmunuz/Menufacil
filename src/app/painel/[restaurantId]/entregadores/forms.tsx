@@ -36,11 +36,26 @@ function CampoTelefone({ id, defaultValue }: { id: string; defaultValue?: string
   );
 }
 
-function CamposDaMoto({ prefixo, moto, placa }: { prefixo: string; moto?: string | null; placa?: string | null }) {
+function CamposDaMoto({
+  prefixo,
+  moto,
+  cor,
+  placa,
+}: {
+  prefixo: string;
+  moto?: string | null;
+  cor?: string | null;
+  placa?: string | null;
+}) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-3">
       <Field label="Modelo da moto" htmlFor={`${prefixo}-moto`} hint="Opcional. Ajuda o cliente a reconhecer na porta.">
         <Input id={`${prefixo}-moto`} name="moto" maxLength={40} placeholder="Honda Titan" defaultValue={moto ?? ""} autoComplete="off" />
+      </Field>
+      {/* a cor e o que o cliente reconhece da janela: chega antes de
+          qualquer placa, e e por isso que ela fica ao lado do modelo */}
+      <Field label="Cor da moto" htmlFor={`${prefixo}-cor`} hint="Opcional.">
+        <Input id={`${prefixo}-cor`} name="cor" maxLength={20} placeholder="Vermelha" defaultValue={cor ?? ""} autoComplete="off" />
       </Field>
       <Field label="Placa" htmlFor={`${prefixo}-placa`} hint="Opcional.">
         <Input
@@ -96,7 +111,7 @@ export function EditarEntregador({
   entregador,
 }: {
   restaurantId: string;
-  entregador: { id: string; nome: string; telefone: string; fotoUrl: string | null; moto: string | null; placa: string | null };
+  entregador: { id: string; nome: string; telefone: string; fotoUrl: string | null; moto: string | null; corDaMoto: string | null; placa: string | null };
 }) {
   const [state, action] = useActionState<EntregadorFormState, FormData>(salvarEntregador, {});
   const prefixo = `ed-${entregador.id}`;
@@ -117,7 +132,7 @@ export function EditarEntregador({
         </Field>
       </div>
 
-      <CamposDaMoto prefixo={prefixo} moto={entregador.moto} placa={entregador.placa} />
+      <CamposDaMoto prefixo={prefixo} moto={entregador.moto} cor={entregador.corDaMoto} placa={entregador.placa} />
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
       {state.ok && state.message && <Alert tone="success">{state.message}</Alert>}

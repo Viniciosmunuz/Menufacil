@@ -344,6 +344,9 @@ model Entregador {
   telefone String // somente digitos, com DDI
   fotoUrl  String?
   moto     String?
+  /// A cor da moto: e o que o cliente reconhece da janela, antes de ler
+  /// qualquer placa. Opcional, como o resto da moto.
+  corDaMoto String?
   placa    String?
 
   /// desligado pelo dono: nao entra, nao recebe pedido. O cadastro fica,

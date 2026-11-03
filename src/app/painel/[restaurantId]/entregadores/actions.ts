@@ -44,6 +44,7 @@ async function campos(formData: FormData, restaurantId: string): Promise<DadosDo
     telefone: String(formData.get("telefone") ?? ""),
     senha: String(formData.get("senha") ?? ""),
     moto: String(formData.get("moto") ?? ""),
+    cor: String(formData.get("cor") ?? ""),
     placa: String(formData.get("placa") ?? ""),
     fotoUrl,
   };

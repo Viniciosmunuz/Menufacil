@@ -217,7 +217,15 @@ export async function requireEntregadores(restaurantId: string): Promise<Restaur
 /** quem está com a conta de entregador aberta, e em que restaurante */
 export type EntregadorAtual = {
   user: CurrentUser;
-  entregador: { id: string; nome: string; fotoUrl: string | null; moto: string | null; placa: string | null; disponibilidade: DisponibilidadeEntregador };
+  entregador: {
+    id: string;
+    nome: string;
+    fotoUrl: string | null;
+    moto: string | null;
+    corDaMoto: string | null;
+    placa: string | null;
+    disponibilidade: DisponibilidadeEntregador;
+  };
   restaurant: { id: string; name: string; slug: string };
 };
 
@@ -231,6 +239,7 @@ export const getEntregadorAtual = cache(async (): Promise<EntregadorAtual | null
       nome: true,
       fotoUrl: true,
       moto: true,
+      corDaMoto: true,
       placa: true,
       ativo: true,
       disponibilidade: true,

@@ -48,7 +48,7 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/entregad
 
       <div className="flex flex-col gap-4 pb-6">
         {/* o retrato sobe por cima da faixa */}
-        <div className="-mt-14 flex items-end gap-4">
+        <div className="-mt-10 flex items-end gap-4">
           {entregador.fotoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- retrato pequeno, já recortado no envio
             <img src={entregador.fotoUrl} alt="" className="size-24 shrink-0 rounded-full object-cover ring-4 ring-bg" />
@@ -89,7 +89,7 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/entregad
 
         <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-bg shadow-md shadow-black/5">
           <Linha icone={Phone} rotulo="Telefone (é com ele que você entra)" valor={formatPhone(telefone)} />
-          <Linha icone={Bike} rotulo="Moto" valor={entregador.moto || "—"} />
+          <Linha icone={Bike} rotulo="Moto" valor={[entregador.moto, entregador.corDaMoto].filter(Boolean).join(" ") || "—"} />
           <Linha icone={CreditCard} rotulo="Placa" valor={entregador.placa || "—"} />
         </div>
 
