@@ -79,7 +79,16 @@ async function entregar(aparelho: Aparelho, payload: string) {
 async function enviarParaORestaurante(restaurantId: string, conteudo: { titulo: string; corpo: string; tag: string }) {
   if (!pushLigado()) return 0;
   const aparelhos = await db.pushDevice.findMany({
-    where: { restaurantId },
+    where: {
+      restaurantId,
+      // O celular do entregador fica de fora.
+      //
+      // Ele pode ter o aviso ligado no mesmo aparelho em que o dono tem o
+      // do balcão -- é o caso de quem testa os dois --, e sem este filtro
+      // o entregador apitava a cada pedido que entrava na cozinha. O que é
+      // dele chega por avisarPessoas, com a entrega no nome dele.
+      OR: [{ userId: null }, { user: { entregador: { is: null } } }],
+    },
     select: { id: true, endpoint: true, p256dh: true, auth: true, failures: true },
   });
   if (aparelhos.length === 0) return 0;
