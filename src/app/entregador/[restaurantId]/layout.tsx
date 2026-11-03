@@ -1,4 +1,4 @@
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 
 // As telas do entregador se comportam como aplicativo, não como site.
 //
@@ -16,8 +16,11 @@ import type { Viewport } from "next";
 // Vale só para esta tela: o cardápio do cliente continua deixando ampliar,
 // que é o que quem lê de longe ou tem a vista cansada precisa.
 
+// o atalho da tela inicial: ícone e nome próprios, abrindo nas entregas
+export const metadata: Metadata = { manifest: "/entregador/manifest", title: { default: "MenuFácil Entregas", template: "%s · Entregas" } };
+
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f9680b",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
