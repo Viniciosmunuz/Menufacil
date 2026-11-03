@@ -83,6 +83,13 @@ export const checkoutSchema = z
     complement: optionalText(80),
     neighborhood: optionalText(80),
     reference: optionalText(120),
+    // O pino que o cliente marcou no mapa, quando marcou.
+    //
+    // É o que faz a rota chegar na porta e não na quadra: o mapa aberto
+    // não tem os números das casas de cidade pequena, e quem sabe onde é
+    // a porta é quem mora nela.
+    destinoLat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
+    destinoLng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     notes: optionalText(300),
     paymentMethod: z.enum(["PIX", "CARD", "CASH"], { error: "Escolha a forma de pagamento." }),
     cardType: z.enum(["CREDIT", "DEBIT"]).optional().catch(undefined),
@@ -421,6 +428,10 @@ export async function placeOrder(params: {
         deliveryComplement: address?.complement,
         deliveryNeighborhood: address?.neighborhood,
         deliveryReference: address?.reference,
+        // o pino do cliente já vem pronto: não há o que traduzir depois
+        destinoLat: type === "DELIVERY" ? (input.destinoLat ?? null) : null,
+        destinoLng: type === "DELIVERY" ? (input.destinoLng ?? null) : null,
+        destinoEm: type === "DELIVERY" && input.destinoLat != null ? new Date() : null,
         type,
         origin: cemPorCento ? "FULL_DELIVERY" : "WHATSAPP",
         paymentMethod: method,

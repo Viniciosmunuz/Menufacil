@@ -6,12 +6,12 @@ import { EntregadorNav } from "@/components/panel/entregador-nav";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { Badge } from "@/components/ui/badge";
 import { requireEntregador } from "@/server/auth/dal";
-import { enderecoEmLinha, entregasLivres, fechadasHoje, linkDaRota, minhasEntregas, pedidoDoEntregador } from "@/server/entregadores/entregas";
+import { entregasLivres, fechadasHoje, minhasEntregas, pedidoDoEntregador } from "@/server/entregadores/entregas";
 import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 
 import { CartaoDePedido, Faixa, ListaVazia, Numero, Recado, Secao } from "./componentes";
 import { ChaveDeDisponibilidade } from "./disponibilidade";
-import { MapaDoEntregador } from "./mapa";
+import { TelaEmRota } from "./em-rota";
 import { AvisoDePedidoNovo, type PedidoNovo } from "./novo-pedido";
 import { MandaPosicao } from "./posicao";
 
@@ -48,7 +48,6 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
   // e não uma lista com um item só.
   const atual = levando[0] ? await pedidoDoEntregador(restaurant.id, entregador.id, levando[0].id) : null;
   const destino = atual ? await destinoDoPedido(atual) : null;
-  const enderecoAtual = atual ? enderecoEmLinha(atual) : "";
 
   // o que pode virar aviso de tela cheia: o que mandaram para ele primeiro,
   // depois o que está livre para quem pegar
@@ -59,6 +58,15 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
     bairro: p.deliveryNeighborhood,
     minha: p.atribuidoEm !== null,
   }));
+
+  // Com entrega na mão, a tela vira o mapa.
+  //
+  // É outra tela, e não a mesma com um mapa dentro: quem está com a moto
+  // ligada tem uma pergunta só -- para onde eu vou --, e lista de números
+  // e de pedidos livres só atrapalha nessa hora.
+  if (atual) {
+    return <TelaEmRota pedido={atual} destino={destino} base={base} disponibilidade={entregador.disponibilidade} />;
+  }
 
   const primeiroNome = entregador.nome.split(" ")[0];
   const recado = RECADO[entregador.disponibilidade];
@@ -92,17 +100,7 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
 
         <section className="flex flex-col gap-3">
           <Secao icone={Zap}>Com você agora</Secao>
-          {levando.length === 0 ? (
-            <ListaVazia titulo="Nenhuma entrega no momento">Assim que chegar uma, você vê por aqui.</ListaVazia>
-          ) : (
-            <>
-              {/* o mapa da entrega da vez, já aberto */}
-              {atual && enderecoAtual && <MapaDoEntregador destino={destino} rota={linkDaRota(enderecoAtual, atual.restaurant.city)} code={atual.code} />}
-              {levando.map((p) => (
-                <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="info">Em rota</Badge>} />
-              ))}
-            </>
-          )}
+          <ListaVazia titulo="Nenhuma entrega no momento">Assim que chegar uma, você vê por aqui.</ListaVazia>
         </section>
 
         {livres.length > 0 && (

@@ -228,6 +228,10 @@ model Restaurant {
   // leva o pedido. So mexe com pedido de DELIVERY; retirada e salao nao
   // tem entregador.
   entregadorEnabled Boolean       @default(false)
+  /// Onde fica o restaurante, para o mapa do cliente abrir no lugar
+  /// certo. Traduzido do endereco dele uma vez, na primeira necessidade.
+  latitude          Float?
+  longitude         Float?
   // cartaz que fica na tela do totem parado; sem ele entra a capa
   totemIdleUrl      String?
   /// o dono pausou o totem pelo painel: a tela avisa e nao aceita pedido

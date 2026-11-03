@@ -40,12 +40,24 @@ export function MapaDoEntregador({
   destino,
   rota,
   code,
+  fundo = false,
 }: {
   destino: { lat: number; lng: number } | null;
   /** o link que abre a navegação no mapa do próprio celular */
   rota: string;
   /** o código do pedido, que é por onde se pede o caminho pelas ruas */
   code: string;
+  /**
+   * Mapa de fundo, ocupando a tela toda.
+   *
+   * É como os aplicativos de corrida mostram uma viagem em andamento: o
+   * mapa é o chão, e o que se toca flutua por cima. Quem está com a moto
+   * ligada olha para onde vai, e não para uma lista.
+   *
+   * Nesse modo os botões saem daqui -- quem os desenha é a tela, por cima
+   * do mapa.
+   */
+  fundo?: boolean;
 }) {
   const [minha, setMinha] = useState<[number, number] | null>(null);
   // o caminho pelas ruas, quando o serviço de rotas está configurado
@@ -129,20 +141,29 @@ export function MapaDoEntregador({
     [],
   );
 
+  const chegada = caminho && (
+    <p className="flex items-center gap-1.5 rounded-full bg-bg/95 px-3 py-1.5 text-sm font-extrabold shadow-md">
+      <Clock className="size-4 text-success" aria-hidden="true" />
+      Chegada em {tempoEmPalavras(caminho.segundos)}
+    </p>
+  );
+
+  if (fundo) {
+    return (
+      <>
+        <div ref={caixa} className="absolute inset-0 bg-[#0f1115]" aria-label="Mapa da entrega" />
+        {chegada && <div className="absolute top-20 left-4 z-10">{chegada}</div>}
+      </>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-3">
       {/* isolate: o Leaflet usa z-index alto nos proprios niveis, e sem
           isto eles brigam com o aviso de tela cheia e passam por cima */}
       <div className="relative isolate">
         <div ref={caixa} className="mapa-escuro h-56 w-full overflow-hidden rounded-2xl border border-black/25 bg-[#0f1115] shadow-md shadow-black/5" aria-label="Mapa da entrega" />
-        {/* o tempo só aparece com rota de verdade: chute de previsão é pior
-            do que previsão nenhuma para quem está na rua */}
-        {caminho && (
-          <p className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-bg/95 px-3 py-1.5 text-sm font-extrabold shadow-md">
-            <Clock className="size-4 text-success" aria-hidden="true" />
-            Chegada em {tempoEmPalavras(caminho.segundos)}
-          </p>
-        )}
+        {chegada && <div className="absolute top-2 left-2">{chegada}</div>}
       </div>
       <div className="flex gap-2">
         <a href={rota} target="_blank" rel="noopener noreferrer" className={buttonClasses("primary", "lg", "flex-1")}>

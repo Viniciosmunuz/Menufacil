@@ -20,6 +20,7 @@ import { selectionProblems, type OptionGroupData } from "@/lib/options";
 import { cardTypeLabel } from "@/lib/payment";
 
 import { submitOrder, type CheckoutState } from "./actions";
+import { MarcarNoMapa } from "./marcar-no-mapa";
 
 type RestaurantInfo = {
   id: string;
@@ -33,6 +34,10 @@ type RestaurantInfo = {
    */
   soRetirada: boolean;
   deliveryFeeCents: number;
+  /** com entregadores ligados, o cliente pode marcar a casa no mapa */
+  comEntregador?: boolean;
+  /** onde o restaurante fica, para o mapa abrir perto */
+  local?: { lat: number; lng: number } | null;
   minOrderCents: number;
   deliveryTime: string | null;
   address: string | null;
@@ -447,6 +452,11 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                       aria-invalid={!!err.reference}
                     />
                   </Field>
+                  {/* O pino da casa: só onde o restaurante tem entregadores,
+                      porque é só ali que ele serve para alguma coisa -- é o
+                      que leva a moto até a porta. */}
+                  {restaurant.comEntregador && <MarcarNoMapa centro={restaurant.local ?? null} />}
+
                   {bairro === FORA && (
                     <Alert tone="warning" className="flex flex-col items-start gap-3 sm:col-span-6">
                       <span>
