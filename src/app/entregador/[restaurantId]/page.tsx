@@ -12,6 +12,7 @@ import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 import { CartaoDePedido, Faixa, ListaVazia, Numero, Recado, Secao } from "./componentes";
 import { ChaveDeDisponibilidade } from "./disponibilidade";
 import { MapaDoEntregador } from "./mapa";
+import { AvisoDePedidoNovo, type PedidoNovo } from "./novo-pedido";
 import { MandaPosicao } from "./posicao";
 
 export const metadata: Metadata = { title: "Minhas entregas" };
@@ -49,6 +50,16 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
   const destino = atual ? await destinoDoPedido(atual) : null;
   const enderecoAtual = atual ? enderecoEmLinha(atual) : "";
 
+  // o que pode virar aviso de tela cheia: o que mandaram para ele primeiro,
+  // depois o que está livre para quem pegar
+  const paraAvisar: PedidoNovo[] = [...levando, ...livres].map((p) => ({
+    id: p.id,
+    numero: p.number,
+    cliente: p.customerName,
+    bairro: p.deliveryNeighborhood,
+    minha: p.atribuidoEm !== null,
+  }));
+
   const primeiroNome = entregador.nome.split(" ")[0];
   const recado = RECADO[entregador.disponibilidade];
 
@@ -58,6 +69,7 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
       <AutoRefresh seconds={30} />
       {/* com entrega na mão, o cliente acompanha a moto no mapa */}
       <MandaPosicao ativo={levando.length > 0} />
+      <AvisoDePedidoNovo pedidos={paraAvisar} base={base} />
 
       <Faixa
         titulo={`Olá, ${primeiroNome}!`}
