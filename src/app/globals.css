@@ -156,3 +156,27 @@ details.drawer[open]::details-content {
     linear-gradient(90deg, rgb(249 104 11 / 0.1) 1px, transparent 1px);
   background-size: 9px 9px;
 }
+
+/* O mapa no escuro.
+ *
+ * Os ladrilhos do OpenStreetMap sao claros, e um mapa branco no celular,
+ * de noite, cega quem olha. O escuro e feito escurecendo e lavando a cor
+ * da camada dos ladrilhos -- e nao invertendo: invertido, a rua branca
+ * fica preta e o mato verde fica claro, o oposto de um mapa noturno.
+ * Escurecendo, a hierarquia se mantem: a rua continua sendo a coisa mais
+ * clara da tela, e e por ela que o olho segue a moto.
+ *
+ * O filtro fica so na camada dos ladrilhos: os alfinetes e a linha sao
+ * irmaos dela no DOM e mantem as cores de verdade. */
+.mapa-escuro .leaflet-tile-pane {
+  filter: brightness(0.52) saturate(0.55) contrast(1.25);
+}
+
+.mapa-escuro .leaflet-control-attribution {
+  background: rgb(0 0 0 / 0.55);
+  color: rgb(255 255 255 / 0.75);
+}
+
+.mapa-escuro .leaflet-control-attribution a {
+  color: rgb(255 255 255 / 0.9);
+}

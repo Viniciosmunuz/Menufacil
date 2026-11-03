@@ -6,6 +6,7 @@ import { Bike, Crosshair, Phone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { ATRIBUICAO, COR_DA_MOTO, COR_DO_DESTINO, LADRILHOS } from "@/lib/mapa";
 
 // O mapa com a moto se mexendo, na tela que o cliente já acompanha.
 //
@@ -39,7 +40,7 @@ const INTERVALO = 12_000;
 const motoIcon = (L: typeof import("leaflet")) =>
   L.divIcon({
     className: "",
-    html: `<span style="display:grid;place-items:center;width:40px;height:40px;border-radius:9999px;background:#16a34a;box-shadow:0 2px 10px rgba(0,0,0,.35);color:#fff;font-size:20px">🛵</span>`,
+    html: `<span style="display:grid;place-items:center;width:40px;height:40px;border-radius:9999px;background:${COR_DA_MOTO};box-shadow:0 2px 10px rgba(0,0,0,.35);color:#fff;font-size:20px">🛵</span>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
@@ -47,7 +48,7 @@ const motoIcon = (L: typeof import("leaflet")) =>
 const casaIcon = (L: typeof import("leaflet")) =>
   L.divIcon({
     className: "",
-    html: `<span style="display:grid;place-items:center;width:32px;height:32px;border-radius:9999px;background:#f9680b;box-shadow:0 2px 8px rgba(0,0,0,.3);color:#fff;font-size:16px">🏠</span>`,
+    html: `<span style="display:grid;place-items:center;width:32px;height:32px;border-radius:9999px;background:${COR_DO_DESTINO};box-shadow:0 2px 8px rgba(0,0,0,.3);color:#fff;font-size:16px">🏠</span>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
@@ -106,11 +107,23 @@ export function MapaDaEntrega({
       leaflet.current = L;
 
       if (!mapa.current) {
-        mapa.current = L.map(caixa.current, { zoomControl: false, attributionControl: true }).setView(pos, 15);
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "© OpenStreetMap",
-        }).addTo(mapa.current);
+        // Mapa travado: o cliente olha, não mexe.
+        //
+        // Sem arrastar, sem pinça, sem rolar com o dedo -- quem está
+        // esperando comida quer ver a moto chegando, e um mapa que se
+        // move engole a rolagem da página e deixa a pessoa presa nele.
+        // O enquadramento é nosso: a moto e a casa sempre à vista.
+        mapa.current = L.map(caixa.current, {
+          zoomControl: false,
+          attributionControl: true,
+          dragging: false,
+          touchZoom: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+        }).setView(pos, 15);
+        L.tileLayer(LADRILHOS, { maxZoom: 19, attribution: ATRIBUICAO }).addTo(mapa.current);
         marcadorMoto.current = L.marker(pos, { icon: motoIcon(L) }).addTo(mapa.current);
       } else {
         marcadorMoto.current?.setLatLng(pos);
@@ -125,7 +138,7 @@ export function MapaDaEntrega({
 
         const pontos: [number, number][] = [pos, alvo];
         if (!linha.current) {
-          linha.current = L.polyline(pontos, { color: "#16a34a", weight: 3, opacity: 0.6, dashArray: "6 8" }).addTo(mapa.current);
+          linha.current = L.polyline(pontos, { color: COR_DA_MOTO, weight: 3, opacity: 0.7, dashArray: "6 8" }).addTo(mapa.current);
         } else {
           linha.current.setLatLngs(pontos);
         }
@@ -186,7 +199,7 @@ export function MapaDaEntrega({
 
       {temMapa ? (
         <>
-          <div ref={caixa} className="h-64 w-full overflow-hidden rounded-control border border-line" aria-label="Mapa da entrega" />
+          <div ref={caixa} className="h-64 w-full mapa-escuro overflow-hidden rounded-control border border-ink/20 bg-ink" aria-label="Mapa da entrega" />
           <button
             type="button"
             onClick={() =>
