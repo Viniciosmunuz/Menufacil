@@ -43,7 +43,7 @@ export function TelaEmRota({
       <MapaDoEntregador destino={destino} rota={linkDaRota(endereco, pedido.restaurant.city)} code={pedido.code} fundo />
 
       {/* em cima: só a identidade e o status, sem tapar o caminho */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 p-4">
         <span className="pointer-events-auto rounded-full bg-bg/95 px-3.5 py-2 text-sm font-extrabold shadow-md">
           Pedido #{pedido.number}
         </span>
@@ -53,7 +53,7 @@ export function TelaEmRota({
       </div>
 
       {/* embaixo: para onde vai, com quem falar, e o que fazer */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-3 px-4 pb-2">
+      <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 px-4 pb-2">
         <div className="flex flex-col gap-3 rounded-t-3xl border border-line bg-bg p-4 shadow-2xl shadow-black/40">
           <p className="flex items-start gap-2">
             <MapPin className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />

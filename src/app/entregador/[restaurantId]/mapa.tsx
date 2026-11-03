@@ -151,8 +151,8 @@ export function MapaDoEntregador({
   if (fundo) {
     return (
       <>
-        <div ref={caixa} className="absolute inset-0 bg-[#0f1115]" aria-label="Mapa da entrega" />
-        {chegada && <div className="absolute top-20 left-4 z-10">{chegada}</div>}
+        <div ref={caixa} className="absolute inset-0 isolate bg-[#0f1115]" aria-label="Mapa da entrega" />
+        {chegada && <div className="absolute top-20 left-4 z-[1000]">{chegada}</div>}
       </>
     );
   }
