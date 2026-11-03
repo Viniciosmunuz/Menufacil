@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { ORDER_STATUSES } from "@/lib/labels";
 import { fieldErrors, formObject, optionalText, phone, text, type FieldErrors } from "@/lib/validation";
 import { audit } from "@/server/audit";
+import { atribuirAoSair } from "@/server/entregadores/ao-sair";
 import { WhatsAppService } from "@/server/whatsapp/service";
 
 // Mudanças num pedido feitas pela equipe (admin ou restaurante). Quem chama
@@ -93,6 +94,13 @@ async function recordStatus(tx: Prisma.TransactionClient, order: OrderRow, statu
 /** depois de gravar: avisa o cliente da mudança de status e registra quem fez */
 async function finish(order: OrderRow, newStatus: OrderStatus | null, actor: OrderActor) {
   if (newStatus) await WhatsAppService.sendOrderStatus(order.id, newStatus);
+  // Saiu para entrega: com um único entregador disponível, a entrega já
+  // sai no nome dele -- ele não precisa aceitar. Com dois ou mais, o
+  // pedido fica livre, para quem pegar primeiro.
+  //
+  // Restaurante sem o módulo não sente nada: a consulta não acha
+  // entregador disponível e a função volta sem tocar no pedido.
+  if (newStatus === "OUT_FOR_DELIVERY" && order.type === "DELIVERY") await atribuirAoSair(order.restaurantId, order.id);
   await audit({
     actorUserId: actor.userId,
     action: "order.update",

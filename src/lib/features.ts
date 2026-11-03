@@ -5,7 +5,7 @@
 // marcado como tal, para ninguém achar que ligar a chave já faz alguma
 // coisa. Quem confere de verdade é o servidor, não a tela.
 
-export type FeatureKey = "printEnabled" | "totemEnabled" | "fullDeliveryEnabled" | "salaoEnabled";
+export type FeatureKey = "printEnabled" | "totemEnabled" | "fullDeliveryEnabled" | "salaoEnabled" | "entregadorEnabled";
 
 export type Feature = {
   key: FeatureKey;
@@ -48,6 +48,12 @@ export const FEATURES: Feature[] = [
     // que o Papaléguas já usa no balcão). Continua sendo liberado pelo admin
     // restaurante por restaurante. Para tirar do ar de novo sem perder nada:
     // foraDoAr: true.
+  },
+  {
+    key: "entregadorEnabled",
+    label: "Entregadores",
+    hint:
+      "Os entregadores do proprio restaurante: cadastro no painel, tela propria para quem leva o pedido e a confirmacao da entrega feita por ele, nao pelo balcao. So mexe com pedido de entrega.",
   },
 ];
 

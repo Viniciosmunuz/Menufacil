@@ -6,7 +6,7 @@ import { GarcomNav } from "@/components/panel/garcom-nav";
 import { noAr } from "@/lib/features";
 
 import { SalaoNaoLiberado } from "./aviso";
-import { BotaoSair } from "./ajustes/sair";
+import { BotaoSair } from "@/components/panel/botao-sair";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { mapaDoSalao } from "@/server/salao/mesas";
 import { turnoAberto } from "@/server/salao/turno";

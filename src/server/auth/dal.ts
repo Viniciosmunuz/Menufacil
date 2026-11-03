@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 
-import type { NivelGarcom, OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
+import type { DisponibilidadeEntregador, NivelGarcom, OrderFlowMode, RestaurantStatus, UserRole } from "@/generated/prisma/client";
 import { noAr } from "@/lib/features";
 import { permissoesDoVinculo, TUDO, type PermissoesDoSalao } from "@/lib/permissoes-salao";
 import { db } from "@/lib/db";
@@ -69,6 +69,7 @@ export type RestaurantAccess = {
     totemEnabled: boolean;
     fullDeliveryEnabled: boolean;
     salaoEnabled: boolean;
+    entregadorEnabled: boolean;
     /// fluxo escolhido pelo dono; só vale com fullDeliveryEnabled ligado
     deliveryMode: OrderFlowMode;
   };
@@ -126,6 +127,7 @@ export const getRestaurantAccess = cache(
         totemEnabled: true,
         fullDeliveryEnabled: true,
         salaoEnabled: true,
+        entregadorEnabled: true,
         deliveryMode: true,
         owners: { where: { userId: user.id }, select: { id: true, role: true, nivel: true, permissoes: true }, take: 1 },
       },
@@ -197,4 +199,65 @@ export async function requireDono(restaurantId: string): Promise<RestaurantAcces
     redirect(`/garcom/${restaurantId}`);
   }
   return acesso;
+}
+
+/**
+ * Uma tela ou ação de Entregadores, do lado do restaurante.
+ *
+ * Mesma regra do Salão: esconder a aba não impede ninguém de digitar o
+ * endereço na mão, e aqui se cadastra gente e se dá senha. Restaurante sem
+ * o recurso liberado recebe a resposta de uma página que não existe.
+ */
+export async function requireEntregadores(restaurantId: string): Promise<RestaurantAccess> {
+  const acesso = await requireRestaurantAccess(restaurantId);
+  if (!noAr("entregadorEnabled") || !acesso.restaurant.entregadorEnabled) notFound();
+  return acesso;
+}
+
+/** quem está com a conta de entregador aberta, e em que restaurante */
+export type EntregadorAtual = {
+  user: CurrentUser;
+  entregador: { id: string; nome: string; fotoUrl: string | null; moto: string | null; placa: string | null; disponibilidade: DisponibilidadeEntregador };
+  restaurant: { id: string; name: string; slug: string };
+};
+
+export const getEntregadorAtual = cache(async (): Promise<EntregadorAtual | null> => {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const linha = await db.entregador.findUnique({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      nome: true,
+      fotoUrl: true,
+      moto: true,
+      placa: true,
+      ativo: true,
+      disponibilidade: true,
+      restaurant: { select: { id: true, name: true, slug: true, status: true, entregadorEnabled: true } },
+    },
+  });
+  if (!linha) return null;
+  const { restaurant, ativo, ...entregador } = linha;
+  // desligado pelo dono, restaurante bloqueado ou recurso fechado: a conta
+  // existe e não abre nada. É assim que o dono tira o acesso de alguém sem
+  // apagar as entregas que a pessoa fez.
+  if (!ativo || restaurant.status === "BLOCKED" || !restaurant.entregadorEnabled || !noAr("entregadorEnabled")) return null;
+  return { user, entregador, restaurant: { id: restaurant.id, name: restaurant.name, slug: restaurant.slug } };
+});
+
+/**
+ * A tela do entregador.
+ *
+ * A conta dele não tem vínculo em RestaurantOwner, então o painel do dono e
+ * a tela do garçom já a recusam sozinhos. Aqui é o contrário: só entra quem
+ * tem cadastro de entregador ativo.
+ */
+export async function requireEntregador(): Promise<EntregadorAtual> {
+  const atual = await getEntregadorAtual();
+  if (!atual) {
+    if (await getCurrentUser()) notFound();
+    redirect("/entrar");
+  }
+  return atual;
 }

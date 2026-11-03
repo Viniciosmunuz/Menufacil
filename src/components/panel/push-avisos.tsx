@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 // registro tenha se perdido do outro lado.
 
 const CAMINHO_DO_SW = "/sw-avisos.js";
-const ESCOPO = "/painel/";
+/** o padrão é o painel; a tela do entregador passa o escopo dela */
+const ESCOPO_PADRAO = "/painel/";
 
 type Estado = "carregando" | "indisponivel" | "bloqueado" | "desligado" | "ligado";
 
@@ -48,6 +49,9 @@ function apelidoDoAparelho() {
 export function PushAvisos({
   restaurantId,
   chavePublica,
+  escopo = ESCOPO_PADRAO,
+  texto,
+  discreto = false,
   ligarAction,
   desligarAction,
   testarAction,
@@ -55,6 +59,20 @@ export function PushAvisos({
   restaurantId: string;
   /** null quando o servidor não tem as chaves configuradas: o bloco some */
   chavePublica: string | null;
+  /** a pasta que este aviso cobre; um service worker por tela */
+  escopo?: string;
+  /** o que o aviso promete, em uma linha -- muda entre o balcão e a rua */
+  texto?: { ligado: string; desligado: string };
+  /**
+   * Modo discreto, para a tela do entregador.
+   *
+   * Com a permissão já dada, o aparelho se cadastra sozinho e a tela
+   * apenas confirma numa linha -- ninguém precisa apertar nada. É o que
+   * vai acontecer dentro do aplicativo: a permissão vem da instalação,
+   * não de um botão na página. Pelo navegador, sem permissão ainda, resta
+   * o botão -- o navegador não deixa pedir sozinho.
+   */
+  discreto?: boolean;
   ligarAction: (entrada: { restaurantId: string; endpoint: string; p256dh: string; auth: string; label?: string }) => Promise<void>;
   desligarAction: (entrada: { restaurantId: string; endpoint: string }) => Promise<void>;
   testarAction: (restaurantId: string) => Promise<{ enviados: number }>;
@@ -73,7 +91,7 @@ export function PushAvisos({
       if (!suportado) return vivo && setEstado("indisponivel");
       if (Notification.permission === "denied") return vivo && setEstado("bloqueado");
       try {
-        const registro = await navigator.serviceWorker.getRegistration(ESCOPO);
+        const registro = await navigator.serviceWorker.getRegistration(escopo);
         const assinatura = await registro?.pushManager.getSubscription();
         const chaves = assinatura && chavesDa(assinatura);
         if (!chaves || Notification.permission !== "granted") return vivo && setEstado("desligado");
@@ -89,7 +107,7 @@ export function PushAvisos({
     };
     // só na montagem: o resto é comandado pelos botões
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantId, chavePublica]);
+  }, [restaurantId, chavePublica, escopo]);
 
   async function ligar() {
     setErro(null);
@@ -97,7 +115,7 @@ export function PushAvisos({
     if (permissao === "denied") return setEstado("bloqueado");
     if (permissao !== "granted") return;
 
-    const registro = await navigator.serviceWorker.register(CAMINHO_DO_SW, { scope: ESCOPO });
+    const registro = await navigator.serviceWorker.register(CAMINHO_DO_SW, { scope: escopo });
     await navigator.serviceWorker.ready;
     const assinatura = await registro.pushManager.subscribe({
       userVisibleOnly: true,
@@ -110,7 +128,7 @@ export function PushAvisos({
   }
 
   async function desligar() {
-    const registro = await navigator.serviceWorker.getRegistration(ESCOPO);
+    const registro = await navigator.serviceWorker.getRegistration(escopo);
     const assinatura = await registro?.pushManager.getSubscription();
     if (assinatura) {
       await desligarAction({ restaurantId, endpoint: assinatura.endpoint });
@@ -140,13 +158,33 @@ export function PushAvisos({
   }
 
   if (estado === "ligado") {
+    // discreto: uma linha confirmando, e o caminho de desligar junto dela
+    if (discreto) {
+      return (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <span className="flex items-center gap-1.5 font-bold text-success">
+            <Check className="size-4 shrink-0" aria-hidden="true" />
+            {texto?.ligado ?? "Avisando neste aparelho."}
+          </span>
+          <button
+            type="button"
+            disabled={pendente}
+            onClick={() => tentar(desligar)}
+            className="font-semibold text-muted underline underline-offset-2"
+          >
+            desligar
+          </button>
+        </p>
+      );
+    }
+
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-success/30 bg-success/5 px-4 py-3 text-sm">
         <span className="flex items-center gap-2 font-bold text-success">
           <Check className="size-4 shrink-0" aria-hidden="true" />
           Avisando neste aparelho
         </span>
-        <span className="text-muted">Pedido novo apita mesmo com o painel fechado.</span>
+        <span className="text-muted">{texto?.ligado ?? "Pedido novo apita mesmo com o painel fechado."}</span>
         <span className="ml-auto flex items-center gap-1">
           <Button
             size="sm"
@@ -175,7 +213,7 @@ export function PushAvisos({
       <BellRing className="size-5 shrink-0 text-brand" aria-hidden="true" />
       <span className="min-w-0 flex-1">
         <span className="block font-bold">Avisar neste aparelho</span>
-        <span className="block text-muted">Pedido novo apita mesmo com o painel fechado ou a tela apagada.</span>
+        <span className="block text-muted">{texto?.desligado ?? "Pedido novo apita mesmo com o painel fechado ou a tela apagada."}</span>
       </span>
       <Button size="sm" disabled={pendente} onClick={() => tentar(ligar)}>
         {pendente ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}

@@ -10,7 +10,7 @@ import { noAr } from "@/lib/features";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
 import { SalaoNaoLiberado } from "../aviso";
-import { BotaoSair } from "./sair";
+import { BotaoSair } from "@/components/panel/botao-sair";
 
 export const metadata: Metadata = { title: "Ajustes" };
 

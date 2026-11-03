@@ -41,17 +41,19 @@ model User {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
-  sessions      Session[]
-  ownerships    RestaurantOwner[]
-  tokens        VerificationToken[]
-  auditLogs     AuditLog[]
-  statusChanges OrderStatusEvent[]
-  pushDevices   PushDevice[]
-  comandas      Comanda[]
-  caixasAbertos CaixaSalao[] @relation("CaixaAberto")
+  sessions          Session[]
+  ownerships        RestaurantOwner[]
+  tokens            VerificationToken[]
+  auditLogs         AuditLog[]
+  statusChanges     OrderStatusEvent[]
+  pushDevices       PushDevice[]
+  comandas          Comanda[]
+  caixasAbertos     CaixaSalao[]        @relation("CaixaAberto")
   movimentosDeCaixa MovimentoCaixa[]
-  caixasFechados CaixaSalao[] @relation("CaixaFechado")
-  recebimentos   PagamentoComanda[]
+  caixasFechados    CaixaSalao[]        @relation("CaixaFechado")
+  recebimentos      PagamentoComanda[]
+  /// o cadastro de entregador desta conta, quando ela e de um entregador
+  entregador        Entregador?
 
   @@index([role])
 }
@@ -216,16 +218,20 @@ model Restaurant {
   chatEnabled         Boolean @default(false)
 
   /// fluxo escolhido pelo dono; so sai de WHATSAPP com o recurso liberado
-  deliveryMode OrderFlowMode @default(WHATSAPP)
+  deliveryMode      OrderFlowMode @default(WHATSAPP)
   // totem de autoatendimento: modulo isolado, nasce desligado para todo mundo
-  totemEnabled Boolean       @default(false)
+  totemEnabled      Boolean       @default(false)
   // atendimento no salao: mesas, comandas e garcons. Mesmo catalogo de
   // produtos dos outros canais -- o que muda e por onde o pedido entra.
-  salaoEnabled Boolean       @default(false)
+  salaoEnabled      Boolean       @default(false)
+  // entregadores proprios: cadastro no painel e tela propria para quem
+  // leva o pedido. So mexe com pedido de DELIVERY; retirada e salao nao
+  // tem entregador.
+  entregadorEnabled Boolean       @default(false)
   // cartaz que fica na tela do totem parado; sem ele entra a capa
-  totemIdleUrl String?
+  totemIdleUrl      String?
   /// o dono pausou o totem pelo painel: a tela avisa e nao aceita pedido
-  totemPaused  Boolean @default(false)
+  totemPaused       Boolean       @default(false)
 
   // ---- cobranca -----------------------------------------------------
   /// o plano contratado; nulo enquanto ninguem definiu (restaurante em
@@ -284,6 +290,7 @@ model Restaurant {
   payments            RestaurantPayment[]
   chamados            SupportTicket[]
   deliveryAreas       DeliveryArea[]
+  entregadores        Entregador[]
 
   @@index([status])
   @@index([city])
@@ -314,6 +321,81 @@ model DeliveryArea {
 
   @@unique([restaurantId, name])
   @@index([restaurantId, active])
+}
+
+/// O entregador do restaurante, com o que o cliente precisa ver na porta:
+/// quem e, em que moto chega, e um telefone para quando nao acha a casa.
+///
+/// A conta de login e um User, como a do garcom -- um login so no sistema
+/// inteiro. A diferenca e que o entregador NAO tem vinculo em
+/// RestaurantOwner: sem vinculo, o painel do dono e a tela do garcom o
+/// recusam sozinhos, e o unico lugar que ele abre e o dele.
+model Entregador {
+  id           String @id @default(cuid())
+  restaurantId String
+  /// a conta de login; uma por entregador, e so dele
+  userId       String @unique
+
+  nome     String
+  telefone String // somente digitos, com DDI
+  fotoUrl  String?
+  moto     String?
+  placa    String?
+
+  /// desligado pelo dono: nao entra, nao recebe pedido. O cadastro fica,
+  /// porque as entregas antigas continuam no nome dele.
+  ativo Boolean @default(true)
+
+  /// o que o proprio entregador diz da vida dele agora
+  disponibilidade DisponibilidadeEntregador @default(INDISPONIVEL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant  Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedidos     Order[]
+  ocorrencias OcorrenciaEntrega[]
+
+  @@unique([restaurantId, telefone])
+  @@index([restaurantId, ativo])
+}
+
+/// Se ele esta pegando pedido agora.
+///
+/// Quem muda e o proprio entregador, na tela dele. E diferente do campo
+/// "ativo", que e o dono dizendo se a pessoa ainda trabalha ali.
+enum DisponibilidadeEntregador {
+  DISPONIVEL
+  INDISPONIVEL
+  PAUSA
+}
+
+/// O que deu errado na porta do cliente.
+///
+/// Fica como registro do pedido, e nao como status: o pedido continua em
+/// rota depois de um "cliente nao atende" -- o que muda e que o balcao
+/// passa a saber, e alguem liga.
+model OcorrenciaEntrega {
+  id           String             @id @default(cuid())
+  orderId      String
+  entregadorId String?
+  motivo       MotivoDaOcorrencia
+  descricao    String?
+  createdAt    DateTime           @default(now())
+
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  entregador Entregador? @relation(fields: [entregadorId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+enum MotivoDaOcorrencia {
+  CLIENTE_NAO_ENCONTRADO
+  ENDERECO_INCORRETO
+  CLIENTE_NAO_ATENDE
+  PROBLEMA_COM_PEDIDO
+  OUTRO
 }
 
 enum OwnerRole {
@@ -357,7 +439,7 @@ model RestaurantOwner {
   /// A leitura passa por src/lib/permissoes-salao.ts, que descarta o que
   /// nao reconhece.
   permissoes Json?
-  createdAt    DateTime  @default(now())
+  createdAt  DateTime @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -385,17 +467,17 @@ model OpeningHour {
 // ============================================================
 
 model MenuCategory {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   restaurantId String
   name         String
   description  String?
-  sortOrder    Int      @default(0)
-  active    Boolean  @default(true)
+  sortOrder    Int     @default(0)
+  active       Boolean @default(true)
 
   /// Secao que so existe no salao: a taxa de embalagem, o couvert, o
   /// "para viagem". O garcom lanca na comanda como qualquer produto, e o
   /// cliente do link e o totem nem veem que ela existe.
-  somenteSalao Boolean @default(false)
+  somenteSalao Boolean  @default(false)
   // catalogo de sabores de pizza (Especiais, Tradicionais): os produtos daqui
   // nao aparecem soltos no cardapio, sao os sabores que o cliente escolhe
   // dentro da pizza
@@ -614,19 +696,32 @@ model Order {
   /// anotado pelo Menu Facil IA na conversa do WhatsApp, e nao pelo cliente no site
   feitoPelaIa Boolean @default(false)
 
+  /// quem esta levando este pedido. So pedido de entrega tem; retirada,
+  /// totem e salao ficam sempre vazios.
+  ///
+  /// Fica nulo ate alguem assumir, e e isso que faz a fila de
+  /// "aguardando entregador" no painel. Quando o entregador sai do
+  /// cadastro o campo zera, e a entrega antiga perde o nome -- por isso o
+  /// cadastro e desativado, nunca apagado.
+  entregadorId String?
+  /// quando ele assumiu: e o relogio que o painel mostra na fila
+  atribuidoEm  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  restaurant   Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  comanda      Comanda?           @relation(fields: [comandaId], references: [id], onDelete: SetNull)
-  customer     Customer           @relation(fields: [customerId], references: [id])
-  address      Address?           @relation(fields: [addressId], references: [id])
+  restaurant   Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  comanda      Comanda?            @relation(fields: [comandaId], references: [id], onDelete: SetNull)
+  customer     Customer            @relation(fields: [customerId], references: [id])
+  address      Address?            @relation(fields: [addressId], references: [id])
   items        OrderItem[]
   statusEvents OrderStatusEvent[]
   payment      Payment?
   impressoes   OrderPrint[]
   messages     WhatsAppMessage[]
   chat         ChatConversation?
+  entregador   Entregador?         @relation(fields: [entregadorId], references: [id], onDelete: SetNull)
+  ocorrencias  OcorrenciaEntrega[]
 
   // o numero repete de um dia para o outro (#1 todo dia), entao quem
   // identifica o pedido e o id e o code, nunca o numero
@@ -634,6 +729,7 @@ model Order {
   @@index([restaurantId, status, createdAt])
   @@index([customerId])
   @@index([comandaId])
+  @@index([entregadorId, status])
 }
 
 model OrderItem {
@@ -872,7 +968,7 @@ model PrintDevice {
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
 
-  restaurant Restaurant?     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant Restaurant?    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   categories MenuCategory[]
   impressoes OrderPrint[]
   /// o totem que o aplicativo do tablet abriu com esta impressora
@@ -888,9 +984,9 @@ model PrintDevice {
 /// e um so, e a primeira impressora que marcasse tiraria o pedido da fila
 /// da outra -- a bebida sairia no bar e a cozinha nunca receberia o prato.
 model OrderPrint {
-  id       String   @id @default(cuid())
-  orderId  String
-  deviceId String
+  id        String   @id @default(cuid())
+  orderId   String
+  deviceId  String
   printedAt DateTime @default(now())
 
   order  Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -1279,15 +1375,15 @@ enum LugarTipo {
 }
 
 model Mesa {
-  id           String     @id @default(cuid())
+  id           String    @id @default(cuid())
   restaurantId String
-  tipo         LugarTipo  @default(MESA)
+  tipo         LugarTipo @default(MESA)
   numero       Int
   nome         String?
-  lugares      Int        @default(4)
+  lugares      Int       @default(4)
   /// mesa fora de uso (quebrada, guardada) some do mapa sem perder historico
-  ativa        Boolean    @default(true)
-  sortOrder    Int        @default(0)
+  ativa        Boolean   @default(true)
+  sortOrder    Int       @default(0)
 
   /// o garcom esta com esta mesa aberta no celular: o cartao fica roxo,
   /// "Em atendimento". O celular renova de tempos em tempos; parado ha mais
@@ -1322,9 +1418,9 @@ model Comanda {
   /// quem abriu; o garcom responsavel pode mudar com a transferencia
   garcomUserId String?
 
-  status      MesaStatus @default(OCUPADA)
-  pessoas     Int        @default(1)
-  observacao  String?
+  status     MesaStatus @default(OCUPADA)
+  pessoas    Int        @default(1)
+  observacao String?
 
   /// cobrado a mais (taxa de servico) e abatido, em centavos
   servicoCents  Int @default(0)
@@ -1344,9 +1440,9 @@ model Comanda {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  mesa       Mesa       @relation(fields: [mesaId], references: [id], onDelete: Cascade)
-  garcom     User?      @relation(fields: [garcomUserId], references: [id], onDelete: SetNull)
+  restaurant Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  mesa       Mesa               @relation(fields: [mesaId], references: [id], onDelete: Cascade)
+  garcom     User?              @relation(fields: [garcomUserId], references: [id], onDelete: SetNull)
   orders     Order[]
   pagamentos PagamentoComanda[]
 
@@ -1387,9 +1483,9 @@ model CaixaSalao {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  abertoPor  User?      @relation("CaixaAberto", fields: [abertoPorId], references: [id], onDelete: SetNull)
-  fechadoPor User?      @relation("CaixaFechado", fields: [fechadoPorId], references: [id], onDelete: SetNull)
+  restaurant Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  abertoPor  User?            @relation("CaixaAberto", fields: [abertoPorId], references: [id], onDelete: SetNull)
+  fechadoPor User?            @relation("CaixaFechado", fields: [fechadoPorId], references: [id], onDelete: SetNull)
   movimentos MovimentoCaixa[]
 
   @@index([restaurantId, abertoAt])
@@ -1460,7 +1556,6 @@ model PagamentoComanda {
   @@index([comandaId, createdAt])
 }
 
-
 /// Um pedido de ajuda do dono do restaurante.
 ///
 /// O dono escreve o que esta acontecendo, a conversa abre no WhatsApp do
@@ -1516,7 +1611,7 @@ model AtendenteIa {
   /// o link que o dono abre para conectar o WhatsApp
   linkDeConexao   String?
   /// o numero na Meta, depois de conectado; e por ele que o webhook chega
-  phoneNumberId   String?   @unique
+  phoneNumberId   String? @unique
   numeroExibido   String?
   /// o webhook registrado na Kapso para este numero (evita registrar duas vezes)
   kapsoWebhookId  String?
@@ -1529,7 +1624,7 @@ model AtendenteIa {
   /// os amigos escrevem no mesmo numero. Quem esta nesta lista nao recebe
   /// resposta da IA e nem tem a mensagem guardada -- a conversa fica so
   /// entre eles, como se a IA nao existisse.
-  ignorados       String[]
+  ignorados String[]
 
   /// Numeros de teste: o freio dos 30 minutos nao vale para eles.
   ///
@@ -1537,10 +1632,10 @@ model AtendenteIa {
   /// conversa por um tempo, para nao falar por cima da pessoa. E o certo
   /// no dia a dia, e atrapalha quem esta testando com um conhecido,
   /// trocando mensagem dos dois lados.
-  semEspera       String[]
-  conectadoEm     DateTime?
+  semEspera   String[]
+  conectadoEm DateTime?
   /// a IA pode anotar pedido na conversa. Desligado, ela so manda o link.
-  fazPedidos      Boolean   @default(false)
+  fazPedidos  Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1579,7 +1674,7 @@ model IaMensagem {
 /// O pedido criado e exatamente este, e nao o que o modelo lembrar depois:
 /// o que o cliente confirmou e o que vai para a cozinha.
 model IaRascunho {
-  id           String   @id @default(cuid())
+  id           String @id @default(cuid())
   restaurantId String
   contato      String
   /// o checkout e os itens, no formato que o site manda

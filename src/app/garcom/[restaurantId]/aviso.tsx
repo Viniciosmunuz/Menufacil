@@ -1,6 +1,6 @@
 import { UtensilsCrossed } from "lucide-react";
 
-import { BotaoSair } from "./ajustes/sair";
+import { BotaoSair } from "@/components/panel/botao-sair";
 
 // O recado que o garçom recebe quando a tela existe mas o salão não está
 // no ar para o restaurante dele.

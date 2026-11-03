@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { logout } from "@/server/auth/actions";
 
-// Sair da conta, em dois toques.
+// Sair da conta, em dois toques. Serve o garçom e o entregador.
 //
 // A confirmação existe porque sair custa caro para quem está do outro lado:
 // o garçom teria de digitar CPF e senha de pé, no meio do salão, com mesa
@@ -23,7 +23,7 @@ import { logout } from "@/server/auth/actions";
  *
  * A confirmação continua igual nas duas formas.
  */
-export function BotaoSair({ nome, discreto = false }: { nome: string | null; discreto?: boolean }) {
+export function BotaoSair({ nome, discreto = false, volta = "o seu CPF e a sua senha" }: { nome: string | null; discreto?: boolean; /** o que a pessoa vai precisar para entrar de novo */ volta?: string }) {
   const [confirmando, setConfirmando] = useState(false);
 
   if (!confirmando) {
@@ -56,7 +56,7 @@ export function BotaoSair({ nome, discreto = false }: { nome: string | null; dis
     <form action={logout} className="flex flex-col gap-3 rounded-control border border-danger/50 bg-danger/10 p-4">
       <div>
         <p className="font-extrabold">Sair da conta{nome ? ` de ${nome}` : ""}?</p>
-        <p className="text-sm text-muted">Para voltar a lançar pedido, você vai precisar do seu CPF e da sua senha.</p>
+        <p className="text-sm text-muted">Para entrar de novo, você vai precisar de {volta}.</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -16,7 +16,7 @@ import sharp, { type Sharp } from "sharp";
 // quando existe BLOB_READ_WRITE_TOKEN. Outro provedor (S3/R2) entra aqui sem
 // mudar quem chama saveImage.
 
-export type ImageKind = "logo" | "cover" | "product" | "descanso" | "chat";
+export type ImageKind = "logo" | "cover" | "product" | "descanso" | "chat" | "entregador";
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
@@ -36,6 +36,10 @@ const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   // valor e o nome ilegíveis justamente na hora de conferir. Em pé ou
   // deitada, a foto cabe dentro do quadrado sem perder proporção.
   chat: (img) => img.resize(1200, 1600, { fit: "inside", withoutEnlargement: true }),
+  // Retrato, e pequeno: na tela do cliente ele aparece num circulo de
+  // 48px, e no painel numa lista. Cortado em quadrado porque foto de
+  // rosto tirada na hora vem em pe, e o circulo corta a testa se nao for.
+  entregador: (img) => img.resize(512, 512, { fit: "cover" }),
 };
 
 export class ImageError extends Error {}

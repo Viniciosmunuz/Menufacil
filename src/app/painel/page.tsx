@@ -7,7 +7,7 @@ import { Logo } from "@/components/brand/logo";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { COOKIE_DA_TELA, telaDeVolta } from "@/lib/ultima-tela";
-import { requireUser } from "@/server/auth/dal";
+import { getEntregadorAtual, requireUser } from "@/server/auth/dal";
 import { logout } from "@/server/auth/actions";
 
 export const metadata: Metadata = { title: "Painel", manifest: "/painel/manifest" };
@@ -18,6 +18,12 @@ export default async function PanelIndexPage() {
   const user = await requireUser();
   if (user.mustChangePassword) redirect("/conta/senha");
   if (user.role === "ADMIN") redirect("/admin/restaurantes");
+
+  // O entregador entra pela mesma tela de todo mundo e cai aqui. A conta
+  // dele não tem vínculo de dono nem de garçom -- se seguisse adiante,
+  // veria "Acesso indisponível" depois de acertar a senha.
+  const entregador = await getEntregadorAtual();
+  if (entregador) redirect(`/entregador/${entregador.restaurant.id}`);
 
   const ownerships = await db.restaurantOwner.findMany({
     where: { userId: user.id },

@@ -19,11 +19,12 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
 
       {/* Texto, e não type="email".
 
-          O garçom entra com o CPF, e um campo de e-mail faz o próprio
+          O garçom entra com o CPF e o entregador com o telefone, e um
+          campo de e-mail faz o próprio
           navegador recusar qualquer coisa sem arroba -- o valor nem chega
           ao servidor, e a pessoa fica olhando para um formulário que não
           envia e não explica por quê. */}
-      <Field label="E-mail ou CPF" htmlFor="email">
+      <Field label="E-mail, CPF ou telefone" htmlFor="email">
         <Input
           id="email"
           name="email"
@@ -31,7 +32,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
           autoComplete="username"
           required
           defaultValue={state.email}
-          placeholder="voce@restaurante.com ou seu CPF"
+          placeholder="voce@restaurante.com, seu CPF ou seu telefone"
         />
       </Field>
 

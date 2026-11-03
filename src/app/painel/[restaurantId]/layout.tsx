@@ -1,4 +1,4 @@
-import { BookOpen, Bot, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
+import { Bike, BookOpen, Bot, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -77,6 +77,11 @@ export default async function RestaurantPanelLayout({
         // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
         // acontecendo agora --, só que nas mesas em vez da entrega
         ...(noAr("salaoEnabled") && restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
+        // Entregadores logo depois do que acontece agora: quem leva o
+        // pedido é assunto do movimento, não do cadastro
+        ...(noAr("entregadorEnabled") && restaurant.entregadorEnabled
+          ? [{ href: `${base}/entregadores`, label: "Entregadores", icon: <Bike /> }]
+          : []),
         { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou

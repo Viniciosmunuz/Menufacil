@@ -176,3 +176,29 @@ export async function esquecerAparelho(endpoint: string, restaurantId: string) {
 export async function contarAparelhos(restaurantId: string) {
   return db.pushDevice.count({ where: { restaurantId } });
 }
+
+/**
+ * Avisa pessoas certas, e não o restaurante inteiro.
+ *
+ * É o que o entregador precisa: o aparelho dele apita quando a entrega é
+ * dele, e não a cada pedido que entra na cozinha. O aparelho do balcão
+ * continua recebendo o que sempre recebeu -- aqui o filtro é o dono da
+ * conta, então um não escuta o aviso do outro.
+ */
+export async function avisarPessoas(
+  restaurantId: string,
+  userIds: string[],
+  conteudo: { titulo: string; corpo: string; tag: string; url: string },
+) {
+  if (!pushLigado() || userIds.length === 0) return 0;
+  const aparelhos = await db.pushDevice.findMany({
+    where: { restaurantId, userId: { in: userIds } },
+    select: { id: true, endpoint: true, p256dh: true, auth: true, failures: true },
+  });
+  if (aparelhos.length === 0) return 0;
+
+  configurar();
+  const payload = JSON.stringify(conteudo);
+  const saidas = await Promise.all(aparelhos.map((a) => entregar(a, payload)));
+  return saidas.filter(Boolean).length;
+}

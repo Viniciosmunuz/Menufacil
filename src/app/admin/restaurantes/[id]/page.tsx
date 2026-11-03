@@ -198,6 +198,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               totemEnabled: restaurant.totemEnabled,
               fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
               salaoEnabled: restaurant.salaoEnabled,
+              entregadorEnabled: restaurant.entregadorEnabled,
             }}
           />
 

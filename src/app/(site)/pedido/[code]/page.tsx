@@ -21,6 +21,7 @@ import { pixDoPedido } from "@/server/pagamentos/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
 import { desistirDoPedido, gerarOutroPix, markPaymentSent } from "./actions";
+import { QuemEstaLevando } from "./entregador";
 import { PedidoAoVivo } from "./ao-vivo";
 import { ChatDoCliente } from "./chat-cliente";
 import { GuardarLink } from "./guardar-link";
@@ -60,6 +61,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
       payment: true,
       statusEvents: { orderBy: { createdAt: "asc" }, select: { status: true, createdAt: true } },
       restaurant: { select: { id: true, name: true, slug: true, whatsapp: true, pixHolderName: true, paymentInstructions: true } },
+      // quem está levando; vazio enquanto ninguém pegou o pedido
+      entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, telefone: true } },
     },
   });
   if (!order) notFound();
@@ -269,6 +272,14 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
             )}
           </div>
         </Card>
+      )}
+
+      {/* Quem está levando. Aparece só com o pedido na rua: antes disso
+          não há o que dizer, e depois de entregue a informação já cumpriu
+          o papel dela. Vem antes do andamento porque, com o pedido fora,
+          é a primeira coisa que o cliente quer saber. */}
+      {order.entregador && order.status === "OUT_FOR_DELIVERY" && (
+        <QuemEstaLevando entregador={order.entregador} />
       )}
 
       <Card>
