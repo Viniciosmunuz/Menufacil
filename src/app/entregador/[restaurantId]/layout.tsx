@@ -20,19 +20,21 @@ import type { Metadata, Viewport } from "next";
 export const metadata: Metadata = { manifest: "/entregador/manifest", title: { default: "MenuFácil Entregas", template: "%s · Entregas" } };
 
 export const viewport: Viewport = {
-  themeColor: "#f9680b",
+  themeColor: "#0c0e12",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
 };
 
-const SEM_ZOOM = "html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}";
+// o fundo escuro precisa chegar até a moldura do navegador, senão sobra
+// uma faixa branca embaixo quando a tela rola além do conteúdo
+const TEMA = "html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;background:#0c0e12}";
 
 export default function EntregadorLayout({ children }: LayoutProps<"/entregador/[restaurantId]">) {
   return (
-    <div className="touch-manipulation [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
-      <style dangerouslySetInnerHTML={{ __html: SEM_ZOOM }} />
+    <div className="tema-entregador min-h-dvh touch-manipulation [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+      <style dangerouslySetInnerHTML={{ __html: TEMA }} />
       {children}
     </div>
   );

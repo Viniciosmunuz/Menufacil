@@ -12,6 +12,7 @@ import { enderecoEmLinha, linkDaRota, pedidoDoEntregador } from "@/server/entreg
 import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 
 import { MandaPosicao } from "../../posicao";
+import { VocePrecisaLevar } from "./levar";
 import { MapaDoEntregador } from "./mapa";
 import { Assumir, NaMinhaMao } from "./acoes";
 
@@ -100,7 +101,11 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
         )}
       </section>
 
-      {/* O dinheiro é o que dá problema na porta: destacado, com o troco. */}
+      {/* O que vai na mochila, antes dos itens: a pergunta de quem está
+          saindo da loja é "o que eu levo na mão?" */}
+      <VocePrecisaLevar pedido={pedido} />
+
+      {/* o resumo do dinheiro, para conferir na porta */}
       <section className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-2 font-bold">

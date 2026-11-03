@@ -180,3 +180,48 @@ details.drawer[open]::details-content {
 .mapa-escuro .leaflet-control-attribution a {
   color: rgb(255 255 255 / 0.9);
 }
+
+/* O aplicativo do entregador, no escuro.
+ *
+ * Só aqui dentro: o painel do dono e o cardápio do cliente continuam no
+ * branco com creme, que é a decisão de marca. A tela da rua é outra
+ * história -- quem a usa está de noite, de capacete, com o farol na cara,
+ * e uma tela branca no escuro é um flash a cada toque.
+ *
+ * Em vez de reescrever as telas, as mesmas fichas de cor mudam de valor
+ * aqui dentro: cartão, borda, texto e o resto seguem os tokens de sempre e
+ * viram escuros sozinhos. O laranja da marca fica igual -- é ele que
+ * segura a identidade nos dois temas. */
+.tema-entregador {
+  color-scheme: dark;
+
+  --color-bg: #0c0e12;
+  --color-surface: #161a21;
+  --color-surface-2: #1e242d;
+  --color-surface-3: #28303b;
+  --color-line: #262d37;
+  --color-line-strong: #39424f;
+
+  --color-ink: #f4f6f8;
+  --color-muted: #a4adba;
+  --color-faint: #78818e;
+
+  /* no escuro o toque clareia o laranja, em vez de escurecer */
+  --color-brand-hover: #ff7a24;
+  --color-brand-press: #ff8c42;
+  --color-brand-soft: rgb(249 104 11 / 0.18);
+
+  /* tons mais vivos: no escuro, o verde e o amarelo fechados somem */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #f87171;
+  --color-info: #60a5fa;
+
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+/* no escuro o mapa já é escuro por natureza: o filtro alivia */
+.tema-entregador .mapa-escuro .leaflet-tile-pane {
+  filter: brightness(0.58) saturate(0.6) contrast(1.2);
+}
