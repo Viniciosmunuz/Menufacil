@@ -10,6 +10,7 @@ import { entregasLivres, fechadasHoje, minhasEntregas } from "@/server/entregado
 
 import { CartaoDePedido, ListaVazia, Topo } from "./componentes";
 import { ChaveDeDisponibilidade } from "./disponibilidade";
+import { MandaPosicao } from "./posicao";
 
 export const metadata: Metadata = { title: "Minhas entregas" };
 
@@ -38,6 +39,8 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4">
       {/* o pedido novo aparece sem ninguém puxar a tela */}
       <AutoRefresh seconds={30} />
+      {/* com entrega na mão, o cliente acompanha a moto no mapa */}
+      <MandaPosicao ativo={levando.length > 0} />
 
       <Topo
         titulo={`Olá, ${primeiroNome}`}

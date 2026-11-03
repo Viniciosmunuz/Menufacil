@@ -21,7 +21,7 @@ import { pixDoPedido } from "@/server/pagamentos/pix";
 import { orderFromCustomer, waAppLink, waMeLink } from "@/server/whatsapp/messages";
 
 import { desistirDoPedido, gerarOutroPix, markPaymentSent } from "./actions";
-import { QuemEstaLevando } from "./entregador";
+import { MapaDaEntrega } from "./mapa";
 import { PedidoAoVivo } from "./ao-vivo";
 import { ChatDoCliente } from "./chat-cliente";
 import { GuardarLink } from "./guardar-link";
@@ -279,7 +279,16 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           o papel dela. Vem antes do andamento porque, com o pedido fora,
           é a primeira coisa que o cliente quer saber. */}
       {order.entregador && order.status === "OUT_FOR_DELIVERY" && (
-        <QuemEstaLevando entregador={order.entregador} />
+        <MapaDaEntrega
+          code={order.code}
+          telefone={order.entregador.telefone}
+          inicial={{
+            nome: order.entregador.nome,
+            fotoUrl: order.entregador.fotoUrl,
+            moto: order.entregador.moto,
+            placa: order.entregador.placa,
+          }}
+        />
       )}
 
       <Card>

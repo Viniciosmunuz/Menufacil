@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+
+import { db } from "@/lib/db";
+
+// Onde está a moto deste pedido.
+//
+// A página do cliente pergunta a cada poucos segundos, em vez de recarregar
+// a tela inteira: recarregar remontaria o mapa e ele piscaria a cada volta.
+//
+// O que protege a posição é o pedido, e não uma senha: só responde enquanto
+// **este** pedido está em rota, e só a posição de quem está levando **ele**.
+// Entregue, cancelado ou ainda na cozinha, a resposta é vazia -- e com isso
+// a moto some do mapa de quem ficou com a página aberta.
+
+/** depois disso a posição é velha demais para mostrar como "onde ele está" */
+const VALIDADE = 3 * 60 * 1000;
+
+export async function GET(_request: Request, { params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
+
+  const pedido = await db.order.findUnique({
+    where: { code },
+    select: {
+      status: true,
+      entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, latitude: true, longitude: true, posicaoEm: true } },
+    },
+  });
+
+  const e = pedido?.entregador;
+  if (!pedido || pedido.status !== "OUT_FOR_DELIVERY" || !e) return NextResponse.json({ emRota: false });
+
+  const recente = e.posicaoEm && Date.now() - e.posicaoEm.getTime() < VALIDADE;
+  return NextResponse.json({
+    emRota: true,
+    nome: e.nome,
+    fotoUrl: e.fotoUrl,
+    moto: e.moto,
+    placa: e.placa,
+    // sem posição recente a tela mostra o entregador sem mapa: é melhor
+    // não ter bolinha do que ter uma bolinha parada mentindo onde ele está
+    lat: recente ? e.latitude : null,
+    lng: recente ? e.longitude : null,
+    em: recente ? e.posicaoEm?.toISOString() : null,
+  });
+}

@@ -10,6 +10,7 @@ import { paymentHint, paymentText } from "@/lib/payment";
 import { requireEntregador } from "@/server/auth/dal";
 import { enderecoEmLinha, linkDaRota, pedidoDoEntregador } from "@/server/entregadores/entregas";
 
+import { MandaPosicao } from "../../posicao";
 import { Assumir, NaMinhaMao } from "./acoes";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -41,6 +42,8 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-5 px-4 pt-5 pb-8">
+      <MandaPosicao ativo={meu} />
+
       <div className="flex items-center justify-between gap-3">
         <Link href={base} className="flex items-center gap-1.5 text-sm font-bold text-muted">
           <ArrowLeft className="size-4" aria-hidden="true" />

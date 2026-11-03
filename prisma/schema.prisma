@@ -349,6 +349,16 @@ model Entregador {
   /// o que o proprio entregador diz da vida dele agora
   disponibilidade DisponibilidadeEntregador @default(INDISPONIVEL)
 
+  /// Onde ele estava na última vez que o aparelho contou.
+  ///
+  /// Uma linha só, sempre a atual: não se guarda rastro. O cliente quer
+  /// saber onde a moto está agora, e um histórico de por onde o
+  /// entregador andou seria um dado que ninguém pediu e que teria de ser
+  /// protegido depois.
+  latitude   Float?
+  longitude  Float?
+  posicaoEm  DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

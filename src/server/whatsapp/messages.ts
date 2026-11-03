@@ -250,8 +250,23 @@ export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone
 const noticeWorthy = (status: OrderStatus, type: OrderType) =>
   type === "DELIVERY" ? status === "OUT_FOR_DELIVERY" : status === "READY";
 
-const onTheWay = (o: { number: number }, r: { name: string }) =>
-  [`Pedido *#${o.number}* em *${r.name}*: saiu para entrega!`, "", "Se possível, aguarde na frente para receber. Obrigado!"].join("\n");
+/**
+ * Com entregadores no restaurante, este aviso leva o link.
+ *
+ * É a diferença que o módulo faz para quem está esperando: em vez de
+ * "saiu para entrega, aguarde na frente", o cliente abre a mesma tela de
+ * acompanhamento e vê quem está levando e onde a moto está. Sem o módulo
+ * ligado a mensagem continua sem link -- quem recebe já ia abrir a porta,
+ * e um link a mais só atrapalha.
+ */
+const onTheWay = (o: { number: number; code: string }, r: { name: string; entregadorEnabled?: boolean }) =>
+  [
+    `Pedido *#${o.number}* em *${r.name}*: saiu para entrega!`,
+    "",
+    ...(r.entregadorEnabled
+      ? [`Acompanhe a entrega por aqui: ${trackingUrl(o.code)}`]
+      : ["Se possível, aguarde na frente para receber. Obrigado!"]),
+  ].join("\n");
 
 const readyForPickup = (o: { number: number }, r: { name: string }) =>
   [`Pedido *#${o.number}* em *${r.name}*: está pronto!`, "", "Pode vir buscar aqui no balcão. Obrigado!"].join("\n");
@@ -267,7 +282,7 @@ export function nextStatusNotice(
     paymentMethod: PaymentMethod;
     origin?: OrderOrigin | null;
   },
-  r: { name: string },
+  r: { name: string; entregadorEnabled?: boolean },
 ) {
   const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
   if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
