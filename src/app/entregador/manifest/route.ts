@@ -20,8 +20,10 @@ export function GET() {
     start_url: "/entregador",
     scope: "/entregador",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#f9680b",
+    // a tela de abertura do Android sai daqui: fundo escuro e o ícone no
+    // meio, que é o mais perto de splash que um aplicativo web tem
+    background_color: "#0c0e12",
+    theme_color: "#0c0e12",
     icons: [
       { src: "/app/entregador-icone-192.png", sizes: "192x192", type: "image/png" },
       { src: "/app/entregador-icone-512.png", sizes: "512x512", type: "image/png" },

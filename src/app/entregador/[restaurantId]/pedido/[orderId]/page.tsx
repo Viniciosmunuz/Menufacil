@@ -11,9 +11,10 @@ import { requireEntregador } from "@/server/auth/dal";
 import { enderecoEmLinha, linkDaRota, pedidoDoEntregador } from "@/server/entregadores/entregas";
 import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 
+import { MapaDoEntregador } from "../../mapa";
 import { MandaPosicao } from "../../posicao";
 import { VocePrecisaLevar } from "./levar";
-import { MapaDoEntregador } from "./mapa";
+
 import { Assumir, NaMinhaMao } from "./acoes";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -124,7 +125,7 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
 
       {/* Os botões antes dos itens: quem abre esta tela na porta do
           cliente veio confirmar, não conferir a sacola de novo. */}
-      {meu ? <NaMinhaMao orderId={pedido.id} /> : <Assumir orderId={pedido.id} />}
+      {meu ? <NaMinhaMao orderId={pedido.id} numero={pedido.number} /> : <Assumir orderId={pedido.id} />}
 
       <section className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
         <h2 className="text-sm font-extrabold tracking-wide text-muted uppercase">O que você está levando</h2>

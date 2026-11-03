@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, CornerUpLeft, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, CornerUpLeft, Flag, Loader2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -28,12 +28,15 @@ const GRANDE = "flex min-h-14 w-full items-center justify-center gap-2 rounded-c
 function Botao({
   acao,
   orderId,
+  numero,
   children,
   className,
   pendente,
 }: {
   acao: (prev: AcaoState, formData: FormData) => Promise<AcaoState>;
   orderId: string;
+  /** só na confirmação: é o que a tela de concluída mostra */
+  numero?: number;
   children: React.ReactNode;
   className: string;
   pendente: string;
@@ -42,6 +45,7 @@ function Botao({
   return (
     <form action={enviar} className="flex w-full flex-col gap-2">
       <input type="hidden" name="orderId" value={orderId} />
+      {numero !== undefined && <input type="hidden" name="numero" value={numero} />}
       <button type="submit" disabled={carregando} className={cn(GRANDE, className, carregando && "opacity-70")}>
         {carregando ? (
           <>
@@ -68,17 +72,34 @@ export function Assumir({ orderId }: { orderId: string }) {
 }
 
 /** pedido que já é dele: confirmar, devolver ou contar um problema */
-export function NaMinhaMao({ orderId }: { orderId: string }) {
+export function NaMinhaMao({ orderId, numero }: { orderId: string; numero: number }) {
+  // Confirmar entrega em dois toques.
+  //
+  // Com o botão grande à mão o tempo todo, o dedo acerta nele dentro da
+  // mochila, com o pedido ainda na garupa. "Cheguei" é o passo que separa
+  // o caminho da porta: até chegar, o que está à vista é a rota.
+  const [chegou, setChegou] = useState(false);
   const [problema, setProblema] = useState(false);
   const [motivo, setMotivo] = useState<string>(MOTIVOS[0].chave);
   const [state, enviarProblema, enviandoProblema] = useActionState<AcaoState, FormData>(contarProblema, {});
 
   return (
     <div className="flex flex-col gap-3">
-      <Botao acao={confirmar} orderId={orderId} pendente="Confirmando..." className="bg-success text-white">
-        <Check className="size-6" aria-hidden="true" />
-        Confirmar entrega
-      </Botao>
+      {chegou ? (
+        <Botao acao={confirmar} orderId={orderId} numero={numero} pendente="Confirmando..." className="bg-success text-white">
+          <Check className="size-6" aria-hidden="true" />
+          Confirmar entrega
+        </Botao>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setChegou(true)}
+          className={cn(GRANDE, "bg-brand text-brand-ink")}
+        >
+          <Flag className="size-5" aria-hidden="true" />
+          Cheguei no destino
+        </button>
+      )}
 
       {!problema ? (
         <div className="flex gap-2">

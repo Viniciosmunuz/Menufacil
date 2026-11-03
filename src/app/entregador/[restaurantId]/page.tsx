@@ -6,10 +6,12 @@ import { EntregadorNav } from "@/components/panel/entregador-nav";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { Badge } from "@/components/ui/badge";
 import { requireEntregador } from "@/server/auth/dal";
-import { entregasLivres, fechadasHoje, minhasEntregas } from "@/server/entregadores/entregas";
+import { enderecoEmLinha, entregasLivres, fechadasHoje, linkDaRota, minhasEntregas, pedidoDoEntregador } from "@/server/entregadores/entregas";
+import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 
 import { CartaoDePedido, Faixa, ListaVazia, Numero, Recado, Secao } from "./componentes";
 import { ChaveDeDisponibilidade } from "./disponibilidade";
+import { MapaDoEntregador } from "./mapa";
 import { MandaPosicao } from "./posicao";
 
 export const metadata: Metadata = { title: "Minhas entregas" };
@@ -39,6 +41,13 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
     entregasLivres(restaurant.id),
     fechadasHoje(restaurant.id, entregador.id),
   ]);
+
+  // A entrega que ele está levando abre com o mapa, sem ele procurar:
+  // quem abre o aplicativo com um pedido na garupa quer ver para onde vai,
+  // e não uma lista com um item só.
+  const atual = levando[0] ? await pedidoDoEntregador(restaurant.id, entregador.id, levando[0].id) : null;
+  const destino = atual ? await destinoDoPedido(atual) : null;
+  const enderecoAtual = atual ? enderecoEmLinha(atual) : "";
 
   const primeiroNome = entregador.nome.split(" ")[0];
   const recado = RECADO[entregador.disponibilidade];
@@ -74,7 +83,13 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
           {levando.length === 0 ? (
             <ListaVazia titulo="Nenhuma entrega no momento">Assim que chegar uma, você vê por aqui.</ListaVazia>
           ) : (
-            levando.map((p) => <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="info">Em rota</Badge>} />)
+            <>
+              {/* o mapa da entrega da vez, já aberto */}
+              {atual && enderecoAtual && <MapaDoEntregador destino={destino} rota={linkDaRota(enderecoAtual, atual.restaurant.city)} />}
+              {levando.map((p) => (
+                <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="info">Em rota</Badge>} />
+              ))}
+            </>
           )}
         </section>
 

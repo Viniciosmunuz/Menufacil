@@ -1,6 +1,6 @@
 "use client";
 
-import { Bike, Clock, House, User } from "lucide-react";
+import { Clock, House, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -17,11 +17,13 @@ import { cn } from "@/lib/cn";
 // A seção aberta vira uma pílula laranja: o alvo do dedo cresce junto, e é
 // isso que faz acertar em movimento.
 
+// Três, e não quatro: a lista de entregas virou o miolo do Início -- o
+// que ele faz o tempo todo é olhar o que tem para levar, e isso não
+// merecia uma aba separada da tela que ele abre primeiro.
 const ITENS = [
   { chave: "inicio", titulo: "Início", icone: House },
-  { chave: "entregas", titulo: "Entregas", icone: Bike },
   { chave: "historico", titulo: "Histórico", icone: Clock },
-  { chave: "perfil", titulo: "Perfil", icone: User },
+  { chave: "configuracoes", titulo: "Configurações", icone: Settings },
 ] as const;
 
 export function EntregadorNav({ base }: { base: string }) {

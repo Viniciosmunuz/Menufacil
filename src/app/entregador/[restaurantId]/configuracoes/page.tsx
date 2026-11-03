@@ -13,7 +13,7 @@ import { desligarAvisosDoEntregador, ligarAvisosDoEntregador, testarAvisosDoEntr
 import { Faixa } from "../componentes";
 import { ChaveDeDisponibilidade } from "../disponibilidade";
 
-export const metadata: Metadata = { title: "Meu perfil" };
+export const metadata: Metadata = { title: "Configurações" };
 
 // A conta aberta neste aparelho.
 //
@@ -33,7 +33,7 @@ function Linha({ icone: Icone, rotulo, valor }: { icone: typeof Phone; rotulo: s
   );
 }
 
-export default async function PerfilPage({ params }: PageProps<"/entregador/[restaurantId]/perfil">) {
+export default async function ConfiguracoesPage({ params }: PageProps<"/entregador/[restaurantId]/configuracoes">) {
   const { restaurantId } = await params;
   const { entregador, restaurant, user } = await requireEntregador();
   if (restaurantId !== restaurant.id) notFound();
@@ -44,7 +44,7 @@ export default async function PerfilPage({ params }: PageProps<"/entregador/[res
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4">
-      <Faixa titulo="Meu perfil" alta />
+      <Faixa titulo="Configurações" alta />
 
       <div className="flex flex-col gap-4 pb-6">
         {/* o retrato sobe por cima da faixa */}

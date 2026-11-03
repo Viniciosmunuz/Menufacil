@@ -38,8 +38,10 @@ export async function confirmar(_prev: AcaoState, formData: FormData): Promise<A
   const { entregador, restaurant, user } = await requireEntregador();
   const r = await confirmarEntrega(restaurant.id, entregador.id, user.id, String(formData.get("orderId") ?? ""));
   if (!r.ok) return { error: r.error };
-  // entregou: volta para a lista, que é onde está o próximo
-  redirect(`/entregador/${restaurant.id}`);
+  // entregou: a tela de "concluída" confirma o que acabou de acontecer,
+  // porque na rua ele toca e guarda o celular no mesmo movimento
+  const numero = String(formData.get("numero") ?? "");
+  redirect(`/entregador/${restaurant.id}/entregue${numero ? `?n=${numero}` : ""}`);
 }
 
 export async function contarProblema(_prev: AcaoState, formData: FormData): Promise<AcaoState> {
