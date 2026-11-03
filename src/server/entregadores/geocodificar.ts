@@ -27,10 +27,32 @@ type Endereco = {
   deliveryNeighborhood: string | null;
 };
 
-/** o endereço do jeito que o serviço de busca entende melhor */
-function consulta(endereco: Endereco, cidade: string | null, estado: string | null) {
-  const rua = [endereco.deliveryStreet, endereco.deliveryNumber].filter(Boolean).join(", ");
-  return [rua, endereco.deliveryNeighborhood, cidade, estado, "Brasil"].filter(Boolean).join(", ");
+/**
+ * As buscas a tentar, da mais exata para a mais larga.
+ *
+ * Medido em 03/11/2026 com endereços de Presidente Figueiredo: **com o
+ * número da casa o serviço não acha nada**. O OpenStreetMap tem as ruas
+ * da cidade, mas não tem os números -- isso é comum em cidade pequena, e
+ * foi o que deixou o mapa sem o alfinete do destino.
+ *
+ * Sem o número, a rua aparece. Perde-se a casa exata e ganha-se a quadra,
+ * que é o que importa para "a moto está perto?".
+ *
+ * O bairro sozinho ficou de fora de propósito: "Vila Nova" devolveu um
+ * povoado a 60 km dali. Bairro de cidade pequena repete nome pelo estado
+ * inteiro, e alfinete a 60 km é pior do que alfinete nenhum.
+ */
+function buscas(endereco: Endereco, cidade: string | null, estado: string | null) {
+  const fim = [cidade, estado, "Brasil"].filter(Boolean).join(", ");
+  const rua = endereco.deliveryStreet?.trim();
+  if (!rua) return [];
+
+  const comNumero = [rua, endereco.deliveryNumber].filter(Boolean).join(", ");
+  return [
+    [comNumero, endereco.deliveryNeighborhood, fim].filter(Boolean).join(", "),
+    [comNumero, fim].filter(Boolean).join(", "),
+    [rua, fim].filter(Boolean).join(", "),
+  ];
 }
 
 async function procurar(texto: string): Promise<{ lat: number; lng: number } | null> {
@@ -77,7 +99,16 @@ export async function destinoDoPedido(pedido: {
   if (!pedido.deliveryStreet) return null;
 
   try {
-    const achado = await procurar(consulta(pedido, pedido.restaurant.city, pedido.restaurant.state ?? null));
+    let achado: { lat: number; lng: number } | null = null;
+    const tentativas = buscas(pedido, pedido.restaurant.city, pedido.restaurant.state ?? null);
+
+    for (const [i, texto] of tentativas.entries()) {
+      // o serviço pede no máximo uma busca por segundo
+      if (i > 0) await new Promise((pronto) => setTimeout(pronto, 1100));
+      achado = await procurar(texto);
+      if (achado) break;
+    }
+
     await db.order.update({
       where: { id: pedido.id },
       data: { destinoLat: achado?.lat ?? null, destinoLng: achado?.lng ?? null, destinoEm: new Date() },

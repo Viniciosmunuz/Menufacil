@@ -131,7 +131,9 @@ export function MapaDoEntregador({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="relative">
+      {/* isolate: o Leaflet usa z-index alto nos proprios niveis, e sem
+          isto eles brigam com o aviso de tela cheia e passam por cima */}
+      <div className="relative isolate">
         <div ref={caixa} className="mapa-escuro h-56 w-full overflow-hidden rounded-2xl border border-black/25 bg-[#0f1115] shadow-md shadow-black/5" aria-label="Mapa da entrega" />
         {/* o tempo só aparece com rota de verdade: chute de previsão é pior
             do que previsão nenhuma para quem está na rua */}

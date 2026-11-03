@@ -36,7 +36,7 @@ export function AvisoDePedidoNovo({ pedidos, base }: { pedidos: PedidoNovo[]; ba
   const marcarVisto = () => remember(CHAVE, [mostrar.id], guardado);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-bg px-8 text-center">
+    <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-6 bg-bg px-8 text-center">
       {/* o sino grande, com o halo pulsando: é o que se vê de relance */}
       <span className="relative grid size-32 place-items-center rounded-full bg-brand-soft text-brand">
         <span className="absolute inset-0 animate-ping rounded-full bg-brand/20" aria-hidden="true" />

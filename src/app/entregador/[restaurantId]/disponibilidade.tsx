@@ -68,7 +68,7 @@ export function ChaveDeDisponibilidade({ atual }: { atual: DisponibilidadeEntreg
       </button>
 
       {aberto && (
-        <div className="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="Meu status">
+        <div className="fixed inset-0 z-[2000] flex items-end" role="dialog" aria-modal="true" aria-label="Meu status">
           {/* o fundo escurece e fecha ao toque */}
           <button type="button" aria-label="Fechar" onClick={() => setAberto(false)} className="absolute inset-0 bg-black/50" />
 

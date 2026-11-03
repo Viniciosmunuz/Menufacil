@@ -212,7 +212,9 @@ export function MapaDaEntrega({
 
       {temMapa ? (
         <>
-          <div className="relative">
+          {/* isolate: o Leaflet usa z-index alto nos proprios niveis, e sem
+          isto eles brigam com o aviso de tela cheia e passam por cima */}
+      <div className="relative isolate">
             <div ref={caixa} className="mapa-escuro h-64 w-full overflow-hidden rounded-control border border-black/25 bg-[#0f1115]" aria-label="Mapa da entrega" />
             {/* o tempo só aparece com rota de verdade: chute de previsão
                 é pior do que previsão nenhuma para quem está com fome */}
