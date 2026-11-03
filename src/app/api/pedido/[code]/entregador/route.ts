@@ -22,6 +22,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
     where: { code },
     select: {
       status: true,
+      destinoLat: true,
+      destinoLng: true,
       entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, latitude: true, longitude: true, posicaoEm: true } },
     },
   });
@@ -32,6 +34,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
   const recente = e.posicaoEm && Date.now() - e.posicaoEm.getTime() < VALIDADE;
   return NextResponse.json({
     emRota: true,
+    // a casa do cliente, quando o endereço pôde virar coordenadas
+    destino: pedido.destinoLat != null && pedido.destinoLng != null ? { lat: pedido.destinoLat, lng: pedido.destinoLng } : null,
     nome: e.nome,
     fotoUrl: e.fotoUrl,
     moto: e.moto,

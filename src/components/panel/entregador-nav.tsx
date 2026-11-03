@@ -6,10 +6,16 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/cn";
 
-// A barra de baixo do entregador, igual à do garçom.
+// A barra de baixo do entregador.
 //
-// Quem usa isto está de capacete na mão, parado na calçada, com o celular
-// numa mão só: tudo que se toca fica embaixo, no caminho do polegar.
+// Solta do rodapé, flutuando sobre a tela, como a dos aplicativos de
+// corrida: é o que faz a tela parecer aplicativo, e não página rolando
+// dentro de um navegador. Fica no alcance do polegar, que é onde a mão já
+// está -- quem segura o celular com uma mão só, de capacete na outra, não
+// leva o dedo até o topo da tela para trocar de seção.
+//
+// A seção aberta vira uma pílula laranja: o alvo do dedo cresce junto, e é
+// isso que faz acertar em movimento.
 
 const ITENS = [
   { chave: "inicio", titulo: "Início", icone: House },
@@ -27,9 +33,9 @@ export function EntregadorNav({ base }: { base: string }) {
   return (
     <nav
       aria-label="Seções"
-      className="sticky bottom-0 -mx-4 mt-auto border-t border-line bg-bg/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur"
+      className="sticky bottom-0 z-20 mt-auto pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     >
-      <ul className="flex">
+      <ul className="flex items-center gap-1 rounded-full border border-line bg-bg/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur">
         {ITENS.map(({ chave, titulo, icone: Icone }) => {
           const aceso = ativo(chave);
           return (
@@ -38,8 +44,8 @@ export function EntregadorNav({ base }: { base: string }) {
                 href={href(chave)}
                 aria-current={aceso ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-0.5 pt-2 text-xs font-bold transition-colors",
-                  aceso ? "text-brand" : "text-faint hover:text-muted",
+                  "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-[0.65rem] font-bold transition-colors",
+                  aceso ? "bg-brand text-brand-ink" : "text-faint",
                 )}
               >
                 <Icone className="size-5" aria-hidden="true" />

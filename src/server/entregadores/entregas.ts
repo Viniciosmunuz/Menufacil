@@ -118,7 +118,10 @@ export function pedidoDoEntregador(restaurantId: string, entregadorId: string, o
       createdAt: true,
       items: { orderBy: { id: "asc" }, select: { id: true, productName: true, optionsText: true, quantity: true, totalCents: true, notes: true } },
       payment: { select: { status: true, cardType: true, changeForCents: true } },
-      restaurant: { select: { street: true, number: true, neighborhood: true, city: true } },
+      destinoLat: true,
+      destinoLng: true,
+      destinoEm: true,
+      restaurant: { select: { street: true, number: true, neighborhood: true, city: true, state: true } },
     },
   });
 }

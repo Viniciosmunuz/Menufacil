@@ -1,17 +1,17 @@
-import { Bike } from "lucide-react";
+import { Bike, CreditCard, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { BotaoSair } from "@/components/panel/botao-sair";
 import { EntregadorNav } from "@/components/panel/entregador-nav";
 import { PushAvisos } from "@/components/panel/push-avisos";
 import { formatPhone } from "@/lib/format";
 import { requireEntregador } from "@/server/auth/dal";
 import { chavePublicaDePush } from "@/server/push/avisos";
 
-import { BotaoSair } from "@/components/panel/botao-sair";
 import { desligarAvisosDoEntregador, ligarAvisosDoEntregador, testarAvisosDoEntregador } from "../acoes";
+import { Faixa } from "../componentes";
 import { ChaveDeDisponibilidade } from "../disponibilidade";
-import { Topo } from "../componentes";
 
 export const metadata: Metadata = { title: "Meu perfil" };
 
@@ -19,8 +19,19 @@ export const metadata: Metadata = { title: "Meu perfil" };
 //
 // O entregador não edita o próprio cadastro: quem muda nome, telefone,
 // moto e placa é o restaurante, no painel. Aqui ele confere o que está
-// cadastrado e sai da conta -- se algo estiver errado, quem corrige é
-// quem cadastrou.
+// cadastrado, liga o aviso e sai da conta -- se algo estiver errado, quem
+// corrige é quem cadastrou.
+
+/** uma linha de dado, com o ícone na frente */
+function Linha({ icone: Icone, rotulo, valor }: { icone: typeof Phone; rotulo: string; valor: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Icone className="size-5 shrink-0 text-brand" aria-hidden="true" />
+      <span className="min-w-0 flex-1 text-sm text-muted">{rotulo}</span>
+      <span className="shrink-0 font-bold tabular-nums">{valor}</span>
+    </div>
+  );
+}
 
 export default async function PerfilPage({ params }: PageProps<"/entregador/[restaurantId]/perfil">) {
   const { restaurantId } = await params;
@@ -33,27 +44,28 @@ export default async function PerfilPage({ params }: PageProps<"/entregador/[res
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4">
-      <Topo titulo="Meu perfil" />
+      <Faixa titulo="Meu perfil" alta />
 
-      <div className="flex flex-col gap-6 pb-6">
-        <div className="flex items-center gap-4 rounded-card border border-line bg-surface p-4">
+      <div className="flex flex-col gap-4 pb-6">
+        {/* o retrato sobe por cima da faixa */}
+        <div className="-mt-14 flex items-end gap-4">
           {entregador.fotoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- retrato pequeno, já recortado no envio
-            <img src={entregador.fotoUrl} alt="" className="size-16 shrink-0 rounded-full object-cover" />
+            <img src={entregador.fotoUrl} alt="" className="size-24 shrink-0 rounded-full object-cover ring-4 ring-bg" />
           ) : (
-            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-surface-3 text-muted">
-              <Bike className="size-7" aria-hidden="true" />
+            <span className="grid size-24 shrink-0 place-items-center rounded-full bg-surface-3 text-muted ring-4 ring-bg">
+              <Bike className="size-10" aria-hidden="true" />
             </span>
           )}
-          <div className="min-w-0">
-            <p className="text-lg font-extrabold">{entregador.nome}</p>
+          <div className="min-w-0 pb-1">
+            <p className="text-xl font-extrabold">{entregador.nome}</p>
             <p className="text-sm text-muted">Entregador · {restaurant.name}</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-4">
-          <div>
-            <p className="font-bold">Meu status</p>
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-bg p-4 shadow-md shadow-black/5">
+          <div className="min-w-0">
+            <p className="font-extrabold">Meu status</p>
             <p className="text-sm text-muted">É daqui que o balcão sabe se pode mandar pedido.</p>
           </div>
           <ChaveDeDisponibilidade atual={entregador.disponibilidade} />
@@ -75,20 +87,11 @@ export default async function PerfilPage({ params }: PageProps<"/entregador/[res
           testarAction={testarAvisosDoEntregador}
         />
 
-        <dl className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 text-sm">
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Telefone (é com ele que você entra)</dt>
-            <dd className="font-bold tabular-nums">{formatPhone(telefone)}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Moto</dt>
-            <dd className="font-bold">{entregador.moto || "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Placa</dt>
-            <dd className="font-bold">{entregador.placa || "—"}</dd>
-          </div>
-        </dl>
+        <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-bg shadow-md shadow-black/5">
+          <Linha icone={Phone} rotulo="Telefone (é com ele que você entra)" valor={formatPhone(telefone)} />
+          <Linha icone={Bike} rotulo="Moto" valor={entregador.moto || "—"} />
+          <Linha icone={CreditCard} rotulo="Placa" valor={entregador.placa || "—"} />
+        </div>
 
         <p className="text-sm text-muted">
           Para corrigir seu nome, telefone, moto ou placa, fale com o {restaurant.name} — quem muda esses dados é o restaurante, no painel

@@ -1,4 +1,4 @@
-import { ArrowLeft, Banknote, MapPin, MessageCircle, Navigation, Phone } from "lucide-react";
+import { ArrowLeft, Banknote, MapPin, MessageCircle, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +9,10 @@ import { formatCents, formatPhone, formatTime } from "@/lib/format";
 import { paymentHint, paymentText } from "@/lib/payment";
 import { requireEntregador } from "@/server/auth/dal";
 import { enderecoEmLinha, linkDaRota, pedidoDoEntregador } from "@/server/entregadores/entregas";
+import { destinoDoPedido } from "@/server/entregadores/geocodificar";
 
 import { MandaPosicao } from "../../posicao";
+import { MapaDoEntregador } from "./mapa";
 import { Assumir, NaMinhaMao } from "./acoes";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -29,6 +31,9 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
 
   const pedido = await pedidoDoEntregador(restaurant.id, entregador.id, orderId);
   if (!pedido) notFound();
+
+  // o endereço do cliente em coordenadas, traduzido na primeira abertura
+  const destino = await destinoDoPedido(pedido);
 
   const endereco = enderecoEmLinha(pedido);
   const meu = pedido.entregadorId === entregador.id;
@@ -69,17 +74,7 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
             {pedido.deliveryReference && <span className="block font-semibold text-muted">Ref.: {pedido.deliveryReference}</span>}
           </span>
         </p>
-        {endereco && (
-          <a
-            href={linkDaRota(endereco, pedido.restaurant.city)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses("primary", "lg")}
-          >
-            <Navigation className="size-5" aria-hidden="true" />
-            Abrir a rota no mapa
-          </a>
-        )}
+        {endereco && <MapaDoEntregador destino={destino} rota={linkDaRota(endereco, pedido.restaurant.city)} />}
       </section>
 
       <section className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">

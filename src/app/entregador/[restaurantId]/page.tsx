@@ -1,14 +1,14 @@
-import { CheckCircle2 } from "lucide-react";
+import { Bike, CheckCircle2, Moon, PackageCheck, PauseCircle, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { EntregadorNav } from "@/components/panel/entregador-nav";
-import { Badge } from "@/components/ui/badge";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
+import { Badge } from "@/components/ui/badge";
 import { requireEntregador } from "@/server/auth/dal";
 import { entregasLivres, fechadasHoje, minhasEntregas } from "@/server/entregadores/entregas";
 
-import { CartaoDePedido, ListaVazia, Topo } from "./componentes";
+import { CartaoDePedido, Faixa, ListaVazia, Numero, Recado, Secao } from "./componentes";
 import { ChaveDeDisponibilidade } from "./disponibilidade";
 import { MandaPosicao } from "./posicao";
 
@@ -19,6 +19,13 @@ export const metadata: Metadata = { title: "Minhas entregas" };
 // Responde a uma pergunta só: o que eu tenho para fazer agora. Por isso a
 // entrega em andamento vem antes de qualquer número -- quem está com um
 // pedido na garupa não abriu o aplicativo para ver estatística.
+
+/** o recado escuro muda com o que ele mesmo disse do próprio estado */
+const RECADO = {
+  DISPONIVEL: { titulo: "Você está online!", corpo: "Aguardando novas entregas…", icone: Bike },
+  PAUSA: { titulo: "Você está em pausa", corpo: "O balcão sabe que você volta já.", icone: PauseCircle },
+  INDISPONIVEL: { titulo: "Você está fora do ar", corpo: "Mude para Disponível para receber entregas.", icone: Moon },
+} as const;
 
 export default async function EntregadorPage({ params }: PageProps<"/entregador/[restaurantId]">) {
   const { restaurantId } = await params;
@@ -34,6 +41,7 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
   ]);
 
   const primeiroNome = entregador.nome.split(" ")[0];
+  const recado = RECADO[entregador.disponibilidade];
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4">
@@ -42,33 +50,29 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
       {/* com entrega na mão, o cliente acompanha a moto no mapa */}
       <MandaPosicao ativo={levando.length > 0} />
 
-      <Topo
-        titulo={`Olá, ${primeiroNome}`}
+      <Faixa
+        titulo={`Olá, ${primeiroNome}!`}
+        subtitulo="Vamos fazer mais entregas hoje?"
         acao={<ChaveDeDisponibilidade atual={entregador.disponibilidade} />}
+        alta
       />
-      <p className="-mt-2 pb-4 text-sm text-muted">{restaurant.name}</p>
 
-      <div className="flex flex-col gap-6 pb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-card border border-line bg-surface p-4">
-            <p className="text-sm font-semibold text-muted">Em entrega</p>
-            <p className="mt-1 text-2xl font-extrabold tabular-nums">{levando.length}</p>
-          </div>
-          <div className="rounded-card border border-line bg-surface p-4">
-            <p className="text-sm font-semibold text-muted">Entregues hoje</p>
-            <p className="mt-1 flex items-center gap-2 text-2xl font-extrabold tabular-nums">
-              {hoje}
-              <CheckCircle2 className="size-5 text-success" aria-hidden="true" />
-            </p>
-          </div>
+      <div className="flex flex-col gap-5 pb-6">
+        {/* os cartões sobem por cima da faixa: é esse encaixe que dá a
+            profundidade de aplicativo */}
+        <div className="-mt-12 grid grid-cols-2 gap-3">
+          <Numero rotulo="Em entrega" valor={levando.length} icone={PackageCheck} tom="brand" />
+          <Numero rotulo="Entregues hoje" valor={hoje} icone={CheckCircle2} tom="success" />
         </div>
 
+        <Recado titulo={recado.titulo} icone={recado.icone} arte>
+          {recado.corpo}
+        </Recado>
+
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-extrabold tracking-wide text-muted uppercase">Com você agora</h2>
+          <Secao icone={Zap}>Com você agora</Secao>
           {levando.length === 0 ? (
-            <ListaVazia titulo="Nada na garupa">
-              Quando o restaurante mandar um pedido para você, ele aparece aqui.
-            </ListaVazia>
+            <ListaVazia titulo="Nenhuma entrega no momento">Assim que chegar uma, você vê por aqui.</ListaVazia>
           ) : (
             levando.map((p) => <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="info">Em rota</Badge>} />)
           )}
@@ -76,7 +80,7 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
 
         {livres.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-extrabold tracking-wide text-muted uppercase">Esperando quem leve</h2>
+            <Secao>Esperando quem leve</Secao>
             {livres.map((p) => (
               <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="warning">Livre</Badge>} />
             ))}

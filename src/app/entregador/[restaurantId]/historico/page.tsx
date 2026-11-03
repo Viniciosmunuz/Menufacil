@@ -1,3 +1,4 @@
+import { CalendarDays, CheckCircle2, CircleX, Package, Receipt } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +10,7 @@ import { formatCents, formatDateTime, formatTime } from "@/lib/format";
 import { requireEntregador } from "@/server/auth/dal";
 import { entregasFeitas } from "@/server/entregadores/entregas";
 
-import { ListaVazia, Topo } from "../componentes";
+import { Faixa, ListaVazia } from "../componentes";
 
 export const metadata: Metadata = { title: "Histórico" };
 
@@ -45,42 +46,65 @@ export default async function HistoricoPage({ params, searchParams }: PageProps<
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4">
-      <Topo titulo="Histórico" />
+      <Faixa titulo="Histórico" subtitulo="O que você já entregou." alta />
 
-      <nav className="flex gap-2 pb-4" aria-label="Período">
+      {/* as pílulas sobem por cima da faixa, como as abas de um aplicativo */}
+      <nav className="-mt-9 flex gap-2 rounded-full border border-line bg-bg p-1.5 shadow-lg shadow-black/10" aria-label="Período">
         {JANELAS.map((j) => (
           <Link
             key={j.chave}
             href={`${base}/historico?janela=${j.chave}`}
             aria-current={j.chave === janela.chave ? "page" : undefined}
             className={cn(
-              "inline-flex h-10 items-center rounded-full border px-4 text-sm font-bold",
-              j.chave === janela.chave ? "border-brand bg-brand-soft text-brand" : "border-line text-muted",
+              "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full text-sm font-bold transition-colors",
+              j.chave === janela.chave ? "bg-brand text-brand-ink" : "text-muted",
             )}
           >
+            {j.chave === "hoje" && <CalendarDays className="size-4" aria-hidden="true" />}
             {j.nome}
           </Link>
         ))}
       </nav>
 
-      <div className="flex flex-col gap-3 pb-6">
+      <div className="flex flex-col gap-3 pt-5 pb-6">
         {feitas.length === 0 ? (
           <ListaVazia titulo="Nada neste período">Assim que você confirmar uma entrega, ela entra aqui.</ListaVazia>
         ) : (
           <>
-            <p className="text-sm text-muted">
-              <span className="font-extrabold text-ink tabular-nums">{entregues.length}</span>{" "}
-              {entregues.length === 1 ? "entrega concluída" : "entregas concluídas"} ·{" "}
-              <span className="tabular-nums">{formatCents(total)}</span> em pedidos
-            </p>
+            <div className="flex items-center gap-3 rounded-2xl border border-line bg-bg p-4 text-sm shadow-md shadow-black/5">
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <Package className="size-5 shrink-0 text-brand" aria-hidden="true" />
+                <span>
+                  <span className="font-extrabold tabular-nums">{entregues.length}</span>{" "}
+                  <span className="text-muted">{entregues.length === 1 ? "entrega" : "entregas"}</span>
+                </span>
+              </span>
+              <span className="h-8 w-px bg-line" />
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <Receipt className="size-5 shrink-0 text-brand" aria-hidden="true" />
+                <span>
+                  <span className="font-extrabold tabular-nums">{formatCents(total)}</span>{" "}
+                  <span className="text-muted">em pedidos</span>
+                </span>
+              </span>
+            </div>
 
             <ul className="flex flex-col gap-2">
               {feitas.map((p) => (
                 <li
                   key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-bg px-4 py-3 shadow-sm shadow-black/5"
                 >
-                  <span className="min-w-0">
+                  {p.status === "CANCELED" ? (
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-3 text-muted">
+                      <CircleX className="size-5" aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-success/12 text-success">
+                      <CheckCircle2 className="size-5" aria-hidden="true" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="font-extrabold tabular-nums">#{p.number}</span>
                       {p.status === "CANCELED" ? <Badge tone="neutral">Cancelado</Badge> : <Badge tone="success">Entregue</Badge>}

@@ -717,6 +717,20 @@ model Order {
   /// quando ele assumiu: e o relogio que o painel mostra na fila
   atribuidoEm  DateTime?
 
+  /// O endereco de entrega em coordenadas, para o mapa.
+  ///
+  /// O endereco chega como texto ("Rua das Flores, 120"), e mapa precisa
+  /// de numero. A conversao e feita uma vez, quando alguem abre o mapa
+  /// deste pedido, e fica guardada aqui: o servico de busca e de graca mas
+  /// tem limite, e o endereco do pedido nao muda depois que ele sai.
+  ///
+  /// Nulo quer dizer "ainda nao tentei" ou "nao achei" -- nos dois casos o
+  /// mapa mostra so a moto, sem o alfinete do destino.
+  destinoLat   Float?
+  destinoLng   Float?
+  /// quando a conversao foi tentada; evita tentar de novo a cada abertura
+  destinoEm    DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

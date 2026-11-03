@@ -29,6 +29,8 @@ type Situacao = {
   lat?: number | null;
   lng?: number | null;
   em?: string | null;
+  /** a casa do cliente, quando o endereço pôde virar coordenadas */
+  destino?: { lat: number; lng: number } | null;
 };
 
 const INTERVALO = 12_000;
@@ -62,6 +64,8 @@ export function MapaDaEntrega({
 }) {
   const [situacao, setSituacao] = useState<Situacao>({ emRota: true, ...inicial });
   const [minhaPos, setMinhaPos] = useState<[number, number] | null>(null);
+  const casaLat = situacao.destino?.lat ?? null;
+  const casaLng = situacao.destino?.lng ?? null;
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<import("leaflet").Map | null>(null);
   const marcadorMoto = useRef<import("leaflet").Marker | null>(null);
@@ -112,11 +116,14 @@ export function MapaDaEntrega({
         marcadorMoto.current?.setLatLng(pos);
       }
 
-      if (minhaPos) {
-        if (!marcadorCasa.current) marcadorCasa.current = L.marker(minhaPos, { icon: casaIcon(L) }).addTo(mapa.current);
-        else marcadorCasa.current.setLatLng(minhaPos);
+      // a casa do pedido serve de destino quando o cliente não quis dar a dele
+      const casaDoPedido = casaLat != null && casaLng != null ? ([casaLat, casaLng] as [number, number]) : null;
+      const alvo = minhaPos ?? casaDoPedido;
+      if (alvo) {
+        if (!marcadorCasa.current) marcadorCasa.current = L.marker(alvo, { icon: casaIcon(L) }).addTo(mapa.current);
+        else marcadorCasa.current.setLatLng(alvo);
 
-        const pontos: [number, number][] = [pos, minhaPos];
+        const pontos: [number, number][] = [pos, alvo];
         if (!linha.current) {
           linha.current = L.polyline(pontos, { color: "#16a34a", weight: 3, opacity: 0.6, dashArray: "6 8" }).addTo(mapa.current);
         } else {
@@ -131,7 +138,7 @@ export function MapaDaEntrega({
     return () => {
       cancelado = true;
     };
-  }, [situacao?.lat, situacao?.lng, minhaPos]);
+  }, [situacao?.lat, situacao?.lng, minhaPos, casaLat, casaLng]);
 
   // o mapa morre junto com a tela
   useEffect(

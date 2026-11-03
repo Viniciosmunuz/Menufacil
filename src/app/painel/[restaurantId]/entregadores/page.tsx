@@ -1,8 +1,6 @@
-import { Bike, CircleSlash, PauseCircle, Smartphone, UserPlus, Users } from "lucide-react";
+import { Bike, CircleSlash, Info, PauseCircle, Smartphone, UserPlus, Users } from "lucide-react";
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/panel/page-header";
-import { StatCard } from "@/components/panel/stat-card";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CopyLinkButton } from "@/components/ui/copy-link-button";
@@ -31,26 +29,70 @@ export const metadata: Metadata = { title: "Entregadores" };
 
 /** o que o entregador está fazendo agora, numa palavra */
 function estado(e: EntregadorNaTela) {
-  if (!e.ativo) return { texto: "Desligado", tone: "neutral" as const };
-  if (e.emRota > 0) return { texto: e.emRota === 1 ? "Em entrega" : `${e.emRota} entregas`, tone: "info" as const };
-  if (e.disponibilidade === "DISPONIVEL") return { texto: "Disponível", tone: "success" as const };
-  if (e.disponibilidade === "PAUSA") return { texto: "Em pausa", tone: "warning" as const };
-  return { texto: "Fora do ar", tone: "neutral" as const };
+  if (!e.ativo) return { texto: "Desligado", tone: "neutral" as const, bolinha: "bg-line-strong" };
+  if (e.emRota > 0) return { texto: e.emRota === 1 ? "Em entrega" : `${e.emRota} entregas`, tone: "info" as const, bolinha: "bg-info" };
+  if (e.disponibilidade === "DISPONIVEL") return { texto: "Disponível", tone: "success" as const, bolinha: "bg-success" };
+  if (e.disponibilidade === "PAUSA") return { texto: "Em pausa", tone: "warning" as const, bolinha: "bg-warning" };
+  return { texto: "Fora do ar", tone: "neutral" as const, bolinha: "bg-line-strong" };
+}
+
+/** um dos quatro números do topo */
+function Numero({
+  rotulo,
+  valor,
+  icone: Icone,
+  tom,
+}: {
+  rotulo: string;
+  valor: number;
+  icone: typeof Users;
+  tom: "brand" | "success" | "info" | "neutral";
+}) {
+  const cores = {
+    brand: "bg-brand-soft text-brand",
+    success: "bg-success/12 text-success",
+    info: "bg-info/12 text-info",
+    neutral: "bg-surface-3 text-muted",
+  } as const;
+
+  return (
+    <div className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 sm:p-5">
+      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl [&_svg]:size-6", cores[tom])}>
+        <Icone aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-muted">{rotulo}</span>
+        <span className="block text-3xl font-extrabold tabular-nums">{valor}</span>
+      </span>
+    </div>
+  );
 }
 
 export default async function EntregadoresPage({ params }: PageProps<"/painel/[restaurantId]/entregadores">) {
   const { restaurantId } = await params;
   const acesso = await requireEntregadores(restaurantId);
-  const [{ entregadores, semEntregador }, emRota] = await Promise.all([quadroDeEntregas(acesso.restaurant.id), pedidosEmRota(acesso.restaurant.id)]);
+  const [{ entregadores, semEntregador }, emRota] = await Promise.all([
+    quadroDeEntregas(acesso.restaurant.id),
+    pedidosEmRota(acesso.restaurant.id),
+  ]);
   const { total, disponiveis, emEntrega, inativos } = contarEntregadores(entregadores);
   const entrada = `${appUrl()}/entrar`;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Entregadores"
-        description="Quem leva os pedidos do seu restaurante. Cada um entra no celular com o próprio telefone e confirma a entrega por lá."
-      />
+      {/* A faixa do topo, com a arte do entregador: a seção se apresenta
+          com a cara do módulo, e não com um título solto. No celular a
+          moto sai -- ali a largura é toda do texto. */}
+      <header className="relative flex items-center gap-5 overflow-hidden rounded-card bg-gradient-to-r from-brand-soft via-surface-2 to-surface px-5 py-6 sm:px-8 sm:py-7">
+        {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da seção, sem transformação */}
+        <img src="/app/entregador-scooter.png" alt="" aria-hidden="true" className="hidden h-24 w-auto shrink-0 sm:block lg:h-28" />
+        <div className="min-w-0">
+          <h1 className="text-3xl font-extrabold sm:text-4xl">Entregadores</h1>
+          <p className="mt-1.5 max-w-xl text-muted">
+            Gerencie os entregadores do seu restaurante. Cada um entra no celular com o próprio telefone e confirma a entrega por lá.
+          </p>
+        </div>
+      </header>
 
       {/* O aviso vem antes dos números: pedido parado sem quem leve é a
           única coisa desta tela que pede ação agora. */}
@@ -63,10 +105,10 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Cadastrados" value={total} icon={<Users />} tom="brand" />
-        <StatCard label="Disponíveis agora" value={disponiveis} icon={<Bike />} tom="success" />
-        <StatCard label="Em entrega" value={emEntrega} icon={<PauseCircle />} tom="info" />
-        <StatCard label="Desligados" value={inativos} icon={<CircleSlash />} tom="warning" />
+        <Numero rotulo="Cadastrados" valor={total} icone={Users} tom="brand" />
+        <Numero rotulo="Disponíveis agora" valor={disponiveis} icone={Bike} tom="success" />
+        <Numero rotulo="Em entrega" valor={emEntrega} icone={PauseCircle} tom="info" />
+        <Numero rotulo="Desligados" valor={inativos} icone={CircleSlash} tom="neutral" />
       </div>
 
       <PedidosEmRota
@@ -91,14 +133,19 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
                   titulo={e.nome}
                   resumo={[formatPhone(e.telefone), e.moto, e.placa].filter(Boolean).join(" · ")}
                   icone={
-                    e.fotoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- retrato pequeno, já recortado no envio
-                      <img src={e.fotoUrl} alt="" className="size-9 rounded-full object-cover" />
-                    ) : (
-                      <span className="grid size-9 place-items-center rounded-full bg-surface-3 text-muted">
-                        <Bike className="size-4" aria-hidden="true" />
-                      </span>
-                    )
+                    // a foto com a bolinha do estado: de longe, a lista
+                    // inteira se lê pelas bolinhas
+                    <span className="relative block size-11">
+                      {e.fotoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- retrato pequeno, já recortado no envio
+                        <img src={e.fotoUrl} alt="" className="size-11 rounded-full object-cover" />
+                      ) : (
+                        <span className="grid size-11 place-items-center rounded-full bg-surface-3 text-muted">
+                          <Bike className="size-5" aria-hidden="true" />
+                        </span>
+                      )}
+                      <span className={cn("absolute right-0 bottom-0 size-3.5 rounded-full ring-2 ring-surface", como.bolinha)} />
+                    </span>
                   }
                   selo={<Badge tone={como.tone}>{como.texto}</Badge>}
                   className={cn(!e.ativo && "opacity-70")}
@@ -157,11 +204,7 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
           para instalar -- é o endereço da tela dele, que abre no navegador
           do celular e pode virar atalho na tela inicial. */}
       {entregadores.length > 0 && (
-        <Gaveta
-          titulo="Como o entregador entra"
-          resumo="O link para mandar no WhatsApp dele."
-          icone={<Smartphone />}
-        >
+        <Gaveta titulo="Como o entregador entra" resumo="O link para mandar no WhatsApp dele." icone={<Smartphone />}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted">
               Mande este endereço para o entregador. Ele abre no navegador do celular e entra com o próprio telefone e a senha que você
@@ -183,6 +226,11 @@ export default async function EntregadoresPage({ params }: PageProps<"/painel/[r
       >
         <NovoEntregador restaurantId={acesso.restaurant.id} />
       </Gaveta>
+
+      <p className="flex items-center justify-center gap-1.5 pb-2 text-xs text-faint">
+        <Info className="size-3.5" aria-hidden="true" />
+        Menu Fácil Delivery · Sistema de entregas integrado
+      </p>
     </div>
   );
 }
