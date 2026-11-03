@@ -6,7 +6,7 @@ import { Bike, Clock, Crosshair, Phone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { ATRIBUICAO, COR_DA_MOTO, COR_DO_DESTINO, LADRILHOS } from "@/lib/mapa";
+import { ATRIBUICAO, CLASSE_DOS_LADRILHOS, COR_DA_MOTO, COR_DO_DESTINO, LADRILHOS } from "@/lib/mapa";
 import { tempoEmPalavras, useRota } from "@/lib/rota-no-mapa";
 
 // O mapa com a moto se mexendo, na tela que o cliente já acompanha.
@@ -127,7 +127,7 @@ export function MapaDaEntrega({
           boxZoom: false,
           keyboard: false,
         }).setView(pos, 15);
-        L.tileLayer(LADRILHOS, { maxZoom: 19, attribution: ATRIBUICAO }).addTo(mapa.current);
+        L.tileLayer(LADRILHOS, { maxZoom: 19, attribution: ATRIBUICAO, className: CLASSE_DOS_LADRILHOS }).addTo(mapa.current);
         marcadorMoto.current = L.marker(pos, { icon: motoIcon(L) }).addTo(mapa.current);
       } else {
         marcadorMoto.current?.setLatLng(pos);
@@ -213,7 +213,7 @@ export function MapaDaEntrega({
       {temMapa ? (
         <>
           <div className="relative">
-            <div ref={caixa} className="mapa-escuro h-64 w-full overflow-hidden rounded-control border border-ink/20 bg-ink" aria-label="Mapa da entrega" />
+            <div ref={caixa} className="mapa-escuro h-64 w-full overflow-hidden rounded-control border border-black/25 bg-[#0f1115]" aria-label="Mapa da entrega" />
             {/* o tempo só aparece com rota de verdade: chute de previsão
                 é pior do que previsão nenhuma para quem está com fome */}
             {rota && (

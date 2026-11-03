@@ -225,3 +225,13 @@ details.drawer[open]::details-content {
 .tema-entregador .mapa-escuro .leaflet-tile-pane {
   filter: brightness(0.58) saturate(0.6) contrast(1.2);
 }
+
+/* Os ladrilhos escuros.
+ *
+ * A classe vem do proprio Leaflet (opcao `className` da camada), e nao de
+ * um seletor descendente a partir do container -- foi assim que a primeira
+ * tentativa falhou: a regra existia no arquivo, era servida, e nao pegava.
+ * Aqui ela cai no elemento certo por construcao. */
+.ladrilhos-escuros {
+  filter: brightness(0.52) saturate(0.55) contrast(1.25);
+}

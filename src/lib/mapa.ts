@@ -16,6 +16,16 @@
 // "API KEY REQUIRED". Testado em 03/11/2026; se um dia houver chave, é
 // trocar a URL aqui e tirar a classe.
 
+/**
+ * A classe que escurece os ladrilhos.
+ *
+ * Vai pelo proprio Leaflet, no `className` da camada, e nao por um
+ * seletor descendente a partir do container: assim a regra cai exatamente
+ * no elemento dos ladrilhos, sem depender da arvore que o Leaflet monta
+ * por dentro -- que foi o que falhou na primeira tentativa.
+ */
+export const CLASSE_DOS_LADRILHOS = "ladrilhos-escuros";
+
 export const LADRILHOS = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 export const ATRIBUICAO = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
