@@ -97,7 +97,7 @@ export default async function EntregadorPage({ params }: PageProps<"/entregador/
           ) : (
             <>
               {/* o mapa da entrega da vez, já aberto */}
-              {atual && enderecoAtual && <MapaDoEntregador destino={destino} rota={linkDaRota(enderecoAtual, atual.restaurant.city)} />}
+              {atual && enderecoAtual && <MapaDoEntregador destino={destino} rota={linkDaRota(enderecoAtual, atual.restaurant.city)} code={atual.code} />}
               {levando.map((p) => (
                 <CartaoDePedido key={p.id} pedido={p} base={base} selo={<Badge tone="info">Em rota</Badge>} />
               ))}

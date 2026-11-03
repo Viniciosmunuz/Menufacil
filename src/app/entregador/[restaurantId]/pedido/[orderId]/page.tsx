@@ -76,7 +76,7 @@ export default async function PedidoDoEntregadorPage({ params }: PageProps<"/ent
             {pedido.deliveryReference && <span className="block font-semibold text-muted">Ref.: {pedido.deliveryReference}</span>}
           </span>
         </p>
-        {endereco && <MapaDoEntregador destino={destino} rota={linkDaRota(endereco, pedido.restaurant.city)} />}
+        {endereco && <MapaDoEntregador destino={destino} rota={linkDaRota(endereco, pedido.restaurant.city)} code={pedido.code} />}
       </section>
 
       <section className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">

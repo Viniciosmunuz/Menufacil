@@ -2,11 +2,12 @@
 
 import "leaflet/dist/leaflet.css";
 
-import { Crosshair, Navigation } from "lucide-react";
+import { Clock, Crosshair, Navigation } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { buttonClasses } from "@/components/ui/button";
 import { ATRIBUICAO, COR_DA_MOTO, COR_DO_DESTINO, LADRILHOS } from "@/lib/mapa";
+import { tempoEmPalavras, useRota } from "@/lib/rota-no-mapa";
 
 // O mapa da entrega, na tela do entregador.
 //
@@ -35,8 +36,20 @@ const casaIcon = (L: typeof import("leaflet")) =>
     iconAnchor: [17, 17],
   });
 
-export function MapaDoEntregador({ destino, rota }: { destino: { lat: number; lng: number } | null; rota: string }) {
+export function MapaDoEntregador({
+  destino,
+  rota,
+  code,
+}: {
+  destino: { lat: number; lng: number } | null;
+  /** o link que abre a navegação no mapa do próprio celular */
+  rota: string;
+  /** o código do pedido, que é por onde se pede o caminho pelas ruas */
+  code: string;
+}) {
   const [minha, setMinha] = useState<[number, number] | null>(null);
+  // o caminho pelas ruas, quando o serviço de rotas está configurado
+  const caminho = useRota(code, minha, !!destino);
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<import("leaflet").Map | null>(null);
   const eu = useRef<import("leaflet").Marker | null>(null);
@@ -82,13 +95,22 @@ export function MapaDoEntregador({ destino, rota }: { destino: { lat: number; ln
       }
 
       if (minha && destino) {
-        const pontos: [number, number][] = [minha, [destino.lat, destino.lng]];
+        const extremos: [number, number][] = [minha, [destino.lat, destino.lng]];
+        // com rota, a linha segue a rua e é cheia; sem rota, é a reta
+        // tracejada -- o tracejado diz "isto é aproximado"
+        const pontos = caminho?.caminho.length ? caminho.caminho : extremos;
         if (!linha.current) {
-          linha.current = L.polyline(pontos, { color: COR_DA_MOTO, weight: 3, opacity: 0.7, dashArray: "6 8" }).addTo(mapa.current);
+          linha.current = L.polyline(pontos, {
+            color: COR_DA_MOTO,
+            weight: caminho ? 5 : 3,
+            opacity: caminho ? 0.9 : 0.7,
+            dashArray: caminho ? undefined : "6 8",
+          }).addTo(mapa.current);
         } else {
           linha.current.setLatLngs(pontos);
+          linha.current.setStyle({ weight: caminho ? 5 : 3, opacity: caminho ? 0.9 : 0.7, dashArray: caminho ? undefined : "6 8" });
         }
-        mapa.current.fitBounds(L.latLngBounds(pontos).pad(0.3));
+        mapa.current.fitBounds(L.latLngBounds(extremos).pad(0.3));
       } else {
         mapa.current.panTo(centro);
       }
@@ -97,7 +119,7 @@ export function MapaDoEntregador({ destino, rota }: { destino: { lat: number; ln
     return () => {
       cancelado = true;
     };
-  }, [destino, minha]);
+  }, [destino, minha, caminho]);
 
   useEffect(
     () => () => {
@@ -109,7 +131,17 @@ export function MapaDoEntregador({ destino, rota }: { destino: { lat: number; ln
 
   return (
     <section className="flex flex-col gap-3">
-      <div ref={caixa} className="h-56 w-full mapa-escuro overflow-hidden rounded-2xl border border-ink/20 bg-ink shadow-md shadow-black/5" aria-label="Mapa da entrega" />
+      <div className="relative">
+        <div ref={caixa} className="mapa-escuro h-56 w-full overflow-hidden rounded-2xl border border-ink/20 bg-ink shadow-md shadow-black/5" aria-label="Mapa da entrega" />
+        {/* o tempo só aparece com rota de verdade: chute de previsão é pior
+            do que previsão nenhuma para quem está na rua */}
+        {caminho && (
+          <p className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-bg/95 px-3 py-1.5 text-sm font-extrabold shadow-md">
+            <Clock className="size-4 text-success" aria-hidden="true" />
+            Chegada em {tempoEmPalavras(caminho.segundos)}
+          </p>
+        )}
+      </div>
       <div className="flex gap-2">
         <a href={rota} target="_blank" rel="noopener noreferrer" className={buttonClasses("primary", "lg", "flex-1")}>
           <Navigation className="size-5" aria-hidden="true" />

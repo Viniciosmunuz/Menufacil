@@ -100,6 +100,7 @@ export function pedidoDoEntregador(restaurantId: string, entregadorId: string, o
     select: {
       id: true,
       number: true,
+      code: true,
       status: true,
       customerName: true,
       customerWhatsapp: true,

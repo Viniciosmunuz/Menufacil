@@ -2,11 +2,12 @@
 
 import "leaflet/dist/leaflet.css";
 
-import { Bike, Crosshair, Phone } from "lucide-react";
+import { Bike, Clock, Crosshair, Phone } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { ATRIBUICAO, COR_DA_MOTO, COR_DO_DESTINO, LADRILHOS } from "@/lib/mapa";
+import { tempoEmPalavras, useRota } from "@/lib/rota-no-mapa";
 
 // O mapa com a moto se mexendo, na tela que o cliente já acompanha.
 //
@@ -65,8 +66,11 @@ export function MapaDaEntrega({
 }) {
   const [situacao, setSituacao] = useState<Situacao>({ emRota: true, ...inicial });
   const [minhaPos, setMinhaPos] = useState<[number, number] | null>(null);
+  const moto = situacao.lat != null && situacao.lng != null ? ([situacao.lat, situacao.lng] as [number, number]) : null;
   const casaLat = situacao.destino?.lat ?? null;
   const casaLng = situacao.destino?.lng ?? null;
+  // o caminho pelas ruas, quando o serviço de rotas está configurado
+  const rota = useRota(code, moto, casaLat != null && casaLng != null);
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<import("leaflet").Map | null>(null);
   const marcadorMoto = useRef<import("leaflet").Marker | null>(null);
@@ -136,13 +140,22 @@ export function MapaDaEntrega({
         if (!marcadorCasa.current) marcadorCasa.current = L.marker(alvo, { icon: casaIcon(L) }).addTo(mapa.current);
         else marcadorCasa.current.setLatLng(alvo);
 
-        const pontos: [number, number][] = [pos, alvo];
+        // com rota, a linha segue a rua e é cheia; sem rota, é a reta
+        // tracejada de antes -- o tracejado é o que diz "isto é uma
+        // aproximação", e some quando o caminho passa a ser de verdade
+        const pontos: [number, number][] = rota?.caminho.length ? rota.caminho : [pos, alvo];
         if (!linha.current) {
-          linha.current = L.polyline(pontos, { color: COR_DA_MOTO, weight: 3, opacity: 0.7, dashArray: "6 8" }).addTo(mapa.current);
+          linha.current = L.polyline(pontos, {
+            color: COR_DA_MOTO,
+            weight: rota ? 5 : 3,
+            opacity: rota ? 0.9 : 0.7,
+            dashArray: rota ? undefined : "6 8",
+          }).addTo(mapa.current);
         } else {
           linha.current.setLatLngs(pontos);
+          linha.current.setStyle({ weight: rota ? 5 : 3, opacity: rota ? 0.9 : 0.7, dashArray: rota ? undefined : "6 8" });
         }
-        mapa.current.fitBounds(L.latLngBounds(pontos).pad(0.35));
+        mapa.current.fitBounds(L.latLngBounds([pos, alvo]).pad(0.35));
       } else {
         mapa.current.panTo(pos);
       }
@@ -151,7 +164,7 @@ export function MapaDaEntrega({
     return () => {
       cancelado = true;
     };
-  }, [situacao?.lat, situacao?.lng, minhaPos, casaLat, casaLng]);
+  }, [situacao?.lat, situacao?.lng, minhaPos, casaLat, casaLng, rota]);
 
   // o mapa morre junto com a tela
   useEffect(
@@ -199,7 +212,17 @@ export function MapaDaEntrega({
 
       {temMapa ? (
         <>
-          <div ref={caixa} className="h-64 w-full mapa-escuro overflow-hidden rounded-control border border-ink/20 bg-ink" aria-label="Mapa da entrega" />
+          <div className="relative">
+            <div ref={caixa} className="mapa-escuro h-64 w-full overflow-hidden rounded-control border border-ink/20 bg-ink" aria-label="Mapa da entrega" />
+            {/* o tempo só aparece com rota de verdade: chute de previsão
+                é pior do que previsão nenhuma para quem está com fome */}
+            {rota && (
+              <p className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-bg/95 px-3 py-1.5 text-sm font-extrabold shadow-md">
+                <Clock className="size-4 text-success" aria-hidden="true" />
+                Chega em {tempoEmPalavras(rota.segundos)}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={() =>
