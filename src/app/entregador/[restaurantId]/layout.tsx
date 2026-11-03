@@ -17,7 +17,18 @@ import type { Metadata, Viewport } from "next";
 // que é o que quem lê de longe ou tem a vista cansada precisa.
 
 // o atalho da tela inicial: ícone e nome próprios, abrindo nas entregas
-export const metadata: Metadata = { manifest: "/entregador/manifest", title: { default: "MenuFácil Entregas", template: "%s · Entregas" } };
+// O atalho da tela inicial: ícone e nome próprios, abrindo nas entregas.
+//
+// O manifesto resolve o Android. **O iPhone não lê o manifesto** nessa
+// hora: ele usa o apple-touch-icon, que aqui vem de
+// src/app/entregador/apple-icon.png -- e era por faltar esse arquivo que o
+// atalho saía com o ícone genérico do site, igual ao do cardápio e ao do
+// painel. O nome curto também é outro: appleWebApp.title.
+export const metadata: Metadata = {
+  manifest: "/entregador/manifest",
+  title: { default: "MenuFácil Entregas", template: "%s · Entregas" },
+  appleWebApp: { capable: true, title: "Entregas", statusBarStyle: "black-translucent" },
+};
 
 export const viewport: Viewport = {
   themeColor: "#0c0e12",
