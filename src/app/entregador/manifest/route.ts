@@ -4,7 +4,9 @@
 // barra de endereço -- é o mais perto de aplicativo que o navegador
 // entrega, e é o que ele vai usar até existir um APK de verdade.
 //
-// O ícone é o contrário do painel de propósito: lá a marca é laranja no
+// O ícone é o entregador na moto, com a caixa que leva a cúpula da
+// marca, e o nome embaixo. Diferente do painel e do cardápio de
+// propósito: na tela do celular os três ficam lado a lado.
 // claro, aqui é branca sobre o laranja. Com os dois atalhos lado a lado na
 // mesma tela, não há como pegar um pelo outro -- e continua sendo a mesma
 // marca, não um desenho à parte.
@@ -22,7 +24,7 @@ export function GET() {
     display: "standalone",
     // a tela de abertura do Android sai daqui: fundo escuro e o ícone no
     // meio, que é o mais perto de splash que um aplicativo web tem
-    background_color: "#0c0e12",
+    background_color: "#ffffff",
     theme_color: "#0c0e12",
     icons: [
       { src: "/app/entregador-icone-192.png", sizes: "192x192", type: "image/png" },
