@@ -6,11 +6,21 @@ import { StepButton, type StatusNotice } from "@/components/panel/step-button";
 
 import { LinhaDePedido } from "./linha";
 import { buttonClasses } from "@/components/ui/button";
-import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
+import type {
+  OrderOrigin,
+  OrderStatus,
+  OrderType,
+  PaymentMethod,
+  PaymentStatus,
+} from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatCents, formatPhone, formatTime } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
-import { FINAL_ORDER_STATUSES, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
+import {
+  FINAL_ORDER_STATUSES,
+  nextOrderStep,
+  pagamentoConfirmado,
+} from "@/lib/order-flow";
 
 // A lista de pedidos em tabela, no computador.
 //
@@ -60,13 +70,25 @@ const BARRA: Record<OrderStatus, string> = {
 };
 
 /** saiu do restaurante: o que falta é o entregador chegar */
-const emRota = (p?: { status: OrderStatus }) => p?.status === "OUT_FOR_DELIVERY";
+const emRota = (p?: { status: OrderStatus }) =>
+  p?.status === "OUT_FOR_DELIVERY";
 
 /** o próximo passo deste pedido, ou nada quando ele já terminou */
 const passo = (p: Pedido) =>
-  FINAL_ORDER_STATUSES.includes(p.status) ? null : nextOrderStep(p.status, p.type, p.paymentMethod, p.origin, pagamentoConfirmado(p.payment));
+  FINAL_ORDER_STATUSES.includes(p.status)
+    ? null
+    : nextOrderStep(
+        p.status,
+        p.type,
+        p.paymentMethod,
+        p.origin,
+        pagamentoConfirmado(p.payment),
+      );
 
-const PAGAMENTO: Record<PaymentMethod, { nome: string; icone: typeof QrCode; cor: string }> = {
+const PAGAMENTO: Record<
+  PaymentMethod,
+  { nome: string; icone: typeof QrCode; cor: string }
+> = {
   PIX: { nome: "Pix", icone: QrCode, cor: "bg-success/10 text-success" },
   CARD: { nome: "Cartão", icone: CreditCard, cor: "bg-info/10 text-info" },
   CASH: { nome: "Dinheiro", icone: Banknote, cor: "bg-surface-3 text-ink" },
@@ -96,6 +118,7 @@ export function TabelaDePedidos<T extends Pedido>({
   notify,
   relogio,
   detalhe,
+  marcar,
 }: {
   pedidos: T[];
   base: string;
@@ -107,24 +130,30 @@ export function TabelaDePedidos<T extends Pedido>({
   relogio: (desde: Date) => React.ReactNode;
   /** o que aparece quando a linha abre: o mesmo resumo do cartão antigo */
   detalhe: (p: T) => React.ReactNode;
+  /** a caixinha da seleção em lote, quando ela está ligada */
+  marcar?: (p: T) => React.ReactNode;
 }) {
-  const cabecalho = "px-4 pb-1 text-left text-xs font-extrabold tracking-wide text-muted uppercase";
-
   return (
     // Cada pedido no seu próprio cartão, com um vão entre eles -- como na
     // lista do celular. Numa tabela corrida o olho escorrega de uma linha
     // para a outra; separados, cada pedido é um bloco que se lê inteiro.
+    //
+    // Sem cabeçalho à vista: com os cartões separados, "Pedido / Cliente /
+    // Valor" nomeava o que o próprio conteúdo já diz -- um número com
+    // cerquilha, um nome, um preço em reais. Os nomes continuam no HTML,
+    // escondidos, porque o leitor de tela precisa deles para dizer de que
+    // coluna é cada célula.
     <div>
       <table className="w-full border-separate border-spacing-y-2">
-        <thead>
+        <thead className="sr-only">
           <tr>
-            <th scope="col" className={cabecalho}>Pedido</th>
-            <th scope="col" className={cabecalho}>Cliente</th>
-            <th scope="col" className={cabecalho}>Pagamento</th>
-            <th scope="col" className={cn(cabecalho, "text-right")}>Valor</th>
-            <th scope="col" className={cabecalho}>Tempo</th>
-            <th scope="col" className={cabecalho}>Status</th>
-            <th scope="col" className={cn(cabecalho, "text-right")}>Ações</th>
+            <th scope="col">Pedido</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Pagamento</th>
+            <th scope="col">Valor</th>
+            <th scope="col">Tempo</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ações</th>
           </tr>
         </thead>
 
@@ -168,9 +197,18 @@ export function TabelaDePedidos<T extends Pedido>({
                         <input type="hidden" name="from" value={p.status} />
                         <input type="hidden" name="to" value={passo(p)!.to} />
                         {Object.entries(hidden ?? {}).map(([nome, valor]) => (
-                          <input key={nome} type="hidden" name={nome} value={valor} />
+                          <input
+                            key={nome}
+                            type="hidden"
+                            name={nome}
+                            value={valor}
+                          />
                         ))}
-                        <StepButton label={passo(p)!.label} notify={notify(p)} size="sm" />
+                        <StepButton
+                          label={passo(p)!.label}
+                          notify={notify(p)}
+                          size="sm"
+                        />
                       </form>
                     ) : null
                   }
@@ -178,7 +216,10 @@ export function TabelaDePedidos<T extends Pedido>({
                     <>
                       {detalhe(p)}
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`${base}/${p.id}`} className={buttonClasses("secondary", "sm")}>
+                        <Link
+                          href={`${base}/${p.id}`}
+                          className={buttonClasses("secondary", "sm")}
+                        >
                           <ExternalLink className="size-4" aria-hidden="true" />
                           Abrir o pedido inteiro
                         </Link>
@@ -187,19 +228,38 @@ export function TabelaDePedidos<T extends Pedido>({
                   }
                 >
                   <td className="px-4 py-3 align-middle">
-                    <p className="font-extrabold tabular-nums">#{p.number}</p>
-                    <p className="text-xs text-muted">
-                      {formatTime(p.createdAt)} · {p.type === "DELIVERY" ? "Entrega" : "Retirada"}
+                    <div className="flex items-center gap-3">
+                      {marcar?.(p)}
+                      <div className="min-w-0">
+                        <p className="font-extrabold tabular-nums">
+                          #{p.number}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {formatTime(p.createdAt)} ·{" "}
+                          {p.type === "DELIVERY" ? "Entrega" : "Retirada"}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3 align-middle">
+                    <p className="max-w-56 truncate font-bold">
+                      {p.customerName}
                     </p>
+                    {p.customerWhatsapp && (
+                      <p className="text-xs text-muted">
+                        {formatPhone(p.customerWhatsapp)}
+                      </p>
+                    )}
                   </td>
 
                   <td className="px-4 py-3 align-middle">
-                    <p className="max-w-56 truncate font-bold">{p.customerName}</p>
-                    {p.customerWhatsapp && <p className="text-xs text-muted">{formatPhone(p.customerWhatsapp)}</p>}
-                  </td>
-
-                  <td className="px-4 py-3 align-middle">
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold", forma.cor)}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold",
+                        forma.cor,
+                      )}
+                    >
                       <Icone className="size-3.5" aria-hidden="true" />
                       {forma.nome}
                     </span>
@@ -209,24 +269,32 @@ export function TabelaDePedidos<T extends Pedido>({
                     {formatCents(p.totalCents)}
                   </td>
 
-                  <td className="px-4 py-3 align-middle text-sm text-muted">{relogio(p.createdAt)}</td>
+                  <td className="px-4 py-3 align-middle text-sm text-muted">
+                    {relogio(p.createdAt)}
+                  </td>
 
                   <td className="px-4 py-3 align-middle">
                     {/* Em rota, a motinha verde sozinha: é o que se procura na
                         lista cheia, e o nome do status não acrescenta nada ao
                         desenho. Quem usa leitor de tela continua ouvindo. */}
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold", COR[p.status])}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold",
+                        COR[p.status],
+                      )}
+                    >
                       {emRota(p) ? (
                         <>
                           <Bike className="size-4" aria-hidden="true" />
-                          <span className="sr-only">{orderStatusLabel[p.status]}</span>
+                          <span className="sr-only">
+                            {orderStatusLabel[p.status]}
+                          </span>
                         </>
                       ) : (
                         orderStatusLabel[p.status]
                       )}
                     </span>
                   </td>
-
                 </LinhaDePedido>
               </Fragment>
             );

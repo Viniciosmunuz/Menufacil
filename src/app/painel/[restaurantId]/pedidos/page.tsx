@@ -1,11 +1,24 @@
-import { Bike, ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, ReceiptText } from "lucide-react";
+import {
+  Bike,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  MessagesSquare,
+  Printer,
+  ReceiptText,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AvisosDeMensagem } from "@/components/panel/avisos-de-mensagem";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
-import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
+import {
+  OrderDrawer,
+  OrderSummary,
+  editableOrder,
+  orderSummarySelect,
+} from "@/components/panel/order-summary";
 import { PageHeader } from "@/components/panel/page-header";
 import { StepButton } from "@/components/panel/step-button";
 import { PrintSettings } from "@/components/panel/print-settings";
@@ -21,7 +34,13 @@ import { formatTime } from "@/lib/format";
 import { db } from "@/lib/db";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
-import { EXCLUDE_UNPAID, FINAL_ORDER_STATUSES, esperaAceite, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
+import {
+  EXCLUDE_UNPAID,
+  FINAL_ORDER_STATUSES,
+  esperaAceite,
+  nextOrderStep,
+  pagamentoConfirmado,
+} from "@/lib/order-flow";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
@@ -33,7 +52,12 @@ import { AvisoDePagosSemPedido } from "../totem/pagos";
 import { AvisosDeMovimento, type Movimento } from "./avisos";
 import { Decorrido } from "./relogio";
 import { TabelaDePedidos } from "./tabela";
-import { MarcarPedido, SelecaoDePedidos, type PassoDoPedido } from "./selecao";
+import {
+  BotaoSelecionar,
+  MarcarPedido,
+  SelecaoDePedidos,
+  type PassoDoPedido,
+} from "./selecao";
 import {
   avancarPedidosEmLote,
   desligarAvisos,
@@ -53,25 +77,49 @@ const PAGE_SIZE = 30;
 
 const FILTERS = {
   // vazio, o "Nada por aqui" basta: as abas do lado já dizem onde estão os outros
-  andamento: { label: "Em andamento", statuses: OPEN_ORDER_STATUSES, empty: null },
-  concluidos: { label: "Concluídos", statuses: ["COMPLETED"] as OrderStatus[], empty: "Nenhum pedido concluído ainda." },
-  cancelados: { label: "Cancelados", statuses: ["CANCELED"] as OrderStatus[], empty: "Nenhum pedido cancelado." },
-  todos: { label: "Todos", statuses: null, empty: "Os pedidos feitos pelos clientes aparecem aqui." },
+  andamento: {
+    label: "Em andamento",
+    statuses: OPEN_ORDER_STATUSES,
+    empty: null,
+  },
+  concluidos: {
+    label: "Concluídos",
+    statuses: ["COMPLETED"] as OrderStatus[],
+    empty: "Nenhum pedido concluído ainda.",
+  },
+  cancelados: {
+    label: "Cancelados",
+    statuses: ["CANCELED"] as OrderStatus[],
+    empty: "Nenhum pedido cancelado.",
+  },
+  todos: {
+    label: "Todos",
+    statuses: null,
+    empty: "Os pedidos feitos pelos clientes aparecem aqui.",
+  },
 } as const;
 type FilterKey = keyof typeof FILTERS;
-const isFilter = (v: unknown): v is FilterKey => typeof v === "string" && v in FILTERS;
+const isFilter = (v: unknown): v is FilterKey =>
+  typeof v === "string" && v in FILTERS;
 
 /** saiu do restaurante: o que falta é o entregador chegar */
-const emRota = (o?: { status: OrderStatus }) => o?.status === "OUT_FOR_DELIVERY";
+const emRota = (o?: { status: OrderStatus }) =>
+  o?.status === "OUT_FOR_DELIVERY";
 
 // Pedidos do restaurante: cada um abre como gaveta, com o próximo passo do
 // atendimento à mão. A página se atualiza sozinha para mostrar pedido novo.
-export default async function RestaurantOrdersPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/pedidos">) {
+export default async function RestaurantOrdersPage({
+  params,
+  searchParams,
+}: PageProps<"/painel/[restaurantId]/pedidos">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
   const sp = await searchParams;
   const filter: FilterKey = isFilter(sp.ver) ? sp.ver : "andamento";
-  const page = Math.max(1, Number.parseInt(typeof sp.pagina === "string" ? sp.pagina : "1", 10) || 1);
+  const page = Math.max(
+    1,
+    Number.parseInt(typeof sp.pagina === "string" ? sp.pagina : "1", 10) || 1,
+  );
   const statuses = FILTERS[filter].statuses;
   // O salão fica de fora desta tela.
   //
@@ -80,18 +128,47 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // lista: aqui se acompanha entrega, e "Mesa 7" no meio dos pedidos de
   // delivery faria o balcão procurar endereço onde não há. O salão tem a
   // tela dele, com o mapa das mesas.
-  const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
+  const where = {
+    restaurantId: restaurant.id,
+    origin: { not: "SALAO" as const },
+    ...(statuses ? { status: { in: [...statuses] } } : {}),
+  };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, printFacilLigado, ultimos] = await Promise.all([
-    db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
+  const [
+    orders,
+    total,
+    byStatus,
+    openOrders,
+    printDevices,
+    pagosSemPedido,
+    recados,
+    printFacilLigado,
+    ultimos,
+  ] = await Promise.all([
+    db.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: orderSummarySelect,
+    }),
     db.order.count({ where }),
-    db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
+    db.order.groupBy({
+      by: ["status"],
+      where: { restaurantId: restaurant.id, origin: { not: "SALAO" } },
+      _count: { _all: true },
+    }),
     // Pedidos esperando atendimento: são eles que a impressora tira sozinha
     // e que tocam o sino. O pedido do 100% Delivery que ainda está esperando
     // o Pix fica fora desta lista -- ele aparece na lista de baixo, para o
     // balcão saber que existe, mas não imprime nem apita.
     db.order.findMany({
-      where: { restaurantId: restaurant.id, origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] }, ...EXCLUDE_UNPAID },
+      where: {
+        restaurantId: restaurant.id,
+        origin: { not: "SALAO" },
+        status: { in: [...OPEN_ORDER_STATUSES] },
+        ...EXCLUDE_UNPAID,
+      },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: {
@@ -112,10 +189,14 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     listDevices(restaurant.id),
     // dinheiro de cliente parado: o balcão vive nesta aba, então o aviso
     // nasce aqui mesmo, com o caminho para resolver
-    restaurant.totemEnabled ? contarPagamentosSemPedido(restaurant.id) : Promise.resolve(0),
+    restaurant.totemEnabled
+      ? contarPagamentosSemPedido(restaurant.id)
+      : Promise.resolve(0),
     // só no 100% Delivery existe conversa: nos outros o cliente fala pelo
     // WhatsApp, e o recado nunca passa por aqui
-    restaurant.fullDeliveryEnabled ? recadosEsperando(restaurant.id) : Promise.resolve([]),
+    restaurant.fullDeliveryEnabled
+      ? recadosEsperando(restaurant.id)
+      : Promise.resolve([]),
     // com um computador acordado, o botão Imprimir de cada pedido manda a
     // via de volta para ele em vez de tentar imprimir no aparelho de quem
     // tocou -- que no celular não tem impressora nenhuma
@@ -127,16 +208,31 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       where: { restaurantId: restaurant.id, origin: { not: "SALAO" } },
       orderBy: { updatedAt: "desc" },
       take: 12,
-      select: { id: true, number: true, customerName: true, status: true, updatedAt: true },
+      select: {
+        id: true,
+        number: true,
+        customerName: true,
+        status: true,
+        updatedAt: true,
+      },
     }),
   ]);
 
   // uma consulta só para a página inteira, em vez de uma por linha
-  const naoLidas = restaurant.fullDeliveryEnabled ? await naoLidasPorPedido(restaurant.id, orders.map((o) => o.id)) : new Map();
+  const naoLidas = restaurant.fullDeliveryEnabled
+    ? await naoLidasPorPedido(
+        restaurant.id,
+        orders.map((o) => o.id),
+      )
+    : new Map();
 
   const countOf = (key: FilterKey) => {
     const list = FILTERS[key].statuses;
-    return byStatus.filter((g) => !list || (list as readonly OrderStatus[]).includes(g.status)).reduce((sum, g) => sum + g._count._all, 0);
+    return byStatus
+      .filter(
+        (g) => !list || (list as readonly OrderStatus[]).includes(g.status),
+      )
+      .reduce((sum, g) => sum + g._count._all, 0);
   };
   const base = `/painel/${restaurant.id}/pedidos`;
   const href = (key: FilterKey, p = 1) => {
@@ -158,17 +254,34 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // Em andamento, quem já saiu com o entregador desce para o fim da lista.
   // Sem isto a divisória cairia no meio, com pedido do restaurante depois
   // dela. Nas outras abas a ordem é a de sempre: ali é histórico.
-  const lista = filter === "andamento" ? [...orders].sort((a, b) => Number(emRota(a)) - Number(emRota(b))) : orders;
+  const lista =
+    filter === "andamento"
+      ? [...orders].sort((a, b) => Number(emRota(a)) - Number(emRota(b)))
+      : orders;
   const hidden = { restaurantId: restaurant.id };
   // o passo que vai no botão da própria linha, igual ao da tabela: o que
   // falta fazer neste pedido, ou nada quando ele já terminou
   const passoDaLinha = (o: (typeof lista)[number]) =>
-    FINAL_ORDER_STATUSES.includes(o.status) ? null : nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
+    FINAL_ORDER_STATUSES.includes(o.status)
+      ? null
+      : nextOrderStep(
+          o.status,
+          o.type,
+          o.paymentMethod,
+          o.origin,
+          pagamentoConfirmado(o.payment),
+        );
   // o passo que a seleção em lote pode dar neste pedido: o mesmo do botão
   // dele, e nunca "confirmar pagamento", que pede olhar um por um
   const passoEmLote = (o: (typeof lista)[number]): PassoDoPedido | null => {
     if (filter !== "andamento") return null;
-    const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
+    const step = nextOrderStep(
+      o.status,
+      o.type,
+      o.paymentMethod,
+      o.origin,
+      pagamentoConfirmado(o.payment),
+    );
     if (!step || step.label === "Confirmar pagamento") return null;
     return { orderId: o.id, from: o.status, to: step.to, label: step.label };
   };
@@ -179,7 +292,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
       <AutoRefresh seconds={45} background />
       <PageHeader title="Pedidos" />
-      <AvisoDePagosSemPedido quantos={pagosSemPedido} href={`/painel/${restaurant.id}/totem`} />
+      <AvisoDePagosSemPedido
+        quantos={pagosSemPedido}
+        href={`/painel/${restaurant.id}/totem`}
+      />
       <PrintSettings
         base={base}
         panelUrl={`${appUrl()}/painel`}
@@ -189,7 +305,11 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
-        recados={recados.length > 0 ? <AvisosDeMensagem mensagens={recados} base={base} /> : null}
+        recados={
+          recados.length > 0 ? (
+            <AvisosDeMensagem mensagens={recados} base={base} />
+          ) : null
+        }
         avisos={
           <PushAvisos
             restaurantId={restaurant.id}
@@ -209,12 +329,21 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         }))}
         orders={openOrders.map((o) => {
           // o aviso da tela só traz o aceite; o resto do atendimento fica na lista
-          const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin, pagamentoConfirmado(o.payment));
+          const step = nextOrderStep(
+            o.status,
+            o.type,
+            o.paymentMethod,
+            o.origin,
+            pagamentoConfirmado(o.payment),
+          );
           return {
             id: o.id,
             number: o.number,
             createdAt: o.createdAt.toISOString(),
-            entrouEm: (o.origin === "FULL_DELIVERY" ? (o.payment?.confirmedAt ?? o.createdAt) : o.createdAt).toISOString(),
+            entrouEm: (o.origin === "FULL_DELIVERY"
+              ? (o.payment?.confirmedAt ?? o.createdAt)
+              : o.createdAt
+            ).toISOString(),
             status: o.status,
             accept: esperaAceite(o.status) ? step : null,
             notify: nextStatusNotice(o, restaurant),
@@ -222,93 +351,139 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         })}
       />
 
-      {/* O sino das movimentações na mesma linha das abas, na outra ponta:
+      {/* A seleção em lote abraça a linha das abas e as duas listas: a
+          caixinha que liga mora ao lado das abas, e as caixinhas dos pedidos
+          nascem dentro da tabela e dos cartões. */}
+      <SelecaoDePedidos
+        restaurantId={restaurant.id}
+        acao={avancarPedidosEmLote}
+        disponivel={filter === "andamento"}
+      >
+        {/* O sino das movimentações na mesma linha das abas, na outra ponta:
           sozinho ele comia uma faixa da tela só para ele, e a lista de
           pedidos começava mais embaixo sem nada ter aparecido. */}
-      <div className="flex items-center gap-3">
-        <nav className="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0" aria-label="Filtrar pedidos">
-          {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
-            <Link
-              key={key}
-              href={href(key)}
-              aria-current={key === filter ? "page" : undefined}
-              className={cn(
-                "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold",
-                key === filter ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:text-ink",
-              )}
-            >
-              {FILTERS[key].label}
-              <span className="tabular-nums opacity-80">{countOf(key)}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="hidden shrink-0 lg:block">
-          <AvisosDeMovimento movimentos={movimentos} base={base} />
+        <div className="flex items-center gap-3">
+          <BotaoSelecionar />
+          <nav
+            className="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+            aria-label="Filtrar pedidos"
+          >
+            {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
+              <Link
+                key={key}
+                href={href(key)}
+                aria-current={key === filter ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-bold",
+                  key === filter
+                    ? "border-brand bg-brand-soft text-brand"
+                    : "border-line text-muted hover:text-ink",
+                )}
+              >
+                {FILTERS[key].label}
+                <span className="tabular-nums opacity-80">{countOf(key)}</span>
+              </Link>
+            ))}
+          </nav>
+          <div className="hidden shrink-0 lg:block">
+            <AvisosDeMovimento movimentos={movimentos} base={base} />
+          </div>
         </div>
-      </div>
 
-      {orders.length === 0 ? (
-        <EmptyState icon={<ReceiptText />} title="Nada por aqui">
-          {FILTERS[filter].empty}
-        </EmptyState>
-      ) : (
-        <>
-          {/* No computador: a tabela na largura toda, com o sino das
+        {orders.length === 0 ? (
+          <EmptyState icon={<ReceiptText />} title="Nada por aqui">
+            {FILTERS[filter].empty}
+          </EmptyState>
+        ) : (
+          <>
+            {/* No computador: a tabela na largura toda, com o sino das
               movimentações por cima dela. No celular continua a lista de
               cartões -- sete colunas não cabem em 390px, e o balcão no
               celular lê um pedido de cada vez. */}
-          <div className="hidden flex-col gap-3 lg:flex">
-            <div className="min-w-0">
-              <TabelaDePedidos
-                pedidos={lista}
-                base={base}
-                action={stepRestaurantOrder}
-                hidden={hidden}
-                notify={(p) => nextStatusNotice(p, restaurant)}
-                relogio={(desde) => <Decorrido desde={desde.toISOString()} />}
-                detalhe={(p) => (
-                  // o mesmo miolo do cartão do celular: itens, endereço,
-                  // pagamento, e as ações que não cabem na linha
-                  <>
-                    <OrderSummary order={p} />
-                    <OrderStepActions order={p} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(p, restaurant)} />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <OrderActions order={editableOrder(p)} updateAction={updateRestaurantOrder} hidden={hidden} />
-                      {p.origin === "FULL_DELIVERY" && (
-                        <Link
-                          href={`${base}/${p.id}#conversa`}
-                          className={buttonClasses((naoLidas.get(p.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
-                        >
-                          <MessagesSquare className="size-4" aria-hidden="true" />
-                          {(naoLidas.get(p.id) ?? 0) > 0 ? `Responder (${naoLidas.get(p.id)})` : "Conversa"}
-                        </Link>
-                      )}
-                      {/* a mesma via do cartão do celular: com o Menu Fácil PC
+            <div className="hidden flex-col gap-3 lg:flex">
+              <div className="min-w-0">
+                <TabelaDePedidos
+                  pedidos={lista}
+                  base={base}
+                  action={stepRestaurantOrder}
+                  hidden={hidden}
+                  notify={(p) => nextStatusNotice(p, restaurant)}
+                  relogio={(desde) => <Decorrido desde={desde.toISOString()} />}
+                  marcar={(p) => <MarcarPedido passo={passoEmLote(p)} />}
+                  detalhe={(p) => (
+                    // o mesmo miolo do cartão do celular: itens, endereço,
+                    // pagamento, e as ações que não cabem na linha
+                    <>
+                      <OrderSummary order={p} />
+                      <OrderStepActions
+                        order={p}
+                        action={stepRestaurantOrder}
+                        hidden={hidden}
+                        notify={nextStatusNotice(p, restaurant)}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <OrderActions
+                          order={editableOrder(p)}
+                          updateAction={updateRestaurantOrder}
+                          hidden={hidden}
+                        />
+                        {p.origin === "FULL_DELIVERY" && (
+                          <Link
+                            href={`${base}/${p.id}#conversa`}
+                            className={buttonClasses(
+                              (naoLidas.get(p.id) ?? 0) > 0
+                                ? "primary"
+                                : "ghost",
+                              "sm",
+                            )}
+                          >
+                            <MessagesSquare
+                              className="size-4"
+                              aria-hidden="true"
+                            />
+                            {(naoLidas.get(p.id) ?? 0) > 0
+                              ? `Responder (${naoLidas.get(p.id)})`
+                              : "Conversa"}
+                          </Link>
+                        )}
+                        {/* a mesma via do cartão do celular: com o Menu Fácil PC
                           ligado o botão manda imprimir no balcão, senão abre a
                           via para o aparelho de quem tocou */}
-                      {printFacilLigado ? (
-                        <form action={reprintOrder}>
-                          <input type="hidden" name="restaurantId" value={restaurant.id} />
-                          <input type="hidden" name="orderId" value={p.id} />
-                          <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
+                        {printFacilLigado ? (
+                          <form action={reprintOrder}>
+                            <input
+                              type="hidden"
+                              name="restaurantId"
+                              value={restaurant.id}
+                            />
+                            <input type="hidden" name="orderId" value={p.id} />
+                            <SubmitButton
+                              variant="ghost"
+                              size="sm"
+                              pendingText="Mandando..."
+                            >
+                              <Printer className="size-4" aria-hidden="true" />
+                              Imprimir
+                            </SubmitButton>
+                          </form>
+                        ) : (
+                          <a
+                            href={`${base}/${p.id}/via`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonClasses("ghost", "sm")}
+                          >
                             <Printer className="size-4" aria-hidden="true" />
                             Imprimir
-                          </SubmitButton>
-                        </form>
-                      ) : (
-                        <a href={`${base}/${p.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                          <Printer className="size-4" aria-hidden="true" />
-                          Imprimir
-                        </a>
-                      )}
-                    </div>
-                  </>
-                )}
-              />
+                          </a>
+                        )}
+                      </div>
+                    </>
+                  )}
+                />
+              </div>
             </div>
-          </div>
 
-          <SelecaoDePedidos restaurantId={restaurant.id} acao={avancarPedidosEmLote} disponivel={filter === "andamento"}>
             <ul className="flex flex-col gap-2 lg:hidden">
               {lista.map((o, i) => (
                 <li key={o.id}>
@@ -331,7 +506,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                     </p>
                   )}
                   <div className="flex items-start gap-2">
-                    <MarcarPedido passo={passoEmLote(o)} />
+                    <MarcarPedido passo={passoEmLote(o)} className="mt-3" />
                     <div className="min-w-0 flex-1">
                       <OrderDrawer
                         order={o}
@@ -342,20 +517,50 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                           // onde se para para olhar antes de desfazer.
                           passoDaLinha(o) ? (
                             <form action={stepRestaurantOrder}>
-                              <input type="hidden" name="orderId" value={o.id} />
-                              <input type="hidden" name="from" value={o.status} />
-                              <input type="hidden" name="to" value={passoDaLinha(o)!.to} />
+                              <input
+                                type="hidden"
+                                name="orderId"
+                                value={o.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="from"
+                                value={o.status}
+                              />
+                              <input
+                                type="hidden"
+                                name="to"
+                                value={passoDaLinha(o)!.to}
+                              />
                               {Object.entries(hidden).map(([nome, valor]) => (
-                                <input key={nome} type="hidden" name={nome} value={valor} />
+                                <input
+                                  key={nome}
+                                  type="hidden"
+                                  name={nome}
+                                  value={valor}
+                                />
                               ))}
-                              <StepButton label={passoDaLinha(o)!.label} notify={nextStatusNotice(o, restaurant)} size="sm" />
+                              <StepButton
+                                label={passoDaLinha(o)!.label}
+                                notify={nextStatusNotice(o, restaurant)}
+                                size="sm"
+                              />
                             </form>
                           ) : null
                         }
                       >
-                        <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
+                        <OrderStepActions
+                          order={o}
+                          action={stepRestaurantOrder}
+                          hidden={hidden}
+                          notify={nextStatusNotice(o, restaurant)}
+                        />
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
+                          <OrderActions
+                            order={editableOrder(o)}
+                            updateAction={updateRestaurantOrder}
+                            hidden={hidden}
+                          />
                           <span className="flex flex-wrap items-center gap-2">
                             {/* no 100% Delivery o cliente fala por aqui, e não pelo
                                 WhatsApp: sem um caminho na lista, a mensagem dele
@@ -364,10 +569,20 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                             {o.origin === "FULL_DELIVERY" && (
                               <Link
                                 href={`${base}/${o.id}#conversa`}
-                                className={buttonClasses((naoLidas.get(o.id) ?? 0) > 0 ? "primary" : "ghost", "sm")}
+                                className={buttonClasses(
+                                  (naoLidas.get(o.id) ?? 0) > 0
+                                    ? "primary"
+                                    : "ghost",
+                                  "sm",
+                                )}
                               >
-                                <MessagesSquare className="size-4" aria-hidden="true" />
-                                {(naoLidas.get(o.id) ?? 0) > 0 ? `Responder (${naoLidas.get(o.id)})` : "Conversa"}
+                                <MessagesSquare
+                                  className="size-4"
+                                  aria-hidden="true"
+                                />
+                                {(naoLidas.get(o.id) ?? 0) > 0
+                                  ? `Responder (${naoLidas.get(o.id)})`
+                                  : "Conversa"}
                               </Link>
                             )}
                             {/* Com o Menu Fácil PC ligado, quem tem a
@@ -377,21 +592,50 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                                 costuma estar no celular, longe da bobina. */}
                             {printFacilLigado ? (
                               <form action={reprintOrder}>
-                                <input type="hidden" name="restaurantId" value={restaurant.id} />
-                                <input type="hidden" name="orderId" value={o.id} />
-                                <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
-                                  <Printer className="size-4" aria-hidden="true" />
+                                <input
+                                  type="hidden"
+                                  name="restaurantId"
+                                  value={restaurant.id}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="orderId"
+                                  value={o.id}
+                                />
+                                <SubmitButton
+                                  variant="ghost"
+                                  size="sm"
+                                  pendingText="Mandando..."
+                                >
+                                  <Printer
+                                    className="size-4"
+                                    aria-hidden="true"
+                                  />
                                   Imprimir
                                 </SubmitButton>
                               </form>
                             ) : (
-                              <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                                <Printer className="size-4" aria-hidden="true" />
+                              <a
+                                href={`${base}/${o.id}/via`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={buttonClasses("ghost", "sm")}
+                              >
+                                <Printer
+                                  className="size-4"
+                                  aria-hidden="true"
+                                />
                                 Imprimir
                               </a>
                             )}
-                            <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
-                              <ExternalLink className="size-4" aria-hidden="true" />
+                            <Link
+                              href={`${base}/${o.id}`}
+                              className={buttonClasses("ghost", "sm")}
+                            >
+                              <ExternalLink
+                                className="size-4"
+                                aria-hidden="true"
+                              />
                               Abrir pedido
                             </Link>
                           </span>
@@ -402,32 +646,41 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                 </li>
               ))}
             </ul>
-          </SelecaoDePedidos>
-          {pages > 1 && (
-            <nav className="flex items-center justify-between gap-2" aria-label="Páginas">
-              {page > 1 ? (
-                <Link href={href(filter, page - 1)} className={buttonClasses("secondary", "sm")}>
-                  <ChevronLeft className="size-4" aria-hidden="true" />
-                  Anteriores
-                </Link>
-              ) : (
-                <span />
-              )}
-              <span className="text-sm text-muted">
-                Página {page} de {pages}
-              </span>
-              {page < pages ? (
-                <Link href={href(filter, page + 1)} className={buttonClasses("secondary", "sm")}>
-                  Próximos
-                  <ChevronRight className="size-4" aria-hidden="true" />
-                </Link>
-              ) : (
-                <span />
-              )}
-            </nav>
-          )}
-        </>
-      )}
+            {pages > 1 && (
+              <nav
+                className="flex items-center justify-between gap-2"
+                aria-label="Páginas"
+              >
+                {page > 1 ? (
+                  <Link
+                    href={href(filter, page - 1)}
+                    className={buttonClasses("secondary", "sm")}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden="true" />
+                    Anteriores
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                <span className="text-sm text-muted">
+                  Página {page} de {pages}
+                </span>
+                {page < pages ? (
+                  <Link
+                    href={href(filter, page + 1)}
+                    className={buttonClasses("secondary", "sm")}
+                  >
+                    Próximos
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            )}
+          </>
+        )}
+      </SelecaoDePedidos>
     </div>
   );
 }
