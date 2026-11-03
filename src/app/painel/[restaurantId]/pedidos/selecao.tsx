@@ -1,13 +1,7 @@
 "use client";
 
 import { Check, CheckSquare, X } from "lucide-react";
-import {
-  createContext,
-  useContext,
-  useState,
-  useTransition,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -24,12 +18,7 @@ import type { PassoEmLote, ResultadoDoLote } from "./actions";
 // nenhum dos dois pular etapa.
 
 /** o próximo passo de um pedido, como a lista calculou */
-export type PassoDoPedido = {
-  orderId: string;
-  from: string;
-  to: string;
-  label: string;
-};
+export type PassoDoPedido = { orderId: string; from: string; to: string; label: string };
 
 type Selecao = {
   ligada: boolean;
@@ -48,18 +37,13 @@ export function SelecaoDePedidos({
   children,
 }: {
   restaurantId: string;
-  acao: (
-    restaurantId: string,
-    passos: PassoEmLote[],
-  ) => Promise<ResultadoDoLote>;
+  acao: (restaurantId: string, passos: PassoEmLote[]) => Promise<ResultadoDoLote>;
   /** só na aba Em andamento: concluído e cancelado não têm passo a dar */
   disponivel: boolean;
   children: ReactNode;
 }) {
   const [ligada, setLigada] = useState(false);
-  const [marcados, setMarcados] = useState<Map<string, PassoDoPedido>>(
-    new Map(),
-  );
+  const [marcados, setMarcados] = useState<Map<string, PassoDoPedido>>(new Map());
   const [recado, setRecado] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
 
@@ -81,10 +65,7 @@ export function SelecaoDePedidos({
   // um botão por passo, com quantos pedidos marcados estão nele
   const grupos = new Map<string, { label: string; passos: PassoDoPedido[] }>();
   for (const passo of marcados.values()) {
-    const grupo = grupos.get(passo.to + passo.label) ?? {
-      label: passo.label,
-      passos: [],
-    };
+    const grupo = grupos.get(passo.to + passo.label) ?? { label: passo.label, passos: [] };
     grupo.passos.push(passo);
     grupos.set(passo.to + passo.label, grupo);
   }
@@ -112,14 +93,7 @@ export function SelecaoDePedidos({
   if (!disponivel) return <>{children}</>;
 
   return (
-    <Contexto.Provider
-      value={{
-        ligada,
-        marcados,
-        alternar,
-        alternarSelecao: () => (ligada ? desligar() : setLigada(true)),
-      }}
-    >
+    <Contexto.Provider value={{ ligada, marcados, alternar, alternarSelecao: () => (ligada ? desligar() : setLigada(true)) }}>
       {children}
 
       {ligada && (
@@ -129,21 +103,12 @@ export function SelecaoDePedidos({
               {/* sem nada marcado a barra explica o que fazer: com o botão
                   virando uma caixinha sem palavra nenhuma, é aqui que a
                   seleção ligada se anuncia */}
-              <span
-                className={cn(
-                  "font-bold",
-                  marcados.size === 0 && "font-semibold text-muted",
-                )}
-              >
+              <span className={cn("font-bold", marcados.size === 0 && "font-semibold text-muted")}>
                 {marcados.size === 0
                   ? "Marque os pedidos que vão dar o mesmo passo."
                   : `${marcados.size} ${marcados.size === 1 ? "pedido marcado" : "pedidos marcados"}`}
               </span>
-              {recado && (
-                <span className="truncate font-semibold text-success">
-                  {recado}
-                </span>
-              )}
+              {recado && <span className="truncate font-semibold text-success">{recado}</span>}
             </div>
             {marcados.size > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -155,9 +120,7 @@ export function SelecaoDePedidos({
                     onClick={() => aplicar(g.passos)}
                     className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-control bg-brand px-4 text-sm font-extrabold whitespace-nowrap text-brand-ink transition active:scale-[0.98] disabled:opacity-60"
                   >
-                    {enviando
-                      ? "Atualizando..."
-                      : `${g.label} (${g.passos.length})`}
+                    {enviando ? "Atualizando..." : `${g.label} (${g.passos.length})`}
                   </button>
                 ))}
               </div>
@@ -179,9 +142,7 @@ export function SelecaoDePedidos({
 export function BotaoSelecionar() {
   const selecao = useContext(Contexto);
   if (!selecao) return null;
-  const rotulo = selecao.ligada
-    ? "Cancelar a seleção"
-    : "Selecionar vários pedidos";
+  const rotulo = selecao.ligada ? "Cancelar a seleção" : "Selecionar vários pedidos";
   return (
     <button
       type="button"
@@ -191,16 +152,10 @@ export function BotaoSelecionar() {
       title={rotulo}
       className={cn(
         "grid size-10 shrink-0 place-items-center rounded-control border transition-colors",
-        selecao.ligada
-          ? "border-brand bg-brand-soft text-brand"
-          : "border-line text-muted hover:border-line-strong hover:text-ink",
+        selecao.ligada ? "border-brand bg-brand-soft text-brand" : "border-line text-muted hover:border-line-strong hover:text-ink",
       )}
     >
-      {selecao.ligada ? (
-        <X className="size-4" aria-hidden="true" />
-      ) : (
-        <CheckSquare className="size-4" aria-hidden="true" />
-      )}
+      {selecao.ligada ? <X className="size-4" aria-hidden="true" /> : <CheckSquare className="size-4" aria-hidden="true" />}
     </button>
   );
 }
@@ -210,19 +165,10 @@ export function BotaoSelecionar() {
  * pedido que tem um passo que pode ir em lote; nos outros fica o espaço,
  * para a lista não andar de lado.
  */
-export function MarcarPedido({
-  passo,
-  className,
-}: {
-  passo: PassoDoPedido | null;
-  className?: string;
-}) {
+export function MarcarPedido({ passo, className }: { passo: PassoDoPedido | null; className?: string }) {
   const selecao = useContext(Contexto);
   if (!selecao?.ligada) return null;
-  if (!passo)
-    return (
-      <span className={cn("w-7 shrink-0", className)} aria-hidden="true" />
-    );
+  if (!passo) return <span className={cn("w-7 shrink-0", className)} aria-hidden="true" />;
   const marcado = selecao.marcados.has(passo.orderId);
   return (
     <button
@@ -233,15 +179,11 @@ export function MarcarPedido({
       onClick={() => selecao.alternar(passo)}
       className={cn(
         "grid size-7 shrink-0 place-items-center rounded-md border-2 transition-colors",
-        marcado
-          ? "border-brand bg-brand text-brand-ink"
-          : "border-line-strong bg-surface",
+        marcado ? "border-brand bg-brand text-brand-ink" : "border-line-strong bg-surface",
         className,
       )}
     >
-      {marcado && (
-        <Check className="size-4" strokeWidth={3} aria-hidden="true" />
-      )}
+      {marcado && <Check className="size-4" strokeWidth={3} aria-hidden="true" />}
     </button>
   );
 }
