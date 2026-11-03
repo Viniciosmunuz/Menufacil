@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { noAr } from "@/lib/features";
 
 // Onde está a moto deste pedido.
 //
@@ -24,12 +25,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
       status: true,
       destinoLat: true,
       destinoLng: true,
+      restaurant: { select: { entregadorEnabled: true } },
       entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, latitude: true, longitude: true, posicaoEm: true } },
     },
   });
 
   const e = pedido?.entregador;
-  if (!pedido || pedido.status !== "OUT_FOR_DELIVERY" || !e) return NextResponse.json({ emRota: false });
+  // mesma regra da tela: sem o módulo ligado, não há o que acompanhar
+  const ligado = !!pedido?.restaurant.entregadorEnabled && noAr("entregadorEnabled");
+  if (!pedido || !ligado || pedido.status !== "OUT_FOR_DELIVERY" || !e) return NextResponse.json({ emRota: false });
 
   const recente = e.posicaoEm && Date.now() - e.posicaoEm.getTime() < VALIDADE;
   return NextResponse.json({

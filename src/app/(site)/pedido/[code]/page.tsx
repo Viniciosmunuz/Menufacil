@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
+import { noAr } from "@/lib/features";
 import { formatCents, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { fullDeliverySteps } from "@/lib/order-flow";
@@ -60,7 +61,17 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
       items: { orderBy: { id: "asc" } },
       payment: true,
       statusEvents: { orderBy: { createdAt: "asc" }, select: { status: true, createdAt: true } },
-      restaurant: { select: { id: true, name: true, slug: true, whatsapp: true, pixHolderName: true, paymentInstructions: true } },
+      restaurant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          whatsapp: true,
+          pixHolderName: true,
+          paymentInstructions: true,
+          entregadorEnabled: true,
+        },
+      },
       // quem está levando; vazio enquanto ninguém pegou o pedido
       entregador: { select: { nome: true, fotoUrl: true, moto: true, placa: true, telefone: true } },
     },
@@ -75,6 +86,14 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
   // sozinha a cada passo do balcão.
   const cemPorCento = order.origin === "FULL_DELIVERY";
   const canceled = order.status === "CANCELED";
+  // Quem leva só aparece onde o módulo está ligado.
+  //
+  // Na prática um pedido só tem entregador em restaurante com o recurso
+  // liberado -- mas se o admin desligar a chave com a moto na rua, a tela
+  // do cliente tem de voltar a ser a de sempre, e não continuar mostrando
+  // um mapa de um módulo que não existe mais ali.
+  const quemLeva =
+    order.entregador && order.status === "OUT_FOR_DELIVERY" && noAr("entregadorEnabled") && r.entregadorEnabled ? order.entregador : null;
   const flow = cemPorCento ? fullDeliverySteps(order.type, !pix) : steps(order.type, pix);
   const currentIndex = flow.findIndex((s) => s.status.includes(order.status));
   // o Pix da chave copiada é do fluxo do WhatsApp; no 100% Delivery não há
@@ -278,15 +297,15 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/pe
           não há o que dizer, e depois de entregue a informação já cumpriu
           o papel dela. Vem antes do andamento porque, com o pedido fora,
           é a primeira coisa que o cliente quer saber. */}
-      {order.entregador && order.status === "OUT_FOR_DELIVERY" && (
+      {quemLeva && (
         <MapaDaEntrega
           code={order.code}
-          telefone={order.entregador.telefone}
+          telefone={quemLeva.telefone}
           inicial={{
-            nome: order.entregador.nome,
-            fotoUrl: order.entregador.fotoUrl,
-            moto: order.entregador.moto,
-            placa: order.entregador.placa,
+            nome: quemLeva.nome,
+            fotoUrl: quemLeva.fotoUrl,
+            moto: quemLeva.moto,
+            placa: quemLeva.placa,
           }}
         />
       )}
