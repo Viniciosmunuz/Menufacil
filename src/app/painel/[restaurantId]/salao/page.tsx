@@ -111,7 +111,7 @@ export default async function SalaoPage({ params }: PageProps<"/painel/[restaura
 
   return (
     <div className="flex flex-col gap-5">
-      {/* o cartão fica roxo quando um garçom abre a mesa no celular: a tela
+      {/* o cartão fica laranja quando um garçom abre a mesa no celular: a tela
           do caixa se renova sozinha para mostrar isso */}
       <AutoRefresh seconds={15} background />
       {topo()}

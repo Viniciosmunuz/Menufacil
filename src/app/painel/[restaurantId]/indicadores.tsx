@@ -72,7 +72,7 @@ function Variacao({ atual, anterior, menosEMelhor = false }: { atual: number; an
 
 const TONS = {
   laranja: { fundo: "bg-brand", linha: "var(--color-brand)" },
-  roxo: { fundo: "bg-[#6366f1]", linha: "#6366f1" },
+  ambar: { fundo: "bg-warning", linha: "var(--color-warning)" },
   verde: { fundo: "bg-success", linha: "var(--color-success)" },
   azul: { fundo: "bg-info", linha: "var(--color-info)" },
 } as const;
@@ -166,7 +166,7 @@ export function Indicadores({
 
         <Indicador
           icone={<Receipt className="size-5" aria-hidden="true" />}
-          tom="roxo"
+          tom="ambar"
           titulo="Ticket médio"
           valor={ticket > 0 ? formatCents(ticket) : "—"}
           apoio="Por pedido"

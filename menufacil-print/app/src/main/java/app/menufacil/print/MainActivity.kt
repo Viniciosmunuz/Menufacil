@@ -295,16 +295,16 @@ class MainActivity : AppCompatActivity() {
   private fun botao(rotulo: String, aoTocar: () -> Unit) = Button(this).apply {
     text = rotulo
     setBackgroundColor(LARANJA)
-    setTextColor(Color.parseColor("#1a0f02"))
+    setTextColor(Color.parseColor("#1a0d03"))
     gravity = Gravity.CENTER
     setOnClickListener { aoTocar() }
     (layoutParams as? LinearLayout.LayoutParams)?.topMargin = 24
   }
 
   private companion object {
-    val FUNDO = Color.parseColor("#0a0e14")
-    val TINTA = Color.parseColor("#f2f5f9")
-    val APAGADO = Color.parseColor("#9aa7b8")
-    val LARANJA = Color.parseColor("#ff8a1f")
+    val FUNDO = Color.parseColor("#0c0e12")
+    val TINTA = Color.parseColor("#f4f6f8")
+    val APAGADO = Color.parseColor("#a4adba")
+    val LARANJA = Color.parseColor("#f9680b")
   }
 }

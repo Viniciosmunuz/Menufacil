@@ -123,13 +123,15 @@ export function PanelShell({
     // No site, o cartão creme sobre papel branco é a marca. No painel isso
     // se vira contra ele: a tela é quase toda cartão, e o branco sumia em
     // tiras finas entre blocos cremes -- lido de relance, vira uma parede
-    // só. Aqui o fundo é o off-white, o cartão é o papel branco, e as
-    // linhas são o creme mais claro separando um do outro.
+    // só. Aqui o fundo é o creme, o cartão é o papel branco, e as linhas
+    // são o creme mais fechado separando um do outro.
     //
-    // Só aqui dentro: o site público continua como está.
+    // Os valores vivem em `.tema-painel`, no globals.css, e são os mesmos
+    // da paleta -- só trocados de papel. Só aqui dentro: o site público
+    // continua como está.
     <div
       className={cn(
-        "min-h-dvh [--color-bg:#faf8f4] [--color-line:#ece7df] [--color-line-strong:#d9d2c6] [--color-surface-2:#f4f1ec] [--color-surface-3:#e9e4db] [--color-surface:#ffffff] bg-bg lg:grid",
+        "tema-painel min-h-dvh bg-bg lg:grid",
         compacto ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17rem_minmax(0,1fr)]",
       )}
     >

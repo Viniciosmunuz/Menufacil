@@ -99,7 +99,7 @@ export function Numero({
  */
 export function Recado({ titulo, children, icone: Icone, arte = false }: { titulo: string; children: ReactNode; icone: LucideIcon; arte?: boolean }) {
   return (
-    <div className="relative flex min-h-28 items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#171b22] to-[#2b3038] p-4 text-white shadow-lg shadow-black/10">
+    <div className="relative flex min-h-28 items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-surface-3 p-4 text-white shadow-lg shadow-black/10">
       {/* o brilho laranja no canto, que tira o bloco do "retângulo preto" */}
       <span className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-brand/25 blur-2xl" aria-hidden="true" />
       {/* a arte do entregador, encostada na direita e desaparecendo para a

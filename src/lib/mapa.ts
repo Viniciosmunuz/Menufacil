@@ -31,5 +31,9 @@ export const LADRILHOS = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const ATRIBUICAO = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 /** as cores dos alfinetes, pensadas para ler sobre o mapa escuro */
+// São os tokens da paleta escritos à mão de propósito: o alfinete é
+// montado como string de HTML e vai para dentro do mapa, que é escuro nos
+// dois temas -- o verde precisa ser o vivo (`success` do escuro) mesmo
+// quando a página em volta está clara.
 export const COR_DA_MOTO = "#22c55e";
 export const COR_DO_DESTINO = "#f9680b";

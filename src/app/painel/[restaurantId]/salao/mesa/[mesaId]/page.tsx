@@ -53,7 +53,7 @@ export default async function MesaPage({ params }: PageProps<"/painel/[restauran
         <span className="flex flex-wrap items-center gap-x-3 text-sm text-muted">
           {aberta ? (
             <>
-              <span className={comanda.status === "PAGO" ? "font-semibold text-[#2f7de1]" : "font-semibold text-[#1e9a52]"}>
+              <span className={comanda.status === "PAGO" ? "font-semibold text-info" : "font-semibold text-success-ink"}>
                 {comanda.status === "PAGO" ? "Paga" : "Aberta"}
               </span>
               <span className="flex items-center gap-1">

@@ -13,11 +13,12 @@ import { LogoIcon } from "@/components/brand/logo";
 // desenhos de talher e chapéu nos cantos são só traço, para não brigar com
 // o texto.
 //
-// As cores ficam aqui, fixas: o tema do site é escuro e estas telas não o
-// seguem.
+// As cores saem dos tokens da marca, como no resto do sistema. Até o
+// rebrand de 03/11/2026 estavam escritas à mão aqui -- eram os mesmos
+// valores, mas fora do `@theme`, então não acompanhavam nada.
 
-export const TINTA = "text-[#1d2026]";
-export const APAGADO = "text-[#5b6168]";
+export const TINTA = "text-ink";
+export const APAGADO = "text-muted";
 
 export function Cenario({
   children,
@@ -37,27 +38,27 @@ export function Cenario({
       role={aoTocar ? "button" : "status"}
       tabIndex={aoTocar ? 0 : undefined}
       aria-label={rotulo}
-      className={`fixed inset-0 ${porCima ? "z-[110]" : "z-[100]"} flex flex-col overflow-hidden bg-[#f6f1ea] select-none ${TINTA}`}
+      className={`fixed inset-0 ${porCima ? "z-[110]" : "z-[100]"} flex flex-col overflow-hidden bg-surface select-none ${TINTA}`}
     >
       {/* as manchas de cor nos cantos */}
       <span aria-hidden="true" className="pointer-events-none absolute -top-24 -left-24 size-72 rounded-full bg-brand/15 blur-sm" />
-      <span aria-hidden="true" className="pointer-events-none absolute top-[30%] -right-32 size-64 rounded-full bg-[#f3e3cf]" />
+      <span aria-hidden="true" className="pointer-events-none absolute top-[30%] -right-32 size-64 rounded-full bg-surface-3" />
 
       {/* os desenhos de traço */}
       <UtensilsCrossed
         aria-hidden="true"
         strokeWidth={1}
-        className="pointer-events-none absolute top-[9vh] left-[5vw] size-[min(18vw,11vh)] text-[#1d2026]/15"
+        className="pointer-events-none absolute top-[9vh] left-[5vw] size-[min(18vw,11vh)] text-ink/15"
       />
       <ChefHat
         aria-hidden="true"
         strokeWidth={1}
-        className="pointer-events-none absolute top-[22vh] right-[5vw] size-[min(16vw,10vh)] text-[#1d2026]/15"
+        className="pointer-events-none absolute top-[22vh] right-[5vw] size-[min(16vw,10vh)] text-ink/15"
       />
       <Leaf
         aria-hidden="true"
         strokeWidth={1}
-        className="pointer-events-none absolute right-[6vw] bottom-[18vh] size-[min(16vw,10vh)] text-[#1d2026]/15"
+        className="pointer-events-none absolute right-[6vw] bottom-[18vh] size-[min(16vw,10vh)] text-ink/15"
       />
 
       <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center px-6 pt-[4vh] text-center">
@@ -67,8 +68,8 @@ export function Cenario({
       {/* a onda laranja do pé, com o "MenuFácil" dentro dela */}
       <div className="relative h-[9vh] min-h-16 shrink-0">
         <svg aria-hidden="true" viewBox="0 0 400 60" preserveAspectRatio="none" className="absolute inset-0 size-full">
-          <path d="M0 22 C 90 0, 180 40, 270 18 S 370 8, 400 14 L400 60 L0 60 Z" fill="#F9680B" />
-          <path d="M0 40 C 60 24, 120 30, 170 46 L170 60 L0 60 Z" fill="#1d2026" />
+          <path d="M0 22 C 90 0, 180 40, 270 18 S 370 8, 400 14 L400 60 L0 60 Z" fill="var(--color-brand)" />
+          <path d="M0 40 C 60 24, 120 30, 170 46 L170 60 L0 60 Z" fill="var(--color-ink)" />
         </svg>
         <p className="absolute right-[6vw] bottom-[2.2vh] flex items-center gap-1.5 text-sm font-extrabold text-white">
           <LogoIcon className="size-4" />

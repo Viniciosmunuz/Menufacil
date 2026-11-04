@@ -60,8 +60,8 @@ export default async function CaixaDoSalaoPage({ params }: PageProps<"/painel/[r
         </Link>
         <h1 className="flex items-center gap-2 text-3xl font-extrabold">
           Resumo do Caixa
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#c3f0d4] px-3 py-1 text-sm font-bold text-[#157f47]">
-            <span className="size-2 rounded-full bg-[#1e9a52]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-sm font-bold text-success-ink">
+            <span className="size-2 rounded-full bg-success" aria-hidden="true" />
             Aberto
           </span>
         </h1>
@@ -93,7 +93,7 @@ export default async function CaixaDoSalaoPage({ params }: PageProps<"/painel/[r
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cartao("Vendas", formatCents(r.vendasCents), <CircleDollarSign />, "text-brand", `${r.vendas.length} ${r.vendas.length === 1 ? "mesa paga" : "mesas pagas"}`)}
         {cartao("Valor de abertura", formatCents(r.aberturaCents), <Wallet />, "text-ink/60", "o troco do começo da noite")}
-        {cartao("Entradas", formatCents(r.entradasCents), <TrendingUp />, "text-[#157f47]")}
+        {cartao("Entradas", formatCents(r.entradasCents), <TrendingUp />, "text-success-ink")}
         {cartao("Saídas", formatCents(r.saidasCents), <TrendingDown />, "text-danger")}
       </div>
 
@@ -213,7 +213,7 @@ export default async function CaixaDoSalaoPage({ params }: PageProps<"/painel/[r
               <ul className="flex flex-col divide-y divide-line">
                 {r.movimentos.map((m) => (
                   <li key={m.id} className="flex items-center gap-3 px-4 py-3">
-                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-full", m.tipo === "ENTRADA" ? "bg-[#c3f0d4] text-[#157f47]" : "bg-danger/15 text-danger")}>
+                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-full", m.tipo === "ENTRADA" ? "bg-success-soft text-success-ink" : "bg-danger/15 text-danger")}>
                       {m.tipo === "ENTRADA" ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -222,7 +222,7 @@ export default async function CaixaDoSalaoPage({ params }: PageProps<"/painel/[r
                         {m.quem} · {formatWhen(m.quando)}
                       </span>
                     </span>
-                    <span className={cn("shrink-0 font-bold tabular-nums", m.tipo === "ENTRADA" ? "text-[#157f47]" : "text-danger")}>
+                    <span className={cn("shrink-0 font-bold tabular-nums", m.tipo === "ENTRADA" ? "text-success-ink" : "text-danger")}>
                       {m.tipo === "ENTRADA" ? "+" : "−"}
                       {formatCents(m.centavos)}
                     </span>

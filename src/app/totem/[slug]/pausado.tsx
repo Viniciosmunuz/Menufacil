@@ -97,20 +97,20 @@ function TotemDormindo() {
       <span className="absolute top-[44%] left-[6%] h-1.5 w-[12%] rotate-[25deg] rounded-full bg-brand" />
 
       {/* o "zzz", subindo da tela do totem, sem sair do desenho */}
-      <span className="absolute top-[26%] right-[24%] text-[min(2.4vh,4.5vw)] leading-none font-extrabold text-[#1d2026]">z</span>
-      <span className="absolute top-[13%] right-[11%] text-[min(3.2vh,6vw)] leading-none font-extrabold text-[#1d2026]">z</span>
-      <span className="absolute top-0 -right-[2%] text-[min(4.2vh,8vw)] leading-none font-extrabold text-[#1d2026]">Z</span>
+      <span className="absolute top-[26%] right-[24%] text-[min(2.4vh,4.5vw)] leading-none font-extrabold text-ink">z</span>
+      <span className="absolute top-[13%] right-[11%] text-[min(3.2vh,6vw)] leading-none font-extrabold text-ink">z</span>
+      <span className="absolute top-0 -right-[2%] text-[min(4.2vh,8vw)] leading-none font-extrabold text-ink">Z</span>
 
       {/* a tela do totem, com o logo no meio */}
-      <span className="absolute top-[12%] left-[26%] grid h-[52%] w-[48%] place-items-center rounded-[10%] border-[6px] border-[#1d2026] bg-[#2b3036]">
+      <span className="absolute top-[12%] left-[26%] grid h-[52%] w-[48%] place-items-center rounded-[10%] border-[6px] border-ink bg-ink/90">
         <LogoIcon className="size-1/2 text-brand" />
       </span>
       {/* a maquininha encostada do lado */}
-      <span className="absolute top-[50%] left-[66%] h-[13%] w-[13%] rounded-[18%] border-4 border-[#1d2026] bg-[#3a4048]" />
+      <span className="absolute top-[50%] left-[66%] h-[13%] w-[13%] rounded-[18%] border-4 border-ink bg-faint" />
       {/* o pé e a base */}
-      <span className="absolute top-[63%] left-[44%] h-[28%] w-[12%] bg-[#1d2026]" />
-      <span className="absolute top-[90%] left-[30%] h-[4%] w-[40%] rounded-md bg-[#1d2026]" />
-      <span className="absolute top-[94%] left-[20%] h-[4%] w-[60%] rounded-[50%] bg-[#1d2026]/15" />
+      <span className="absolute top-[63%] left-[44%] h-[28%] w-[12%] bg-ink" />
+      <span className="absolute top-[90%] left-[30%] h-[4%] w-[40%] rounded-md bg-ink" />
+      <span className="absolute top-[94%] left-[20%] h-[4%] w-[60%] rounded-[50%] bg-ink/15" />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export function BotaoDeMovimento({ restaurantId, tipo }: { restaurantId: string;
         onClick={() => setAberto(true)}
         className={cn(
           "inline-flex h-11 items-center gap-2 rounded-control border px-4 font-bold transition-colors",
-          entrada ? "border-[#1fc46e]/50 text-[#157f47] hover:bg-[#1fc46e]/10" : "border-danger/50 text-danger hover:bg-danger/10",
+          entrada ? "border-success/50 text-success-ink hover:bg-success/10" : "border-danger/50 text-danger hover:bg-danger/10",
         )}
       >
         {entrada ? <Plus className="size-4" aria-hidden="true" /> : <Minus className="size-4" aria-hidden="true" />}

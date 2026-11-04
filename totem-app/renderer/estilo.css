@@ -2,16 +2,16 @@
    As mesmas cores do MenuFácil (fundo escuro, laranja da marca). */
 
 :root {
-  --bg: #0a0e14;
-  --surface: #131922;
-  --surface-2: #1b232e;
-  --line: #2a3441;
-  --ink: #f2f5f9;
-  --muted: #9aa7b8;
-  --brand: #ff8a1f;
-  --brand-ink: #1a0f02;
-  --danger: #ff5c5c;
-  --success: #37d399;
+  --bg: #0c0e12;
+  --surface: #161a21;
+  --surface-2: #1e242d;
+  --line: #262d37;
+  --ink: #f4f6f8;
+  --muted: #a4adba;
+  --brand: #f9680b;
+  --brand-ink: #1a0d03;
+  --danger: #f87171;
+  --success: #22c55e;
   --raio: 14px;
 }
 

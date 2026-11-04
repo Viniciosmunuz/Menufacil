@@ -12,34 +12,38 @@ import type { LugarNoMapa } from "@/server/salao/mesas";
 // A cor diz o estado de longe, com a faixa grossa do lado esquerdo, e a
 // etiqueta com ícone confirma de perto:
 //
-//   Livre           cinza    ninguém na mesa
+//   Livre           neutro   ninguém na mesa
 //   Aberta          verde    comanda aberta, com o valor e há quanto tempo
-//   Em atendimento  roxo     um garçom está com a mesa aberta no celular agora
+//   Em atendimento  laranja  um garçom está com a mesa aberta no celular agora
 //   Paga            azul     pagamento lançado, falta finalizar a mesa
 //
-// As cores são fixas, e não as do tema: são as mesmas do Yooga, e o caixa
-// já lê "verde = tem gente" sem pensar.
+// A leitura de longe é a mesma do Yooga, que é o que o caixa já conhece,
+// mas desde o rebrand de 03/11/2026 os tons saem dos tokens da marca e não
+// de hex copiados: cada estado usa o trio soft/line/ink do seu token.
+// O roxo do "em atendimento" virou o laranja da marca -- é o estado que
+// pede olhar agora, e não há botão laranja dentro do mapa competindo com
+// ele.
 
 type Estado = "LIVRE" | "ABERTA" | "ATENDIMENTO" | "PAGA";
 
 const ESTILO: Record<Estado, { cartao: string; palavra: string; icone: ReactNode }> = {
   LIVRE: {
-    cartao: "border-[#c9cbd0] border-l-[#7d828a] bg-[#e4e5e8] hover:border-[#a9acb3]",
+    cartao: "border-line-strong border-l-faint bg-surface-2 hover:border-faint",
     palavra: "Livre",
     icone: <Check className="size-4" aria-hidden="true" />,
   },
   ABERTA: {
-    cartao: "border-[#5fcf8c] border-l-[#1e9a52] bg-[#c3f0d4] hover:border-[#22a55a]",
+    cartao: "border-success-line border-l-success bg-success-soft hover:border-success",
     palavra: "Aberta",
     icone: <ClipboardList className="size-4" aria-hidden="true" />,
   },
   ATENDIMENTO: {
-    cartao: "border-[#a996ec] border-l-[#6f4fd8] bg-[#e4dcfb] hover:border-[#7c5ce0]",
+    cartao: "border-brand-line border-l-brand bg-brand-tint hover:border-brand",
     palavra: "Em atendimento",
     icone: <ConciergeBell className="size-4" aria-hidden="true" />,
   },
   PAGA: {
-    cartao: "border-[#8fbcf0] border-l-[#2f7de1] bg-[#d7e8fc] hover:border-[#2f7de1]",
+    cartao: "border-info-line border-l-info bg-info-soft hover:border-info",
     palavra: "Paga",
     icone: <CircleDollarSign className="size-4" aria-hidden="true" />,
   },
@@ -73,7 +77,7 @@ export function MesaCard({ lugar, href }: { lugar: LugarNoMapa; href: string }) 
       aria-label={`${rotulo}: ${estilo.palavra.toLowerCase()}${temConta ? `, ${formatCents(lugar.centavos)}` : ""}${lugar.emAtendimentoPor ? `, com ${lugar.emAtendimentoPor}` : ""}`}
       title={lugar.emAtendimentoPor ? `Com ${lugar.emAtendimentoPor} agora` : undefined}
       className={cn(
-        "flex min-h-28 flex-col rounded-md border-2 border-l-[6px] p-3.5 text-[#1d2026] transition-colors lg:min-h-36 lg:p-4",
+        "flex min-h-28 flex-col rounded-md border-2 border-l-[6px] p-3.5 text-ink transition-colors lg:min-h-36 lg:p-4",
         estilo.cartao,
       )}
     >

@@ -151,7 +151,7 @@ export function MapaDoEntregador({
   if (fundo) {
     return (
       <>
-        <div ref={caixa} className="absolute inset-0 isolate bg-[#0f1115]" aria-label="Mapa da entrega" />
+        <div ref={caixa} className="absolute inset-0 isolate bg-night" aria-label="Mapa da entrega" />
         {chegada && <div className="absolute top-20 left-4 z-[1000]">{chegada}</div>}
       </>
     );
@@ -162,7 +162,7 @@ export function MapaDoEntregador({
       {/* isolate: o Leaflet usa z-index alto nos proprios niveis, e sem
           isto eles brigam com o aviso de tela cheia e passam por cima */}
       <div className="relative isolate">
-        <div ref={caixa} className="mapa-escuro h-56 w-full overflow-hidden rounded-2xl border border-black/25 bg-[#0f1115] shadow-md shadow-black/5" aria-label="Mapa da entrega" />
+        <div ref={caixa} className="mapa-escuro h-56 w-full overflow-hidden rounded-2xl border border-black/25 bg-night shadow-md shadow-black/5" aria-label="Mapa da entrega" />
         {chegada && <div className="absolute top-2 left-2">{chegada}</div>}
       </div>
       <div className="flex gap-2">

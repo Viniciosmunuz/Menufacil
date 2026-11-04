@@ -111,7 +111,7 @@ export function FecharCaixaForm({
           type="button"
           disabled={!podeFechar}
           onClick={() => setConfirmando(true)}
-          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-[#e2483d] text-lg font-bold text-white transition hover:brightness-105 disabled:opacity-40"
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-danger text-lg font-bold text-white transition hover:brightness-105 disabled:opacity-40"
         >
           <LockKeyhole className="size-5" aria-hidden="true" />
           Quero fechar meu Caixa
@@ -150,7 +150,7 @@ export function FecharCaixaForm({
                 (diferenca === null
                   ? "border-line bg-surface-2 text-faint"
                   : diferenca === 0
-                    ? "border-[#1fc46e]/50 bg-[#c3f0d4] text-[#157f47]"
+                    ? "border-success/50 bg-success-soft text-success-ink"
                     : "border-danger/50 bg-danger/10 text-danger")
               }
             >

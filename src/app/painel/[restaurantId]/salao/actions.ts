@@ -565,7 +565,7 @@ export async function pedirAContaNoPapel(_prev: SalaoFormState, formData: FormDa
 
 /**
  * O garçom está (ou deixou de estar) com a mesa aberta no celular -- é o
- * que deixa o cartão roxo, "Em atendimento", no mapa do caixa.
+ * que deixa o cartão laranja, "Em atendimento", no mapa do caixa.
  *
  * Só o garçom marca: o dono ou o caixa abrindo a mesa no computador não é
  * atendimento, é conferência. O celular renova a marca de tempos em tempos

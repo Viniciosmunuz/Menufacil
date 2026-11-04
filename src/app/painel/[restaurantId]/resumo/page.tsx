@@ -117,7 +117,7 @@ export default async function ResumoPage({ params }: PageProps<"/painel/[restaur
         />
         <Numero
           icone={<Trophy className="size-5" aria-hidden="true" />}
-          fundo="bg-[#6366f1]"
+          fundo="bg-info"
           rotulo="Dia que mais vendeu"
           valor={mes.maisVendido ? rotulo(mes.maisVendido.key) : "—"}
           apoio={mes.maisVendido ? formatCents(mes.maisVendido.centavos) : undefined}

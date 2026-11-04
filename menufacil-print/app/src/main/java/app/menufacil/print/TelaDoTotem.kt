@@ -36,7 +36,7 @@ class TelaDoTotem(contexto: Context) {
   private val relogio = Handler(Looper.getMainLooper())
 
   init {
-    visao.setBackgroundColor(Color.parseColor("#0a0e14"))
+    visao.setBackgroundColor(Color.parseColor("#0c0e12"))
     visao.settings.apply {
       javaScriptEnabled = true
       // é onde a página guarda o token e a sacola
@@ -103,9 +103,9 @@ class TelaDoTotem(contexto: Context) {
 
   private companion object {
     const val SEM_CONEXAO =
-      "<html><body style='margin:0;background:#0a0e14;color:#f2f5f9;font-family:sans-serif;" +
+      "<html><body style='margin:0;background:#0c0e12;color:#f4f6f8;font-family:sans-serif;" +
         "display:flex;align-items:center;justify-content:center;height:100vh;text-align:center'>" +
         "<div><p style='font-size:28px;font-weight:bold'>Sem conexão</p>" +
-        "<p style='color:#9aa7b8;font-size:18px'>Tentando de novo...</p></div></body></html>"
+        "<p style='color:#a4adba;font-size:18px'>Tentando de novo...</p></div></body></html>"
   }
 }

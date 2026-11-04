@@ -39,6 +39,44 @@
   --color-danger: #dc2626;
   --color-info: #2563eb;
 
+  /* As três faces de cada cor de estado.
+     Até o rebrand de 03/11/2026 o salão tinha paleta própria -- verdes,
+     roxos e azuis escritos à mão, copiados do Yooga -- enquanto o resto do
+     sistema seguia a da marca. Eram duas marcas na mesma tela.
+     Agora cada estado tem fundo (`soft`), borda (`line`) e texto (`ink`)
+     tirados do mesmo matiz do token acima, com contraste AA do `ink` sobre
+     o `soft`. Quem precisa pintar um cartão inteiro usa estas fichas, e
+     não um hex novo. */
+  --color-success-soft: #d8f8e4;
+  --color-success-line: #72de9a;
+  --color-success-ink: #107937;
+
+  --color-warning-soft: #f7ebd9;
+  --color-warning-line: #dbb276;
+  --color-warning-ink: #764e14;
+
+  --color-danger-soft: #f7d9d9;
+  --color-danger-line: #dc7575;
+  --color-danger-ink: #771313;
+
+  --color-info-soft: #d6e1fa;
+  --color-info-line: #6d92e3;
+  --color-info-ink: #0c2f7e;
+
+  /* o laranja também ganha as três faces; `brand-soft` já existia como véu
+     transparente e continua como está, então o fundo sólido é `brand-tint` */
+  --color-brand-tint: #fce4d4;
+  --color-brand-line: #ec9a65;
+  --color-brand-deep: #843706;
+
+  /* O preto da marca, um só.
+     Havia três pretos quase iguais rodando soltos -- #0c0e12 no entregador,
+     #0a0e14 no Print Fácil e no totem, #0f1115 no fundo dos mapas. De perto
+     ninguém nota; lado a lado, é o que faz o conjunto parecer remendado.
+     Este token existe nos dois temas, para quem precisa de fundo escuro no
+     meio de uma tela clara (o mapa do cliente, por exemplo). */
+  --color-night: #0c0e12;
+
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-script: var(--font-caveat), "Segoe Script", cursive;
 
@@ -181,6 +219,27 @@ details.drawer[open]::details-content {
   color: rgb(255 255 255 / 0.9);
 }
 
+/* O painel do dono: a mesma paleta, de cabeça para baixo.
+ *
+ * No cardápio do cliente o papel é branco e o cartão é creme. No painel é
+ * o contrário: o fundo é creme e o cartão é branco. É de propósito -- a
+ * tela do dono é densa, com tabela e lista coladas uma na outra, e cartão
+ * creme sobre fundo creme vira uma parede só.
+ *
+ * O que mudou no rebrand de 03/11/2026: antes esta inversão usava cremes
+ * próprios, vizinhos dos oficiais mas não iguais (#faf8f4, #ece7df,
+ * #d9d2c6...). Eram cores novas sem motivo. Agora são exatamente os tons
+ * da paleta, só trocados de papel -- nenhum valor daqui existe fora do
+ * `@theme` lá de cima. */
+.tema-painel {
+  --color-bg: #f6f1ea;
+  --color-surface: #ffffff;
+  --color-surface-2: #efe7db;
+  --color-surface-3: #e6dbca;
+  --color-line: #e2d8c8;
+  --color-line-strong: #cbbda8;
+}
+
 /* O aplicativo do entregador, no escuro.
  *
  * Só aqui dentro: o painel do dono e o cardápio do cliente continuam no
@@ -216,6 +275,28 @@ details.drawer[open]::details-content {
   --color-warning: #f59e0b;
   --color-danger: #f87171;
   --color-info: #60a5fa;
+
+  /* as mesmas três faces, viradas para o escuro: o `soft` deixa de ser tom
+     claro e vira o fundo fechado, e é o `ink` que clareia */
+  --color-success-soft: #114524;
+  --color-success-line: #29854b;
+  --color-success-ink: #90e9b1;
+
+  --color-warning-soft: #4a330d;
+  --color-warning-line: #8c6421;
+  --color-warning-ink: #f7cc83;
+
+  --color-danger-soft: #4a0d0d;
+  --color-danger-line: #8c2121;
+  --color-danger-ink: #f68484;
+
+  --color-info-soft: #0d284a;
+  --color-info-line: #21518c;
+  --color-info-ink: #82b7f7;
+
+  --color-brand-tint: #4a250d;
+  --color-brand-line: #8c4b21;
+  --color-brand-deep: #f7b082;
 
   background: var(--color-bg);
   color: var(--color-ink);

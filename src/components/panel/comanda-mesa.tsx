@@ -151,14 +151,17 @@ function Totais({ comanda, novoCents }: { comanda: ComandaAberta; novoCents: num
  * para o salão inteiro falar a mesma língua.
  */
 const QUADRADO =
-  "grid aspect-square w-full place-items-center rounded-control text-white shadow-[0_1px_0_rgb(0_0_0/0.08)] transition-[filter,opacity] hover:brightness-105 disabled:pointer-events-none disabled:opacity-30";
+  "grid aspect-square w-full place-items-center rounded-control shadow-[0_1px_0_rgb(0_0_0/0.08)] transition-[filter,opacity] hover:brightness-105 disabled:pointer-events-none disabled:opacity-30";
 
+// A tinta vem junto do fundo, e não fixa no QUADRADO: branco sobre o verde
+// e o laranja da marca dá 3:1, que não se lê. Sobre o azul e o vermelho,
+// sim. Quem não aguenta branco usa a tinta escura da marca.
 const COR = {
-  imprimir: "bg-[#2f7de1]",
-  apagar: "bg-[#e2483d]",
-  servico: "bg-[#f0b429]",
-  desconto: "bg-[#1fc46e]",
-  dividir: "bg-[#6f4fd8]",
+  imprimir: "bg-info text-white",
+  apagar: "bg-danger text-white",
+  servico: "bg-warning text-brand-ink",
+  desconto: "bg-success text-brand-ink",
+  dividir: "bg-brand text-brand-ink",
 } as const;
 
 const quadrado = (cor: keyof typeof COR) => `${QUADRADO} ${COR[cor]}`;
@@ -649,9 +652,9 @@ export function ComandaDaMesa({
               A faixa amarela atravessando a coluna é a do Yooga -- de
               relance ela diz "isto aqui ainda não foi para o fogão". */}
           {sacola.length > 0 && (
-            <div className="mt-3 overflow-hidden rounded-control border border-[#f0b429]/60">
-              <p className="bg-[#f7d070] px-3 py-1.5 text-xs font-extrabold tracking-wide text-[#4a3708] uppercase">Novos · falta salvar</p>
-              <ul className="flex flex-col gap-1 bg-[#fdf6e3] p-3">
+            <div className="mt-3 overflow-hidden rounded-control border border-warning-line">
+              <p className="bg-warning-line px-3 py-1.5 text-xs font-extrabold tracking-wide text-warning-ink uppercase">Novos · falta salvar</p>
+              <ul className="flex flex-col gap-1 bg-warning-soft p-3">
                 {sacola.map((i) => (
                   <li key={i.chave} className="flex items-center gap-2 text-sm">
                     <span className="min-w-0 flex-1">

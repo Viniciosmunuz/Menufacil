@@ -156,8 +156,8 @@ export function MexerNaMesa({
                 {m.ocupada && <span className="shrink-0 text-lg text-muted tabular-nums">{formatCents(m.centavos)}</span>}
                 <span
                   className={cn(
-                    "shrink-0 rounded-md px-3 py-1.5 text-xs font-bold tracking-wide text-white uppercase",
-                    m.ocupada ? "bg-[#1fc46e]" : "bg-[#7d828a]",
+                    "shrink-0 rounded-md px-3 py-1.5 text-xs font-bold tracking-wide uppercase",
+                    m.ocupada ? "bg-success text-brand-ink" : "bg-faint text-white",
                   )}
                 >
                   {m.ocupada ? "Ocupada" : "Livre"}
