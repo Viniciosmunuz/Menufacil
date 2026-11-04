@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/entrar">) 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
       <Link href="/" className="mb-8" aria-label="MenuFácil: voltar para o início">
-        <Logo withSlogan />
+        <Logo empilhada />
       </Link>
 
       <Card className="w-full max-w-md">

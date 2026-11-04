@@ -4,12 +4,16 @@
 // barra de endereço -- é o mais perto de aplicativo que o navegador
 // entrega, e é o que ele vai usar até existir um APK de verdade.
 //
-// O ícone é o entregador na moto, com a caixa que leva a cúpula da
-// marca, e o nome embaixo. Diferente do painel e do cardápio de
-// propósito: na tela do celular os três ficam lado a lado.
-// claro, aqui é branca sobre o laranja. Com os dois atalhos lado a lado na
-// mesma tela, não há como pegar um pelo outro -- e continua sendo a mesma
-// marca, não um desenho à parte.
+// O ícone é a arte do entregador na moto, com a caixa levando a cúpula da
+// marca -- trocada em 03/11/2026 pela que ele escolheu. É diferente do
+// painel e do cardápio de propósito: na tela do celular os três atalhos
+// ficam lado a lado, e com desenhos distintos não há como pegar um pelo
+// outro. A cúpula dentro da caixa é o que mantém os três na mesma família.
+//
+// São três arquivos porque são três usos: o 192 e o 512 saem com os cantos
+// transparentes (o sistema aplica a máscara dele), e o `maskable` traz a
+// arte encolhida para a zona segura de 80%, porque o Android recorta em
+// círculo e comeria as faixas das pontas.
 //
 // O `scope` em /entregador é o que prende o atalho na tela dele: um toque
 // num link de fora abre no navegador, e não dentro do aplicativo.
