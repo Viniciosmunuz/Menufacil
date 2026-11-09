@@ -62,7 +62,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
       },
       _count: { select: { products: true, orders: true, menuCategories: true } },
       // o segredo do webhook e o id da Kapso nunca descem para a tela
-      atendenteIa: { select: { ativo: true, fazPedidos: true, linkDeConexao: true, numeroExibido: true, phoneNumberId: true } },
+      atendenteIa: { select: { ativo: true, fazPedidos: true, noChat: true, linkDeConexao: true, numeroExibido: true, phoneNumberId: true } },
     },
   });
   if (!restaurant) notFound();
@@ -209,6 +209,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
                 ? {
                     ativo: restaurant.atendenteIa.ativo,
                     fazPedidos: restaurant.atendenteIa.fazPedidos,
+                    noChat: restaurant.atendenteIa.noChat,
                     linkDeConexao: restaurant.atendenteIa.linkDeConexao,
                     numeroExibido: restaurant.atendenteIa.numeroExibido,
                     conectado: Boolean(restaurant.atendenteIa.phoneNumberId),

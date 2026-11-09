@@ -1637,6 +1637,14 @@ model AtendenteIa {
   /// nasce desligado: conectar o numero nao liga a IA sozinho
   ativo        Boolean @default(false)
 
+  /// A IA no chat do cardapio, com chave propria.
+  ///
+  /// Separada de `ativo` de proposito: aquela so pode ser ligada depois
+  /// que o WhatsApp conecta, e o WhatsApp esta travado pela Meta. Esta
+  /// aqui liga a IA no link que o cliente ja abre, sem depender de nada
+  /// de fora. Nasce desligada.
+  noChat       Boolean @default(false)
+
   /// o cliente do restaurante dentro da conta Kapso do MenuFacil
   kapsoCustomerId String?
   /// o link que o dono abre para conectar o WhatsApp

@@ -137,6 +137,40 @@ export async function ligarIa(_prev: AdminFormState, formData: FormData): Promis
 }
 
 /**
+ * A IA no chat do cardápio, com chave própria.
+ *
+ * Não pede WhatsApp conectado, e é esse o ponto: a conta da Meta recusa o
+ * envio para números brasileiros (erro 130497), então exigir o WhatsApp
+ * aqui deixaria o atendente do cardápio refém de um bloqueio que não é
+ * nosso. O que ela precisa é da chave da Anthropic, porque é ela que
+ * responde.
+ */
+export async function iaNoCardapio(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const ligar = formData.get("ligar") === "1";
+
+  if (ligar && !iaConfigurada()) {
+    return { error: "Falta configurar a chave da Anthropic (ANTHROPIC_API_KEY) na Vercel." };
+  }
+
+  // O registro pode não existir ainda: quem nunca mexeu no WhatsApp não
+  // tem AtendenteIa, e o chat não deveria depender disso.
+  await db.atendenteIa.upsert({
+    where: { restaurantId },
+    update: { noChat: ligar },
+    create: { restaurantId, noChat: ligar, ignorados: [], semEspera: [] },
+  });
+  refresh();
+  return {
+    ok: true,
+    message: ligar
+      ? "Atendente ligado no cardápio: ele já responde quem abrir o link."
+      : "Atendente desligado no cardápio.",
+  };
+}
+
+/**
  * Deixa a IA anotar pedido e mandar o Pix na conversa. Desligado, ela só
  * tira dúvidas e manda o link. É o admin quem decide: é o passo em que a
  * IA passa a mexer em pedido de verdade.

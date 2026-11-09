@@ -10,11 +10,13 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, ligarIa } from "./ia-actions";
+import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, iaNoCardapio, ligarIa } from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
   fazPedidos: boolean;
+  /// o atendente no chat do cardapio, com chave propria
+  noChat: boolean;
   linkDeConexao: string | null;
   numeroExibido: string | null;
   conectado: boolean;
@@ -30,9 +32,10 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [conferido, conferir] = useActionState<AdminFormState, FormData>(conferirConexaoDaIa, {});
   const [ligado, ligar] = useActionState<AdminFormState, FormData>(ligarIa, {});
   const [pedidos, mudarPedidos] = useActionState<AdminFormState, FormData>(iaFazPedidos, {});
+  const [chat, mudarChat] = useActionState<AdminFormState, FormData>(iaNoCardapio, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
@@ -145,6 +148,28 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
             </form>
           </div>
         )}
+
+        {/* O atendente no cardápio. Fica fora da escada dos passos de
+            propósito: ele não depende de WhatsApp nenhum, e é o único que
+            funciona enquanto a Meta recusa o envio desta conta. */}
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <p className="flex items-center gap-2 text-sm font-extrabold">
+            Atendente no cardápio
+            {estado?.noChat ? <Badge tone="success">Ligado</Badge> : <Badge>Desligado</Badge>}
+          </p>
+          <p className="text-sm text-muted">
+            {estado?.noChat
+              ? "Quem abre o link do restaurante vê o botão \"Tirar dúvida\" e conversa com a IA ali mesmo. Ela responde sobre o cardápio, entrega e pagamento, e manda a pessoa fazer o pedido pelo cardápio. Só responde com o restaurante aberto."
+              : "Ligado, aparece um botão \"Tirar dúvida\" no cardápio e a IA responde ali mesmo. Não precisa de WhatsApp conectado."}
+          </p>
+          <form action={mudarChat}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input type="hidden" name="ligar" value={estado?.noChat ? "0" : "1"} />
+            <SubmitButton variant={estado?.noChat ? "secondary" : "primary"} size="sm">
+              {estado?.noChat ? "Desligar no cardápio" : "Ligar no cardápio"}
+            </SubmitButton>
+          </form>
+        </div>
       </div>
     </Card>
   );

@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { LogoIcon } from "@/components/brand/logo";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
 import { CartPanel } from "@/components/site/cart-panel";
+import { ChatIa } from "@/components/site/chat-ia";
 import { FavoriteButton } from "@/components/site/favorites";
 import { BackButton, ShareButton } from "@/components/site/restaurant-actions";
 import { InfoDoRestaurante } from "@/components/site/info-do-restaurante";
@@ -18,6 +19,7 @@ import { soRetirada } from "@/lib/opening-hours";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
 import { areasDeEntrega, getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
+import { iaNoCardapioLigada } from "@/server/ia/chat";
 import { lockedStore } from "@/server/public/store";
 
 export async function generateMetadata({ params }: PageProps<"/restaurante/[slug]">): Promise<Metadata> {
@@ -63,6 +65,10 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   // cliente dizer onde mora, o honesto é anunciar a mais barata como
   // "a partir de".
   const areas = await areasDeEntrega(r.id);
+
+  // O atendente automático no cardápio, se o dono ligou a chave deste
+  // restaurante. Desligado, nada disso chega ao navegador.
+  const comIa = await iaNoCardapioLigada(r.id);
   const taxaAnunciada = areas.length
     ? `Entrega a partir de ${formatCents(Math.min(...areas.map((a) => a.feeCents)))}`
     : r.deliveryFeeCents > 0
@@ -234,6 +240,10 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
           <CartPanel restaurantId={r.id} minOrderCents={r.minOrderCents} closed={!canOrder} />
         </aside>
       </div>
+
+      {/* O atendente só existe onde o dono ligou a chave. Quem decide é o
+          servidor: desligada, o componente nem chega ao navegador. */}
+      {comIa && <ChatIa slug={r.slug} nome={r.name} />}
     </div>
   );
 }
