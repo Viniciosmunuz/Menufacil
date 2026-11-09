@@ -92,9 +92,9 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
           type="button"
           onClick={() => setAberto(true)}
           aria-label={`Falar com o atendente de ${nome}`}
-          className="fixed right-4 bottom-24 z-40 flex h-14 items-center gap-2 rounded-full bg-brand px-5 font-bold text-brand-ink shadow-lg shadow-brand/30 transition-transform active:scale-95 lg:bottom-6"
+          className="fixed right-4 bottom-24 z-40 flex h-11 items-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-brand-ink shadow-lg shadow-brand/30 transition-transform active:scale-95 lg:bottom-6"
         >
-          <Bot className="size-6" aria-hidden="true" />
+          <Bot className="size-4" aria-hidden="true" />
           Tirar dúvida
         </button>
       )}
