@@ -10,15 +10,7 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import {
-  conferirConexaoDaIa,
-  gerarLinkDaIa,
-  iaFazPedidos,
-  iaNoCardapio,
-  ligarIa,
-  limparConversasIa,
-  salvarCanalZapi,
-} from "./ia-actions";
+import { conferirConexaoDaIa, gerarLinkDaIa, salvarCanalZapi } from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
@@ -30,38 +22,37 @@ export type EstadoDaIa = {
   linkDeConexao: string | null;
   numeroExibido: string | null;
   conectado: boolean;
+  /// a chave da plataforma, em Recursos: sem ela o dono nem vê a seção
+  liberada: boolean;
 };
 
 /**
- * O Menu Fácil IA deste restaurante, em três passos: gerar o link, conferir
- * que o dono conectou, ligar. Cada passo só aparece quando o anterior está
- * feito, para não haver botão que não faz nada.
+ * A conexão do WhatsApp deste restaurante com a IA -- e só ela.
+ *
+ * O que a IA faz mora no painel do dono: ligar o atendimento, anotar
+ * pedidos, responder no cardápio, as listas de números e apagar o que ela
+ * lembra. São decisões do dia a dia dele, e ele é quem sabe se hoje quer
+ * atender sozinho.
+ *
+ * Aqui fica o que o dono não tem como fazer: conectar o número, que passa
+ * por uma conta da plataforma (a Kapso ou a Z-API), e a chave de liberar,
+ * que está em Recursos, ao lado das outras.
  */
 export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado: EstadoDaIa | null }) {
   const [gerado, gerar] = useActionState<AdminFormState, FormData>(gerarLinkDaIa, {});
   const [conferido, conferir] = useActionState<AdminFormState, FormData>(conferirConexaoDaIa, {});
-  const [ligado, ligar] = useActionState<AdminFormState, FormData>(ligarIa, {});
-  const [pedidos, mudarPedidos] = useActionState<AdminFormState, FormData>(iaFazPedidos, {});
-  const [chat, mudarChat] = useActionState<AdminFormState, FormData>(iaNoCardapio, {});
   const [canal, mudarCanal] = useActionState<AdminFormState, FormData>(salvarCanalZapi, {});
-  const [limpo, limpar] = useActionState<AdminFormState, FormData>(limparConversasIa, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [limpo, canal, chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [canal, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
-      <SectionTitle description="Atendente no WhatsApp do restaurante. Responde dúvidas e manda o link do cardápio; com a chave de pedidos ligada, também anota o pedido e manda o Pix. Só responde com o restaurante aberto.">
+      <SectionTitle description="Conectar o WhatsApp do restaurante à IA. O que ela faz — ligar o atendimento, anotar pedidos, responder no cardápio — fica no painel do dono.">
         <span className="flex items-center gap-2">
           <Bot className="size-5 text-brand" aria-hidden="true" />
           Menu Fácil IA
-          {estado?.ativo ? (
-            <Badge tone="success">Ligada</Badge>
-          ) : estado?.conectado ? (
-            <Badge>Conectada, desligada</Badge>
-          ) : (
-            <Badge>Teste</Badge>
-          )}
+          {estado?.conectado ? <Badge tone="success">WhatsApp conectado</Badge> : <Badge>Sem WhatsApp</Badge>}
         </span>
       </SectionTitle>
 
@@ -69,111 +60,29 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
         {ultimo?.error && <Alert tone="danger">{ultimo.error}</Alert>}
         {ultimo?.message && !ultimo.error && <Alert tone="success">{ultimo.message}</Alert>}
 
-        {/* 1. o link para o dono conectar o WhatsApp */}
+        {/* Conectar não é liberar: sem a chave em Recursos o dono não vê a
+            seção, e aí o número conectado não serve para nada. */}
+        {!estado?.liberada && (
+          <Alert tone="warning">
+            O Menu Fácil IA está desligado em <b>Recursos</b>, acima. Ligue a chave para a seção aparecer no painel do
+            dono.
+          </Alert>
+        )}
+
+        {/* O caminho da Z-API (WhatsApp Web, por QR code). É o que funciona
+            hoje: a Meta recusa o envio desta conta para números
+            brasileiros. O canal é criado e pareado no painel da Z-API --
+            aquela plataforma não deixa criar canal de QR code pela API --,
+            e aqui só se cola o ID. */}
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-extrabold">1. Link de conexão</p>
-          {estado?.linkDeConexao ? (
-            <div className="flex items-center gap-2 rounded-control border border-line bg-surface-2 p-2">
-              <code className="min-w-0 flex-1 truncate text-xs">{estado.linkDeConexao}</code>
-              <button
-                type="button"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(estado.linkDeConexao ?? "");
-                  setCopiou(true);
-                }}
-                aria-label="Copiar o link"
-                className="grid size-9 shrink-0 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink"
-              >
-                {copiou ? <Check className="size-4 text-success" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted">
-              O dono abre o link, entra com o Facebook e conecta o WhatsApp dele. Ele continua usando o app no celular normalmente.
-            </p>
-          )}
-          <form action={gerar}>
-            <input type="hidden" name="restaurantId" value={restaurantId} />
-            <SubmitButton variant="secondary" size="sm">
-              {estado?.linkDeConexao ? "Gerar outro link" : "Gerar link de conexão"}
-            </SubmitButton>
-          </form>
-        </div>
-
-        {/* 2. conferir que ele conectou */}
-        {estado?.linkDeConexao && (
-          <div className="flex flex-col gap-2 border-t border-line pt-4">
-            <p className="text-sm font-extrabold">2. Conexão</p>
-            {estado.conectado ? (
-              <p className="text-sm text-muted">
-                Conectado: <span className="font-bold text-ink">{estado.numeroExibido ?? "número sem rótulo"}</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted">Depois que o dono terminar pelo link, confira aqui.</p>
-            )}
-            <form action={conferir}>
-              <input type="hidden" name="restaurantId" value={restaurantId} />
-              <SubmitButton variant="secondary" size="sm">
-                {estado.conectado ? "Conferir de novo" : "Conferir conexão"}
-              </SubmitButton>
-            </form>
-          </div>
-        )}
-
-        {/* 3. ligar */}
-        {estado?.conectado && (
-          <div className="flex flex-col gap-2 border-t border-line pt-4">
-            <p className="text-sm font-extrabold">3. Atendimento</p>
-            <p className="text-sm text-muted">
-              {estado.ativo
-                ? "A IA responde quem mandar mensagem. Se alguém do restaurante responder pelo celular, ela fica quieta por 30 minutos naquela conversa."
-                : "Desligada: as mensagens chegam normalmente no WhatsApp do dono e a IA não responde nada."}
-            </p>
-            <form action={ligar}>
-              <input type="hidden" name="restaurantId" value={restaurantId} />
-              <input type="hidden" name="ligar" value={estado.ativo ? "0" : "1"} />
-              <SubmitButton variant={estado.ativo ? "secondary" : "primary"} size="sm">
-                {estado.ativo ? "Desligar a IA" : "Ligar a IA"}
-              </SubmitButton>
-            </form>
-          </div>
-        )}
-
-        {/* 4. pedidos: o passo em que a IA mexe em pedido de verdade */}
-        {estado?.conectado && (
-          <div className="flex flex-col gap-2 border-t border-line pt-4">
-            <p className="flex items-center gap-2 text-sm font-extrabold">
-              4. Pedidos pela IA
-              {estado.fazPedidos ? <Badge tone="success">Ligado</Badge> : <Badge>Desligado</Badge>}
-            </p>
-            <p className="text-sm text-muted">
-              {estado.fazPedidos
-                ? "Se o cliente não conseguir pelo link, a IA anota o pedido, lê o resumo com o total e só cria depois do \"sim\". Também manda o Pix de pedido em aberto e pede o comprovante. Quem confirma o pagamento é o restaurante (ou o Mercado Pago)."
-                : "A IA só tira dúvidas e manda o link do cardápio. Ligado, ela também anota o pedido de quem não conseguir pelo link e ajuda com o Pix."}
-            </p>
-            <form action={mudarPedidos}>
-              <input type="hidden" name="restaurantId" value={restaurantId} />
-              <input type="hidden" name="ligar" value={estado.fazPedidos ? "0" : "1"} />
-              <SubmitButton variant="secondary" size="sm">
-                {estado.fazPedidos ? "Desligar pedidos pela IA" : "Deixar a IA fazer pedidos"}
-              </SubmitButton>
-            </form>
-          </div>
-        )}
-
-        {/* O canal da Z-API. Também fora da escada: o canal é criado e
-            pareado no painel da Z-API (aquela plataforma não deixa criar
-            canal de QR code pela API), e aqui o admin só cola o ID. */}
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
           <p className="flex items-center gap-2 text-sm font-extrabold">
             WhatsApp pela Z-API
             {estado?.zapiChannelId ? <Badge tone="success">Ligado</Badge> : <Badge>Sem canal</Badge>}
           </p>
           <p className="text-sm text-muted">
-            Caminho alternativo ao da Meta, que recusa o envio desta conta para números
-            brasileiros. Crie o canal <b>WhatsApp Web</b> no painel da Z-API, leia o QR code
-            com o celular do restaurante e cole aqui o ID do canal. Depois aponte o webhook
-            dele para <code className="rounded bg-surface px-1">/api/zapi/webhook</code>.
+            Crie o canal <b>WhatsApp Web</b> no painel da Z-API, leia o QR code com o celular do restaurante e cole
+            aqui o ID do canal. Depois aponte o webhook dele para{" "}
+            <code className="rounded bg-surface px-1">/api/zapi/webhook</code>.
           </p>
           <form action={mudarCanal} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="restaurantId" value={restaurantId} />
@@ -189,44 +98,56 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
           </form>
         </div>
 
-        {/* Recomeçar. A IA imita o que já falou: uma conversa que deu
-            errado volta a cada "oi" enquanto estiver no histórico, e é o
-            que mais atrapalha durante os testes. */}
+        {/* O caminho da Kapso, pela conta de negócio da Meta. Fica porque
+            existem números conectados por ele, mas a Meta recusa o envio
+            desta conta para o Brasil (erro 130497). */}
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-sm font-extrabold">Recomeçar as conversas</p>
-          <p className="text-sm text-muted">
-            Apaga o que a IA lembra das conversas deste restaurante. Pedidos, clientes e as
-            mensagens no WhatsApp do dono não são tocados. Use quando ela estiver repetindo
-            uma resposta antiga ou calada depois de chamar alguém.
-          </p>
-          <form action={limpar}>
-            <input type="hidden" name="restaurantId" value={restaurantId} />
-            <SubmitButton variant="secondary" size="sm">
-              Apagar o histórico da IA
-            </SubmitButton>
-          </form>
-        </div>
-
-        {/* O atendente no cardápio. Fica fora da escada dos passos de
-            propósito: ele não depende de WhatsApp nenhum, e é o único que
-            funciona enquanto a Meta recusa o envio desta conta. */}
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="flex items-center gap-2 text-sm font-extrabold">
-            Atendente no cardápio
-            {estado?.noChat ? <Badge tone="success">Ligado</Badge> : <Badge>Desligado</Badge>}
-          </p>
-          <p className="text-sm text-muted">
-            {estado?.noChat
-              ? "Quem abre o link do restaurante vê o botão \"Tirar dúvida\" e conversa com a IA ali mesmo. Ela responde sobre o cardápio, entrega e pagamento, e manda a pessoa fazer o pedido pelo cardápio. Só responde com o restaurante aberto."
-              : "Ligado, aparece um botão \"Tirar dúvida\" no cardápio e a IA responde ali mesmo. Não precisa de WhatsApp conectado."}
-          </p>
-          <form action={mudarChat}>
-            <input type="hidden" name="restaurantId" value={restaurantId} />
-            <input type="hidden" name="ligar" value={estado?.noChat ? "0" : "1"} />
-            <SubmitButton variant={estado?.noChat ? "secondary" : "primary"} size="sm">
-              {estado?.noChat ? "Desligar no cardápio" : "Ligar no cardápio"}
-            </SubmitButton>
-          </form>
+          <p className="text-sm font-extrabold">WhatsApp pela Kapso (a Meta recusa o envio hoje)</p>
+          {estado?.linkDeConexao ? (
+            <div className="flex items-center gap-2 rounded-control border border-line bg-surface-2 p-2">
+              <code className="min-w-0 flex-1 truncate text-xs">{estado.linkDeConexao}</code>
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(estado.linkDeConexao ?? "");
+                  setCopiou(true);
+                }}
+                aria-label="Copiar o link"
+                className="grid size-9 shrink-0 place-items-center rounded-control text-muted hover:bg-surface hover:text-ink"
+              >
+                {copiou ? (
+                  <Check className="size-4 text-success" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              O dono abre o link, entra com o Facebook e conecta o WhatsApp dele. Depois que ele terminar, confira aqui.
+            </p>
+          )}
+          {estado?.numeroExibido && (
+            <p className="text-sm text-muted">
+              Conectado: <span className="font-bold text-ink">{estado.numeroExibido}</span>
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <form action={gerar}>
+              <input type="hidden" name="restaurantId" value={restaurantId} />
+              <SubmitButton variant="secondary" size="sm">
+                {estado?.linkDeConexao ? "Gerar outro link" : "Gerar link de conexão"}
+              </SubmitButton>
+            </form>
+            {estado?.linkDeConexao && (
+              <form action={conferir}>
+                <input type="hidden" name="restaurantId" value={restaurantId} />
+                <SubmitButton variant="secondary" size="sm">
+                  Conferir conexão
+                </SubmitButton>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </Card>

@@ -92,9 +92,12 @@ export async function ligarIaDoRestaurante(
 
   const atendente = await db.atendenteIa.findUnique({
     where: { restaurantId: restaurant.id },
-    select: { phoneNumberId: true },
+    select: { phoneNumberId: true, zapiChannelId: true },
   });
-  if (!atendente?.phoneNumberId)
+  // Vale por qualquer um dos dois caminhos: o número da Kapso ou o canal da
+  // Z-API. Exigir só o da Kapso travava quem está na Z-API, que é por onde
+  // a IA responde hoje.
+  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId)
     return {
       error:
         "O WhatsApp ainda não foi conectado. Fale com o suporte do MenuFácil.",
@@ -116,4 +119,119 @@ export async function ligarIaDoRestaurante(
   });
   refresh();
   return { message: ligar ? "IA ligada." : "IA desligada." };
+}
+
+/**
+ * O dono decide se a IA pode anotar pedido.
+ *
+ * É o passo em que ela deixa de só conversar e passa a mexer em pedido de
+ * verdade: ela monta pelos códigos do cardápio, o sistema calcula o preço,
+ * e o pedido só nasce depois que o cliente responde "sim" ao resumo. O
+ * pagamento continua sendo confirmado pelo restaurante ou pelo Mercado
+ * Pago -- nunca por ela.
+ */
+export async function iaAnotaPedidos(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const ligar = formData.get("ligar") === "1";
+
+  await db.atendenteIa.update({
+    where: { restaurantId: restaurant.id },
+    data: { fazPedidos: ligar },
+  });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.pedidos",
+    details: { ligado: ligar, viaAdmin },
+  });
+  refresh();
+  return {
+    message: ligar
+      ? "Agora ela também anota pedidos e ajuda com o Pix."
+      : "Ela voltou a só tirar dúvidas e mandar o link.",
+  };
+}
+
+/**
+ * O atendente no chat do cardápio.
+ *
+ * Não depende de WhatsApp nenhum: responde quem abriu o link do
+ * restaurante, ali mesmo. Por isso é uma chave separada -- dá para ter um
+ * sem o outro.
+ */
+export async function iaNoChatDoCardapio(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const ligar = formData.get("ligar") === "1";
+
+  if (ligar && !iaConfigurada())
+    return {
+      error: "A IA ainda não está liberada. Fale com o suporte do MenuFácil.",
+    };
+
+  // Quem nunca mexeu na IA pode não ter registro, e o chat não depende de
+  // conexão nenhuma para funcionar.
+  await db.atendenteIa.upsert({
+    where: { restaurantId: restaurant.id },
+    update: { noChat: ligar },
+    create: { restaurantId: restaurant.id, noChat: ligar, ignorados: [], semEspera: [] },
+  });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.cardapio",
+    details: { ligado: ligar, viaAdmin },
+  });
+  refresh();
+  return {
+    message: ligar
+      ? 'Ligado: quem abrir o cardápio vê o botão "Tirar dúvida".'
+      : "Desligado no cardápio.",
+  };
+}
+
+/**
+ * Apaga o que a IA lembra das conversas.
+ *
+ * Só a memória dela. Os pedidos, os clientes e as mensagens no WhatsApp do
+ * restaurante ficam onde estão.
+ *
+ * Serve para duas coisas que acontecem direto: ela imita o que já falou, e
+ * uma conversa que saiu torta se repete a cada "oi" enquanto estiver no
+ * histórico; e, depois que alguém do restaurante responde pelo celular,
+ * ela fica quieta meia hora naquela conversa -- apagar destrava na hora.
+ */
+export async function esquecerConversas(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+
+  const { count } = await db.iaMensagem.deleteMany({
+    where: { restaurantId: restaurant.id },
+  });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.esquecer",
+    details: { mensagens: count, viaAdmin },
+  });
+  refresh();
+  return {
+    message:
+      count > 0
+        ? "Pronto: a próxima mensagem do cliente começa uma conversa nova."
+        : "Não havia nada guardado.",
+  };
 }

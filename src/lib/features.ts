@@ -5,7 +5,13 @@
 // marcado como tal, para ninguém achar que ligar a chave já faz alguma
 // coisa. Quem confere de verdade é o servidor, não a tela.
 
-export type FeatureKey = "printEnabled" | "totemEnabled" | "fullDeliveryEnabled" | "salaoEnabled" | "entregadorEnabled";
+export type FeatureKey =
+  | "printEnabled"
+  | "totemEnabled"
+  | "fullDeliveryEnabled"
+  | "salaoEnabled"
+  | "entregadorEnabled"
+  | "iaEnabled";
 
 export type Feature = {
   key: FeatureKey;
@@ -54,6 +60,11 @@ export const FEATURES: Feature[] = [
     label: "Entregadores",
     hint:
       "Os entregadores do proprio restaurante: cadastro no painel, tela propria para quem leva o pedido e a confirmacao da entrega feita por ele, nao pelo balcao. So mexe com pedido de entrega.",
+  },
+  {
+    key: "iaEnabled",
+    label: "Menu Fácil IA",
+    hint: "O atendente que responde os clientes. Libera a seção Menu Fácil IA no painel dele, onde ele liga o atendimento, escolhe se ela anota pedido e se responde no chat do cardápio.",
   },
 ];
 

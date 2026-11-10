@@ -210,6 +210,25 @@ export async function atender(evento: MensagemKapso) {
     return;
   }
 
+  /**
+   * Chegou outra mensagem do cliente depois desta?
+   *
+   * Quem escreve no WhatsApp escreve em rajada: o endereço numa mensagem e
+   * "anoto aí?" na seguinte. Cada uma entra aqui por conta própria, e as
+   * duas pensam ao mesmo tempo -- a que terminar primeiro responde lendo
+   * metade da conversa, e o cliente vê a pergunta que ele acabou de
+   * responder.
+   *
+   * Então quem foi ultrapassado sai de cena. A última sempre lê tudo o que
+   * veio antes, porque só começa depois de todas estarem gravadas.
+   */
+  const ultrapassada = async () =>
+    (await db.iaMensagem.count({
+      where: { restaurantId, contato, papel: "CLIENTE", createdAt: { gt: recebida.createdAt } },
+    })) > 0;
+
+  if (await ultrapassada()) return;
+
   const conhecimento = await conhecimentoDoRestaurante(restaurantId, {
     comIds: atendente.fazPedidos,
   });
@@ -231,6 +250,9 @@ export async function atender(evento: MensagemKapso) {
           },
         });
     if (humanoNoMeio > 0) return false;
+    // e o cliente pode ter escrito de novo enquanto ela pensava: a
+    // mensagem dela chegaria atrasada, respondendo o que já ficou para trás
+    if (await ultrapassada()) return false;
     for (const msg of mensagens) {
       // responde pelo mesmo canal por onde a mensagem chegou
       if (zapiChannelId) {

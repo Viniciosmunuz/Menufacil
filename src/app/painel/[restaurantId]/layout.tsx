@@ -33,7 +33,7 @@ export default async function RestaurantPanelLayout({
         logoUrl: true,
         openMode: true,
         openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
-        atendenteIa: { select: { ativo: true, phoneNumberId: true } },
+        atendenteIa: { select: { ativo: true } },
         // a entrega pausada é estado de agora, como o aberto: fica na mesma
         // faixa do alto, em todas as telas do painel
         deliveryEnabled: true,
@@ -42,9 +42,10 @@ export default async function RestaurantPanelLayout({
     }),
     pedidosEsperando(restaurant.id),
   ]);
-  // a IA só existe para o dono depois que o WhatsApp dele foi conectado
-  // pelo admin; antes disso, nem a aba nem a bolinha aparecem
-  const ia = horario?.atendenteIa?.phoneNumberId ? horario.atendenteIa.ativo : null;
+  // Quem decide se a seção existe é a chave do admin em Recursos. Antes
+  // ela dependia do WhatsApp estar conectado, e isso escondia o atendente
+  // do cardápio -- que não precisa de WhatsApp nenhum para funcionar.
+  const ia = noAr("iaEnabled") && restaurant.iaEnabled ? Boolean(horario?.atendenteIa?.ativo) : null;
 
   // o admin entra com a própria conta: só um link discreto de volta, ao lado do nome
   const context = viaAdmin ? (

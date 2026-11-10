@@ -199,6 +199,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               fullDeliveryEnabled: restaurant.fullDeliveryEnabled,
               salaoEnabled: restaurant.salaoEnabled,
               entregadorEnabled: restaurant.entregadorEnabled,
+              iaEnabled: restaurant.iaEnabled,
             }}
           />
 
@@ -218,8 +219,20 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
                     // "Pedidos pela IA" de quem está na Z-API -- justamente
                     // de quem saiu da Kapso por causa do bloqueio da Meta.
                     conectado: Boolean(restaurant.atendenteIa.phoneNumberId || restaurant.atendenteIa.zapiChannelId),
+                    liberada: restaurant.iaEnabled,
                   }
-                : null
+                : {
+                    // nunca conectado: o quadro continua aparecendo, porque
+                    // é dele que sai a conexão
+                    ativo: false,
+                    fazPedidos: false,
+                    noChat: false,
+                    zapiChannelId: null,
+                    linkDeConexao: null,
+                    numeroExibido: null,
+                    conectado: false,
+                    liberada: restaurant.iaEnabled,
+                  }
             }
           />
 

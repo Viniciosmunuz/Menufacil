@@ -228,6 +228,12 @@ model Restaurant {
   // leva o pedido. So mexe com pedido de DELIVERY; retirada e salao nao
   // tem entregador.
   entregadorEnabled Boolean       @default(false)
+  // Menu Facil IA: a chave da plataforma. Ligada, a secao da IA aparece no
+  // painel do dono e e ele quem decide o resto -- ligar o atendimento, se
+  // ela anota pedido, se responde no cardapio. Desligada, a secao some e o
+  // servidor recusa de novo, para o endereco digitado na mao tambem nao
+  // passar.
+  iaEnabled         Boolean       @default(false)
   /// Onde fica o restaurante, para o mapa do cliente abrir no lugar
   /// certo. Traduzido do endereco dele uma vez, na primeira necessidade.
   latitude          Float?

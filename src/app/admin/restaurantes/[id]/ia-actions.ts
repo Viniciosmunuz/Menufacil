@@ -7,7 +7,6 @@ import { refresh } from "next/cache";
 import { db } from "@/lib/db";
 import { appUrl } from "@/lib/site";
 import { requireAdmin } from "@/server/auth/dal";
-import { iaConfigurada } from "@/server/ia/responder";
 import {
   KapsoError,
   criarClienteKapso,
@@ -22,16 +21,18 @@ import type { AdminFormState } from "../actions";
 
 // O Menu Fácil IA, do lado do admin da plataforma.
 //
-// Três passos, cada um com seu botão, porque cada um depende de alguém:
+// Só a conexão do WhatsApp, que é o que o dono não tem como fazer: ela
+// passa por uma conta da plataforma, a Kapso ou a Z-API. Ligar a IA,
+// deixá-la anotar pedidos, responder no cardápio e apagar o que ela lembra
+// são decisões do dia a dia do restaurante, e moram no painel do dono.
 //
-// 1. **Gerar o link** -- o MenuFácil cria o restaurante na Kapso e um link
-//    de conexão. O admin manda o link ao dono.
-// 2. **Conferir a conexão** -- o dono abriu o link e conectou o WhatsApp
-//    dele; aqui o número é buscado na Kapso e o aviso de mensagens é
-//    registrado. Pergunta à Kapso em vez de confiar no que o navegador do
-//    dono trouxe de volta.
-// 3. **Ligar a IA** -- só depois de conectado. Conectar não liga nada
-//    sozinho.
+// A chave que libera tudo isso é a de Recursos (`iaEnabled`), ao lado das
+// outras: desligada, o dono nem vê a seção.
+//
+// Pela Kapso são dois passos, porque o do meio é com o dono: o admin gera
+// o link e manda; o dono abre, entra com o Facebook e conecta; o admin
+// confere. Conferir pergunta à Kapso em vez de confiar no que o navegador
+// do dono trouxe de volta.
 
 function falha(erro: unknown): AdminFormState {
   if (erro instanceof KapsoError) return { error: erro.message };
@@ -122,28 +123,6 @@ export async function conferirConexaoDaIa(_prev: AdminFormState, formData: FormD
   return { ok: true, message: "WhatsApp conectado. A IA continua desligada até você ligar." };
 }
 
-export async function ligarIa(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
-  await requireAdmin();
-  const restaurantId = String(formData.get("restaurantId") ?? "");
-  const ligar = formData.get("ligar") === "1";
-
-  // Vale qualquer um dos dois caminhos: o número da Kapso ou o canal da
-  // Z-API. Exigir só o `phoneNumberId` travava a chave justamente para
-  // quem saiu da Kapso por causa do bloqueio da Meta.
-  const atendente = await db.atendenteIa.findUnique({
-    where: { restaurantId },
-    select: { phoneNumberId: true, zapiChannelId: true },
-  });
-  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId) {
-    return { error: "Conecte o WhatsApp antes de ligar a IA (pela Kapso ou colando o canal da Z-API)." };
-  }
-  if (ligar && !iaConfigurada()) return { error: "Falta configurar a chave da Anthropic (ANTHROPIC_API_KEY) na Vercel." };
-
-  await db.atendenteIa.update({ where: { restaurantId }, data: { ativo: ligar } });
-  refresh();
-  return { ok: true, message: ligar ? "IA ligada: ela já responde as próximas mensagens." : "IA desligada." };
-}
-
 /**
  * Liga este restaurante a um canal da Z-API (WhatsApp Web, por QR code).
  *
@@ -191,86 +170,3 @@ export async function salvarCanalZapi(_prev: AdminFormState, formData: FormData)
   };
 }
 
-/**
- * A IA no chat do cardápio, com chave própria.
- *
- * Não pede WhatsApp conectado, e é esse o ponto: a conta da Meta recusa o
- * envio para números brasileiros (erro 130497), então exigir o WhatsApp
- * aqui deixaria o atendente do cardápio refém de um bloqueio que não é
- * nosso. O que ela precisa é da chave da Anthropic, porque é ela que
- * responde.
- */
-export async function iaNoCardapio(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
-  await requireAdmin();
-  const restaurantId = String(formData.get("restaurantId") ?? "");
-  const ligar = formData.get("ligar") === "1";
-
-  if (ligar && !iaConfigurada()) {
-    return { error: "Falta configurar a chave da Anthropic (ANTHROPIC_API_KEY) na Vercel." };
-  }
-
-  // O registro pode não existir ainda: quem nunca mexeu no WhatsApp não
-  // tem AtendenteIa, e o chat não deveria depender disso.
-  await db.atendenteIa.upsert({
-    where: { restaurantId },
-    update: { noChat: ligar },
-    create: { restaurantId, noChat: ligar, ignorados: [], semEspera: [] },
-  });
-  refresh();
-  return {
-    ok: true,
-    message: ligar
-      ? "Atendente ligado no cardápio: ele já responde quem abrir o link."
-      : "Atendente desligado no cardápio.",
-  };
-}
-
-/**
- * Deixa a IA anotar pedido e mandar o Pix na conversa. Desligado, ela só
- * tira dúvidas e manda o link. É o admin quem decide: é o passo em que a
- * IA passa a mexer em pedido de verdade.
- */
-export async function iaFazPedidos(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
-  await requireAdmin();
-  const restaurantId = String(formData.get("restaurantId") ?? "");
-  const ligar = formData.get("ligar") === "1";
-
-  const atendente = await db.atendenteIa.findUnique({
-    where: { restaurantId },
-    select: { phoneNumberId: true, zapiChannelId: true },
-  });
-  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId) {
-    return { error: "Conecte o WhatsApp antes (pela Kapso ou colando o canal da Z-API)." };
-  }
-
-  await db.atendenteIa.update({ where: { restaurantId }, data: { fazPedidos: ligar } });
-  refresh();
-  return {
-    ok: true,
-    message: ligar ? "A IA agora pode anotar pedidos e mandar o Pix." : "A IA voltou a só tirar dúvidas e mandar o link.",
-  };
-}
-
-/**
- * Apaga o que a IA lembra das conversas deste restaurante.
- *
- * Só a memória dela: pedidos, clientes e as mensagens no WhatsApp do dono
- * ficam onde estão. Serve para teste -- a IA imita o que já falou, e uma
- * conversa que deu errado se repete a cada "oi" enquanto estiver no
- * histórico -- e também destrava quem ficou em silêncio porque alguém do
- * restaurante respondeu pelo celular.
- */
-export async function limparConversasIa(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
-  await requireAdmin();
-  const restaurantId = String(formData.get("restaurantId") ?? "");
-
-  const { count } = await db.iaMensagem.deleteMany({ where: { restaurantId } });
-  refresh();
-  return {
-    ok: true,
-    message:
-      count > 0
-        ? `Histórico apagado (${count} mensagens). A próxima mensagem do cliente começa uma conversa nova.`
-        : "Não havia nada no histórico.",
-  };
-}

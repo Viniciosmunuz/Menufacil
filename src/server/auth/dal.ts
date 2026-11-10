@@ -70,6 +70,7 @@ export type RestaurantAccess = {
     fullDeliveryEnabled: boolean;
     salaoEnabled: boolean;
     entregadorEnabled: boolean;
+    iaEnabled: boolean;
     /// fluxo escolhido pelo dono; só vale com fullDeliveryEnabled ligado
     deliveryMode: OrderFlowMode;
   };
@@ -128,6 +129,7 @@ export const getRestaurantAccess = cache(
         fullDeliveryEnabled: true,
         salaoEnabled: true,
         entregadorEnabled: true,
+        iaEnabled: true,
         deliveryMode: true,
         owners: { where: { userId: user.id }, select: { id: true, role: true, nivel: true, permissoes: true }, take: 1 },
       },
