@@ -1,4 +1,4 @@
-import { Banknote, Bike, CreditCard, ExternalLink, QrCode } from "lucide-react";
+import { Banknote, Bike, Bot, CreditCard, ExternalLink, QrCode } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 
@@ -81,6 +81,8 @@ type Pedido = {
   type: OrderType;
   paymentMethod: PaymentMethod;
   origin?: OrderOrigin | null;
+  /** anotado pela IA na conversa, não digitado pelo cliente no cardápio */
+  feitoPelaIa?: boolean;
   totalCents: number;
   createdAt: Date;
   payment?: { status: PaymentStatus } | null;
@@ -206,7 +208,21 @@ export function TabelaDePedidos<T extends Pedido>({
                   </td>
 
                   <td className="px-4 py-3 align-middle">
-                    <p className="max-w-56 truncate font-bold">{p.customerName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="max-w-56 truncate font-bold">{p.customerName}</p>
+                      {/* o pedido que a IA anotou na conversa: o dono não
+                          digitou, e o cliente também não. Vale saber antes
+                          de ligar perguntando. */}
+                      {p.feitoPelaIa && (
+                        <span
+                          title="Anotado pela IA no WhatsApp"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[0.625rem] font-extrabold text-brand"
+                        >
+                          <Bot className="size-3" aria-hidden="true" />
+                          IA
+                        </span>
+                      )}
+                    </div>
                     {p.customerWhatsapp && <p className="text-xs text-muted">{formatPhone(p.customerWhatsapp)}</p>}
                   </td>
 

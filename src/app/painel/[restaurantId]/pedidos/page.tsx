@@ -105,6 +105,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         paymentMethod: true,
         customerName: true,
         customerWhatsapp: true,
+        // o selo na lista: o dono precisa saber de longe que este pedido
+        // nao foi digitado pelo cliente, mas anotado pela IA na conversa
+        feitoPelaIa: true,
         // no 100% Delivery, a hora que conta para o sino é a do pagamento
         payment: { select: { confirmedAt: true, status: true } },
       },
