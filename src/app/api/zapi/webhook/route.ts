@@ -45,11 +45,28 @@ type AvisoOmni = {
 const soDigitos = (v: string) => v.replace(/\D/g, "");
 
 export async function POST(request: NextRequest) {
+  // Nada daqui devolve erro para a Z-API.
+  //
+  // O 400 que estava aqui custou caro: ela conta falha seguida, manda
+  // e-mail de "seu webhook continua falhando" e acaba suspendendo a
+  // entrega -- e aí mensagem de cliente para de chegar, sem nada no nosso
+  // log, porque a chamada nem acontece. Dez falhas seguidas em 10/11/2026.
+  //
+  // O que não dá para ler vira registro e 200. Entender o corpo é problema
+  // nosso; para ela, recebemos.
   let aviso: AvisoOmni;
+  const cru = await request.text();
   try {
-    aviso = (await request.json()) as AvisoOmni;
+    aviso = JSON.parse(cru) as AvisoOmni;
   } catch {
-    return NextResponse.json({ erro: "corpo inválido" }, { status: 400 });
+    console.warn(
+      `[zapi/webhook] corpo que não é JSON (${request.headers.get("content-type") ?? "sem content-type"}, ${cru.length} letras): ${cru.slice(0, 500)}`,
+    );
+    return NextResponse.json({ ok: true, ignorado: "corpo ilegível" });
+  }
+  if (!aviso || typeof aviso !== "object") {
+    console.warn(`[zapi/webhook] corpo JSON que não é objeto: ${cru.slice(0, 200)}`);
+    return NextResponse.json({ ok: true, ignorado: "corpo inesperado" });
   }
 
   const m = aviso.message;
@@ -130,11 +147,18 @@ export async function POST(request: NextRequest) {
   // duas vezes. A chave é o id da mensagem; sem ele, deixa passar, porque
   // perder uma mensagem é pior do que repetir uma.
   if (m._id) {
-    const { count } = await db.iaEventoProcessado.createMany({
-      data: [{ chave: `zapi:${m._id}` }],
-      skipDuplicates: true,
-    });
-    if (count === 0) return NextResponse.json({ ok: true, repetido: true });
+    try {
+      const { count } = await db.iaEventoProcessado.createMany({
+        data: [{ chave: `zapi:${m._id}` }],
+        skipDuplicates: true,
+      });
+      if (count === 0) return NextResponse.json({ ok: true, repetido: true });
+    } catch (erro) {
+      // Banco fora do ar não pode virar falha de webhook: a Z-API conta e
+      // suspende a entrega. Sem a trava, o risco é responder duas vezes à
+      // mesma mensagem -- incômodo, e muito menos grave que emudecer.
+      console.error("[zapi/webhook] falha ao marcar o evento como visto:", erro);
+    }
   }
 
   // o formato que o atender() já fala; `zapi_channel_id` é o que diz a ele
@@ -179,4 +203,15 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * A Z-API às vezes bate aqui só para ver se o endereço responde.
+ *
+ * Sem este handler o Next devolve 405, que para ela é falha igual às
+ * outras: dez seguidas e a entrega é suspensa. Responder "estou aqui" não
+ * custa nada e não conta nada.
+ */
+export async function GET() {
+  return NextResponse.json({ ok: true, webhook: "zapi" });
 }
