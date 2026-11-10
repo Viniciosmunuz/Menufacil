@@ -42,6 +42,20 @@ export function zapiConfigurada() {
   );
 }
 
+/**
+ * O canal que este servidor usa para enviar, qualquer que seja o
+ * restaurante.
+ *
+ * O envio sai sempre pelo `ZAPI_CHANNEL_ID` do ambiente -- é um canal por
+ * instalação, não um por restaurante. Quem manda mensagem por conta
+ * própria (os avisos de pedido) confere isto contra o canal do
+ * restaurante antes de falar: no dia em que existir um segundo número, a
+ * mensagem não pode sair pelo WhatsApp de outro restaurante.
+ */
+export function canalConfigurado() {
+  return process.env.ZAPI_CHANNEL_ID?.trim() || null;
+}
+
 function credenciais() {
   const chave = process.env.ZAPI_SECRET_KEY?.trim();
   const canal = process.env.ZAPI_CHANNEL_ID?.trim();
