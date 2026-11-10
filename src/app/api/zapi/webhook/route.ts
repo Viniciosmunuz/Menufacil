@@ -120,13 +120,6 @@ export async function POST(request: NextRequest) {
   const texto =
     m.contents?.find((c) => typeof c.message === "string" && c.message.trim())?.message ?? "";
 
-  console.info(
-    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo})` +
-      (telefone ? "" : ` · sem telefone, payload: ${JSON.stringify(m).slice(0, 400)}`),
-  );
-
-  if (!telefone) return NextResponse.json({ ok: true, ignorado: true });
-
   // Recibo de entrega não é mensagem.
   //
   // A Z-API manda `.DeliveryCallback` e `.MessageStatusCallback` pelo
@@ -136,9 +129,20 @@ export async function POST(request: NextRequest) {
   // os lia como o dono respondendo pelo celular e acionava o silêncio de
   // 30 minutos. Resultado: a IA respondia a primeira mensagem e emudecia
   // pela meia hora seguinte.
+  //
+  // Sai antes do registro, e não depois: cada resposta da IA gera uma
+  // dezena deles, e com o payload inteiro no log o que importa -- a
+  // mensagem do cliente -- fica soterrado.
   if (tipo.includes("callback") || tipo.includes("status")) {
     return NextResponse.json({ ok: true, ignorado: "recibo" });
   }
+
+  console.info(
+    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo})` +
+      (telefone ? "" : ` · sem telefone, payload: ${JSON.stringify(m).slice(0, 400)}`),
+  );
+
+  if (!telefone) return NextResponse.json({ ok: true, ignorado: true });
 
   // Cada aviso é tratado uma vez só.
   //
