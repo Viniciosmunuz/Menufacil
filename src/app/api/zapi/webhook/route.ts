@@ -1,3 +1,5 @@
+import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
+
 import { after, NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/lib/db";
@@ -44,6 +46,31 @@ type AvisoOmni = {
 /** só dígitos: o identifier vem com DDI, mas às vezes com sinal ou espaço */
 const soDigitos = (v: string) => v.replace(/\D/g, "");
 
+/**
+ * O corpo da Z-API vem comprimido quando é grande.
+ *
+ * E vem sem avisar: `content-type: application/json`, texto nenhum de
+ * aviso, e os bytes começando em `1f 8b` -- gzip puro. O `request.text()`
+ * não descomprime corpo que entra (só o `fetch()` faz isso na resposta que
+ * sai), então o JSON.parse quebrava e a mensagem ia para o lixo.
+ *
+ * **Custou uma semana de "a IA não entende endereço".** Ela comprime pelo
+ * tamanho: "Entrega" e "Vai ser no pix" chegavam limpos, e a mensagem com
+ * a rua, o número e o bairro -- a única que importava -- era a única que
+ * sumia. De fora parecia burrice da IA; era o corpo nunca ter sido lido.
+ *
+ * Pelos bytes e não pelo cabeçalho: `content-encoding` nem sempre vem, e
+ * a assinatura não mente.
+ */
+function descomprimir(bytes: Buffer, encoding: string | null) {
+  if (bytes.length > 1 && bytes[0] === 0x1f && bytes[1] === 0x8b) return gunzipSync(bytes);
+  if (bytes.length > 1 && bytes[0] === 0x78) return inflateSync(bytes);
+  if (encoding?.includes("gzip")) return gunzipSync(bytes);
+  if (encoding?.includes("br")) return brotliDecompressSync(bytes);
+  if (encoding?.includes("deflate")) return inflateSync(bytes);
+  return bytes;
+}
+
 export async function POST(request: NextRequest) {
   // Nada daqui devolve erro para a Z-API.
   //
@@ -55,12 +82,21 @@ export async function POST(request: NextRequest) {
   // O que não dá para ler vira registro e 200. Entender o corpo é problema
   // nosso; para ela, recebemos.
   let aviso: AvisoOmni;
-  const cru = await request.text();
+  const bytes = Buffer.from(await request.arrayBuffer());
+  let cru: string;
+  try {
+    cru = descomprimir(bytes, request.headers.get("content-encoding")).toString("utf8");
+  } catch (erro) {
+    console.error("[zapi/webhook] falha ao descomprimir o corpo:", erro);
+    cru = bytes.toString("utf8");
+  }
   try {
     aviso = JSON.parse(cru) as AvisoOmni;
   } catch {
+    // o começo em hexadecimal: é o que diz se veio comprimido num formato
+    // que ainda não conheço, e aí a assinatura está nos primeiros bytes
     console.warn(
-      `[zapi/webhook] corpo que não é JSON (${request.headers.get("content-type") ?? "sem content-type"}, ${cru.length} letras): ${cru.slice(0, 500)}`,
+      `[zapi/webhook] corpo que não é JSON (${request.headers.get("content-type") ?? "sem content-type"}, encoding=${request.headers.get("content-encoding") ?? "nenhum"}, ${bytes.length} bytes, começa em ${bytes.subarray(0, 8).toString("hex")}): ${cru.slice(0, 300)}`,
     );
     return NextResponse.json({ ok: true, ignorado: "corpo ilegível" });
   }
