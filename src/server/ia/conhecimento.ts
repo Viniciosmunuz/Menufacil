@@ -2,7 +2,13 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { formatCents, TIME_ZONE } from "@/lib/format";
-import { isOpenNow, soRetirada as entregaPausada, WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
+import {
+  inicioDaOperacao,
+  isOpenNow,
+  soRetirada as entregaPausada,
+  WEEKDAYS,
+  type OpeningHourData,
+} from "@/lib/opening-hours";
 import { appUrl } from "@/lib/site";
 import { maisPedidos } from "@/server/public/restaurants";
 
@@ -38,6 +44,14 @@ export type Conhecimento = {
   slug: string;
   /** aberto agora; fechado, a IA não responde */
   aberto: boolean;
+  /**
+   * Quando começou o expediente de agora.
+   *
+   * É daqui que a IA lê a conversa. Fechou e abriu de novo, é outro dia de
+   * trabalho: quem volta no dia seguinte recomeça do zero, e ela não
+   * arrasta o que ficou pela metade na véspera.
+   */
+  inicioDoTurno: Date;
   /** 100% Delivery: o Pix é o do Mercado Pago, e não a chave */
   cemPorCento: boolean;
 };
@@ -254,6 +268,7 @@ export async function conhecimentoDoRestaurante(
 
   // ─── o agora ───────────────────────────────────────────────────────
   const aberto = r.status === "ACTIVE" && isOpenNow(r.openMode, horas);
+  const inicioDoTurno = inicioDaOperacao(horas);
   const hora = new Intl.DateTimeFormat("pt-BR", {
     timeZone: TIME_ZONE,
     weekday: "long",
@@ -271,7 +286,7 @@ export async function conhecimentoDoRestaurante(
 
   // com mais de um dono, a IA não escolhe sozinha quem chamar
   const dono = donos.length === 1 ? donos[0].split(/\s+/)[0] : null;
-  return { fixo: linhas.join("\n"), agora, link, nome: r.name, dono, slug: r.slug, aberto, cemPorCento };
+  return { fixo: linhas.join("\n"), agora, link, nome: r.name, dono, slug: r.slug, aberto, inicioDoTurno, cemPorCento };
 }
 
 /** "@papaleguas", venha o cadastro como "@papaleguas" ou como o endereço inteiro */

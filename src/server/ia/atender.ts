@@ -42,6 +42,17 @@ const HUMANO_ASSUMIU_MIN = 30;
 const RESPOSTAS_POR_HORA = 15;
 /** quanto da conversa a IA lê para ter contexto */
 const HISTORICO = 12;
+/** parada maior que isto na conversa e a próxima mensagem começa outra */
+const PAUSA_NOVA_CONVERSA_H = 4;
+/**
+ * O registro interno de que a IA passou a conversa para uma pessoa.
+ *
+ * É gravado como HUMANO porque é isso que a faz ficar quieta, mas não é
+ * fala de ninguém: fica de fora do histórico que vai para o modelo. Dentro
+ * dele, a IA lia "[a IA chamou alguém do restaurante]" como se ela mesma
+ * tivesse dito, e passava a repetir "já avisei o dono" a cada "oi".
+ */
+const MARCA_CHAMOU = "[a IA chamou alguém do restaurante]";
 const TEXTO_MAX = 1500;
 
 const COMPROVANTE_MANUAL =
@@ -269,13 +280,31 @@ export async function atender(evento: MensagemKapso) {
     where: {
       restaurantId,
       contato,
-      createdAt: { gte: new Date(agora - 24 * 60 * 60_000) },
+      // Cada expediente é uma conversa nova.
+      //
+      // Fechou e abriu de novo, é outro dia de trabalho: quem manda "oi" na
+      // noite seguinte não quer continuar de onde parou. Sem este corte, a
+      // IA lia a véspera inteira e repetia o que tinha dito lá -- "o vini
+      // já foi avisado" a cada mensagem nova, um dia depois do chamado.
+      createdAt: { gte: new Date(Math.max(agora - 24 * 60 * 60_000, conhecimento.inicioDoTurno.getTime())) },
+      texto: { not: MARCA_CHAMOU },
     },
     orderBy: { createdAt: "desc" },
     take: HISTORICO,
-    select: { papel: true, texto: true },
+    select: { papel: true, texto: true, createdAt: true },
   });
-  const conversa: Turno[] = recentes.reverse().map((r) => ({
+  recentes.reverse();
+
+  // Dentro do mesmo expediente, uma parada longa também recomeça a
+  // conversa: vale para quem fecha e abre no botão, que não mexe no horário
+  // cadastrado, e para o restaurante sem horário nenhum.
+  let comeco = 0;
+  for (let i = 1; i < recentes.length; i++) {
+    const salto = recentes[i].createdAt.getTime() - recentes[i - 1].createdAt.getTime();
+    if (salto > PAUSA_NOVA_CONVERSA_H * 60 * 60_000) comeco = i;
+  }
+
+  const conversa: Turno[] = recentes.slice(comeco).map((r) => ({
     papel: r.papel === "CLIENTE" ? "cliente" : "atendente",
     texto: r.texto,
   }));
@@ -299,7 +328,7 @@ export async function atender(evento: MensagemKapso) {
         restaurantId,
         contato,
         papel: "HUMANO",
-        texto: "[a IA chamou alguém do restaurante]",
+        texto: MARCA_CHAMOU,
       },
     });
     await avisarClienteChamou({

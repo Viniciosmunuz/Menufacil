@@ -10,7 +10,15 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, iaNoCardapio, ligarIa, salvarCanalZapi } from "./ia-actions";
+import {
+  conferirConexaoDaIa,
+  gerarLinkDaIa,
+  iaFazPedidos,
+  iaNoCardapio,
+  ligarIa,
+  limparConversasIa,
+  salvarCanalZapi,
+} from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
@@ -36,9 +44,10 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [pedidos, mudarPedidos] = useActionState<AdminFormState, FormData>(iaFazPedidos, {});
   const [chat, mudarChat] = useActionState<AdminFormState, FormData>(iaNoCardapio, {});
   const [canal, mudarCanal] = useActionState<AdminFormState, FormData>(salvarCanalZapi, {});
+  const [limpo, limpar] = useActionState<AdminFormState, FormData>(limparConversasIa, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [canal, chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [limpo, canal, chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
@@ -176,6 +185,24 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
             />
             <SubmitButton variant="secondary" size="sm">
               Salvar canal
+            </SubmitButton>
+          </form>
+        </div>
+
+        {/* Recomeçar. A IA imita o que já falou: uma conversa que deu
+            errado volta a cada "oi" enquanto estiver no histórico, e é o
+            que mais atrapalha durante os testes. */}
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <p className="text-sm font-extrabold">Recomeçar as conversas</p>
+          <p className="text-sm text-muted">
+            Apaga o que a IA lembra das conversas deste restaurante. Pedidos, clientes e as
+            mensagens no WhatsApp do dono não são tocados. Use quando ela estiver repetindo
+            uma resposta antiga ou calada depois de chamar alguém.
+          </p>
+          <form action={limpar}>
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <SubmitButton variant="secondary" size="sm">
+              Apagar o histórico da IA
             </SubmitButton>
           </form>
         </div>

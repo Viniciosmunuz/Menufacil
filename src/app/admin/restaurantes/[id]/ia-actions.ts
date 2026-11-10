@@ -250,3 +250,27 @@ export async function iaFazPedidos(_prev: AdminFormState, formData: FormData): P
     message: ligar ? "A IA agora pode anotar pedidos e mandar o Pix." : "A IA voltou a só tirar dúvidas e mandar o link.",
   };
 }
+
+/**
+ * Apaga o que a IA lembra das conversas deste restaurante.
+ *
+ * Só a memória dela: pedidos, clientes e as mensagens no WhatsApp do dono
+ * ficam onde estão. Serve para teste -- a IA imita o que já falou, e uma
+ * conversa que deu errado se repete a cada "oi" enquanto estiver no
+ * histórico -- e também destrava quem ficou em silêncio porque alguém do
+ * restaurante respondeu pelo celular.
+ */
+export async function limparConversasIa(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+
+  const { count } = await db.iaMensagem.deleteMany({ where: { restaurantId } });
+  refresh();
+  return {
+    ok: true,
+    message:
+      count > 0
+        ? `Histórico apagado (${count} mensagens). A próxima mensagem do cliente começa uma conversa nova.`
+        : "Não havia nada no histórico.",
+  };
+}
