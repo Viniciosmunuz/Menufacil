@@ -3,13 +3,15 @@ import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 
 import { db } from "@/lib/db";
-import { formatCents, formatTime, normalizePhone } from "@/lib/format";
+import { formatCents, formatTime } from "@/lib/format";
 import { orderStatusLabel, paymentStatusLabel } from "@/lib/labels";
 import { paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { appUrl } from "@/lib/site";
 import { OrderError, checkoutSchema, parseItems, placeOrder, prepararPedido } from "@/server/orders/place-order";
 import { pixDoPedido } from "@/server/pagamentos/pix";
+
+import { telefoneDoSite, variantes } from "./telefone";
 
 // O Menu Fácil IA anotando pedido e ajudando com o Pix.
 //
@@ -133,25 +135,6 @@ export const FERRAMENTAS_DE_PEDIDO: Anthropic.Beta.BetaTool[] = [
 // ─── execução ─────────────────────────────────────────────────────────
 
 const erro = (texto: string): ResultadoDaFerramenta => ({ texto, erro: true });
-
-/**
- * O telefone do WhatsApp no formato do site.
- *
- * O WhatsApp ainda manda muito celular brasileiro sem o 9 da frente
- * (5592 8123-4567); o site grava com ele. Sem acertar isso, o pedido do
- * site não seria achado pelo número da conversa.
- */
-function telefoneDoSite(telefone: string) {
-  const d = normalizePhone(telefone);
-  return /^55\d{2}[6-9]\d{7}$/.test(d) ? `${d.slice(0, 4)}9${d.slice(4)}` : d;
-}
-
-/** o mesmo número com e sem o 9, para achar pedido gravado de qualquer jeito */
-function variantes(telefone: string) {
-  const d = telefoneDoSite(telefone);
-  const sem9 = /^55\d{2}9\d{8}$/.test(d) ? `${d.slice(0, 4)}${d.slice(5)}` : null;
-  return sem9 ? [d, sem9] : [d];
-}
 
 const texto = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : undefined);
 const lista = (v: unknown) => (Array.isArray(v) ? v : []);

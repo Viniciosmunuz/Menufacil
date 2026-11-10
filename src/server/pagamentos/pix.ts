@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { appUrl } from "@/lib/site";
+import { avisarPagamentoConfirmado } from "@/server/ia/avisar-cliente";
 import { criarPix, situacaoDoPagamento, verPagamento } from "@/server/mercado-pago/api";
 
 import { anotarErro, credenciaisDePagamento } from "./conta";
@@ -201,6 +202,19 @@ export async function confirmarPagamentoAprovado(params: {
     }
     return true;
   });
+
+  // Quem pagou merece saber que deu certo.
+  //
+  // Vai só para pedido anotado pela IA, onde já existe conversa aberta --
+  // o próprio aviso cuida dessa regra. Fora do `virou` de propósito: um
+  // webhook repetido não pode mandar a mesma mensagem duas vezes.
+  if (virou) {
+    await avisarPagamentoConfirmado(orderId).catch((erro) =>
+      // o pagamento está registrado; o WhatsApp é o acabamento, e falhar
+      // aqui não pode fazer o Mercado Pago reenviar o aviso
+      console.error("[pix] falha ao avisar o cliente do pagamento:", erro),
+    );
+  }
 
   return virou ? { virou: true } : { virou: false, motivo: "ja_estava" };
 }
