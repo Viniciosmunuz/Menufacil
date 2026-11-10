@@ -27,7 +27,7 @@ import { atender, type MensagemKapso } from "@/server/ia/atender";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-type Conteudo = { type?: string; message?: string };
+type Conteudo = { type?: string; "@class"?: string; message?: string };
 type AvisoOmni = {
   messageEventType?: string;
   message?: {
@@ -64,7 +64,13 @@ export async function POST(request: NextRequest) {
     `[zapi/webhook] evento=${aviso.messageEventType ?? "(sem messageEventType)"} chaves=${chaves}`,
   );
 
-  if (aviso.messageEventType !== "NEW_MESSAGE" || !m?.channel_id) {
+  // O que manda é ter uma mensagem com canal, e não o nome do evento.
+  //
+  // A documentação promete um envelope `messageEventType: "NEW_MESSAGE"`.
+  // O que a Z-API envia de verdade não tem esse campo -- só `message` --,
+  // e exigi-lo fazia o webhook descartar justamente as mensagens dos
+  // clientes. Confirmado em 10/11/2026, com o payload no log.
+  if (!m?.channel_id) {
     // status de entrega, conexão e afins não interessam à IA -- mas o
     // corpo vai para o log, porque é a única forma de descobrir o formato
     // real de um evento que a documentação não mostra.
@@ -84,8 +90,17 @@ export async function POST(request: NextRequest) {
   const bruto = daCasa ? m.recipient?.identifier : m.sender?.identifier;
   const telefone = bruto ? soDigitos(bruto) : "";
 
-  const texto = m.contents?.find((c) => c.type === "TEXT")?.message ?? "";
-  const tipo = m.contents?.[0]?.type?.toLowerCase() ?? "text";
+  // O tipo do conteúdo vem de dois jeitos.
+  //
+  // A documentação mostra `type: "TEXT"`; o que chega de verdade traz
+  // `"@class": ".TextContent"` (e `.ImageContent`, `.AudioContent` e por
+  // aí). Ler só um dos dois deixava o texto vazio, e mensagem sem texto a
+  // IA não responde -- o erro ficava parecendo "ela não quis responder".
+  const conteudo = m.contents?.[0];
+  const classe = conteudo?.["@class"]?.replace(/^\.|Content$/g, "").toLowerCase();
+  const tipo = (conteudo?.type ?? classe ?? "text").toLowerCase();
+  const texto =
+    m.contents?.find((c) => typeof c.message === "string" && c.message.trim())?.message ?? "";
 
   console.info(
     `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo})` +
