@@ -207,11 +207,17 @@ async function conferir(slug: string, dados: { checkout: unknown; itens: unknown
   }
 }
 
+const COMO_CONTAR =
+  " Explique isso ao cliente com as suas palavras, numa frase de WhatsApp: ele não tem carrinho nem página aberta." +
+  " Se um item esgotou ou saiu do cardápio, diga qual é e ofereça outro parecido da mesma seção;" +
+  " se o problema for o bairro, o mínimo ou a forma de pagamento, diga o que é e o que dá para fazer." +
+  " Só confira de novo depois que ele responder.";
+
 async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unknown>): Promise<ResultadoDaFerramenta> {
   if (!ctx.telefone) return erro("Sem o número do cliente não dá para anotar. Mande o link do cardápio.");
   const dados = paraOCheckout(entrada, ctx.telefone);
   const r = await conferir(ctx.slug, dados);
-  if ("problema" in r) return erro(`O sistema não aceitou o pedido: ${r.problema} Acerte com o cliente e confira de novo.`);
+  if ("problema" in r) return erro(`O sistema não aceitou o pedido: ${r.problema}${COMO_CONTAR}`);
 
   const { input, preparado: p } = r;
   const linhas = p.lines.map(
@@ -273,7 +279,7 @@ async function criarPedido(ctx: ContextoDoPedido): Promise<ResultadoDaFerramenta
   const dados = rascunho.dados as { checkout: unknown; itens: unknown };
   const r = await conferir(ctx.slug, dados);
   if ("problema" in r) {
-    return erro(`O pedido não pôde ser criado: ${r.problema} Avise o cliente, acerte e confira de novo.`);
+    return erro(`O pedido não pôde ser criado: ${r.problema}${COMO_CONTAR}`);
   }
 
   let pedido;
