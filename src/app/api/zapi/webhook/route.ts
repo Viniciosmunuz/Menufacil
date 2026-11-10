@@ -52,8 +52,23 @@ export async function POST(request: NextRequest) {
   }
 
   const m = aviso.message;
+
+  // Registra TUDO que chega, antes de qualquer filtro.
+  //
+  // A primeira versão saía calada quando o envelope não era o esperado, e
+  // o resultado no log era idêntico a "a Z-API nunca chamou" -- o mesmo
+  // buraco que escondeu o 130497 da Meta por dias. Aqui o que entra
+  // aparece, mesmo (principalmente) quando não é o que eu previa.
+  const chaves = Object.keys(aviso).join(",");
+  console.info(
+    `[zapi/webhook] evento=${aviso.messageEventType ?? "(sem messageEventType)"} chaves=${chaves}`,
+  );
+
   if (aviso.messageEventType !== "NEW_MESSAGE" || !m?.channel_id) {
-    // status de entrega, conexão e afins: a IA não tem o que fazer com eles
+    // status de entrega, conexão e afins não interessam à IA -- mas o
+    // corpo vai para o log, porque é a única forma de descobrir o formato
+    // real de um evento que a documentação não mostra.
+    console.info(`[zapi/webhook] ignorado. corpo: ${JSON.stringify(aviso).slice(0, 700)}`);
     return NextResponse.json({ ok: true, ignorado: true });
   }
 
