@@ -271,6 +271,22 @@ const onTheWay = (o: { number: number; code: string }, r: { name: string; entreg
 const readyForPickup = (o: { number: number }, r: { name: string }) =>
   [`Pedido *#${o.number}* em *${r.name}*: está pronto!`, "", "Pode vir buscar aqui no balcão. Obrigado!"].join("\n");
 
+/**
+ * O texto do aviso deste status, ou nada quando o status não merece um.
+ *
+ * Público porque agora tem dois caminhos: o dono tocando no botão, que
+ * abre o WhatsApp com isto escrito, e a IA, que manda sozinha. O texto é
+ * o mesmo nos dois -- o cliente não tem por que notar quem apertou.
+ */
+export function statusNoticeText(
+  o: { number: number; code: string; type: OrderType },
+  r: { name: string; entregadorEnabled?: boolean },
+  status: OrderStatus,
+) {
+  if (!noticeWorthy(status, o.type)) return null;
+  return o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);
+}
+
 export function nextStatusNotice(
   o: {
     number: number;
@@ -282,8 +298,12 @@ export function nextStatusNotice(
     paymentMethod: PaymentMethod;
     origin?: OrderOrigin | null;
   },
-  r: { name: string; entregadorEnabled?: boolean },
+  r: { name: string; entregadorEnabled?: boolean; iaAvisa?: boolean },
 ) {
+  // Com a IA ligada, ela mesma manda assim que o status muda: abrir o
+  // WhatsApp aqui faria o cliente receber a mesma coisa duas vezes, e
+  // obrigaria o dono a tocar em enviar para algo que já foi.
+  if (r.iaAvisa) return null;
   const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
   if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
   const body = o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);

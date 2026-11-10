@@ -9,6 +9,7 @@ import { ORDER_STATUSES } from "@/lib/labels";
 import { fieldErrors, formObject, optionalText, phone, text, type FieldErrors } from "@/lib/validation";
 import { audit } from "@/server/audit";
 import { atribuirAoSair } from "@/server/entregadores/ao-sair";
+import { avisarStatusDoPedido } from "@/server/ia/avisar-cliente";
 import { WhatsAppService } from "@/server/whatsapp/service";
 
 // Mudanças num pedido feitas pela equipe (admin ou restaurante). Quem chama
@@ -94,6 +95,19 @@ async function recordStatus(tx: Prisma.TransactionClient, order: OrderRow, statu
 /** depois de gravar: avisa o cliente da mudança de status e registra quem fez */
 async function finish(order: OrderRow, newStatus: OrderStatus | null, actor: OrderActor) {
   if (newStatus) await WhatsAppService.sendOrderStatus(order.id, newStatus);
+  // Com a IA ligada, o "saiu para entrega" e o "está pronto" saem sozinhos.
+  //
+  // Antes o dono tocava no botão, o WhatsApp abria com a mensagem escrita
+  // e ele tocava em enviar de novo. Pela seleção em lote não saía nada:
+  // cinco entregas juntas não abrem cinco conversas.
+  //
+  // Falhar aqui não desfaz o passo: o pedido já mudou de status, e um
+  // WhatsApp que não sai vira log.
+  if (newStatus) {
+    await avisarStatusDoPedido(order.id, newStatus).catch((erro) =>
+      console.error("[pedido] falha ao avisar o cliente pela IA:", erro),
+    );
+  }
   // Saiu para entrega: com um único entregador disponível, a entrega já
   // sai no nome dele -- ele não precisa aceitar. Com dois ou mais, o
   // pedido fica livre, para quem pegar primeiro.

@@ -19,6 +19,7 @@ import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/format";
 import { db } from "@/lib/db";
+import { iaAvisaOCliente } from "@/server/ia/avisar-cliente";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { EXCLUDE_UNPAID, FINAL_ORDER_STATUSES, esperaAceite, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
@@ -69,6 +70,10 @@ const emRota = (o?: { status: OrderStatus }) => o?.status === "OUT_FOR_DELIVERY"
 export default async function RestaurantOrdersPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/pedidos">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
+  // Com a IA ligada, o aviso ao cliente sai sozinho quando o status muda.
+  // Aqui isso só apaga o link do botão: sem ele, tocar no passo não abre
+  // mais o WhatsApp para o dono mandar a mesma mensagem na mão.
+  const avisos = { ...restaurant, iaAvisa: await iaAvisaOCliente(restaurant.id) };
   const sp = await searchParams;
   const filter: FilterKey = isFilter(sp.ver) ? sp.ver : "andamento";
   const page = Math.max(1, Number.parseInt(typeof sp.pagina === "string" ? sp.pagina : "1", 10) || 1);
@@ -220,7 +225,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
             entrouEm: (o.origin === "FULL_DELIVERY" ? (o.payment?.confirmedAt ?? o.createdAt) : o.createdAt).toISOString(),
             status: o.status,
             accept: esperaAceite(o.status) ? step : null,
-            notify: nextStatusNotice(o, restaurant),
+            notify: nextStatusNotice(o, avisos),
           };
         })}
       />
@@ -272,7 +277,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                 base={base}
                 action={stepRestaurantOrder}
                 hidden={hidden}
-                notify={(p) => nextStatusNotice(p, restaurant)}
+                notify={(p) => nextStatusNotice(p, avisos)}
                 relogio={(desde) => <Decorrido desde={desde.toISOString()} />}
                 marcar={(p) => <MarcarPedido passo={passoEmLote(p)} />}
                 detalhe={(p) => (
@@ -280,7 +285,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                   // pagamento, e as ações que não cabem na linha
                   <>
                     <OrderSummary order={p} />
-                    <OrderStepActions order={p} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(p, restaurant)} />
+                    <OrderStepActions order={p} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(p, avisos)} />
                     <div className="flex flex-wrap items-center gap-2">
                       <OrderActions order={editableOrder(p)} updateAction={updateRestaurantOrder} hidden={hidden} />
                       {p.origin === "FULL_DELIVERY" && (
@@ -356,12 +361,12 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                               {Object.entries(hidden).map(([nome, valor]) => (
                                 <input key={nome} type="hidden" name={nome} value={valor} />
                               ))}
-                              <StepButton label={passoDaLinha(o)!.label} notify={nextStatusNotice(o, restaurant)} size="sm" />
+                              <StepButton label={passoDaLinha(o)!.label} notify={nextStatusNotice(o, avisos)} size="sm" />
                             </form>
                           ) : null
                         }
                       >
-                        <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, restaurant)} />
+                        <OrderStepActions order={o} action={stepRestaurantOrder} hidden={hidden} notify={nextStatusNotice(o, avisos)} />
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <OrderActions order={editableOrder(o)} updateAction={updateRestaurantOrder} hidden={hidden} />
                           <span className="flex flex-wrap items-center gap-2">

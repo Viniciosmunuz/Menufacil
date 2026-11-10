@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
+import { iaAvisaOCliente } from "@/server/ia/avisar-cliente";
 import { nextStatusNotice } from "@/server/whatsapp/messages";
 import { formatDateTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
@@ -31,6 +32,8 @@ const SEM_TELEFONE = "00000000000"; // o "cliente" de uma mesa do salão
 export default async function RestaurantOrderPage({ params }: PageProps<"/painel/[restaurantId]/pedidos/[orderId]">) {
   const { restaurantId, orderId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
+  // com a IA ligada ela mesma avisa o cliente: o botao para de abrir o WhatsApp
+  const iaAvisa = await iaAvisaOCliente(restaurant.id);
 
   const order = await db.order.findFirst({
     where: { id: orderId, restaurantId: restaurant.id },
@@ -79,7 +82,7 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
         {final ? (
           <p className="text-muted">{order.status === "CANCELED" ? "Este pedido foi cancelado." : "Pedido concluído."}</p>
         ) : (
-          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notify={nextStatusNotice(order, restaurant)} />
+          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notify={nextStatusNotice(order, { ...restaurant, iaAvisa })} />
         )}
       </Card>
 

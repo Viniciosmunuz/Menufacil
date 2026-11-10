@@ -2,9 +2,14 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/format";
+import { noAr } from "@/lib/features";
 import { appUrl } from "@/lib/site";
+import { statusNoticeText } from "@/server/whatsapp/messages";
+
 import { variantes } from "./telefone";
 import { enviarTexto } from "./zapi";
+
+import type { OrderStatus, OrderType } from "@/generated/prisma/enums";
 
 /**
  * O recado que vai para o cliente no WhatsApp quando algo acontece com o
@@ -91,4 +96,138 @@ export async function avisarPagamentoConfirmado(orderId: string) {
     .catch((erro) => console.error("[ia] falha ao guardar o aviso no histórico:", erro));
 
   console.info(`[ia] avisou o pagamento do pedido #${pedido.number}`);
+}
+
+/**
+ * A IA está de plantão neste restaurante?
+ *
+ * Três coisas ao mesmo tempo: a plataforma liberou o recurso, o dono ligou
+ * no painel dele, e existe um canal do WhatsApp conectado. Faltando
+ * qualquer uma, quem avisa o cliente continua sendo o dono, no dedo.
+ */
+export async function iaAvisaOCliente(restaurantId: string) {
+  if (!noAr("iaEnabled")) return false;
+  const r = await db.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { iaEnabled: true, atendenteIa: { select: { ativo: true, zapiChannelId: true } } },
+  });
+  return Boolean(r?.iaEnabled && r.atendenteIa?.ativo && r.atendenteIa.zapiChannelId);
+}
+
+/**
+ * "Saiu para entrega" e "está pronto", mandados pela IA.
+ *
+ * Antes disto o dono tocava no botão e o WhatsApp abria com a mensagem
+ * escrita, para ele tocar em enviar -- duas telas e dois toques por
+ * pedido, no meio do movimento. Quem mandava cinco entregas juntas pela
+ * seleção em lote não mandava aviso nenhum: não dá para abrir cinco
+ * conversas de uma vez.
+ *
+ * Agora, com a IA ligada, a mensagem sai no mesmo instante em que o
+ * status muda, pelo mesmo número e com o mesmo texto de sempre. O botão
+ * do painel para de abrir o WhatsApp -- quem cuida disso é `iaAvisa` em
+ * `nextStatusNotice`, senão o cliente receberia tudo duas vezes.
+ *
+ * Diferente do aviso de pagamento, este vai para **todo** pedido com
+ * WhatsApp, e não só para os anotados pela IA: é exatamente a mensagem
+ * que o dono já mandava na mão, para alguém que acabou de pedir e está
+ * esperando. O que muda é quem aperta.
+ */
+export async function avisarStatusDoPedido(orderId: string, status: OrderStatus) {
+  const pedido = await db.order.findUnique({
+    where: { id: orderId },
+    select: {
+      number: true,
+      code: true,
+      type: true,
+      customerWhatsapp: true,
+      restaurantId: true,
+      restaurant: {
+        select: {
+          name: true,
+          entregadorEnabled: true,
+          iaEnabled: true,
+          atendenteIa: { select: { ativo: true, zapiChannelId: true, ignorados: true } },
+        },
+      },
+    },
+  });
+  if (!pedido?.customerWhatsapp) return;
+
+  const r = pedido.restaurant;
+  const ia = r.atendenteIa;
+  if (!noAr("iaEnabled") || !r.iaEnabled || !ia?.ativo || !ia.zapiChannelId) return;
+
+  // a lista de quem a IA nunca responde vale aqui também: é o celular do
+  // dono, da família, de quem não quer saber de robô
+  const digitos = pedido.customerWhatsapp.replace(/\D/g, "");
+  if (ia.ignorados.some((n) => n.replace(/\D/g, "") === digitos)) return;
+
+  const texto = (await textoDoAceite(orderId, pedido, r, status)) ?? statusNoticeText(pedido, r, status);
+  if (!texto) return;
+
+  try {
+    await enviarTexto({ telefone: pedido.customerWhatsapp, texto });
+  } catch (erro) {
+    console.error(`[ia] falha ao avisar o status do pedido #${pedido.number}:`, erro);
+    return;
+  }
+
+  // Só entra no histórico se já houver conversa com este número.
+  //
+  // Pedido feito no site recebe o aviso, mas não vira atendimento: abrir
+  // uma conversa no histórico faria a IA tratar o silêncio dele como fio
+  // de uma conversa que nunca existiu.
+  const daConversa = await db.iaMensagem.findFirst({
+    where: { restaurantId: pedido.restaurantId, contato: { in: variantes(pedido.customerWhatsapp) } },
+    orderBy: { createdAt: "desc" },
+    select: { contato: true },
+  });
+  if (daConversa) {
+    await db.iaMensagem
+      .create({ data: { restaurantId: pedido.restaurantId, contato: daConversa.contato, papel: "IA", texto } })
+      .catch((erro) => console.error("[ia] falha ao guardar o aviso no histórico:", erro));
+  }
+
+  console.info(`[ia] avisou "${status}" do pedido #${pedido.number}`);
+}
+
+/** os dois status que querem dizer "o restaurante viu e aceitou" */
+const ACEITE: OrderStatus[] = ["CONFIRMED", "PREPARING"];
+
+/**
+ * "Recebemos seu pedido, já está em preparo."
+ *
+ * O aviso que não existia: até aqui o cliente mandava o pedido e ficava
+ * sem saber se alguém tinha olhado. O caminho do dono nunca teve esta
+ * mensagem -- abrir o WhatsApp três vezes por pedido seria demais --, mas
+ * para a IA não custa nada, e é o momento em que a pessoa está mais
+ * ansiosa.
+ *
+ * Sai uma vez só. Dependendo do fluxo o pedido passa por CONFIRMED e
+ * depois por PREPARING, e "recebemos seu pedido" duas vezes seguidas faz
+ * parecer que o sistema está com defeito: se o outro status já aconteceu,
+ * esta mensagem fica quieta.
+ */
+async function textoDoAceite(
+  orderId: string,
+  pedido: { number: number; code: string; type: OrderType },
+  r: { name: string },
+  status: OrderStatus,
+) {
+  if (!ACEITE.includes(status)) return null;
+  const jaPassou = await db.orderStatusEvent.count({
+    where: { orderId, status: { in: ACEITE.filter((s) => s !== status) } },
+  });
+  if (jaPassou > 0) return null;
+
+  return [
+    `Pedido *#${pedido.number}* em *${r.name}*: confirmado! 👨‍🍳`,
+    "",
+    pedido.type === "DELIVERY"
+      ? "Já está em preparo. Avisamos assim que sair para entrega."
+      : "Já está em preparo. Avisamos assim que estiver pronto para retirada.",
+    "",
+    `Acompanhe por aqui: ${appUrl()}/pedido/${pedido.code}`,
+  ].join("\n");
 }
