@@ -127,8 +127,16 @@ export async function ligarIa(_prev: AdminFormState, formData: FormData): Promis
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const ligar = formData.get("ligar") === "1";
 
-  const atendente = await db.atendenteIa.findUnique({ where: { restaurantId }, select: { phoneNumberId: true } });
-  if (!atendente?.phoneNumberId) return { error: "Conecte o WhatsApp antes de ligar a IA." };
+  // Vale qualquer um dos dois caminhos: o número da Kapso ou o canal da
+  // Z-API. Exigir só o `phoneNumberId` travava a chave justamente para
+  // quem saiu da Kapso por causa do bloqueio da Meta.
+  const atendente = await db.atendenteIa.findUnique({
+    where: { restaurantId },
+    select: { phoneNumberId: true, zapiChannelId: true },
+  });
+  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId) {
+    return { error: "Conecte o WhatsApp antes de ligar a IA (pela Kapso ou colando o canal da Z-API)." };
+  }
   if (ligar && !iaConfigurada()) return { error: "Falta configurar a chave da Anthropic (ANTHROPIC_API_KEY) na Vercel." };
 
   await db.atendenteIa.update({ where: { restaurantId }, data: { ativo: ligar } });
@@ -227,8 +235,13 @@ export async function iaFazPedidos(_prev: AdminFormState, formData: FormData): P
   const restaurantId = String(formData.get("restaurantId") ?? "");
   const ligar = formData.get("ligar") === "1";
 
-  const atendente = await db.atendenteIa.findUnique({ where: { restaurantId }, select: { phoneNumberId: true } });
-  if (!atendente?.phoneNumberId) return { error: "Conecte o WhatsApp antes." };
+  const atendente = await db.atendenteIa.findUnique({
+    where: { restaurantId },
+    select: { phoneNumberId: true, zapiChannelId: true },
+  });
+  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId) {
+    return { error: "Conecte o WhatsApp antes (pela Kapso ou colando o canal da Z-API)." };
+  }
 
   await db.atendenteIa.update({ where: { restaurantId }, data: { fazPedidos: ligar } });
   refresh();
