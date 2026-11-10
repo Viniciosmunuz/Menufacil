@@ -326,10 +326,25 @@ export async function atender(evento: MensagemKapso) {
     if (salto > PAUSA_NOVA_CONVERSA_H * 60 * 60_000) comeco = i;
   }
 
-  const conversa: Turno[] = recentes.slice(comeco).map((r) => ({
-    papel: r.papel === "CLIENTE" ? "cliente" : "atendente",
-    texto: r.texto,
-  }));
+  // Mensagens seguidas do mesmo lado viram um bloco só.
+  //
+  // Quem escreve no WhatsApp quebra a frase em várias mensagens: o
+  // endereço numa, "anoto aí?" na outra. Entregues como turnos separados,
+  // a IA lia a última e respondia pedindo o que já estava na anterior.
+  // Juntas, é uma fala só -- que é como a pessoa a escreveu.
+  const conversa: Turno[] = [];
+  for (const r of recentes.slice(comeco)) {
+    const papel = r.papel === "CLIENTE" ? "cliente" : "atendente";
+    const anterior = conversa[conversa.length - 1];
+    if (anterior?.papel === papel) anterior.texto += `\n${r.texto}`;
+    else conversa.push({ papel, texto: r.texto });
+  }
+
+  // sem o conteúdo da conversa: só o tamanho, que é o que diz se ela está
+  // lendo a mensagem inteira ou só o fim dela
+  console.info(
+    `[ia] vai responder com ${conversa.length} turnos (${recentes.length} mensagens, ${conversa.at(-1)?.texto.length ?? 0} letras na última)`,
+  );
 
   const resposta = await responder({
     conhecimento,
