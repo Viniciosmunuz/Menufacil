@@ -202,6 +202,8 @@ export type Resposta = {
   texto: string;
   /** mensagens que vão do jeito que estão, depois do texto (o código do Pix, a chave) */
   anexos: string[];
+  /** imagens que vão entre o texto e os anexos: hoje só o QR Code do Pix */
+  imagens: string[];
   /** a IA passou a conversa para uma pessoa */
   chamouPessoa: boolean;
   modelo: string;
@@ -253,6 +255,7 @@ export async function responder(params: {
   const { nome, dono } = params.conhecimento;
   const regras = `${quemVoceE(nome, dono)}\n\n${COMO_RESPONDER}\n\n${COMO_LER}\n\n${O_QUE_NAO_TEM}\n\n${pedidos ? FAZ_PEDIDOS : SO_DUVIDAS}`;
   const anexos: string[] = [];
+  const imagens: string[] = [];
   let chamouPessoa = false;
   const tokens = { entrada: 0, saida: 0, cache: 0 };
 
@@ -300,6 +303,7 @@ export async function responder(params: {
                 ? await executarFerramenta(pedidos, bloco.name, bloco.input)
                 : { texto: "Ferramenta indisponível.", erro: true };
           if ("anexos" in r && r.anexos) anexos.push(...r.anexos);
+          if ("imagens" in r && r.imagens) imagens.push(...r.imagens);
           // só o nome da ferramenta e se deu certo: nada do pedido no log
           console.info(`[ia] ferramenta ${bloco.name}: ${"erro" in r && r.erro ? "recusada" : "ok"}`);
           resultados.push({ type: "tool_result", tool_use_id: bloco.id, content: r.texto, ...("erro" in r && r.erro ? { is_error: true } : {}) });
@@ -313,13 +317,13 @@ export async function responder(params: {
         .map((b) => b.text)
         .join("\n")
         .trim();
-      if (!texto) return semTexto(anexos, modelo, tokens, chamouPessoa);
+      if (!texto) return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
 
-      return { texto, anexos, chamouPessoa, modelo: resposta.model, tokens };
+      return { texto, anexos, imagens, chamouPessoa, modelo: resposta.model, tokens };
     }
 
     console.warn("[ia] idas e voltas demais com as ferramentas; a conversa fica para o restaurante");
-    return semTexto(anexos, modelo, tokens, chamouPessoa);
+    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
   } catch (erro) {
     // do mais específico para o mais geral: o que é passageiro e o que é
     // configuração errada pedem atitudes diferentes de quem lê o log
@@ -334,7 +338,7 @@ export async function responder(params: {
     } else {
       console.error("[ia] falha ao chamar a Anthropic:", erro);
     }
-    return semTexto(anexos, modelo, tokens, chamouPessoa);
+    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
   }
 }
 
@@ -344,12 +348,18 @@ export async function responder(params: {
  * nem chegar sozinho) ou chamado uma pessoa (o dono já foi avisado).
  * Sem nada disso, o silêncio deixa a conversa para o dono, como sempre.
  */
-function semTexto(anexos: string[], modelo: string, tokens: Resposta["tokens"], chamouPessoa: boolean): Resposta | null {
+function semTexto(
+  anexos: string[],
+  imagens: string[],
+  modelo: string,
+  tokens: Resposta["tokens"],
+  chamouPessoa: boolean,
+): Resposta | null {
   if (anexos.length > 0) {
-    return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, chamouPessoa, modelo, tokens };
+    return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, imagens, chamouPessoa, modelo, tokens };
   }
   if (chamouPessoa) {
-    return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, chamouPessoa, modelo, tokens };
+    return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, imagens, chamouPessoa, modelo, tokens };
   }
   // Ela começou a atender e parou no meio: erro da Anthropic, idas e
   // voltas demais com as ferramentas, resposta vazia.
@@ -361,6 +371,7 @@ function semTexto(anexos: string[], modelo: string, tokens: Resposta["tokens"], 
   return {
     texto: "Desculpa, tive um probleminha aqui no sistema 😅 Já avisei o restaurante e alguém vai falar com você em instantes!",
     anexos,
+    imagens,
     chamouPessoa: true,
     modelo,
     tokens,

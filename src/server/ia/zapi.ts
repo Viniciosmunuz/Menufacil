@@ -115,3 +115,58 @@ export async function enviarTexto(params: {
   console.info(`[zapi] enviado para …${identifier.slice(-4)}: ${messageId ?? "sem id"}`);
   return { messageId };
 }
+
+/**
+ * Manda uma imagem por URL.
+ *
+ * A Z-API **não aceita base64**: a imagem precisa estar num endereço que
+ * ela consiga baixar. É por isso que o QR Code do Pix, que o Mercado Pago
+ * devolve em base64, é servido por `/api/pedido/[code]/qr.png`.
+ *
+ * Documentação: https://developer.omni.z-api.io/messages/send-image
+ */
+export async function enviarImagem(params: {
+  telefone: string;
+  url: string;
+  legenda?: string;
+}): Promise<{ messageId: string | null }> {
+  const { chave, canal } = credenciais();
+  const identifier = soDigitos(params.telefone);
+  if (!identifier) throw new Error("Z-API: telefone vazio");
+
+  const resposta = await fetch(`${BASE}/channels/${canal}/messages`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${chave}`,
+    },
+    body: JSON.stringify({
+      recipient: { identifier },
+      content: {
+        type: "IMAGE",
+        attachments: [{ url: params.url, ...(params.legenda ? { caption: params.legenda } : {}) }],
+      },
+    }),
+  });
+
+  const corpo = await resposta.text();
+
+  if (!resposta.ok) {
+    if (resposta.status === 422 && corpo.includes("CHANNEL_DISCONNECTED")) {
+      console.error("[zapi] canal desconectado: o QR precisa ser lido de novo");
+      throw new CanalDesconectado();
+    }
+    console.error(`[zapi] imagem recusada (${resposta.status}): ${corpo.slice(0, 300)}`);
+    throw new Error(`Z-API recusou a imagem: ${resposta.status}`);
+  }
+
+  let messageId: string | null = null;
+  try {
+    const dados = JSON.parse(corpo) as { messageId?: string; id?: string };
+    messageId = dados.messageId ?? dados.id ?? null;
+  } catch {
+    // resposta sem JSON não impede o envio de ter acontecido
+  }
+  console.info(`[zapi] imagem enviada para …${identifier.slice(-4)}: ${messageId ?? "sem id"}`);
+  return { messageId };
+}

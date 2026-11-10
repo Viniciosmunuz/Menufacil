@@ -52,6 +52,8 @@ export type ResultadoDaFerramenta = {
   erro?: boolean;
   /** mensagens mandadas ao cliente do jeito que estão, depois da resposta da IA (o código do Pix, a chave) */
   anexos?: string[];
+  /** imagens mandadas ao cliente antes dos anexos: hoje só o QR Code do Pix */
+  imagens?: string[];
 };
 
 // ─── as ferramentas, do jeito que a IA as vê ──────────────────────────
@@ -313,27 +315,44 @@ async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string, doCliente
     const pix = await pixDoPedido(orderId, { renovar: true });
     if (!pix.ok) return erro(`${pix.erro} Chame alguém da equipe.`);
     const link = `${appUrl()}/pedido/${pedido.code}`;
+    // O QR vai como imagem, antes do código.
+    //
+    // Quem está no celular não escaneia a própria tela, e para esse o
+    // copia e cola resolve. Mas muita gente paga pelo computador ou pelo
+    // aparelho de outra pessoa, e aí o quadradinho é o caminho curto --
+    // além de ser o que faz a mensagem parecer uma cobrança de verdade, e
+    // não um texto solto.
+    const qr = pix.pix.qrBase64 ? `${appUrl()}/api/pedido/${pedido.code}/qr.png` : null;
     return {
       texto: [
         `Pix gerado: ${formatCents(pix.pix.totalCents)}${pix.pix.venceEm ? `, vale até ${formatTime(pix.pix.venceEm)}` : ""}.`,
-        "O código Pix copia e cola vai numa mensagem separada, logo depois da sua: não repita o código, só diga para copiar e colar no app do banco.",
-        doCliente ? `Mande também o link do pedido, onde está o QR Code e onde ele acompanha a entrega: ${link}` : "",
+        qr ? "O QR Code vai como imagem logo depois da sua mensagem, e em seguida o código copia e cola: diga que mandou os dois e que é só usar o que for mais fácil." : "",
+        "O código Pix copia e cola vai numa mensagem separada: não repita o código, só diga para copiar e colar no app do banco.",
+        doCliente ? `Mande também o link do pedido, onde ele acompanha a entrega: ${link}` : "",
         "O pagamento é confirmado sozinho quando cai; você não confirma nada.",
       ]
         .filter(Boolean)
         .join(" "),
       anexos: [pix.pix.copiaECola],
+      ...(qr ? { imagens: [qr] } : {}),
     };
   }
 
   const r = pedido.restaurant;
   if (!r.pixKey) return erro("O restaurante não tem chave Pix cadastrada. Chame alguém da equipe.");
+  const tipo = r.pixKeyType ? pixKeyTypeLabel[r.pixKeyType] : "";
   return {
     texto: [
-      `Pix por chave ${r.pixKeyType ? pixKeyTypeLabel[r.pixKeyType] : ""} (${formatPixKey(r.pixKeyType, r.pixKey)})${r.pixHolderName ? ` em nome de ${r.pixHolderName}` : ""}, valor ${formatCents(pedido.totalCents)}.`,
-      "A chave vai numa mensagem separada, logo depois da sua: não repita a chave.",
+      `Pix por chave${tipo ? ` de ${tipo}` : ""} (${formatPixKey(r.pixKeyType, r.pixKey)})${r.pixHolderName ? ` em nome de ${r.pixHolderName}` : ""}, valor ${formatCents(pedido.totalCents)}.`,
+      // Sem isto, a chave chega como um número solto numa bolha, e quem
+      // recebe não sabe que aquilo é a chave nem o que fazer com ela.
+      `Na sua mensagem diga, com estas palavras: o valor (${formatCents(pedido.totalCents)}), que é uma chave${tipo ? ` de ${tipo}` : ""}${r.pixHolderName ? `, em nome de ${r.pixHolderName}` : ""}, e que ela vai na mensagem logo abaixo, para copiar e colar no app do banco.`,
+      "A chave em si vai numa mensagem separada, sozinha, logo depois da sua: não repita a chave dentro do seu texto, nem escreva ela de outro jeito.",
+      doCliente ? `Mande também o link do pedido, onde ele acompanha a entrega e tem um botão para copiar a chave: ${appUrl()}/pedido/${pedido.code}` : "",
       "Peça para o cliente mandar o comprovante aqui e diga que o restaurante vai conferir. Você não confirma pagamento.",
-    ].join(" "),
+    ]
+      .filter(Boolean)
+      .join(" "),
     // a chave do jeito que o botão "copiar" do site entrega: sem parênteses
     // nem traços, que o app do banco recusa
     anexos: [r.pixKey],

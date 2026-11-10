@@ -9,7 +9,7 @@ import { conhecimentoDoRestaurante } from "./conhecimento";
 import { enviarTexto as enviarPelaKapso } from "./kapso";
 import { pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
-import { enviarTexto as enviarPelaZapi } from "./zapi";
+import { enviarImagem as enviarImagemPelaZapi, enviarTexto as enviarPelaZapi } from "./zapi";
 
 // O atendimento de uma mensagem que chegou pelo WhatsApp do restaurante.
 //
@@ -62,6 +62,11 @@ const PAUSA_NOVA_CONVERSA_H = 4;
  * tivesse dito, e passava a repetir "já avisei o dono" a cada "oi".
  */
 const MARCA_CHAMOU = "[a IA chamou alguém do restaurante]";
+/** o que fica no histórico no lugar de uma imagem: o endereço dela não diz nada à IA */
+const MARCA_IMAGEM = "[a IA mandou o QR Code do Pix]";
+
+/** o que sai para o cliente: um texto, ou uma imagem por endereço */
+type Saida = string | { imagem: string };
 const TEXTO_MAX = 1500;
 
 const COMPROVANTE_MANUAL =
@@ -205,7 +210,24 @@ export async function atender(evento: MensagemKapso) {
   if (humanoRecente > 0) return;
 
   /** manda pelo canal por onde a conversa chegou e guarda no histórico */
-  const enviar = async (texto: string) => {
+  const enviar = async (saida: Saida) => {
+    if (typeof saida !== "string") {
+      // Imagem só pela Z-API: é o canal em uso, e é o único com endpoint de
+      // imagem montado aqui. Pela Kapso o cliente continua recebendo o
+      // código copia e cola, que resolve sozinho -- melhor do que falhar.
+      if (!zapiChannelId || !telefone) return true;
+      try {
+        await enviarImagemPelaZapi({ telefone, url: saida.imagem });
+      } catch (erro) {
+        // Imagem que não sobe não pode derrubar o Pix: o código de texto
+        // vem logo atrás e é ele que o cliente precisa.
+        console.error("[ia] falha ao mandar a imagem:", erro);
+        return true;
+      }
+      await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto: MARCA_IMAGEM } });
+      return true;
+    }
+    const texto = saida;
     if (zapiChannelId) {
       if (!telefone) return false;
       await enviarPelaZapi({ telefone, texto });
@@ -277,7 +299,7 @@ export async function atender(evento: MensagemKapso) {
   if (!conhecimento || !conhecimento.aberto) return;
 
   /** manda e registra; só se ninguém do restaurante entrou na conversa enquanto isso */
-  const mandar = async (mensagens: string[]) => {
+  const mandar = async (mensagens: Saida[]) => {
     // Enquanto a IA pensava, alguém do restaurante pode ter respondido pelo
     // celular. Aí a resposta dela chega atrasada e atravessa a pessoa: melhor
     // não mandar.
@@ -386,7 +408,14 @@ export async function atender(evento: MensagemKapso) {
   });
   if (!resposta) return;
 
-  const mandou = await mandar([resposta.texto, ...resposta.anexos]);
+  // A ordem importa: a explicação, depois o QR, depois o código. Quem lê
+  // de cima para baixo encontra o quadradinho já sabendo o que é, e o
+  // código fica por último, que é o que se copia com um toque longo.
+  const mandou = await mandar([
+    resposta.texto,
+    ...resposta.imagens.map((imagem) => ({ imagem })),
+    ...resposta.anexos,
+  ]);
 
   // o registro de "humano" é o que faz a IA ficar quieta daqui em diante
   if (mandou && resposta.chamouPessoa) await passarParaUmaPessoa();
