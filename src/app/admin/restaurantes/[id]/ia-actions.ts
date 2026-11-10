@@ -137,6 +137,53 @@ export async function ligarIa(_prev: AdminFormState, formData: FormData): Promis
 }
 
 /**
+ * Liga este restaurante a um canal da Z-API (WhatsApp Web, por QR code).
+ *
+ * O canal é criado e pareado no painel da Z-API -- aquela plataforma não
+ * deixa criar canal de QR code pela API, só os oficiais da Meta. Aqui o
+ * admin só cola o ID do canal já conectado, e é por ele que o webhook
+ * descobre de qual restaurante é a mensagem que chegou.
+ *
+ * Enquanto esse campo estiver vazio, o restaurante continua no caminho da
+ * Kapso (que a Meta recusa, erro 130497). Preenchido, tanto o recebimento
+ * quanto a resposta passam pela Z-API.
+ */
+export async function salvarCanalZapi(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const canal = String(formData.get("canal") ?? "").trim();
+
+  if (canal && !/^[A-Za-z0-9-]{8,64}$/.test(canal)) {
+    return { error: "O ID do canal não parece certo: use o valor copiado do painel da Z-API." };
+  }
+
+  // Dois restaurantes no mesmo canal responderiam um pelo outro: o banco
+  // barra pelo índice único, e aqui a mensagem explica o porquê.
+  if (canal) {
+    const jaUsado = await db.atendenteIa.findFirst({
+      where: { zapiChannelId: canal, NOT: { restaurantId } },
+      select: { restaurant: { select: { name: true } } },
+    });
+    if (jaUsado) {
+      return { error: `Esse canal já está em ${jaUsado.restaurant.name}. Cada restaurante precisa do próprio WhatsApp.` };
+    }
+  }
+
+  await db.atendenteIa.upsert({
+    where: { restaurantId },
+    update: { zapiChannelId: canal || null },
+    create: { restaurantId, zapiChannelId: canal || null, ignorados: [], semEspera: [] },
+  });
+  refresh();
+  return {
+    ok: true,
+    message: canal
+      ? "Canal da Z-API salvo. Aponte o webhook dele para /api/zapi/webhook no painel da Z-API."
+      : "Canal da Z-API removido.",
+  };
+}
+
+/**
  * A IA no chat do cardápio, com chave própria.
  *
  * Não pede WhatsApp conectado, e é esse o ponto: a conta da Meta recusa o

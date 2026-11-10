@@ -1651,6 +1651,13 @@ model AtendenteIa {
   linkDeConexao   String?
   /// o numero na Meta, depois de conectado; e por ele que o webhook chega
   phoneNumberId   String? @unique
+
+  /// O canal da Z-API (WhatsApp Web, por QR code).
+  ///
+  /// Caminho alternativo ao da Meta, que recusa o envio desta conta para
+  /// numeros brasileiros (130497). Tambem unico: e por ele que o webhook
+  /// descobre de qual restaurante e a mensagem.
+  zapiChannelId   String? @unique
   numeroExibido   String?
   /// o webhook registrado na Kapso para este numero (evita registrar duas vezes)
   kapsoWebhookId  String?

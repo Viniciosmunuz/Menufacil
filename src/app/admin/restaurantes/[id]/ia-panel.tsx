@@ -10,13 +10,15 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, iaNoCardapio, ligarIa } from "./ia-actions";
+import { conferirConexaoDaIa, gerarLinkDaIa, iaFazPedidos, iaNoCardapio, ligarIa, salvarCanalZapi } from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
   fazPedidos: boolean;
   /// o atendente no chat do cardapio, com chave propria
   noChat: boolean;
+  /// o canal da Z-API (WhatsApp Web), quando este restaurante usa esse caminho
+  zapiChannelId: string | null;
   linkDeConexao: string | null;
   numeroExibido: string | null;
   conectado: boolean;
@@ -33,9 +35,10 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [ligado, ligar] = useActionState<AdminFormState, FormData>(ligarIa, {});
   const [pedidos, mudarPedidos] = useActionState<AdminFormState, FormData>(iaFazPedidos, {});
   const [chat, mudarChat] = useActionState<AdminFormState, FormData>(iaNoCardapio, {});
+  const [canal, mudarCanal] = useActionState<AdminFormState, FormData>(salvarCanalZapi, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [canal, chat, pedidos, ligado, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
@@ -148,6 +151,34 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
             </form>
           </div>
         )}
+
+        {/* O canal da Z-API. Também fora da escada: o canal é criado e
+            pareado no painel da Z-API (aquela plataforma não deixa criar
+            canal de QR code pela API), e aqui o admin só cola o ID. */}
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <p className="flex items-center gap-2 text-sm font-extrabold">
+            WhatsApp pela Z-API
+            {estado?.zapiChannelId ? <Badge tone="success">Ligado</Badge> : <Badge>Sem canal</Badge>}
+          </p>
+          <p className="text-sm text-muted">
+            Caminho alternativo ao da Meta, que recusa o envio desta conta para números
+            brasileiros. Crie o canal <b>WhatsApp Web</b> no painel da Z-API, leia o QR code
+            com o celular do restaurante e cole aqui o ID do canal. Depois aponte o webhook
+            dele para <code className="rounded bg-surface px-1">/api/zapi/webhook</code>.
+          </p>
+          <form action={mudarCanal} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <input
+              name="canal"
+              defaultValue={estado?.zapiChannelId ?? ""}
+              placeholder="ID do canal na Z-API"
+              className="h-11 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 font-mono text-sm outline-none focus:border-brand"
+            />
+            <SubmitButton variant="secondary" size="sm">
+              Salvar canal
+            </SubmitButton>
+          </form>
+        </div>
 
         {/* O atendente no cardápio. Fica fora da escada dos passos de
             propósito: ele não depende de WhatsApp nenhum, e é o único que

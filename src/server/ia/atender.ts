@@ -6,9 +6,10 @@ import { formatPhone } from "@/lib/format";
 import { avisarClienteChamou } from "@/server/push/avisos";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
-import { enviarTexto } from "./kapso";
+import { enviarTexto as enviarPelaKapso } from "./kapso";
 import { pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
+import { enviarTexto as enviarPelaZapi } from "./zapi";
 
 // O atendimento de uma mensagem que chegou pelo WhatsApp do restaurante.
 //
@@ -63,9 +64,19 @@ export function estaNaLista(lista: string[], telefone: string) {
   return lista.some((n) => semNove(n) === alvo);
 }
 
-/** o pedaço do aviso da Kapso que o atendimento usa (formato v2) */
+/**
+ * O pedaço do aviso que o atendimento usa (formato v2 da Kapso).
+ *
+ * A Z-API fala outro idioma, e por isso o webhook dela traduz para este
+ * formato antes de chamar o `atender()` -- assim as travas, o histórico e
+ * os pedidos continuam num lugar só, sem saber qual provedor trouxe a
+ * mensagem. O que diz quem é quem são os dois campos de canal:
+ * `phone_number_id` para a Kapso, `zapi_channel_id` para a Z-API.
+ */
 export type MensagemKapso = {
   phone_number_id?: string;
+  /** o canal da Z-API; quando vem, é por ele que a resposta sai */
+  zapi_channel_id?: string;
   message?: {
     id?: string;
     type?: string;
@@ -84,11 +95,15 @@ export type MensagemKapso = {
 
 export async function atender(evento: MensagemKapso) {
   const phoneNumberId = evento.phone_number_id;
+  const zapiChannelId = evento.zapi_channel_id;
   const m = evento.message;
-  if (!phoneNumberId || !m) return;
+  if ((!phoneNumberId && !zapiChannelId) || !m) return;
 
+  // O restaurante é achado pelo canal por onde a mensagem entrou, e é o
+  // mesmo canal que responde: misturar os dois seria mandar a resposta de
+  // um restaurante pelo WhatsApp de outro.
   const atendente = await db.atendenteIa.findUnique({
-    where: { phoneNumberId },
+    where: zapiChannelId ? { zapiChannelId } : { phoneNumberId },
     select: {
       restaurantId: true,
       ativo: true,
@@ -206,7 +221,13 @@ export async function atender(evento: MensagemKapso) {
         });
     if (humanoNoMeio > 0) return false;
     for (const msg of mensagens) {
-      await enviarTexto({ phoneNumberId, telefone, usuario, texto: msg });
+      // responde pelo mesmo canal por onde a mensagem chegou
+      if (zapiChannelId) {
+        if (!telefone) return false;
+        await enviarPelaZapi({ telefone, texto: msg });
+      } else {
+        await enviarPelaKapso({ phoneNumberId: phoneNumberId!, telefone, usuario, texto: msg });
+      }
       await db.iaMensagem.create({
         data: { restaurantId, contato, papel: "IA", texto: msg },
       });
