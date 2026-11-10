@@ -409,19 +409,41 @@ async function mandarPix(ctx: ContextoDoPedido, entrada: Record<string, unknown>
   return instrucoesDoPix(ctx, pedido.id, doCliente);
 }
 
+/**
+ * Daqui não sai exceção.
+ *
+ * Uma falha aqui dentro subia até o `responder()`, que a tratava como
+ * "deu errado, não responda nada" -- e o cliente ficava mudo. No WhatsApp
+ * isso é idêntico a ser ignorado, e era o que acontecia com quem mandava
+ * o pedido pela conversa: o "oi" era respondido, a frase com o pedido
+ * sumia.
+ *
+ * Agora o problema volta para a IA como resultado da ferramenta, e ela
+ * explica ao cliente ou chama alguém do restaurante. Errar em voz alta é
+ * melhor do que sumir.
+ */
 export async function executarFerramenta(ctx: ContextoDoPedido, nome: string, entrada: unknown): Promise<ResultadoDaFerramenta> {
   const e = (entrada && typeof entrada === "object" ? entrada : {}) as Record<string, unknown>;
-  switch (nome) {
-    case "conferir_pedido":
-      return conferirPedido(ctx, e);
-    case "criar_pedido":
-      return criarPedido(ctx);
-    case "buscar_pedidos":
-      return buscarPedidos(ctx, e);
-    case "mandar_pix":
-      return mandarPix(ctx, e);
-    default:
-      return erro(`Ferramenta desconhecida: ${nome}`);
+  try {
+    switch (nome) {
+      case "conferir_pedido":
+        return await conferirPedido(ctx, e);
+      case "criar_pedido":
+        return await criarPedido(ctx);
+      case "buscar_pedidos":
+        return await buscarPedidos(ctx, e);
+      case "mandar_pix":
+        return await mandarPix(ctx, e);
+      default:
+        return erro(`Ferramenta desconhecida: ${nome}`);
+    }
+  } catch (falha) {
+    // o motivo inteiro no log, para quem for arrumar; para a IA, só o
+    // bastante para ela decidir o que dizer
+    console.error(`[ia] a ferramenta ${nome} quebrou:`, falha);
+    return erro(
+      "O sistema falhou ao processar isso. Não tente de novo: peça desculpa ao cliente e chame alguém do restaurante.",
+    );
   }
 }
 

@@ -86,11 +86,11 @@ Olá! 👋 Seja muito bem-vindo(a) ao *${nome}*! 🍔
 
 Sou o assistente virtual do restaurante e estou aqui para ajudar você.
 
-Para ver o cardápio e fazer seu pedido, é só acessar o link abaixo:
+Para conferir nosso cardápio e fazer seu pedido, é só acessar o link abaixo:
 
 📲 (o link do cardápio)
 
-É só montar o pedido por lá e enviar. Qualquer dúvida, é só me chamar! 😋
+Estamos prontos para receber seu pedido! 😋
 
 - Troque o 🍔 por um emoji que combine com a comida do restaurante (🍕 para pizzaria, 🍗, 🥘, e por aí).
 - Nada além disso na boas-vindas: não pergunte se a pessoa já pediu, não peça o nome dela, não ofereça procurar pedido nem anotar, e não liste o que você sabe fazer. Quem chega quer pedir, e o link resolve.
@@ -142,6 +142,9 @@ const FAZ_PEDIDOS = `Para pedir:
 - Leia TODAS as mensagens do cliente antes de responder, inclusive as que ele mandou em sequência. Nunca pergunte de novo algo que ele já respondeu em qualquer mensagem da conversa: ele acha que você não leu, e repetir é o que mais irrita.
 - Peça só o que ainda falta, e numa frase, não em lista.
 - Para anotar, pergunte o que faltar: os itens (com tamanho e opções), entrega ou retirada, o endereço completo (rua, número, bairro e um ponto de referência), a forma de pagamento (Pix, cartão de crédito ou débito na entrega, ou dinheiro e se precisa de troco) e o nome.
+- Só chame conferir_pedido quando já tiver TUDO: os itens, entrega ou retirada, o endereço completo (se for entrega), a forma de pagamento e o nome. Falta alguma coisa? Pergunte na conversa, não chame a ferramenta. Chamar sem ter tudo só devolve erro, e insistir deixa o cliente esperando uma resposta que não vem.
+- Se o cliente pediu algo que não existe no cardápio (um tamanho, um sabor, uma marca), diga isso na conversa e ofereça o que tem de parecido. Não tente montar o pedido com outro item no lugar.
+- Se uma ferramenta devolver erro duas vezes seguidas, pare de tentar: explique ao cliente com as suas palavras e, se não der para resolver, chame alguém do restaurante.
 - Monte o pedido com os códigos do CARDÁPIO PARA ANOTAR e chame conferir_pedido. Mande ao cliente o resumo que voltar, com o total, e pergunte se confirma.
 - Só chame criar_pedido depois que o cliente responder que sim ao resumo. Se ele mudar alguma coisa, confira de novo e mostre o resumo novo.
 - Nunca diga um preço ou total que não veio do cardápio ou do conferir_pedido.
@@ -320,5 +323,18 @@ function semTexto(anexos: string[], modelo: string, tokens: Resposta["tokens"], 
   if (chamouPessoa) {
     return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, chamouPessoa, modelo, tokens };
   }
-  return null;
+  // Ela começou a atender e parou no meio: erro da Anthropic, idas e
+  // voltas demais com as ferramentas, resposta vazia.
+  //
+  // Antes isso virava silêncio, e silêncio no WhatsApp é igual a ser
+  // ignorado -- o cliente não sabe que houve falha, e o dono só descobre
+  // se olhar o celular. Agora ela admite e passa a conversa adiante, que é
+  // o que uma pessoa faria.
+  return {
+    texto: "Desculpa, tive um probleminha aqui no sistema 😅 Já avisei o restaurante e alguém vai falar com você em instantes!",
+    anexos,
+    chamouPessoa: true,
+    modelo,
+    tokens,
+  };
 }
