@@ -213,7 +213,11 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
                     zapiChannelId: restaurant.atendenteIa.zapiChannelId,
                     linkDeConexao: restaurant.atendenteIa.linkDeConexao,
                     numeroExibido: restaurant.atendenteIa.numeroExibido,
-                    conectado: Boolean(restaurant.atendenteIa.phoneNumberId),
+                    // Conectado é ter WhatsApp por *algum* caminho. Olhar só
+                    // o número da Kapso escondia os passos "Ligar a IA" e
+                    // "Pedidos pela IA" de quem está na Z-API -- justamente
+                    // de quem saiu da Kapso por causa do bloqueio da Meta.
+                    conectado: Boolean(restaurant.atendenteIa.phoneNumberId || restaurant.atendenteIa.zapiChannelId),
                   }
                 : null
             }
