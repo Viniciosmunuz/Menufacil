@@ -40,6 +40,15 @@ import { enviarTexto as enviarPelaZapi } from "./zapi";
 const HUMANO_ASSUMIU_MIN = 30;
 /** teto de respostas da IA por cliente por hora */
 const RESPOSTAS_POR_HORA = 15;
+/**
+ * O mesmo teto para um número da lista de teste.
+ *
+ * Quinze mensagens é uma conversa de cliente; num teste de meia hora,
+ * acaba antes do meio. Mas sem teto nenhum uma conversa em laço rodaria
+ * para sempre, e quem paga a conta é o dono -- então é mais folga, não
+ * passe livre.
+ */
+const RESPOSTAS_POR_HORA_TESTE = 60;
 /** quanto da conversa a IA lê para ter contexto */
 const HISTORICO = 12;
 /** parada maior que isto na conversa e a próxima mensagem começa outra */
@@ -195,6 +204,35 @@ export async function atender(evento: MensagemKapso) {
       });
   if (humanoRecente > 0) return;
 
+  /** manda pelo canal por onde a conversa chegou e guarda no histórico */
+  const enviar = async (texto: string) => {
+    if (zapiChannelId) {
+      if (!telefone) return false;
+      await enviarPelaZapi({ telefone, texto });
+    } else {
+      await enviarPelaKapso({ phoneNumberId: phoneNumberId!, telefone, usuario, texto });
+    }
+    await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto } });
+    return true;
+  };
+
+  /** registra que uma pessoa assumiu: cala a IA e avisa o dono no celular */
+  const passarParaUmaPessoa = async () => {
+    await db.iaMensagem.create({ data: { restaurantId, contato, papel: "HUMANO", texto: MARCA_CHAMOU } });
+    await avisarClienteChamou({
+      restaurantId,
+      quem: telefone ? formatPhone(telefone) : "Um cliente",
+    }).catch((erro) => console.error("[ia] falha ao avisar o dono:", erro));
+  };
+
+  // O teto de respostas para um cliente só.
+  //
+  // Existe contra conversa em laço e conta alta, e continua existindo. O
+  // que mudou é o que acontece ao bater nele: antes a IA simplesmente
+  // emudecia, e nem o cliente nem o dono ficavam sabendo. Agora ela avisa
+  // que vai chamar alguém, e chama -- que é o que uma pessoa cansada
+  // faria, em vez de desligar o telefone na cara.
+  const teto = eTeste ? RESPOSTAS_POR_HORA_TESTE : RESPOSTAS_POR_HORA;
   const respostasNaHora = await db.iaMensagem.count({
     where: {
       restaurantId,
@@ -203,10 +241,14 @@ export async function atender(evento: MensagemKapso) {
       createdAt: { gte: new Date(agora - 60 * 60_000) },
     },
   });
-  if (respostasNaHora >= RESPOSTAS_POR_HORA) {
-    console.warn(
-      `[ia] teto de respostas atingido para um cliente do restaurante ${restaurantId}`,
-    );
+  if (respostasNaHora >= teto) {
+    console.warn(`[ia] teto de ${teto} respostas por hora atingido no restaurante ${restaurantId}`);
+    try {
+      await enviar("Vou chamar alguém do restaurante para continuar com você, só um instante! 😊");
+      await passarParaUmaPessoa();
+    } catch (erro) {
+      console.error("[ia] falha ao avisar que passou para uma pessoa:", erro);
+    }
     return;
   }
 
@@ -253,18 +295,7 @@ export async function atender(evento: MensagemKapso) {
     // e o cliente pode ter escrito de novo enquanto ela pensava: a
     // mensagem dela chegaria atrasada, respondendo o que já ficou para trás
     if (await ultrapassada()) return false;
-    for (const msg of mensagens) {
-      // responde pelo mesmo canal por onde a mensagem chegou
-      if (zapiChannelId) {
-        if (!telefone) return false;
-        await enviarPelaZapi({ telefone, texto: msg });
-      } else {
-        await enviarPelaKapso({ phoneNumberId: phoneNumberId!, telefone, usuario, texto: msg });
-      }
-      await db.iaMensagem.create({
-        data: { restaurantId, contato, papel: "IA", texto: msg },
-      });
-    }
+    for (const msg of mensagens) if (!(await enviar(msg))) return false;
     return true;
   };
 
@@ -357,22 +388,8 @@ export async function atender(evento: MensagemKapso) {
 
   const mandou = await mandar([resposta.texto, ...resposta.anexos]);
 
-  if (mandou && resposta.chamouPessoa) {
-    // um registro de "humano" é o que já faz a IA ficar quieta; o texto
-    // fica no histórico para quem ler a conversa depois
-    await db.iaMensagem.create({
-      data: {
-        restaurantId,
-        contato,
-        papel: "HUMANO",
-        texto: MARCA_CHAMOU,
-      },
-    });
-    await avisarClienteChamou({
-      restaurantId,
-      quem: telefone ? formatPhone(telefone) : "Um cliente",
-    }).catch((erro) => console.error("[ia] falha ao avisar o dono:", erro));
-  }
+  // o registro de "humano" é o que faz a IA ficar quieta daqui em diante
+  if (mandou && resposta.chamouPessoa) await passarParaUmaPessoa();
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
   console.info(
