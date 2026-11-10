@@ -27,6 +27,27 @@ import { executarFerramenta, FERRAMENTAS_DE_PEDIDO, type ContextoDoPedido } from
 const MODELO_PADRAO = "claude-opus-5-5";
 
 /**
+ * Quanto ela pensa antes de responder.
+ *
+ * Atender pedido é raciocínio: ler tudo o que o cliente mandou, ver o que
+ * já foi respondido, achar o item certo no cardápio, somar e perguntar só
+ * o que falta. No esforço baixo ela respondia pela última mensagem e
+ * repetia pergunta já respondida.
+ *
+ * O pensamento conta dentro do `max_tokens` e é cobrado como saída, então
+ * subir isto custa dinheiro -- `IA_ESFORCO` na Vercel desce de novo sem
+ * mexer em código.
+ */
+const ESFORCOS = ["low", "medium", "high"] as const;
+type Esforco = (typeof ESFORCOS)[number];
+const ESFORCO_PADRAO: Esforco = "high";
+
+function esforco(): Esforco {
+  const pedido = process.env.IA_ESFORCO?.trim().toLowerCase();
+  return ESFORCOS.find((e) => e === pedido) ?? ESFORCO_PADRAO;
+}
+
+/**
  * Os modelos em que o recurso de reserva da Anthropic existe: se o modelo
  * principal recusar a mensagem por uma regra de segurança, outro responde
  * no lugar, na mesma chamada. No Haiku ele não existe, e aí a recusa só
@@ -35,7 +56,7 @@ const MODELO_PADRAO = "claude-opus-5-5";
 const COM_RESERVA = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"]);
 
 /** idas e voltas com as ferramentas numa resposta só; passou disso, algo deu errado */
-const MAX_RODADAS = 6;
+const MAX_RODADAS = 8;
 
 /**
  * Passar a conversa para uma pessoa. É uma ferramenta, e não só uma frase,
@@ -67,6 +88,14 @@ Chamar uma pessoa:
 }
 
 const COMO_RESPONDER = `Como você atende:
+
+Antes de escrever, pense nesta ordem:
+1. Leia a conversa inteira, do começo. O que o cliente já disse vale, esteja em que mensagem estiver — inclusive nas que ele mandou em sequência, sem esperar você.
+2. Liste para si mesmo o que já sabe do pedido dele: itens, entrega ou retirada, endereço, forma de pagamento, nome.
+3. Confira cada coisa no bloco do restaurante: o item existe no cardápio? está disponível? o bairro é atendido? o restaurante aceita essa forma de pagamento?
+4. Só então escreva — e pergunte apenas o que ainda falta, nunca o que já foi respondido.
+
+Nada disso aparece para o cliente: ele vê só a resposta curta no fim.
 
 Como responder:
 - Na primeira mensagem da conversa, faça as três coisas de uma vez: cumprimente pela hora (bom dia, boa tarde ou boa noite), diga que é o assistente virtual do restaurante e mande o link do cardápio para a pessoa pedir. Depois disso não se apresente de novo.
@@ -182,10 +211,10 @@ export async function responder(params: {
     for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
       const resposta = await anthropic().beta.messages.create({
         model: modelo,
-        max_tokens: 4000,
-        // Conversa curta não precisa pensar muito: esforço baixo é mais rápido
-        // e mais barato, e o pensamento conta dentro do max_tokens.
-        output_config: { effort: "low" },
+        // o pensamento cabe aqui dentro: com esforço alto, o teto antigo de
+        // 4000 cortava a resposta no meio de um pedido longo
+        max_tokens: 8000,
+        output_config: { effort: esforco() },
         ...(COM_RESERVA.has(modelo) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
         tools: pedidos ? [CHAMAR_PESSOA, ...FERRAMENTAS_DE_PEDIDO] : [CHAMAR_PESSOA],
         // As regras e o cardápio vão juntos num bloco guardado em cache: da
