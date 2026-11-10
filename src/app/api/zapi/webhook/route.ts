@@ -109,6 +109,19 @@ export async function POST(request: NextRequest) {
 
   if (!telefone) return NextResponse.json({ ok: true, ignorado: true });
 
+  // Recibo de entrega não é mensagem.
+  //
+  // A Z-API manda `.DeliveryCallback` e `.MessageStatusCallback` pelo
+  // mesmo webhook das mensagens, e eles vêm com `from_me: true` -- quer
+  // dizer "a sua mensagem foi entregue", não "alguém digitou algo". Sem
+  // este filtro, cada resposta da IA gerava dois recibos, o atendimento
+  // os lia como o dono respondendo pelo celular e acionava o silêncio de
+  // 30 minutos. Resultado: a IA respondia a primeira mensagem e emudecia
+  // pela meia hora seguinte.
+  if (tipo.includes("callback") || tipo.includes("status")) {
+    return NextResponse.json({ ok: true, ignorado: "recibo" });
+  }
+
   // o formato que o atender() já fala; `zapi_channel_id` é o que diz a ele
   // para achar o restaurante pelo canal e responder pela Z-API
   const evento: MensagemKapso = {
