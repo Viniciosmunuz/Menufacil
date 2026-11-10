@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 
+import { db } from "@/lib/db";
 import { atender, type MensagemKapso } from "@/server/ia/atender";
 
 /**
@@ -25,7 +26,7 @@ import { atender, type MensagemKapso } from "@/server/ia/atender";
  */
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type Conteudo = { type?: string; "@class"?: string; message?: string };
 type AvisoOmni = {
@@ -122,6 +123,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignorado: "recibo" });
   }
 
+  // Cada aviso é tratado uma vez só.
+  //
+  // A Z-API reenvia o que ela achar que não foi entregue, e sem isto a
+  // mesma mensagem entraria duas vezes no histórico -- e seria respondida
+  // duas vezes. A chave é o id da mensagem; sem ele, deixa passar, porque
+  // perder uma mensagem é pior do que repetir uma.
+  if (m._id) {
+    const { count } = await db.iaEventoProcessado.createMany({
+      data: [{ chave: `zapi:${m._id}` }],
+      skipDuplicates: true,
+    });
+    if (count === 0) return NextResponse.json({ ok: true, repetido: true });
+  }
+
   // o formato que o atender() já fala; `zapi_channel_id` é o que diz a ele
   // para achar o restaurante pelo canal e responder pela Z-API
   const evento: MensagemKapso = {
@@ -143,13 +158,25 @@ export async function POST(request: NextRequest) {
     conversation: { phone_number: telefone },
   };
 
-  try {
-    await atender(evento);
-  } catch (erro) {
-    // 200 de propósito: a Z-API repete o aviso em caso de erro, e repetir
-    // uma mensagem já respondida é pior do que perder o aviso.
-    console.error("[zapi/webhook] falha ao atender:", erro);
-  }
+  // Responde 200 na hora e pensa depois, como o aviso da Kapso.
+  //
+  // A Z-API desiste de esperar e reenvia o aviso; a IA leva alguns
+  // segundos -- e passou a levar mais desde que pensa antes de responder.
+  // Segurar a conexão até ela terminar fazia a mesma mensagem chegar duas
+  // vezes, ou a resposta não sair de jeito nenhum.
+  after(async () => {
+    const comecou = Date.now();
+    try {
+      await atender(evento);
+    } catch (erro) {
+      // nada daqui volta para a Z-API: o 200 já foi. Fica no log, e a
+      // conversa fica com o dono, que a vê no celular.
+      console.error("[zapi/webhook] falha ao atender:", erro);
+    }
+    // quanto a IA levou: é o número que diz se ela está perto do limite da
+    // função, e esse limite some sem erro nenhum no log
+    console.info(`[zapi/webhook] atendimento em ${Date.now() - comecou}ms`);
+  });
 
   return NextResponse.json({ ok: true });
 }
