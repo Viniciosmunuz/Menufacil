@@ -241,7 +241,7 @@ async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unk
   // trava continua valendo inteira: ninguém confirma um total que não viu.
   const anterior = await db.iaRascunho.findUnique({
     where: { restaurantId_contato: { restaurantId: ctx.restaurantId, contato: ctx.contato } },
-    select: { resumo: true, totalCents: true },
+    select: { resumo: true, totalCents: true, createdAt: true },
   });
   const mesmoPedido = anterior?.resumo === resumo && anterior.totalCents === p.totalCents;
   await db.iaRascunho.upsert({
@@ -249,6 +249,44 @@ async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unk
     create: { restaurantId: ctx.restaurantId, contato: ctx.contato, dados, resumo, totalCents: p.totalCents },
     update: { dados, resumo, totalCents: p.totalCents, ...(mesmoPedido ? {} : { createdAt: new Date() }) },
   });
+
+  // **Conferido de novo depois que o cliente já respondeu: não repete o
+  // resumo.**
+  //
+  // A trava do `criar_pedido` cuida de quem confirma duas vezes. Esta
+  // cuida do contrário, que foi o que apareceu em 11/11/2026: o cliente
+  // responde "sim", a IA chama conferir_pedido mais uma vez em vez de
+  // criar, e o texto que esta ferramenta devolve -- "mande este resumo e
+  // pergunte se confirma" -- a faz perguntar outra vez. O cliente vê o
+  // mesmo resumo e a mesma pergunta que acabou de responder.
+  //
+  // A instrução de conferir uma vez só já está no prompt, e não bastou:
+  // instrução o modelo pode não seguir, resposta de ferramenta ele lê
+  // sempre. Então quando o pedido não mudou e já houve resposta do
+  // cliente depois do resumo, o que volta daqui é o estado -- sem o
+  // resumo junto, que é o que ele copiaria para a conversa.
+  //
+  // Não decide por ele se é hora de criar: "sim" e "quanto tempo demora?"
+  // chegam os dois como resposta do cliente, e só um deles é confirmação.
+  if (mesmoPedido && anterior) {
+    const respondeu = await db.iaMensagem.count({
+      where: {
+        restaurantId: ctx.restaurantId,
+        contato: ctx.contato,
+        papel: "CLIENTE",
+        createdAt: { gt: anterior.createdAt },
+      },
+    });
+    if (respondeu > 0) {
+      return {
+        texto:
+          "Este pedido já está conferido e é o mesmo resumo que você já mandou — o cliente já respondeu a ele." +
+          " NÃO mande o resumo de novo e NÃO pergunte de novo se ele confirma." +
+          " Se a resposta dele foi uma confirmação, chame criar_pedido agora." +
+          " Se foi outra coisa, responda o que ele perguntou.",
+      };
+    }
+  }
 
   return {
     texto: `Conferido, ainda NÃO criado. Mande este resumo ao cliente, com o total, e pergunte se confirma:\n\n${resumo}`,

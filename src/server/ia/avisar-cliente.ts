@@ -74,15 +74,19 @@ export async function avisarClienteDoPagamento(orderId: string) {
   const ia = pedido.restaurant.atendenteIa;
   if (!ia?.ativo || !ehONossoCanal(ia.zapiChannelId)) return;
 
+  // Sem link de acompanhamento aqui.
+  //
+  // O pagamento é confirmado antes de o restaurante aceitar o pedido, e
+  // o link aberto nessa hora mostra um pedido que ainda não foi aceito:
+  // quem paga e clica na mesma hora vê uma tela que não diz nada e volta
+  // para a conversa perguntando se deu certo. Quem manda o link é o
+  // aviso de pedido aceito, logo adiante neste arquivo, quando já existe
+  // o que acompanhar.
   const primeiroNome = pedido.customerName.trim().split(/\s+/)[0];
   const texto = [
     `Pagamento confirmado, ${primeiroNome}! ✅`,
     "",
     `Seu pedido *#${pedido.number}* de ${formatCents(pedido.totalCents)} já foi para a cozinha.`,
-    "",
-    pedido.type === "DELIVERY"
-      ? `Acompanhe a entrega por aqui: ${appUrl()}/pedido/${pedido.code}`
-      : `A gente te avisa quando estiver pronto para retirada: ${appUrl()}/pedido/${pedido.code}`,
   ].join("\n");
 
   try {
