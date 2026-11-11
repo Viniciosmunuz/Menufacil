@@ -47,6 +47,38 @@ type AvisoOmni = {
 const soDigitos = (v: string) => v.replace(/\D/g, "");
 
 /**
+ * O identificador é de um grupo, e não de uma pessoa?
+ *
+ * A Z-API é o WhatsApp Web do aparelho: ela entrega tudo o que chega
+ * nele, e grupo chega junto. Sem esta trava, quem fala no grupo vira
+ * "cliente novo" -- porque numa mensagem de grupo o `sender` é a pessoa
+ * que digitou, e não o grupo -- e a IA abre conversa no privado dela.
+ *
+ * Aconteceu em 11/11/2026: oito desconhecidos de dois grupos receberam as
+ * boas-vindas do restaurante de madrugada, um deles tirou o número do
+ * grupo e outro reclamou do incômodo. É assim que um número é banido.
+ *
+ * O WhatsApp nomeia grupo de três jeitos, e nenhum deles é telefone:
+ * `...@g.us`, o formato antigo `5511999999999-1699999999` e o atual
+ * `120363043211234567`, de 18 dígitos. Telefone com DDI não passa de 15
+ * (E.164), então o comprimento separa os dois sem ambiguidade -- e os 23
+ * dígitos do formato antigo caem nessa mesma conta.
+ *
+ * **Pelo comprimento, e não pelo hífen.** O hífen do formato antigo era
+ * tentador e está errado: `+55 21 96412-2088` é um telefone escrito à
+ * mão, e calar um cliente de verdade é pior do que o problema que esta
+ * função resolve.
+ */
+const ehGrupo = (v?: string) => {
+  if (!v) return false;
+  return /@g\.us/i.test(v) || soDigitos(v).length > 15;
+};
+
+/** o formato de um identificador sem revelá-lo: os 4 últimos e o comprimento */
+const forma = (v?: string) =>
+  v ? `…${soDigitos(v).slice(-4)}(${soDigitos(v).length})` : "(vazio)";
+
+/**
  * O corpo da Z-API vem comprimido quando é grande.
  *
  * E vem sem avisar: `content-type: application/json`, texto nenhum de
@@ -173,8 +205,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignorado: "recibo" });
   }
 
+  // Grupo não é atendimento.
+  //
+  // Os dois lados são conferidos porque ainda não sabemos em qual campo a
+  // Z-API põe o grupo: a documentação não traz exemplo de mensagem
+  // recebida, e o que ela promete já se mostrou diferente do que envia
+  // duas vezes -- o `messageEventType` que não existe e o corpo em gzip
+  // que ela não anuncia. Ficar calado à toa não custa nada; responder um
+  // estranho custa o número.
+  const de = m.sender?.identifier;
+  const para = m.recipient?.identifier;
+  if (ehGrupo(de) || ehGrupo(para)) {
+    console.info(`[zapi/webhook] de grupo, ignorado · de=${forma(de)} para=${forma(para)}`);
+    return NextResponse.json({ ok: true, ignorado: "grupo" });
+  }
+
+  // o formato dos dois lados, e não o número: é o que diz se a trava
+  // acima está vendo o grupo, e dá para ler sem expor a conversa
   console.info(
-    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo})` +
+    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo}) · de=${forma(de)} para=${forma(para)}` +
       (telefone ? "" : ` · sem telefone, payload: ${JSON.stringify(m).slice(0, 400)}`),
   );
 
