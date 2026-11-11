@@ -128,10 +128,12 @@ export function ChatIa({
             />
           </span>
           {/* A bolinha segue o restaurante, não ela.
-              Verde com a loja aberta, vermelha com a loja fechada. Ela
-              responde dúvida nas duas horas, mas um ponto verde ao lado do
-              selo "Fechado" é a tela se contradizendo -- e quem bate o
-              olho acredita no verde.
+              Verde com a loja aberta, vermelha com a loja fechada -- e é
+              literal: com o restaurante fechado o chat do cardápio recusa
+              a conversa ("o restaurante está fechado agora"), como o do
+              WhatsApp fica calado. Antes era verde sempre, e dava para ver
+              o selo "Fechado" no topo e o ponto verde embaixo na mesma
+              tela.
               O anel da cor do fundo é o que a separa do cabelo escuro:
               sem ele vira uma mancha. */}
           <span
@@ -162,8 +164,10 @@ export function ChatIa({
               />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-bold">Assistente virtual</span>
-              <span className="block truncate text-xs text-muted">{nome}</span>
+              <span className="block truncate font-bold">Lia</span>
+              <span className="block truncate text-xs text-muted">
+                Assistente virtual · {nome}
+              </span>
             </span>
             <button
               type="button"
@@ -177,14 +181,23 @@ export function ChatIa({
 
           <div className="flex min-h-40 flex-1 flex-col gap-2 overflow-y-auto px-4 py-4">
             {falas.length === 0 && (
-              <p className="text-sm text-muted">
-                Pergunte sobre o cardápio, o tempo de entrega ou as formas de
-                pagamento.{" "}
-                {/* "aqui do lado" era mentira no celular, onde o cardápio
-                    está embaixo e não ao lado. E aqui ela não anota pedido,
-                    diferente do WhatsApp: dizer onde se pede evita a pessoa
-                    ditar o lanche e receber um "use o cardápio". */}
-                O pedido é feito no próprio cardápio, tocando nos itens.
+              /* A apresentação dela, escrita aqui e não pedida ao modelo.
+                 É sempre a mesma frase, e uma chamada à IA só para dizer
+                 "oi, sou a Lia" custaria dinheiro e meio segundo de espera
+                 a cada cardápio aberto. No WhatsApp é diferente: lá a
+                 saudação responde a um "oi" que já chegou.
+                 "aqui do lado" era mentira no celular, onde o cardápio
+                 fica embaixo. E aqui ela não anota pedido, diferente da do
+                 WhatsApp: dizer onde se pede evita a pessoa ditar o lanche
+                 e levar um "use o cardápio" na cara. */
+              <p className="self-start rounded-card bg-surface px-4 py-2.5 text-sm text-ink">
+                Oi! 👋 Eu sou a <strong>Lia</strong>, assistente virtual do{" "}
+                <strong>{nome}</strong>.
+                <br />
+                <br />
+                Pode perguntar sobre o cardápio, o tempo de entrega ou as formas
+                de pagamento. O pedido é feito no próprio cardápio, tocando nos
+                itens.
               </p>
             )}
             {falas.map((f, i) => (
