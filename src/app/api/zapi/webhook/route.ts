@@ -220,6 +220,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignorado: "grupo" });
   }
 
+  // De onde veio isto, de verdade.
+  //
+  // Diagnóstico de 11/11/2026, e temporário: chegam mensagens que o dono
+  // reconhece como vindas de um grupo, mas que a Z-API entrega como
+  // conversa um a um -- remetente com cara de telefone e o número do
+  // restaurante como destinatário. Ou ele está enganado, ou ela entrega
+  // grupo de duas formas e a trava só conhece uma.
+  //
+  // O nome dos dois lados resolve: numa mensagem de grupo o nome do grupo
+  // aparece em um deles. O `metadata` vem junto porque é onde caberia uma
+  // marca de grupo, e cabe no log inteiro -- ele não tem o que foi dito.
+  //
+  // Os nomes são de quem escreve para o restaurante, então ficam cortados
+  // em 40 letras: serve para reconhecer um grupo, não para virar agenda.
+  const corta = (v?: string) => (v ? v.slice(0, 40) : "(sem nome)");
+  console.info(
+    `[zapi/webhook] de-onde: de="${corta(m.sender?.name)}" para="${corta(m.recipient?.name)}" meta=${JSON.stringify(m.metadata ?? {})}`,
+  );
+
   // o formato dos dois lados, e não o número: é o que diz se a trava
   // acima está vendo o grupo, e dá para ler sem expor a conversa
   console.info(

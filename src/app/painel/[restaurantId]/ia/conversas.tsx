@@ -38,6 +38,32 @@ const QUEM: Record<Fala["papel"], string> = {
  */
 const MARCA_CHAMOU = "[a IA chamou alguém do restaurante]";
 
+/**
+ * O que mostrar no lugar de uma mensagem sem texto.
+ *
+ * O histórico guarda `[image]`, `[audio]`, `[mídia]` -- rótulos internos,
+ * escritos para a IA entender que ali veio algo que ela não lê. Na tela do
+ * dono eles não dizem nada, e o `[text]` é pior: significa "veio marcado
+ * como texto e chegou vazio", que é defeito nosso aparecendo como se fosse
+ * o que a pessoa escreveu.
+ */
+const SEM_TEXTO: Record<string, string> = {
+  "[text]": "Mensagem sem texto",
+  "[mídia]": "Mandou um arquivo",
+  "[image]": "Mandou uma foto",
+  "[audio]": "Mandou um áudio",
+  "[video]": "Mandou um vídeo",
+  "[sticker]": "Mandou uma figurinha",
+  "[document]": "Mandou um documento",
+  "[reaction]": "Reagiu a uma mensagem",
+  "[notification]": "Aviso do WhatsApp",
+};
+
+const legivel = (texto: string) =>
+  texto === MARCA_CHAMOU
+    ? "Ela passou a conversa para você"
+    : (SEM_TEXTO[texto] ?? (/^\[\w+\]$/.test(texto) ? "Mensagem sem texto" : texto));
+
 const quando = (d: Date) => {
   const data = new Date(d);
   const hoje = new Date();
@@ -99,9 +125,7 @@ function Linha({
           <span className="ml-auto shrink-0 text-xs text-faint">{quando(conversa.quando)}</span>
         </div>
 
-        <p className="mt-0.5 truncate text-sm text-muted">
-          {conversa.ultima === MARCA_CHAMOU ? "Ela passou a conversa para você" : conversa.ultima}
-        </p>
+        <p className="mt-0.5 truncate text-sm text-muted">{legivel(conversa.ultima)}</p>
 
         <div className="mt-2 flex flex-wrap gap-1.5">
           <button type="button" onClick={abrir} className={cn(BOTAO, BOTAO_PARADO)}>
@@ -181,7 +205,7 @@ function Fio({ falas, voltar }: { falas: Fala[]; voltar: () => void }) {
                   : "rounded-bl-sm bg-surface-2 text-ink",
               )}
             >
-              {f.texto}
+              {legivel(f.texto)}
             </p>
             <span className="text-[0.65rem] text-faint">{quando(f.quando)}</span>
           </div>
