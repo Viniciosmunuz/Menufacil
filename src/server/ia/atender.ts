@@ -38,11 +38,13 @@ import { enviarImagem as enviarImagemPelaZapi, enviarTexto as enviarPelaZapi } f
 // 6. A própria IA passou a conversa para uma pessoa (o cliente pediu o
 //    dono, um atendente...): conta como se alguém do restaurante tivesse
 //    assumido, e ela fica quieta pelo mesmo tempo.
-// 7. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
-//    IA não ouve áudio, e responder "não entendi" a um áudio irrita mais do
-//    que ficar quieta. A exceção é a foto de quem tem Pix em aberto, que é
-//    quase sempre o comprovante: ela avisa que recebeu e que o restaurante
-//    vai conferir, e só.
+// 7. Mensagem que não é texto (foto, figurinha, vídeo): fica para o dono.
+//    Duas exceções, e as duas existem para o cliente não ficar no vácuo:
+//    a foto de quem tem Pix em aberto, que é quase sempre o comprovante
+//    (ela avisa que recebeu, e quem confere é o restaurante); e o áudio,
+//    que ela não ouve e por isso pede por escrito, uma vez por hora
+//    naquela conversa. Transcrever está no plano e depende de um serviço
+//    à parte -- o modelo recebe texto, não som.
 
 /** depois que um humano responde, a IA espera este tempo antes de voltar */
 const HUMANO_ASSUMIU_MIN = 30;
@@ -76,6 +78,32 @@ const MARCA_IMAGEM = "[a IA mandou o QR Code do Pix]";
 /** o que sai para o cliente: um texto, ou uma imagem por endereço */
 type Saida = string | { imagem: string };
 const TEXTO_MAX = 1500;
+
+/**
+ * O que ela responde a um áudio.
+ *
+ * Ela não ouve: o modelo recebe texto, e transcrever exigiria um serviço
+ * à parte -- está no plano, mas não hoje. Até aqui a escolha era ficar
+ * calada, porque "não entendi" irrita mais do que o silêncio. Só que para
+ * o cliente o silêncio é o restaurante ignorando ele, e num delivery
+ * brasileiro áudio é o normal, não a exceção.
+ *
+ * Diz o que ela não consegue e o que fazer, sem pedir desculpa nem
+ * prometer o que não vai cumprir.
+ */
+const SO_TEXTO = "Oi! Ainda não consigo ouvir áudio 😅 Me escreve o que você precisa que eu te ajudo na hora!";
+
+/**
+ * Por quanto tempo o aviso de áudio não se repete naquela conversa.
+ *
+ * Três áudios seguidos não viram três avisos -- isso seria a irritação
+ * que o silêncio evitava. Mas também não é para sempre: quem manda áudio
+ * de novo horas depois não lembra do aviso, e merece a resposta outra vez.
+ */
+const AVISO_AUDIO_MIN = 60;
+
+/** os nomes que o áudio recebe pelo caminho: gravação do WhatsApp é "ptt" */
+const EH_AUDIO = new Set(["audio", "voice", "ptt"]);
 
 const COMPROVANTE_MANUAL =
   "Recebi o comprovante! O restaurante vai conferir e confirmar o seu pedido. 😊";
@@ -371,6 +399,24 @@ export async function atender(evento: MensagemKapso) {
   };
 
   if (m.type !== "text" || !texto) {
+    // Áudio: ela diz que não ouve, e pede por escrito.
+    //
+    // Vale mesmo quando ela só tira dúvidas (sem anotar pedido): quem
+    // mandou áudio está esperando resposta de qualquer jeito.
+    if (m.type && EH_AUDIO.has(m.type)) {
+      const jaPediu = await db.iaMensagem.count({
+        where: {
+          restaurantId,
+          contato,
+          papel: "IA",
+          texto: SO_TEXTO,
+          createdAt: { gte: new Date(agora - AVISO_AUDIO_MIN * 60_000) },
+        },
+      });
+      if (jaPediu === 0) await mandar([SO_TEXTO]);
+      return;
+    }
+
     // Foto ou PDF de quem tem Pix em aberto: é o comprovante. A IA só
     // avisa que chegou -- quem confere é o restaurante (ou o Mercado Pago),
     // e o arquivo já está no WhatsApp do dono.
