@@ -67,33 +67,30 @@ export default async function IaPage({
         description="O atendente que responde os seus clientes. Você decide o que ele faz."
       />
 
-      <Card className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={`size-3.5 shrink-0 rounded-full ${atendente?.ativo ? "bg-success" : "bg-danger"}`}
-            aria-hidden="true"
-          />
-          <p className="text-lg font-extrabold">
-            No WhatsApp: {atendente?.ativo ? "ligada" : "desligada"}
+      <Card className="flex flex-col gap-3">
+        {/* A bolinha e o "No WhatsApp: ligada" saíram daqui: diziam o mesmo
+            que a chavinha logo abaixo, e ler duas vezes a mesma coisa faz
+            duvidar de qual das duas está certa. Fica o número, que a chave
+            não diz. */}
+        {atendente?.numeroExibido && (
+          <p className="text-sm text-muted">
+            No WhatsApp {formatPhone(atendente.numeroExibido)}
           </p>
-          {atendente?.numeroExibido && (
-            <span className="text-sm text-muted">
-              no {formatPhone(atendente.numeroExibido)}
-            </span>
-          )}
-        </div>
+        )}
 
         {comWhatsapp ? (
           <>
+            <LigarIa
+              restaurantId={restaurant.id}
+              ligada={Boolean(atendente?.ativo)}
+            />
+            {/* a explicação vem depois da chave, como nas outras: a chave
+                diz o estado, o texto diz o que isso significa */}
             <p className="text-sm text-muted">
               {atendente?.ativo
                 ? "Ela responde quem mandar mensagem enquanto o restaurante estiver aberto. Fora do horário, ou fechado no botão, ela não responde nada. Se você ou alguém da equipe responder pelo celular, ela fica quieta naquela conversa por 30 minutos."
                 : "Desligada, as mensagens chegam no seu WhatsApp normalmente e ninguém responde por você."}
             </p>
-            <LigarIa
-              restaurantId={restaurant.id}
-              ligada={Boolean(atendente?.ativo)}
-            />
           </>
         ) : (
           <Alert tone="info">
