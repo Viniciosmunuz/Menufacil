@@ -6,9 +6,78 @@ import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/format";
 import { audit } from "@/server/audit";
 import { requireDono } from "@/server/auth/dal";
+import { falasDaConversa, type Fala } from "@/server/ia/conversas";
 import { iaConfigurada } from "@/server/ia/responder";
 
 export type EstadoDaAcao = { error?: string; message?: string };
+
+/**
+ * O que foi dito numa conversa, quando o dono abre a gaveta.
+ *
+ * Carregada só ao tocar, e não junto com a página: a lista traz até 60
+ * conversas, e trazer as mensagens de todas elas de uma vez seria pagar
+ * caro por um texto que quase sempre não vai ser lido.
+ */
+export async function verConversa(
+  restaurantId: string,
+  contato: string,
+): Promise<{ falas: Fala[]; error?: string }> {
+  // `requireDono` é o que impede alguém de ler a conversa de outro
+  // restaurante trocando o id na chamada -- esta ação recebe argumentos
+  // soltos, e não um formulário que a página montou.
+  const { restaurant } = await requireDono(restaurantId);
+  return { falas: await falasDaConversa(restaurant.id, contato) };
+}
+
+/**
+ * Põe ou tira um número de uma das listas, direto da conversa.
+ *
+ * O mesmo que o dono faria digitando lá em cima; a diferença é que aqui
+ * ele está vendo o que a pessoa escreveu quando decide. Alterna: tocar de
+ * novo no que já está marcado tira da lista.
+ */
+export async function marcarNaLista(
+  restaurantId: string,
+  telefone: string,
+  lista: "ignorado" | "teste",
+): Promise<EstadoDaAcao & { ignorados?: string[]; semEspera?: string[] }> {
+  const { restaurant, user, viaAdmin } = await requireDono(restaurantId);
+
+  const numero = normalizePhone(telefone);
+  if (!/^55\d{10,11}$/.test(numero))
+    return { error: "Essa conversa não tem um número de telefone." };
+
+  const atendente = await db.atendenteIa.findUnique({
+    where: { restaurantId: restaurant.id },
+    select: { ignorados: true, semEspera: true },
+  });
+  if (!atendente) return { error: "A IA ainda não foi configurada." };
+
+  const campo = lista === "ignorado" ? "ignorados" : "semEspera";
+  const atual = atendente[campo];
+  const tinha = atual.includes(numero);
+  const nova = tinha ? atual.filter((n) => n !== numero) : [...atual, numero];
+
+  const salvo = await db.atendenteIa.update({
+    where: { restaurantId: restaurant.id },
+    data: { [campo]: nova },
+    select: { ignorados: true, semEspera: true },
+  });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.listas",
+    details: { lista: campo, tirou: tinha, daConversa: true, viaAdmin },
+  });
+  refresh();
+
+  const nome = lista === "ignorado" ? "quem a IA não responde" : "números de teste";
+  return {
+    message: tinha ? `Tirado de ${nome}.` : `Na lista de ${nome}.`,
+    ignorados: salvo.ignorados,
+    semEspera: salvo.semEspera,
+  };
+}
 
 /**
  * Os números que a IA nunca responde.

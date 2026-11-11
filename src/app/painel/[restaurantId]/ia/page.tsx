@@ -8,8 +8,10 @@ import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
 import { formatPhone } from "@/lib/format";
 import { requireDono } from "@/server/auth/dal";
+import { conversasDaIa } from "@/server/ia/conversas";
 
 import { Esquecer, NoCardapio, Pedidos } from "./chaves";
+import { ConversasDaIa } from "./conversas";
 import { ListasDaIa } from "./ignorados";
 import { LigarIa } from "./ligar";
 
@@ -25,29 +27,38 @@ export const metadata: Metadata = { title: "Menu Fácil IA" };
 // O que fica com o admin é só o que o dono não tem como fazer: conectar o
 // número, que passa por uma conta da plataforma.
 
-export default async function IaPage({ params }: PageProps<"/painel/[restaurantId]/ia">) {
+export default async function IaPage({
+  params,
+}: PageProps<"/painel/[restaurantId]/ia">) {
   const { restaurantId } = await params;
   const { restaurant } = await requireDono(restaurantId);
   if (!noAr("iaEnabled") || !restaurant.iaEnabled) notFound();
 
-  const atendente = await db.atendenteIa.findUnique({
-    where: { restaurantId: restaurant.id },
-    select: {
-      ativo: true,
-      fazPedidos: true,
-      noChat: true,
-      phoneNumberId: true,
-      zapiChannelId: true,
-      numeroExibido: true,
-      ignorados: true,
-      semEspera: true,
-    },
-  });
+  // as duas em paralelo: a gaveta das conversas não precisa esperar o
+  // registro do atendente para ser consultada
+  const [atendente, conversas] = await Promise.all([
+    db.atendenteIa.findUnique({
+      where: { restaurantId: restaurant.id },
+      select: {
+        ativo: true,
+        fazPedidos: true,
+        noChat: true,
+        phoneNumberId: true,
+        zapiChannelId: true,
+        numeroExibido: true,
+        ignorados: true,
+        semEspera: true,
+      },
+    }),
+    conversasDaIa(restaurant.id),
+  ]);
 
   // Conectado por qualquer um dos dois caminhos. Sem WhatsApp, o chat do
   // cardápio ainda funciona -- ele não depende de conexão nenhuma --, e é
   // por isso que a página não some.
-  const comWhatsapp = Boolean(atendente?.phoneNumberId || atendente?.zapiChannelId);
+  const comWhatsapp = Boolean(
+    atendente?.phoneNumberId || atendente?.zapiChannelId,
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -66,7 +77,9 @@ export default async function IaPage({ params }: PageProps<"/painel/[restaurantI
             No WhatsApp: {atendente?.ativo ? "ligada" : "desligada"}
           </p>
           {atendente?.numeroExibido && (
-            <span className="text-sm text-muted">no {formatPhone(atendente.numeroExibido)}</span>
+            <span className="text-sm text-muted">
+              no {formatPhone(atendente.numeroExibido)}
+            </span>
           )}
         </div>
 
@@ -77,24 +90,34 @@ export default async function IaPage({ params }: PageProps<"/painel/[restaurantI
                 ? "Ela responde quem mandar mensagem enquanto o restaurante estiver aberto. Fora do horário, ou fechado no botão, ela não responde nada. Se você ou alguém da equipe responder pelo celular, ela fica quieta naquela conversa por 30 minutos."
                 : "Desligada, as mensagens chegam no seu WhatsApp normalmente e ninguém responde por você."}
             </p>
-            <LigarIa restaurantId={restaurant.id} ligada={Boolean(atendente?.ativo)} />
+            <LigarIa
+              restaurantId={restaurant.id}
+              ligada={Boolean(atendente?.ativo)}
+            />
           </>
         ) : (
           <Alert tone="info">
-            O WhatsApp do restaurante ainda não foi conectado — isso é feito pelo suporte do MenuFácil. Enquanto isso,
-            o atendente no cardápio aqui embaixo já funciona.
+            O WhatsApp do restaurante ainda não foi conectado — isso é feito
+            pelo suporte do MenuFácil. Enquanto isso, o atendente no cardápio
+            aqui embaixo já funciona.
           </Alert>
         )}
       </Card>
 
       {comWhatsapp && (
         <Card className="flex flex-col gap-3">
-          <Pedidos restaurantId={restaurant.id} ligado={Boolean(atendente?.fazPedidos)} />
+          <Pedidos
+            restaurantId={restaurant.id}
+            ligado={Boolean(atendente?.fazPedidos)}
+          />
         </Card>
       )}
 
       <Card className="flex flex-col gap-3">
-        <NoCardapio restaurantId={restaurant.id} ligado={Boolean(atendente?.noChat)} />
+        <NoCardapio
+          restaurantId={restaurant.id}
+          ligado={Boolean(atendente?.noChat)}
+        />
       </Card>
 
       {atendente && (
@@ -105,6 +128,15 @@ export default async function IaPage({ params }: PageProps<"/painel/[restaurantI
             semEspera={atendente.semEspera}
           />
         </Card>
+      )}
+
+      {atendente && (
+        <ConversasDaIa
+          restaurantId={restaurant.id}
+          conversas={conversas}
+          ignorados={atendente.ignorados}
+          semEspera={atendente.semEspera}
+        />
       )}
 
       {atendente && (
