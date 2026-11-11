@@ -226,12 +226,28 @@ async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unk
     ...(input.notes ? [`Observações: ${input.notes}`] : []),
   ].join("\n");
 
-  // um rascunho por conversa: conferir de novo troca o anterior, e o
-  // relógio do "sim" recomeça
+  // Um rascunho por conversa. Conferir de novo troca o anterior, e o
+  // relógio do "sim" recomeça -- **só quando o resumo mudou de verdade.**
+  //
+  // Conferir o mesmo pedido de novo não pode reiniciar a espera, senão a
+  // IA se tranca sozinha: o cliente diz "sim", ela confere outra vez na
+  // mesma resposta, o rascunho fica mais novo que o "sim", e o
+  // `criar_pedido` responde que o cliente ainda não confirmou. Ela então
+  // mostra o resumo de novo, o cliente diz "sim" de novo, e assim por
+  // diante -- cinco voltas com o cliente acordado e nenhum pedido na
+  // cozinha. Aconteceu em 11/11/2026.
+  //
+  // Quando o pedido muda, o resumo muda junto, o relógio reinicia e a
+  // trava continua valendo inteira: ninguém confirma um total que não viu.
+  const anterior = await db.iaRascunho.findUnique({
+    where: { restaurantId_contato: { restaurantId: ctx.restaurantId, contato: ctx.contato } },
+    select: { resumo: true, totalCents: true },
+  });
+  const mesmoPedido = anterior?.resumo === resumo && anterior.totalCents === p.totalCents;
   await db.iaRascunho.upsert({
     where: { restaurantId_contato: { restaurantId: ctx.restaurantId, contato: ctx.contato } },
     create: { restaurantId: ctx.restaurantId, contato: ctx.contato, dados, resumo, totalCents: p.totalCents },
-    update: { dados, resumo, totalCents: p.totalCents, createdAt: new Date() },
+    update: { dados, resumo, totalCents: p.totalCents, ...(mesmoPedido ? {} : { createdAt: new Date() }) },
   });
 
   return {
@@ -254,7 +270,11 @@ async function criarPedido(ctx: ContextoDoPedido): Promise<ResultadoDaFerramenta
   const respondeu = await db.iaMensagem.count({
     where: { restaurantId: ctx.restaurantId, contato: ctx.contato, papel: "CLIENTE", createdAt: { gt: rascunho.createdAt } },
   });
-  if (respondeu === 0) return erro("O cliente ainda não respondeu ao resumo. Mande o resumo e espere ele confirmar.");
+  if (respondeu === 0)
+    return erro(
+      "O cliente ainda não respondeu ao resumo. Mande o resumo e espere ele confirmar." +
+        " Não chame conferir_pedido de novo enquanto espera: o pedido não mudou, e conferir à toa só adia a resposta dele.",
+    );
 
   // Apagar antes de criar é o que impede dois "sim" seguidos de virarem
   // dois pedidos na cozinha: só quem apagou segue.

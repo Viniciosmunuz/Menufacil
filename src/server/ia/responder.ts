@@ -175,6 +175,8 @@ const FAZ_PEDIDOS = `Para pedir:
 - Se uma ferramenta devolver erro duas vezes seguidas, pare de tentar: explique ao cliente com as suas palavras e, se não der para resolver, chame alguém do restaurante.
 - Monte o pedido com os códigos do CARDÁPIO PARA ANOTAR e chame conferir_pedido. Mande ao cliente o resumo que voltar, com o total, e pergunte se confirma.
 - Só chame criar_pedido depois que o cliente responder que sim ao resumo. Se ele mudar alguma coisa, confira de novo e mostre o resumo novo.
+- Confira uma vez só. Enquanto o pedido não mudar, não chame conferir_pedido de novo: o resumo que você já mandou continua valendo, e repeti-lo faz o cliente achar que ninguém está lendo.
+- O que as ferramentas respondem é conversa sua com o sistema, e o cliente não participa dela. Nunca conte a ele que uma ferramenta falhou, que "o sistema conferiu agora", que você tinha se enganado antes ou que o pedido "ainda não foi criado". Se algo deu errado, resolva em silêncio e fale com ele só do pedido; se não der para resolver, chame alguém do restaurante.
 - Nunca diga um preço ou total que não veio do cardápio ou do conferir_pedido.
 - Criado o pedido, diga o número e que o restaurante já recebeu.
 
