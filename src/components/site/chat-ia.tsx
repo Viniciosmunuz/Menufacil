@@ -105,21 +105,27 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
           aria-label={`Falar com a assistente virtual de ${nome}`}
           className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-1 transition-transform active:scale-95 lg:bottom-6"
         >
-          <span className="size-12 overflow-hidden rounded-full bg-brand-soft ring-2 ring-brand shadow-lg shadow-brand/30">
-            <Image
-              src={ROSTO}
-              alt=""
-              width={96}
-              height={96}
-              // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
-              className="size-full object-cover"
-            />
+          <span className="relative size-12">
+            <span className="block size-full overflow-hidden rounded-full bg-brand-soft shadow-lg shadow-ink/20">
+              <Image
+                src={ROSTO}
+                alt=""
+                width={96}
+                height={96}
+                // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
+                className="size-full object-cover"
+              />
+            </span>
+            {/* a bolinha de "está aí agora", a mesma do WhatsApp e do
+                Messenger. O anel da cor do fundo é o que a separa do
+                cabelo escuro -- sem ele vira uma mancha. */}
+            <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-success ring-2 ring-bg" />
           </span>
           {/* Sem isto a foto passa por uma pessoa de verdade esperando do
               outro lado, e quem escreve espera resposta de gente. A etiqueta
               é o que separa uma assistente simpática de uma pegadinha. */}
           <span className="rounded-full border border-line bg-bg px-2 py-0.5 text-[10px] leading-4 font-bold text-muted shadow-sm">
-            Assistente virtual
+            Assistente virtual · <span className="text-success">online</span>
           </span>
         </button>
       )}
@@ -131,8 +137,11 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
           className="fixed inset-x-0 bottom-0 z-50 flex max-h-[82dvh] flex-col rounded-t-card border border-line bg-bg shadow-2xl lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-96 lg:rounded-card"
         >
           <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-            <span className="size-10 shrink-0 overflow-hidden rounded-full bg-brand-soft">
-              <Image src={ROSTO} alt="" width={80} height={80} className="size-full object-cover" />
+            <span className="relative size-10 shrink-0">
+              <span className="block size-full overflow-hidden rounded-full bg-brand-soft">
+                <Image src={ROSTO} alt="" width={80} height={80} className="size-full object-cover" />
+              </span>
+              <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-success ring-2 ring-bg" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold">Assistente virtual</span>
