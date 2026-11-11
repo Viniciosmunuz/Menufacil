@@ -252,6 +252,23 @@ export async function POST(request: NextRequest) {
 
   if (!telefone) return NextResponse.json({ ok: true, ignorado: true });
 
+  // IA desligada: sai aqui, sem escrever nada.
+  //
+  // O atendimento já conferia isto, mas depois da trava de repetido logo
+  // abaixo -- que é uma **escrita** no banco. Com a IA desligada, toda
+  // mensagem que chegasse no celular do dono pagava essa escrita para,
+  // logo em seguida, ser descartada. Num número que recebe divulgação o
+  // dia todo, são centenas de escritas por nada.
+  //
+  // Uma leitura pequena no lugar de uma escrita. No caminho em que ela
+  // está ligada, esta consulta se repete lá dentro -- é uma ida a mais ao
+  // banco quando há trabalho de verdade a fazer, e nenhuma quando não há.
+  const ligada = await db.atendenteIa.findUnique({
+    where: { zapiChannelId: m.channel_id },
+    select: { ativo: true },
+  });
+  if (!ligada?.ativo) return NextResponse.json({ ok: true, ignorado: "desligada" });
+
   // Cada aviso é tratado uma vez só.
   //
   // A Z-API reenvia o que ela achar que não foi entregue, e sem isto a
