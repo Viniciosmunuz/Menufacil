@@ -498,6 +498,7 @@ function ProductRow({
   onOpen,
   empilhado = false,
   maisPedido = false,
+  className,
 }: {
   p: MenuProduct;
   flavors: PizzaFlavor[];
@@ -506,6 +507,8 @@ function ProductRow({
   empilhado?: boolean;
   /** um dos pratos que mais saíram no mês */
   maisPedido?: boolean;
+  /** o que a vitrine de destaques acrescenta: largura fixa e encaixe no arrasto */
+  className?: string;
 }) {
   return (
     // content-visibility: o navegador não gasta desenho com o cartão que
@@ -513,7 +516,7 @@ function ProductRow({
     // a rolagem lisa e a travada no celular simples. O "auto" do
     // contain-intrinsic-size faz ele lembrar a altura de verdade depois do
     // primeiro desenho, então a barra de rolagem não pula.
-    <li className="flex [content-visibility:auto] [contain-intrinsic-size:auto_13rem]">
+    <li className={cn("flex [content-visibility:auto] [contain-intrinsic-size:auto_13rem]", className)}>
       <button
         type="button"
         onClick={() => onOpen(p)}
@@ -1078,38 +1081,24 @@ export function RestaurantMenu({
               Destaques
             </h2>
             <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+              {/* O mesmo cartão da lista, só com largura fixa e encaixe no
+                  arrasto. Era um cartão escrito à parte, com a foto
+                  quadrada em vez de deitada: no celular dava 267px de
+                  altura contra 208px dos outros, quase 30% a mais, e a
+                  diferença aparecia assim que a vitrine e a primeira seção
+                  ficavam na mesma tela. Duplicado, ele também ia ficando
+                  para trás -- não tinha a descrição do prato nem o aviso de
+                  esgotado que a lista ganhou. */}
               {featured.map((p) => (
-                <li key={p.id} className="w-40 shrink-0 snap-start sm:w-48">
-                  <button
-                    type="button"
-                    onClick={() => open(p)}
-                    className="group flex h-full w-full flex-col overflow-hidden rounded-card border border-line bg-surface text-left transition hover:border-line-strong active:scale-[0.98]"
-                  >
-                    <span className="relative block aspect-square w-full bg-surface-2">
-                      {p.imageUrl ? (
-                        <Image src={p.imageUrl} alt="" width={192} height={192} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="grid size-full place-items-center">
-                          <LogoIcon className="h-10 opacity-40" />
-                        </span>
-                      )}
-                      {p.promoPriceCents ? (
-                        <span className="absolute top-2 left-2 rounded-full bg-brand px-2 py-0.5 text-[0.7rem] font-extrabold text-brand-ink">
-                          Promoção
-                        </span>
-                      ) : (
-                        campeoes.has(p.id) && <SeloMaisPedido className="absolute top-2 left-2" />
-                      )}
-                    </span>
-                    <span className="flex flex-1 flex-col gap-1 p-3">
-                      <span className="line-clamp-2 text-sm leading-snug font-extrabold">{p.name}</span>
-                      <span className="mt-auto flex items-end justify-between gap-2 pt-1">
-                        <Price p={p} flavors={pizzaFlavors} className="text-sm" />
-                        <AddBadge className="size-8 ring-0" />
-                      </span>
-                    </span>
-                  </button>
-                </li>
+                <ProductRow
+                  key={p.id}
+                  p={p}
+                  flavors={pizzaFlavors}
+                  onOpen={open}
+                  empilhado
+                  maisPedido={campeoes.has(p.id)}
+                  className="w-40 shrink-0 snap-start sm:w-48"
+                />
               ))}
             </ul>
           </section>
