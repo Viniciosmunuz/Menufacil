@@ -243,7 +243,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
 
       {/* O atendente só existe onde o dono ligou a chave. Quem decide é o
           servidor: desligada, o componente nem chega ao navegador. */}
-      {comIa && <ChatIa slug={r.slug} nome={r.name} />}
+      {comIa && <ChatIa slug={r.slug} nome={r.name} aberto={open} />}
     </div>
   );
 }

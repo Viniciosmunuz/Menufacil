@@ -46,7 +46,16 @@ function sessaoDoNavegador() {
   }
 }
 
-export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
+export function ChatIa({
+  slug,
+  nome,
+  aberto: lojaAberta,
+}: {
+  slug: string;
+  nome: string;
+  /** o restaurante está atendendo agora: é o que a bolinha anuncia */
+  aberto: boolean;
+}) {
   const [aberto, setAberto] = useState(false);
   const [falas, setFalas] = useState<Fala[]>([]);
   const [texto, setTexto] = useState("");
@@ -118,11 +127,19 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
               className="size-full object-cover"
             />
           </span>
-          {/* a bolinha de "está aí agora", a mesma do WhatsApp e do
-              Messenger. O anel da cor do fundo é o que a separa do cabelo
-              escuro -- sem ele vira uma mancha. Quem quiser saber que é
-              assistente virtual lê no cabeçalho, ao abrir. */}
-          <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-success ring-2 ring-bg" />
+          {/* A bolinha segue o restaurante, não ela.
+              Verde com a loja aberta, vermelha com a loja fechada. Ela
+              responde dúvida nas duas horas, mas um ponto verde ao lado do
+              selo "Fechado" é a tela se contradizendo -- e quem bate o
+              olho acredita no verde.
+              O anel da cor do fundo é o que a separa do cabelo escuro:
+              sem ele vira uma mancha. */}
+          <span
+            className={cn(
+              "absolute -top-0.5 -right-0.5 size-3.5 rounded-full ring-2 ring-bg",
+              lojaAberta ? "bg-success" : "bg-danger",
+            )}
+          />
         </button>
       )}
 
@@ -137,7 +154,12 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
               <span className="block size-full overflow-hidden rounded-full bg-brand-soft">
                 <Image src={ROSTO} alt="" width={80} height={80} className="size-full object-cover" />
               </span>
-              <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-success ring-2 ring-bg" />
+              <span
+                className={cn(
+                  "absolute -top-0.5 -right-0.5 size-3 rounded-full ring-2 ring-bg",
+                  lojaAberta ? "bg-success" : "bg-danger",
+                )}
+              />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold">Assistente virtual</span>
@@ -157,7 +179,12 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
             {falas.length === 0 && (
               <p className="text-sm text-muted">
                 Pergunte sobre o cardápio, o tempo de entrega ou as formas de
-                pagamento. Para fazer o pedido, use o cardápio aqui do lado.
+                pagamento.{" "}
+                {/* "aqui do lado" era mentira no celular, onde o cardápio
+                    está embaixo e não ao lado. E aqui ela não anota pedido,
+                    diferente do WhatsApp: dizer onde se pede evita a pessoa
+                    ditar o lanche e receber um "use o cardápio". */}
+                O pedido é feito no próprio cardápio, tocando nos itens.
               </p>
             )}
             {falas.map((f, i) => (
