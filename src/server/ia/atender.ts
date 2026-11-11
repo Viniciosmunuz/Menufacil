@@ -8,7 +8,7 @@ import { avisarClienteChamou } from "@/server/push/avisos";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
 import { enviarTexto as enviarPelaKapso } from "./kapso";
-import { pixEmAberto } from "./pedido";
+import { oQueSabemosDoCliente, pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
 import { enviarImagem as enviarImagemPelaZapi, enviarTexto as enviarPelaZapi } from "./zapi";
 
@@ -494,9 +494,15 @@ export async function atender(evento: MensagemKapso) {
     `[ia] vai responder com ${conversa.length} turnos (${recentes.length} mensagens, ${conversa.at(-1)?.texto.length ?? 0} letras na última)`,
   );
 
+  // Só quando ela anota pedido: num atendente que só tira dúvidas, o
+  // endereço do cliente não serve para nada e não tem por que estar no
+  // contexto.
+  const cliente = atendente.fazPedidos ? await oQueSabemosDoCliente(restaurantId, telefone) : null;
+
   const resposta = await responder({
     conhecimento,
     conversa,
+    cliente,
     pedidos: atendente.fazPedidos
       ? { restaurantId, slug: conhecimento.slug, contato, telefone }
       : undefined,

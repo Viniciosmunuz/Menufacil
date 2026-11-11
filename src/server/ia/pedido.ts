@@ -533,3 +533,75 @@ export async function pixEmAberto(restaurantId: string, telefone: string) {
   });
   return pedido;
 }
+
+/**
+ * O que já sabemos deste cliente, dos pedidos que ele já fez.
+ *
+ * **Existe porque "é no mesmo endereço" é como as pessoas falam.** Quem
+ * já pediu antes não repete rua, número, bairro e referência a cada
+ * pedido -- diz "mesmo endereço", "aqui em casa", "o de sempre". Sem
+ * isto a IA respondia que não conseguia ver o pedido anterior e pedia
+ * tudo de novo, o que do lado do cliente parece que ninguém anotou nada
+ * das outras vezes.
+ *
+ * Busca pelo número do WhatsApp de quem está escrevendo, não por nome:
+ * o número é a única prova de identidade que a conversa oferece, e é o
+ * mesmo critério que o `buscar_pedidos` usa para mostrar pedido pelo
+ * número. Endereço é dado de entrega -- não sai para quem não provou
+ * ser o dono dele.
+ *
+ * Sem recorte de data, ao contrário do `buscar_pedidos`: aquele responde
+ * "cadê meu pedido" e por isso só olha hoje; este responde "o de
+ * sempre", e o de sempre pode ser da semana passada.
+ */
+export async function oQueSabemosDoCliente(
+  restaurantId: string,
+  telefone: string | null,
+): Promise<string | null> {
+  if (!telefone) return null;
+
+  const ultimo = await db.order.findFirst({
+    where: {
+      restaurantId,
+      origin: DO_WHATSAPP,
+      customerWhatsapp: { in: variantes(telefone) },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      customerName: true,
+      type: true,
+      deliveryStreet: true,
+      deliveryNumber: true,
+      deliveryComplement: true,
+      deliveryNeighborhood: true,
+      deliveryReference: true,
+    },
+  });
+  if (!ultimo) return null;
+
+  const linhas = [`Nome que ele usou da última vez: ${ultimo.customerName}`];
+
+  if (ultimo.type === "DELIVERY" && ultimo.deliveryStreet) {
+    const endereco = [
+      `${ultimo.deliveryStreet}${ultimo.deliveryNumber ? `, ${ultimo.deliveryNumber}` : ""}`,
+      ultimo.deliveryComplement,
+      ultimo.deliveryNeighborhood,
+      ultimo.deliveryReference ? `ref.: ${ultimo.deliveryReference}` : null,
+    ]
+      .filter(Boolean)
+      .join(" - ");
+    linhas.push(`Endereço da última entrega: ${endereco}`);
+    // Repetir de viva voz antes de usar não é formalidade: endereço
+    // errado é comida na casa errada, e o cliente pode ter se mudado
+    // desde o último pedido. Confirmar custa uma linha; o prejuízo de
+    // não confirmar é o pedido inteiro.
+    linhas.push(
+      'Se ele disser "mesmo endereço", "o de sempre", "aqui em casa" ou algo assim, use este endereço —' +
+        " mas escreva ele por extenso na sua resposta e peça para ele confirmar antes de conferir o pedido.",
+    );
+  } else {
+    linhas.push("Ele não tem endereço de entrega anterior: no último pedido foi retirada.");
+  }
+
+  return linhas.join("\n");
+}

@@ -188,6 +188,31 @@ export async function POST(request: NextRequest) {
   const texto =
     m.contents?.find((c) => typeof c.message === "string" && c.message.trim())?.message ?? "";
 
+  // **Que campos vêm além dos que a gente lê.**
+  //
+  // Quando o cliente responde citando uma mensagem -- marca a bolha e
+  // escreve "esse" --, a citação não chega em nenhum campo que este
+  // arquivo conheça, e a IA fica com um "esse" solto sem saber do quê.
+  // A documentação da Z-API não descreve o payload de mensagem citada, e
+  // o que ela promete já se mostrou diferente do que envia mais de uma
+  // vez, então aqui não se adivinha o nome do campo: anota-se o que
+  // chegou e olha-se depois, com um reply de verdade na mão.
+  //
+  // Só os NOMES dos campos, nunca os valores: isto roda em cima de toda
+  // mensagem de todo cliente, e conteúdo de conversa não vai para log.
+  // E só quando aparece algo novo -- em mensagem comum não imprime nada.
+  const CONHECIDOS = new Set(["_id", "channel_id", "metadata", "sender", "recipient", "contents"]);
+  const CONHECIDOS_NO_CONTEUDO = new Set(["type", "@class", "message"]);
+  const novosNaMensagem = Object.keys(m).filter((k) => !CONHECIDOS.has(k));
+  const novosNoConteudo = (m.contents ?? []).flatMap((c) =>
+    Object.keys(c).filter((k) => !CONHECIDOS_NO_CONTEUDO.has(k)),
+  );
+  if (novosNaMensagem.length > 0 || novosNoConteudo.length > 0) {
+    console.info(
+      `[zapi/webhook] campos novos: mensagem=[${novosNaMensagem.join(", ")}] conteudo=[${[...new Set(novosNoConteudo)].join(", ")}]`,
+    );
+  }
+
   // Recibo de entrega não é mensagem.
   //
   // A Z-API manda `.DeliveryCallback` e `.MessageStatusCallback` pelo

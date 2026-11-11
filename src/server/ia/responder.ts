@@ -279,6 +279,8 @@ export async function responder(params: {
   conhecimento: Conhecimento;
   conversa: Turno[];
   pedidos?: ContextoDoPedido;
+  /** o que os pedidos antigos dele já contam: nome e endereço da última entrega */
+  cliente?: string | null;
   /** onde a conversa acontece; muda o que ela pode dizer sobre o cardápio */
   canal?: "whatsapp" | "cardapio";
 }): Promise<Resposta | null> {
@@ -297,6 +299,12 @@ export async function responder(params: {
     // a hora e o "aberto ou fechado" mudam a cada minuto: ficam fora do
     // bloco em cache, numa mensagem de sistema no fim da conversa
     { role: "system", content: params.conhecimento.agora },
+    // O que sabemos deste cliente entra aqui pelo mesmo motivo: muda de
+    // conversa para conversa, e no bloco em cache -- que é o mesmo para
+    // todo mundo -- furaria o cache a cada cliente novo.
+    ...(params.cliente
+      ? [{ role: "system" as const, content: `=== O QUE JÁ SABEMOS DESTE CLIENTE ===\n${params.cliente}` }]
+      : []),
   ];
 
   const { nome, dono } = params.conhecimento;
