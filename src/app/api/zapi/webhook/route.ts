@@ -215,8 +215,15 @@ export async function POST(request: NextRequest) {
   // estranho custa o número.
   const de = m.sender?.identifier;
   const para = m.recipient?.identifier;
+  // os nomes são de quem escreve para o restaurante, então ficam cortados:
+  // servem para reconhecer um grupo, não para virar agenda
+  const corta = (v?: string) => (v ? v.slice(0, 40) : "(sem nome)");
   if (ehGrupo(de) || ehGrupo(para)) {
-    console.info(`[zapi/webhook] de grupo, ignorado · de=${forma(de)} para=${forma(para)}`);
+    // o nome vai junto: é o que confirma que o que a trava barrou era
+    // mesmo um grupo, e não um número comprido que eu entendi mal
+    console.info(
+      `[zapi/webhook] de grupo, ignorado · de=${forma(de)} "${corta(m.sender?.name)}" para=${forma(para)} "${corta(m.recipient?.name)}"`,
+    );
     return NextResponse.json({ ok: true, ignorado: "grupo" });
   }
 
@@ -232,9 +239,6 @@ export async function POST(request: NextRequest) {
   // aparece em um deles. O `metadata` vem junto porque é onde caberia uma
   // marca de grupo, e cabe no log inteiro -- ele não tem o que foi dito.
   //
-  // Os nomes são de quem escreve para o restaurante, então ficam cortados
-  // em 40 letras: serve para reconhecer um grupo, não para virar agenda.
-  const corta = (v?: string) => (v ? v.slice(0, 40) : "(sem nome)");
   console.info(
     `[zapi/webhook] de-onde: de="${corta(m.sender?.name)}" para="${corta(m.recipient?.name)}" meta=${JSON.stringify(m.metadata ?? {})}`,
   );
