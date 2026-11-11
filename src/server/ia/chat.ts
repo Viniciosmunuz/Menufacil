@@ -103,7 +103,7 @@ export async function conversarNoCardapio(params: {
       texto: r.texto,
     }));
 
-  const resposta = await responder({ conhecimento, conversa });
+  const resposta = await responder({ conhecimento, conversa, canal: "cardapio" });
   if (!resposta) return { ok: false, motivo: "falha" };
 
   await db.iaMensagem.create({
