@@ -1110,11 +1110,13 @@ export function RestaurantMenu({
                   maisPedido={campeoes.has(p.id)}
                   // A mesma largura da célula da lista, não um número
                   // parecido: a lista é uma grade de duas colunas com 12px
-                  // entre elas, e esta fileira sangra 16px para cada lado
-                  // da tela -- daí os 2,75rem descontados antes de dividir.
-                  // Assim o cartão do destaque e o da seção logo abaixo têm
-                  // a mesma medida em qualquer celular, de 320 a 430px.
-                  className="w-[calc((100%-2.75rem)/2)] shrink-0 snap-start sm:w-48"
+                  // entre elas, e aqui é a mesma conta.
+                  //
+                  // O sangramento de 16px da fileira não entra: ela o
+                  // devolve como padding, então o 100% daqui já é o mesmo
+                  // espaço interno que a grade usa. Descontar de novo dava
+                  // 150px contra 166px -- medido, não deduzido.
+                  className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start sm:w-48"
                   naVitrine
                 />
               ))}
