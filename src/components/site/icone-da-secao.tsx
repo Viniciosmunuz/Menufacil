@@ -6,6 +6,7 @@ import {
   Croissant,
   CupSoda,
   Drumstick,
+  EggFried,
   Fish,
   Hamburger,
   IceCreamCone,
@@ -15,6 +16,7 @@ import {
   Salad,
   Soup,
   Utensils,
+  UtensilsCrossed,
   Wheat,
   Wine,
   type LucideIcon,
@@ -40,7 +42,9 @@ const REGRAS: [termos: string[], icone: LucideIcon][] = [
   [["salada"], Salad],
   [["caldo", "sopa", "canja"], Soup],
   [["pizza", "calzone"], Pizza],
-  [["massa", "macarrao", "lasanha", "espaguete", "nhoque", "talharim", "penne"], Wheat],
+  [["massa", "macarrao", "lasanha", "espaguete", "nhoque", "talharim", "penne", "yakisoba", "yakissoba", "miojo"], Wheat],
+  [["panqueca", "omelete", "omelette", "ovo", "crepe", "tapioca"], EggFried],
+  [["grelhado", "grelha", "chapa", "na brasa"], Beef],
   [["lanche", "burger", "burguer", "hamburguer", "sanduiche", "cachorro quente", "hot dog", "misto"], Hamburger],
   [["isca", "frango", "drumet", "tulipa"], Drumstick],
   [["porcao", "fritas", "batata", "petisco", "aperitivo", "entrada"], Popcorn],
@@ -55,6 +59,10 @@ const REGRAS: [termos: string[], icone: LucideIcon][] = [
   [["bebida", "refrigerante", "refri", "suco", "agua", "lata"], CupSoda],
   [["vegetariano", "vegano", "natural", "fit", "light"], LeafyGreen],
   [["marmita", "prato feito", "executivo", "almoco", "refeicao", "self service"], Utensils],
+  // o que vai junto do prato: arroz, farofa, fritas à parte. Fica por
+  // último porque é o mais genérico da lista -- "Acompanhamentos de
+  // massa" tem de cair em massa, não aqui.
+  [["acompanhamento", "adicional", "extra", "a parte"], UtensilsCrossed],
 ];
 
 /** minúsculas e sem acento: o dono escreve "Porções", "PORCOES" e "porcao" */
