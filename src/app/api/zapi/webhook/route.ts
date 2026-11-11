@@ -27,6 +27,13 @@ import { atender, type MensagemKapso } from "@/server/ia/atender";
  * Documentação: https://developer.omni.z-api.io/webhooks/payloads
  */
 
+/**
+ * Idade máxima de uma mensagem para a IA ainda responder, em minutos.
+ *
+ * O porquê está na trava que usa esta constante, mais abaixo.
+ */
+const IDADE_MAXIMA_MIN = 30;
+
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
@@ -36,7 +43,7 @@ type AvisoOmni = {
   message?: {
     _id?: string;
     channel_id?: string;
-    metadata?: { from_me?: boolean; from_api?: boolean; middleware?: string };
+    metadata?: { from_me?: boolean; from_api?: boolean; middleware?: string; moment?: number };
     sender?: { identifier?: string; name?: string };
     recipient?: { identifier?: string; name?: string };
     contents?: Conteudo[];
@@ -276,6 +283,40 @@ export async function POST(request: NextRequest) {
   );
 
   if (!telefone) return NextResponse.json({ ok: true, ignorado: true });
+
+  // **Mensagem velha não é respondida.**
+  //
+  // O canal é WhatsApp Web. Quando ele cai e volta -- e ele cai --, a
+  // sessão ressincroniza e a Z-API entrega pelo webhook mensagens que já
+  // estavam lá. Para este arquivo cada uma parece ter acabado de
+  // chegar, e a IA responde todas de uma vez. Do lado de quem recebe,
+  // ela escreveu do nada, horas ou dias depois do assunto -- e quem
+  // escreveu nem lembra do que se tratava.
+  //
+  // Num número que também é pessoal, isso é pior do que parecer
+  // distraído: é a IA conversando com contato que nunca foi cliente. E
+  // iniciar conversa é exatamente o que faz o WhatsApp derrubar um
+  // número.
+  //
+  // A trava de evento repetido não pega isto: ela guarda o id de cada
+  // aviso, e na ressincronização os ids vêm novos.
+  //
+  // A janela é generosa de propósito. Mensagem legítima também atrasa --
+  // o celular do restaurante fica sem sinal, a Z-API acumula e entrega
+  // em bloco --, e responder cinco minutos depois ainda serve ao
+  // cliente. Meia hora depois, não serve mais a ninguém.
+  const quando = m.metadata?.moment;
+  if (typeof quando === "number" && quando > 0) {
+    // a Z-API manda em milissegundos; alguns eventos vêm em segundos
+    const ms = quando < 1e12 ? quando * 1000 : quando;
+    const minutos = (Date.now() - ms) / 60_000;
+    if (minutos > IDADE_MAXIMA_MIN) {
+      console.info(
+        `[zapi/webhook] mensagem de ${Math.round(minutos)} min atrás, ignorada · …${telefone.slice(-4)}`,
+      );
+      return NextResponse.json({ ok: true, ignorado: "antiga" });
+    }
+  }
 
   // IA desligada: sai aqui, sem escrever nada.
   //
