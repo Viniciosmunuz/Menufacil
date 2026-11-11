@@ -102,18 +102,25 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
         <button
           type="button"
           onClick={() => setAberto(true)}
-          aria-label={`Falar com a atendente de ${nome}`}
-          className="fixed right-4 bottom-24 z-40 size-14 overflow-hidden rounded-full bg-brand-soft ring-2 ring-brand shadow-lg shadow-brand/30 transition-transform active:scale-95 lg:bottom-6"
+          aria-label={`Falar com a assistente virtual de ${nome}`}
+          className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-1 transition-transform active:scale-95 lg:bottom-6"
         >
-          <Image
-            src={ROSTO}
-            alt=""
-            width={112}
-            height={112}
-            // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
-            className="size-full object-cover"
-            priority={false}
-          />
+          <span className="size-12 overflow-hidden rounded-full bg-brand-soft ring-2 ring-brand shadow-lg shadow-brand/30">
+            <Image
+              src={ROSTO}
+              alt=""
+              width={96}
+              height={96}
+              // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
+              className="size-full object-cover"
+            />
+          </span>
+          {/* Sem isto a foto passa por uma pessoa de verdade esperando do
+              outro lado, e quem escreve espera resposta de gente. A etiqueta
+              é o que separa uma assistente simpática de uma pegadinha. */}
+          <span className="rounded-full border border-line bg-bg px-2 py-0.5 text-[10px] leading-4 font-bold text-muted shadow-sm">
+            Assistente virtual
+          </span>
         </button>
       )}
 
@@ -128,7 +135,7 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
               <Image src={ROSTO} alt="" width={80} height={80} className="size-full object-cover" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-bold">Atendente</span>
+              <span className="block truncate font-bold">Assistente virtual</span>
               <span className="block truncate text-xs text-muted">{nome}</span>
             </span>
             <button
