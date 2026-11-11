@@ -178,7 +178,6 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               </div>
 
               <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
-              {r.categories.length > 0 && <p className="mt-0.5 text-sm font-semibold text-muted">{r.categories.map((c) => c.name).join(" • ")}</p>}
 
               {/* os selos de entrega e, do lado, as bolinhas de endereço e horários */}
               <InfoDoRestaurante

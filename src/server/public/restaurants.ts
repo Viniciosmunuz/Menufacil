@@ -181,7 +181,6 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
   const restaurant = await db.restaurant.findUnique({
     where: { slug },
     include: {
-      categories: { where: { active: true }, orderBy: { sortOrder: "asc" }, select: { name: true } },
       openingHours: { orderBy: { weekday: "asc" }, select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
         // a seção marcada como "só no salão" não existe para quem pede
