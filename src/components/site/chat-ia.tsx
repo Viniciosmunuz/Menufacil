@@ -103,30 +103,26 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
           type="button"
           onClick={() => setAberto(true)}
           aria-label={`Falar com a assistente virtual de ${nome}`}
-          className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-1 transition-transform active:scale-95 lg:bottom-6"
+          // Rente à barra de baixo, e não no meio do cardápio: a conta
+          // soma a faixa do gesto do iPhone, senão o círculo cai embaixo
+          // dela em quem tem o aparelho sem botão.
+          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)_+_4.5rem)] z-40 size-12 transition-transform active:scale-95 lg:bottom-6"
         >
-          <span className="relative size-12">
-            <span className="block size-full overflow-hidden rounded-full bg-brand-soft shadow-lg shadow-ink/20">
-              <Image
-                src={ROSTO}
-                alt=""
-                width={96}
-                height={96}
-                // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
-                className="size-full object-cover"
-              />
-            </span>
-            {/* a bolinha de "está aí agora", a mesma do WhatsApp e do
-                Messenger. O anel da cor do fundo é o que a separa do
-                cabelo escuro -- sem ele vira uma mancha. */}
-            <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-success ring-2 ring-bg" />
+          <span className="block size-full overflow-hidden rounded-full bg-brand-soft shadow-lg shadow-ink/20">
+            <Image
+              src={ROSTO}
+              alt=""
+              width={96}
+              height={96}
+              // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
+              className="size-full object-cover"
+            />
           </span>
-          {/* Sem isto a foto passa por uma pessoa de verdade esperando do
-              outro lado, e quem escreve espera resposta de gente. A etiqueta
-              é o que separa uma assistente simpática de uma pegadinha. */}
-          <span className="rounded-full border border-line bg-bg px-2 py-0.5 text-[10px] leading-4 font-bold text-muted shadow-sm">
-            Assistente virtual · <span className="text-success">online</span>
-          </span>
+          {/* a bolinha de "está aí agora", a mesma do WhatsApp e do
+              Messenger. O anel da cor do fundo é o que a separa do cabelo
+              escuro -- sem ele vira uma mancha. Quem quiser saber que é
+              assistente virtual lê no cabeçalho, ao abrir. */}
+          <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-success ring-2 ring-bg" />
         </button>
       )}
 
