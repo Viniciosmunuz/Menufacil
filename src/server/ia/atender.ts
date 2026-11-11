@@ -3,6 +3,7 @@ import "server-only";
 import { db } from "@/lib/db";
 
 import { formatPhone } from "@/lib/format";
+import { isOpenNow } from "@/lib/opening-hours";
 import { avisarClienteChamou } from "@/server/push/avisos";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
@@ -20,17 +21,24 @@ import { enviarImagem as enviarImagemPelaZapi, enviarTexto as enviarPelaZapi } f
 //
 // As travas, em ordem:
 //
+// As três primeiras saem antes de guardar a mensagem do cliente. Não é
+// detalhe de ordem: o que elas barram some sem deixar rastro no banco nem
+// na gaveta de conversas do painel.
+//
 // 1. Atendente desligado: não responde e não guarda nada.
-// 2. Alguém do restaurante respondeu pelo celular há pouco: a IA não se mete
+// 2. Número da lista do dono (a família, os amigos, os fornecedores).
+// 3. Restaurante fechado (fora do horário ou fechado no botão): fica
+//    quieta. Com a entrega pausada ele continua aberto, e ela responde.
+//    O que sai do celular do dono é registrado mesmo fechado -- ver a
+//    trava 4, que depende disso.
+// 4. Alguém do restaurante respondeu pelo celular há pouco: a IA não se mete
 //    na conversa de uma pessoa.
-// 3. Muitas respostas da IA para o mesmo cliente em pouco tempo: para. Evita
+// 5. Muitas respostas da IA para o mesmo cliente em pouco tempo: para. Evita
 //    conversa em laço e conta alta por um cliente só.
-// 4. Restaurante fechado (fora do horário ou fechado no botão): fica quieta.
-//    Com a entrega pausada ele continua aberto, e ela responde.
-// 5. A própria IA passou a conversa para uma pessoa (o cliente pediu o
+// 6. A própria IA passou a conversa para uma pessoa (o cliente pediu o
 //    dono, um atendente...): conta como se alguém do restaurante tivesse
 //    assumido, e ela fica quieta pelo mesmo tempo.
-// 6. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
+// 7. Mensagem que não é texto (áudio, foto, figurinha): fica para o dono. A
 //    IA não ouve áudio, e responder "não entendi" a um áudio irrita mais do
 //    que ficar quieta. A exceção é a foto de quem tem Pix em aberto, que é
 //    quase sempre o comprovante: ela avisa que recebeu e que o restaurante
@@ -160,6 +168,25 @@ export async function atender(evento: MensagemKapso) {
   // eles. Nem responde, nem guarda.
   if (telefone && estaNaLista(atendente.ignorados, telefone)) return;
 
+  /**
+   * O restaurante está aberto agora?
+   *
+   * Consulta própria, pequena, em vez de reaproveitar o conhecimento do
+   * restaurante: o que ela lê é o status, o modo e os horários, e não o
+   * cardápio inteiro.
+   */
+  async function abertoAgora() {
+    const r = await db.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: {
+        status: true,
+        openMode: true,
+        openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+      },
+    });
+    return Boolean(r && r.status === "ACTIVE" && isOpenNow(r.openMode, r.openingHours));
+  }
+
   const texto = (m.text?.body ?? "").slice(0, TEXTO_MAX).trim();
   const direcao = m.kapso?.direction;
 
@@ -181,6 +208,24 @@ export async function atender(evento: MensagemKapso) {
     return;
   }
   if (direcao !== "inbound") return;
+
+  // Restaurante fechado: sai aqui, antes de guardar.
+  //
+  // Esta trava já existia, mas lá embaixo -- depois de gravar a mensagem e
+  // depois de montar o conhecimento do restaurante, que carrega o cardápio
+  // inteiro. Com o restaurante fechado a noite toda, era uma escrita no
+  // banco e uma consulta pesada por mensagem que nunca seria respondida:
+  // num número que também é o celular do dono, com grupo e divulgação
+  // chegando, são centenas por dia. O efeito visível era a gaveta de
+  // conversas do painel encher de gente que a IA nunca atendeu -- foi
+  // assim que ele notou.
+  //
+  // **Só no que chega do cliente, e por isso depois do bloco de cima.** O
+  // que sai do celular do dono continua sendo registrado mesmo fechado: é
+  // esse registro que faz a IA ficar quieta por 30 minutos naquela
+  // conversa, e a meia hora atravessa a hora de abrir. Sem isso, ele
+  // responderia alguém 17h50 e ela falaria por cima dele às 18h.
+  if (!(await abertoAgora())) return;
 
   // ─── o cliente escreveu ────────────────────────────────────────────
   const recebida = await db.iaMensagem.create({
@@ -296,6 +341,10 @@ export async function atender(evento: MensagemKapso) {
   const conhecimento = await conhecimentoDoRestaurante(restaurantId, {
     comIds: atendente.fazPedidos,
   });
+  // Fechado já foi conferido lá em cima, antes de guardar a mensagem.
+  // Aqui fica como segunda guarda, e ela não é à toa: entre uma conferida
+  // e outra a IA pensa alguns segundos, e o restaurante pode ter fechado
+  // no meio -- no botão ou no horário.
   if (!conhecimento || !conhecimento.aberto) return;
 
   /** manda e registra; só se ninguém do restaurante entrou na conversa enquanto isso */
