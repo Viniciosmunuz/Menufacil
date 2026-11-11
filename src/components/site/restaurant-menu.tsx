@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { LogoIcon } from "@/components/brand/logo";
+import { iconeDaSecao } from "@/components/site/icone-da-secao";
 import { Button } from "@/components/ui/button";
 import {
   acceptsAddons,
@@ -48,6 +49,22 @@ import { addToCart, cartCount, cartSubtotal, useCart, type CartItem, type CartRe
 import { useDigitando } from "./digitando";
 import { QuantityStepper } from "./quantity-stepper";
 import { useUltimoPedido } from "./ultimo-pedido";
+
+/**
+ * As abas de seção do cardápio: texto com uma linha embaixo da que está na
+ * vez, no lugar das pílulas de fundo cheio.
+ *
+ * Duas razões, além do gosto. A fileira cabe mais seção na mesma tela,
+ * porque some o preenchimento lateral de cada pílula -- e essa fileira é
+ * como a pessoa navega o cardápio. E some um problema antigo: a pílula na
+ * vez ficava laranja cheia, igual à de Destaques, que por isso teve de ser
+ * apagada para não parecer que duas estavam ativas ao mesmo tempo. Uma
+ * linha de 3px não disputa com nada.
+ */
+const ABA =
+  "flex h-11 shrink-0 items-center gap-1.5 border-b-[3px] text-sm whitespace-nowrap transition-colors";
+const ABA_NA_VEZ = "border-brand font-extrabold text-brand";
+const ABA_PARADA = "border-transparent font-bold text-muted hover:text-ink";
 
 export type MenuProduct = {
   id: string;
@@ -694,6 +711,9 @@ export function RestaurantMenu({
       .filter((c) => c.products.length > 0);
   }, [categories, textos, palavras, buscando]);
   const totalAchado = visible.reduce((soma, c) => soma + c.products.length, 0);
+  // as abas de seção só existem com mais de uma seção, fora do totem e fora
+  // da busca; a barra de cima muda de acabamento quando elas aparecem
+  const abasVisiveis = visible.length > 1 && !categoriasNaLateral && !buscando;
   const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
@@ -956,7 +976,10 @@ export function RestaurantMenu({
           alta, alinhada ao botão da gaveta e fácil de tocar de pé. */}
       <div
         className={cn(
-          "sticky top-0 z-20 -mx-4 border-b border-line bg-bg px-4 pt-3 pb-3 lg:top-[4.75rem] lg:mx-0 lg:px-0",
+          "sticky top-0 z-20 -mx-4 bg-bg px-4 pt-3 lg:top-[4.75rem] lg:mx-0 lg:px-0",
+          // com abas, a linha de base delas já fecha a barra; sem abas, a
+          // barra precisa da sua própria borda para não boiar sobre a lista
+          abasVisiveis ? "pb-0" : "border-b border-line pb-3",
           categoriasNaLateral ? "mt-4" : "mt-1",
         )}
       >
@@ -990,10 +1013,14 @@ export function RestaurantMenu({
         </label>
         </div>
         {/* buscando, as abas de categoria saem: a tela mostra só o resultado */}
-        {visible.length > 1 && !categoriasNaLateral && !buscando && (
+        {abasVisiveis && (
           <nav
             ref={tabsRef}
-            className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+            // A linha de base vem de dentro (inset shadow) e não de um
+            // border-b: assim a barra de 3px da aba escolhida cobre a de
+            // 1px em vez de ficar empilhada em cima dela, que desenhava
+            // duas listras.
+            className="-mx-4 mt-3 flex gap-5 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
             aria-label="Categorias do cardápio"
           >
             {featured.length > 0 && (
@@ -1001,24 +1028,19 @@ export function RestaurantMenu({
                 type="button"
                 data-tab="destaques"
                 onClick={() => jump("destaques")}
-                // Desligado, igual aos outros.
-                //
-                // Ele vivia laranja mesmo sem estar na vez, e os outros só
-                // acendem quando a rolagem chega neles -- então, descendo
-                // até Porções, dois botões ficavam laranja ao mesmo tempo,
-                // com dois laranjas diferentes. Parecia defeito. A estrela
-                // já basta para dizer que este é especial.
-                className={cn(
-                  "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors",
-                  active === "destaques" ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:text-ink",
-                )}
+                className={cn(ABA, active === "destaques" ? ABA_NA_VEZ : ABA_PARADA)}
               >
-                <Star className={cn("size-3.5", active === "destaques" ? "fill-brand-ink" : "fill-brand text-brand")} aria-hidden="true" />
+                {/* laranja mesmo parada, ao contrário dos outros ícones: é
+                    o que diz que esta seção é especial. Com a linha embaixo
+                    marcando a aba na vez, não há mais o conflito de dois
+                    laranjas que obrigou a apagá-la na versão de pílulas. */}
+                <Star className="size-4 fill-brand text-brand" aria-hidden="true" />
                 Destaques
               </button>
             )}
             {visible.map((c) => {
               const id = `cat-${c.id}`;
+              const Icone = iconeDaSecao(c.name);
               return (
                 <button
                   key={c.id}
@@ -1026,11 +1048,14 @@ export function RestaurantMenu({
                   data-tab={id}
                   onClick={() => jump(id)}
                   aria-current={active === id ? "true" : undefined}
-                  className={cn(
-                    "flex h-9 shrink-0 items-center rounded-full border px-4 text-sm font-bold transition-colors",
-                    active === id ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:text-ink",
-                  )}
+                  className={cn(ABA, active === id ? ABA_NA_VEZ : ABA_PARADA)}
                 >
+                  {Icone && (
+                    <Icone
+                      className={cn("size-4", active === id ? "text-brand" : "text-faint")}
+                      aria-hidden="true"
+                    />
+                  )}
                   {c.name}
                 </button>
               );
