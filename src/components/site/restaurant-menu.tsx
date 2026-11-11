@@ -499,6 +499,7 @@ function ProductRow({
   empilhado = false,
   maisPedido = false,
   className,
+  naVitrine = false,
 }: {
   p: MenuProduct;
   flavors: PizzaFlavor[];
@@ -509,6 +510,14 @@ function ProductRow({
   maisPedido?: boolean;
   /** o que a vitrine de destaques acrescenta: largura fixa e encaixe no arrasto */
   className?: string;
+  /**
+   * Já estamos dentro da vitrine de Destaques.
+   *
+   * A estrela ao lado do nome existe para marcar o destaque no meio da
+   * lista. Dentro da seção que se chama Destaques, e que já tem a estrela
+   * no título, ela vira enfeite repetido em todo cartão.
+   */
+  naVitrine?: boolean;
 }) {
   return (
     // content-visibility: o navegador não gasta desenho com o cartão que
@@ -528,7 +537,9 @@ function ProductRow({
       >
         <span className={cn("order-2 flex min-w-0 flex-1 flex-col", !empilhado && "sm:order-1", !p.available && "opacity-55")}>
           <span className="flex items-start gap-1.5 text-[0.95rem] leading-snug font-extrabold sm:text-base">
-            {p.featured && <Star className="mt-0.5 size-4 shrink-0 fill-brand text-brand" aria-hidden="true" />}
+            {p.featured && !naVitrine && (
+              <Star className="mt-0.5 size-4 shrink-0 fill-brand text-brand" aria-hidden="true" />
+            )}
             {p.name}
           </span>
           {p.description && <span className="mt-1 line-clamp-2 text-[0.78rem] leading-snug text-muted sm:text-[0.82rem]">{p.description}</span>}
@@ -1098,6 +1109,7 @@ export function RestaurantMenu({
                   empilhado
                   maisPedido={campeoes.has(p.id)}
                   className="w-40 shrink-0 snap-start sm:w-48"
+                  naVitrine
                 />
               ))}
             </ul>
