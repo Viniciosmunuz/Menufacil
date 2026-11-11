@@ -1,6 +1,7 @@
 "use client";
 
-import { Bot, Send, X } from "lucide-react";
+import { Send, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -15,7 +16,17 @@ import { cn } from "@/lib/cn";
  * A bolha fica acima da barra de baixo e some quando o carrinho abre: no
  * celular, dois botões flutuantes disputando o polegar é o começo de um
  * toque errado.
+ *
+ * **O rosto é da atendente do MenuFácil**, e não um ícone de robô. Quem
+ * chega ao cardápio pelo link não está procurando um recurso de software:
+ * uma cara sorrindo num canto convida a perguntar, um robozinho avisa que
+ * do outro lado não tem ninguém. O botão é só o círculo, sem rótulo --
+ * foto redonda no canto é o gesto que todo mundo já conhece de outros
+ * sites, e a legenda só roubava espaço do cardápio.
  */
+
+/** o avatar da atendente, o mesmo no botão e no cabeçalho da conversa */
+const ROSTO = "/atendente-ia.webp";
 
 type Fala = { de: "cliente" | "ia"; texto: string };
 
@@ -91,11 +102,18 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
         <button
           type="button"
           onClick={() => setAberto(true)}
-          aria-label={`Falar com o atendente de ${nome}`}
-          className="fixed right-4 bottom-24 z-40 flex h-11 items-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-brand-ink shadow-lg shadow-brand/30 transition-transform active:scale-95 lg:bottom-6"
+          aria-label={`Falar com a atendente de ${nome}`}
+          className="fixed right-4 bottom-24 z-40 size-14 overflow-hidden rounded-full bg-brand-soft ring-2 ring-brand shadow-lg shadow-brand/30 transition-transform active:scale-95 lg:bottom-6"
         >
-          <Bot className="size-4" aria-hidden="true" />
-          Tirar dúvida
+          <Image
+            src={ROSTO}
+            alt=""
+            width={112}
+            height={112}
+            // o rosto cabe no círculo sem esticar, em qualquer densidade de tela
+            className="size-full object-cover"
+            priority={false}
+          />
         </button>
       )}
 
@@ -106,8 +124,8 @@ export function ChatIa({ slug, nome }: { slug: string; nome: string }) {
           className="fixed inset-x-0 bottom-0 z-50 flex max-h-[82dvh] flex-col rounded-t-card border border-line bg-bg shadow-2xl lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-96 lg:rounded-card"
         >
           <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-              <Bot className="size-5" aria-hidden="true" />
+            <span className="size-10 shrink-0 overflow-hidden rounded-full bg-brand-soft">
+              <Image src={ROSTO} alt="" width={80} height={80} className="size-full object-cover" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold">Atendente</span>
