@@ -328,6 +328,38 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ ok: true, ignorado: "grupo" });
   }
+
+  // **Sem prova de que é conversa de um para um, não responde.**
+  //
+  // A mesma mensagem de grupo chega por dois caminhos. Num deles vêm
+  // `group_id` e `participant_lid`, e a trava acima a reconhece. No
+  // outro o conteúdo chega pelado -- só tipo e texto --, e aí não há no
+  // payload inteiro nada que a denuncie como vinda de um grupo. Foi
+  // assim que uma mensagem do "02# Code Makers" passou mesmo depois da
+  // trava certa estar no ar, em 11/11/2026.
+  //
+  // Como não dá para reconhecer o grupo nesse formato, a pergunta muda
+  // de lado: em vez de barrar o que se prova ser grupo, só passa o que
+  // se prova ser conversa individual. Quem não traz as marcas de
+  // roteamento não é atendido.
+  //
+  // **O custo disso é real e foi escolhido.** Se uma mensagem legítima
+  // de cliente chegar nesse formato pelado, ela fica sem resposta e o
+  // restaurante perde um pedido. É menos grave do que o contrário:
+  // responder desconhecido de grupo é o que faz o WhatsApp derrubar o
+  // número, e número derrubado leva junto todos os pedidos, não um.
+  //
+  // O log diz quantos avisos caem aqui. Se cair mensagem de cliente de
+  // verdade, aparece neste contador antes de alguém reclamar.
+  const temRoteamento = (m.contents ?? []).some(
+    (c) => c.internal_information !== undefined || c.external_information !== undefined,
+  );
+  if (!temRoteamento) {
+    console.info(
+      `[zapi/webhook] sem marca de conversa individual, ignorado · de=${forma(de)} "${corta(m.sender?.name)}" conteudos=${m.contents?.length ?? 0}`,
+    );
+    return NextResponse.json({ ok: true, ignorado: "sem-roteamento" });
+  }
   if (ehGrupo(de) || ehGrupo(para)) {
     // o nome vai junto: é o que confirma que o que a trava barrou era
     // mesmo um grupo, e não um número comprido que eu entendi mal
