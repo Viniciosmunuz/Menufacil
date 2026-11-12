@@ -56,6 +56,9 @@ type Conteudo = {
   phone?: string;
   /** o identificador da conversa ou do contato na Z-API */
   identifier?: string;
+  /** metadados de roteamento; pode ser onde o chat de origem se esconde */
+  internal_information?: unknown;
+  external_information?: unknown;
 };
 type AvisoOmni = {
   messageEventType?: string;
@@ -252,11 +255,21 @@ export async function POST(request: NextRequest) {
   //
   // Temporário: sai assim que a trava estiver certa.
   for (const c of m.contents ?? []) {
-    const amostra = { is_group: c.is_group, phone: c.phone, identifier: c.identifier };
+    const amostra = { is_group: c.is_group, phone: c.phone };
+    // `internal_information` e `external_information` são os dois campos
+    // que sobraram sem leitura, e é onde caberia o chat de origem: numa
+    // mensagem de grupo o WhatsApp separa o chat (o grupo) de quem
+    // digitou (o participante), e a Z-API entrega só o participante nos
+    // campos que este arquivo lê. Só as CHAVES deles: são objetos, e o
+    // que a pessoa escreveu pode estar lá dentro.
+    const dentro = (v: unknown) =>
+      v && typeof v === "object" ? `{${Object.keys(v).join(",")}}` : JSON.stringify(v);
     console.info(
       `[zapi/webhook] marcas: ${Object.entries(amostra)
         .map(([k, v]) => `${k}=${typeof v}:${JSON.stringify(v)}`)
-        .join(" ")} · de=${forma(m.sender?.identifier)}`,
+        .join(" ")}` +
+        ` interna=${dentro(c.internal_information)} externa=${dentro(c.external_information)}` +
+        ` · de=${forma(m.sender?.identifier)} para=${forma(m.recipient?.identifier)}`,
     );
   }
 
