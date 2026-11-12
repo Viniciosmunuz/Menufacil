@@ -221,3 +221,160 @@ export async function estadoDaInstancia(conta: ContaUazapi): Promise<string | nu
   const dados = (await resposta.json().catch(() => null)) as Estado | null;
   return dados?.instance?.status ?? dados?.status ?? null;
 }
+
+/**
+ * O servidor da conta, do ambiente.
+ *
+ * Diferente do token de cada instância -- que é por restaurante e mora
+ * no banco --, estes dois são da plataforma: o endereço do servidor
+ * contratado e o token de administração dele. São o que permite criar
+ * uma instância nova sem ninguém abrir o painel da uazapi.
+ *
+ * `UAZAPI_ADMIN_TOKEN` manda em todas as instâncias do servidor. **Só
+ * no servidor**, nunca num componente de cliente.
+ */
+export function servidorDaConta() {
+  const baseUrl = process.env.UAZAPI_SERVER?.trim().replace(/[/]+$/, "");
+  const admintoken = process.env.UAZAPI_ADMIN_TOKEN?.trim();
+  if (!baseUrl || !admintoken) return null;
+  return { baseUrl, admintoken };
+}
+
+type InstanciaCriada = { token?: string; instance?: { id?: string; name?: string; token?: string } };
+
+/**
+ * Cria uma instância nova no servidor da conta.
+ *
+ * É o que faz o dono do restaurante conseguir conectar o WhatsApp dele
+ * sozinho, sem passar pelo suporte: o sistema cria a instância, pega o
+ * token e já pede o QR code. Antes disto, conectar um número era uma
+ * conversa no WhatsApp com alguém do MenuFácil.
+ *
+ * **Cada instância ocupa um lugar no plano.** Quem chama precisa ter
+ * certeza de que o restaurante ainda não tem uma -- criar duas para o
+ * mesmo restaurante gasta um número do pacote e deixa uma órfã, que
+ * ninguém vai lembrar de apagar.
+ *
+ * Documentação: https://docs.uazapi.com/reference/createInstance.md
+ */
+export async function criarInstancia(params: {
+  nome: string;
+  /** aparece no celular do dono, na lista de aparelhos conectados */
+  sistema?: string;
+}): Promise<{ conta: ContaUazapi; nome: string } | null> {
+  const servidor = servidorDaConta();
+  if (!servidor) {
+    console.error("[uazapi] sem UAZAPI_SERVER/UAZAPI_ADMIN_TOKEN: não dá para criar instância");
+    return null;
+  }
+
+  const resposta = await fetch(`${servidor.baseUrl}/instance/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json", admintoken: servidor.admintoken },
+    body: JSON.stringify({
+      name: params.nome,
+      systemName: params.sistema ?? "MenuFácil",
+    }),
+  });
+  const texto = await resposta.text();
+  if (!resposta.ok) {
+    // 429 quer dizer que o servidor bateu o limite de instâncias do
+    // plano -- é o erro que vai aparecer no dia em que o pacote encher,
+    // e ele precisa estar legível no log.
+    console.error(`[uazapi] criar instância recusado (${resposta.status}): ${texto.slice(0, 300)}`);
+    return null;
+  }
+
+  let dados: InstanciaCriada | null = null;
+  try {
+    dados = JSON.parse(texto) as InstanciaCriada;
+  } catch {
+    console.error("[uazapi] criar instância: resposta sem JSON");
+    return null;
+  }
+  const token = dados?.token ?? dados?.instance?.token;
+  if (!token) {
+    console.error("[uazapi] criar instância: veio sem token");
+    return null;
+  }
+  console.info(`[uazapi] instância "${params.nome}" criada`);
+  return {
+    conta: { baseUrl: servidor.baseUrl, token },
+    nome: dados?.instance?.name ?? params.nome,
+  };
+}
+
+/** o que a tela precisa para mostrar a conexão */
+export type Pareamento = {
+  /** o QR code em base64, quando ainda falta parear */
+  qrcode: string | null;
+  /** o código de 8 dígitos, para quem prefere digitar a ler */
+  paircode: string | null;
+  conectado: boolean;
+  status: string | null;
+};
+
+type RespostaConexao = {
+  connected?: boolean;
+  loggedIn?: boolean;
+  status?: string;
+  instance?: { status?: string; qrcode?: string; paircode?: string };
+};
+
+function lerPareamento(dados: RespostaConexao | null): Pareamento {
+  const status = dados?.instance?.status ?? dados?.status ?? null;
+  return {
+    qrcode: dados?.instance?.qrcode || null,
+    paircode: dados?.instance?.paircode || null,
+    conectado: dados?.loggedIn === true || status === "connected",
+    status,
+  };
+}
+
+/**
+ * Pede o QR code para parear o WhatsApp.
+ *
+ * O QR vem em base64 e **expira em menos de um minuto**: a tela que o
+ * mostra precisa poder pedir outro, senão o dono lê um código morto e
+ * acha que o sistema está quebrado.
+ *
+ * Documentação: https://docs.uazapi.com/reference/connectInstance.md
+ */
+export async function pedirQrCode(conta: ContaUazapi): Promise<Pareamento | null> {
+  const resposta = await fetch(endereco(conta, "/instance/connect"), {
+    method: "POST",
+    headers: { "content-type": "application/json", token: conta.token },
+    body: JSON.stringify({}),
+  });
+  const texto = await resposta.text();
+  if (!resposta.ok) {
+    console.error(`[uazapi] conectar recusado (${resposta.status}): ${texto.slice(0, 300)}`);
+    return null;
+  }
+  try {
+    return lerPareamento(JSON.parse(texto) as RespostaConexao);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Em que pé está o pareamento, com o QR novo se ele tiver trocado.
+ *
+ * A tela pergunta isto de poucos em poucos segundos enquanto o dono
+ * lê o código, para saber a hora de parar de mostrar o QR.
+ */
+export async function conferirPareamento(conta: ContaUazapi): Promise<Pareamento | null> {
+  const resposta = await fetch(endereco(conta, "/instance/status"), {
+    headers: { token: conta.token },
+  });
+  if (!resposta.ok) {
+    console.error(`[uazapi] status recusado (${resposta.status})`);
+    return null;
+  }
+  try {
+    return lerPareamento((await resposta.json()) as RespostaConexao);
+  } catch {
+    return null;
+  }
+}

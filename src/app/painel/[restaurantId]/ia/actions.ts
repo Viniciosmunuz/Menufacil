@@ -8,6 +8,15 @@ import { audit } from "@/server/audit";
 import { requireDono } from "@/server/auth/dal";
 import { falasDaConversa, type Fala } from "@/server/ia/conversas";
 import { iaConfigurada } from "@/server/ia/responder";
+import {
+  apontarWebhook,
+  conferirPareamento,
+  criarInstancia,
+  pedirQrCode,
+  servidorDaConta,
+  type Pareamento,
+} from "@/server/ia/uazapi";
+import { appUrl } from "@/lib/site";
 
 export type EstadoDaAcao = { error?: string; message?: string };
 
@@ -303,4 +312,141 @@ export async function esquecerConversas(
         ? "Pronto: a próxima mensagem do cliente começa uma conversa nova."
         : "Não havia nada guardado.",
   };
+}
+
+/** o que a tela de conexão recebe de volta */
+export type EstadoDaConexao = Pareamento & { error?: string };
+
+/**
+ * O WhatsApp do restaurante, conectado pelo próprio dono.
+ *
+ * Até aqui conectar um número era uma conversa com o suporte: alguém do
+ * MenuFácil criava o canal no painel do provedor, lia o QR e colava o
+ * identificador no admin. Para dois restaurantes isso vai; para vender,
+ * não -- é uma pessoa por cliente novo, e o cliente espera.
+ *
+ * Agora o sistema cria a instância na uazapi, aponta o webhook e
+ * devolve o QR code para o dono ler ali mesmo. A Kapso e a Z-API
+ * continuam sendo conectadas pelo admin: naquelas o canal é criado à
+ * mão no painel do provedor, e não há API de QR code para automatizar.
+ *
+ * **Só cria uma vez.** Cada instância ocupa um lugar no plano da
+ * uazapi: se o restaurante já tem a sua, esta ação reusa o token e só
+ * pede um QR novo. Sem isso, cada toque no botão gastaria um número do
+ * pacote e deixaria uma instância órfã que ninguém lembra de apagar.
+ */
+export async function conectarWhatsapp(restaurantId: string): Promise<EstadoDaConexao> {
+  const vazio = { qrcode: null, paircode: null, conectado: false, status: null };
+  // recebe o id solto, e não um formulário: é o `requireDono` que impede
+  // alguém de conectar um WhatsApp no restaurante de outro
+  const { restaurant, user } = await requireDono(restaurantId);
+
+  if (!restaurant.iaEnabled) {
+    return { ...vazio, error: "O Menu Fácil IA não está liberado para este restaurante." };
+  }
+  if (!servidorDaConta()) {
+    console.error("[ia] conectar pedido sem UAZAPI_SERVER/UAZAPI_ADMIN_TOKEN no ambiente");
+    return { ...vazio, error: "A conexão por aqui ainda não está disponível. Fale com o suporte do MenuFácil." };
+  }
+
+  const atendente = await db.atendenteIa.findUnique({
+    where: { restaurantId: restaurant.id },
+    select: { uazapiBaseUrl: true, uazapiToken: true, phoneNumberId: true, zapiChannelId: true },
+  });
+
+  // Já está em outro caminho: não oferece este. Dois provedores no mesmo
+  // restaurante não se somam -- o segundo roubaria as mensagens do
+  // primeiro, e o dono acharia que a IA ficou maluca.
+  if (atendente?.phoneNumberId || atendente?.zapiChannelId) {
+    return { ...vazio, error: "Este restaurante já está conectado por outro caminho. Fale com o suporte." };
+  }
+
+  let conta = atendente?.uazapiBaseUrl && atendente?.uazapiToken
+    ? { baseUrl: atendente.uazapiBaseUrl, token: atendente.uazapiToken }
+    : null;
+
+  if (!conta) {
+    const criada = await criarInstancia({
+      // o nome é o que aparece no painel da uazapi: sem o id, duas
+      // hamburguerias com o mesmo nome viram um palpite
+      nome: `${restaurant.name} (${restaurant.id.slice(-6)})`,
+      sistema: "MenuFácil",
+    });
+    if (!criada) {
+      return { ...vazio, error: "Não consegui criar a conexão agora. Tente de novo em alguns minutos." };
+    }
+    conta = criada.conta;
+
+    // Grava **antes** de pedir o QR.
+    //
+    // A instância já existe e já custa um lugar no plano: se a gravação
+    // ficasse para depois e o pedido do QR falhasse, ela viraria órfã --
+    // viva no servidor da uazapi e desconhecida aqui, e o próximo toque
+    // no botão criaria outra.
+    await db.atendenteIa.upsert({
+      where: { restaurantId: restaurant.id },
+      update: { uazapiBaseUrl: conta.baseUrl, uazapiToken: conta.token, uazapiInstancia: criada.nome },
+      create: {
+        restaurantId: restaurant.id,
+        uazapiBaseUrl: conta.baseUrl,
+        uazapiToken: conta.token,
+        uazapiInstancia: criada.nome,
+        ignorados: [],
+        semEspera: [],
+      },
+    });
+
+    // O webhook e os filtros de grupo, apontados por nós. Se falhar, a
+    // conexão até acontece, mas nada chega -- então é erro, e não aviso.
+    try {
+      await apontarWebhook({ conta, url: `${appUrl()}/api/uazapi/webhook` });
+    } catch (erro) {
+      console.error("[ia] falha ao apontar o webhook da uazapi:", erro);
+      return { ...vazio, error: "A conexão foi criada, mas algo falhou. Tente de novo." };
+    }
+
+    await audit({
+      actorUserId: user.id,
+      restaurantId: restaurant.id,
+      action: "restaurant.ia.whatsapp",
+      details: { instancia: criada.nome, provedor: "uazapi" },
+    }).catch(() => null);
+  }
+
+  const pareamento = await pedirQrCode(conta);
+  if (!pareamento) {
+    return { ...vazio, error: "Não consegui gerar o QR Code agora. Tente de novo." };
+  }
+  if (pareamento.conectado) refresh();
+  return pareamento;
+}
+
+/**
+ * O QR já foi lido?
+ *
+ * A tela pergunta de poucos em poucos segundos enquanto o dono está com
+ * o celular na mão. O QR da uazapi morre em menos de um minuto, então a
+ * resposta traz o código novo junto quando ele troca -- senão o dono
+ * leria um código morto e acharia que o sistema está quebrado.
+ */
+export async function conferirWhatsapp(restaurantId: string): Promise<EstadoDaConexao> {
+  const vazio = { qrcode: null, paircode: null, conectado: false, status: null };
+  const { restaurant } = await requireDono(restaurantId);
+
+  const atendente = await db.atendenteIa.findUnique({
+    where: { restaurantId: restaurant.id },
+    select: { uazapiBaseUrl: true, uazapiToken: true },
+  });
+  if (!atendente?.uazapiBaseUrl || !atendente.uazapiToken) return vazio;
+
+  const pareamento = await conferirPareamento({
+    baseUrl: atendente.uazapiBaseUrl,
+    token: atendente.uazapiToken,
+  });
+  if (!pareamento) return vazio;
+
+  // Conectou: a página precisa ser montada de novo, porque com WhatsApp
+  // aparecem a chave de ligar a IA e a de anotar pedidos.
+  if (pareamento.conectado) refresh();
+  return pareamento;
 }

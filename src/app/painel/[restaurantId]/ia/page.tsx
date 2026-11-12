@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/panel/page-header";
-import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
@@ -13,6 +12,7 @@ import { conversasDaIa } from "@/server/ia/conversas";
 import { Esquecer, NoCardapio, Pedidos } from "./chaves";
 import { ConversasDaIa } from "./conversas";
 import { ListasDaIa } from "./ignorados";
+import { ConectarWhatsapp } from "./conectar";
 import { LigarIa } from "./ligar";
 
 export const metadata: Metadata = { title: "Menu Fácil IA" };
@@ -94,11 +94,11 @@ export default async function IaPage({
             </p>
           </>
         ) : (
-          <Alert tone="info">
-            O WhatsApp do restaurante ainda não foi conectado — isso é feito
-            pelo suporte do MenuFácil. Enquanto isso, o atendente no cardápio
-            aqui embaixo já funciona.
-          </Alert>
+          /* Sem WhatsApp, o caminho de conectar sozinho -- que existe
+             só na uazapi, onde o QR code tem API. Quem está num dos
+             outros dois provedores nunca cai aqui: ter canal lá já
+             conta como conectado. */
+          <ConectarWhatsapp restaurantId={restaurant.id} />
         )}
       </Card>
 
