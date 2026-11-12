@@ -505,6 +505,10 @@ export async function POST(request: NextRequest) {
   // para achar o restaurante pelo canal e responder pela Z-API
   const evento: MensagemKapso = {
     zapi_channel_id: m.channel_id,
+    // Só de quem escreve de fora: numa mensagem que sai, este nome é o
+    // do próprio restaurante, e passá-lo adiante faria a IA chamar o
+    // cliente pelo nome da loja.
+    push_name: daCasa ? undefined : m.sender?.name?.trim() || undefined,
     message: {
       id: m._id,
       // o atender distingue texto de mídia por este campo

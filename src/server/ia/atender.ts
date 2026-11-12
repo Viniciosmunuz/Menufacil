@@ -174,6 +174,15 @@ export type MensagemKapso = {
     };
   };
   conversation?: { phone_number?: string; business_scoped_user_id?: string };
+  /**
+   * O nome que a pessoa pôs no perfil do WhatsApp.
+   *
+   * Serve para não perguntar o nome de quem já o está mostrando. Vem
+   * cru, do jeito que ela escreveu: às vezes é "Maria Silva", às vezes
+   * é "😎" ou o nome da loja onde trabalha. Quem decide se dá para usar
+   * é a IA, com a instrução que vai junto no contexto.
+   */
+  push_name?: string;
 };
 
 export async function atender(evento: MensagemKapso) {
@@ -519,7 +528,33 @@ export async function atender(evento: MensagemKapso) {
   // Só quando ela anota pedido: num atendente que só tira dúvidas, o
   // endereço do cliente não serve para nada e não tem por que estar no
   // contexto.
-  const cliente = atendente.fazPedidos ? await oQueSabemosDoCliente(restaurantId, telefone) : null;
+  const doBanco = atendente.fazPedidos ? await oQueSabemosDoCliente(restaurantId, telefone) : null;
+
+  /**
+   * O nome do perfil do WhatsApp, e o que fazer com ele.
+   *
+   * Perguntar o nome de quem está com o nome escrito no perfil é a
+   * pergunta mais boba que ela faz -- o WhatsApp mostra "Maria Silva" e
+   * ela pergunta "qual é o seu nome?".
+   *
+   * Mas o campo é livre, e o que vem nem sempre é nome de gente: "😎",
+   * "Zap Lanches", "Eu mesmo", um telefone. Usar cego poria "😎" na
+   * comanda, e a moto sairia com isso escrito.
+   *
+   * Quem decide é a IA, e não uma regra aqui: distinguir "Maria Silva"
+   * de "MMP seller" é exatamente o que ela faz bem, e qualquer regra
+   * que eu escrevesse erraria nos nomes compostos, nos apelidos de
+   * verdade e em quem se chama Hadassa Van-Dúnem.
+   */
+  const doPerfil = atendente.fazPedidos && evento.push_name
+    ? `No perfil do WhatsApp dele está escrito: "${evento.push_name}".\n` +
+      "Se isso parece o nome de uma pessoa, é o nome dele: use nos pedidos e NÃO pergunte o nome." +
+      " Se parece outra coisa — um emoji, o nome de uma loja, um apelido de internet, um número —," +
+      " pergunte se pode anotar o pedido com esse nome mesmo ou se ele prefere outro, e use o que ele responder." +
+      " Em qualquer caso, nunca pergunte o nome duas vezes na mesma conversa."
+    : null;
+
+  const cliente = [doBanco, doPerfil].filter(Boolean).join("\n\n") || null;
 
   const resposta = await responder({
     conhecimento,
