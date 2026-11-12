@@ -52,6 +52,10 @@ type Conteudo = {
   is_group?: boolean;
   /** quando a mensagem foi escrita; o mesmo que `metadata.moment` */
   moment?: number;
+  /** o telefone de quem escreveu, do jeito que a Z-API roteia */
+  phone?: string;
+  /** o identificador da conversa ou do contato na Z-API */
+  identifier?: string;
 };
 type AvisoOmni = {
   messageEventType?: string;
@@ -232,6 +236,27 @@ export async function POST(request: NextRequest) {
   if (novosNaMensagem.length > 0 || novosNoConteudo.length > 0) {
     console.info(
       `[zapi/webhook] campos novos: mensagem=[${novosNaMensagem.join(", ")}] conteudo=[${[...new Set(novosNoConteudo)].join(", ")}]`,
+    );
+  }
+
+  // **Os valores das marcas de grupo, enquanto a trava não acerta.**
+  //
+  // `is_group` chega em todo conteúdo e a trava que o lê nunca disparou,
+  // nem nas mensagens que a IA respondeu no privado de participantes de
+  // grupo. Ou ele não vem `true`, ou não é booleano, ou não quer dizer o
+  // que o nome promete.
+  //
+  // Aqui vão os valores com o tipo de cada um, e só destes campos: dois
+  // sinalizadores e dois identificadores de roteamento. `message` fica
+  // de fora -- é o que a pessoa escreveu, e isso não vai para log.
+  //
+  // Temporário: sai assim que a trava estiver certa.
+  for (const c of m.contents ?? []) {
+    const amostra = { is_group: c.is_group, phone: c.phone, identifier: c.identifier };
+    console.info(
+      `[zapi/webhook] marcas: ${Object.entries(amostra)
+        .map(([k, v]) => `${k}=${typeof v}:${JSON.stringify(v)}`)
+        .join(" ")} · de=${forma(m.sender?.identifier)}`,
     );
   }
 
