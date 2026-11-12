@@ -225,7 +225,39 @@ export async function POST(request: NextRequest) {
   // exemplo é de uma saída. Por isso o registro cru abaixo: a primeira
   // mensagem de verdade confirma (ou desmente) esta leitura.
   const bruto = daCasa ? m.recipient?.identifier : m.sender?.identifier;
-  const telefone = bruto ? soDigitos(bruto) : "";
+
+  /**
+   * **O @lid, e por que ele partia a conversa em duas.**
+   *
+   * O WhatsApp passou a identificar gente por um número próprio, o
+   * `@lid`, em vez do telefone. Ele aparece de um lado só: quando o
+   * cliente escreve, chega o telefone dele; quando o dono responde pelo
+   * celular, o destinatário chega como @lid -- quinze ou mais dígitos,
+   * que não são telefone nenhum.
+   *
+   * Como o identificador é a chave da conversa, os dois lados caíam em
+   * conversas diferentes no banco. A mensagem do dono ia para uma que a
+   * IA nunca olhava, e a trava que a faz calar trinta minutos quando
+   * alguém assume procurava na conversa do cliente e não achava nada.
+   * O dono respondia, ela respondia junto, e o cliente recebia as duas.
+   * Foi exatamente o que aconteceu em 11/11/2026.
+   *
+   * O `phone` do conteúdo é o telefone de verdade, e é ele que manda
+   * quando existir. Sem ele, fica o que veio -- e o log avisa, porque aí
+   * a conversa volta a se partir e é preciso saber.
+   */
+  const ehTelefone = (v: string) => v.length >= 10 && v.length <= 13;
+  const doIdentificador = bruto ? soDigitos(bruto) : "";
+  const doConteudo = (m.contents ?? [])
+    .map((c) => (c.phone ? soDigitos(c.phone) : ""))
+    .find(ehTelefone);
+  const telefone = ehTelefone(doIdentificador) ? doIdentificador : (doConteudo ?? doIdentificador);
+
+  if (doIdentificador && !ehTelefone(doIdentificador) && !doConteudo) {
+    console.warn(
+      `[zapi/webhook] identificador que não é telefone e sem phone no conteúdo · ${forma(bruto)} ${daCasa ? "(saindo)" : "(chegando)"}`,
+    );
+  }
 
   // O tipo do conteúdo vem de dois jeitos.
   //

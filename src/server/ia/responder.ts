@@ -40,7 +40,23 @@ const MODELO_PADRAO = "claude-opus-5-5";
  */
 const ESFORCOS = ["low", "medium", "high"] as const;
 type Esforco = (typeof ESFORCOS)[number];
-const ESFORCO_PADRAO: Esforco = "high";
+/**
+ * Quanto o modelo pensa antes de responder.
+ *
+ * Era `high`, e as respostas levavam de 2 a 5 segundos, com picos de
+ * quase 10. Num chat de WhatsApp isso é muito: o cliente vê "digitando"
+ * sumir e voltar, ou escreve de novo achando que não foi.
+ *
+ * `medium` é o ponto certo para o que ela faz. Anotar pedido é ler o
+ * cardápio e escolher a ferramenta -- não é problema difícil, é problema
+ * com muitos detalhes, e detalhe se resolve com o cardápio no contexto,
+ * não com mais tempo de raciocínio.
+ *
+ * Se algum restaurante tiver cardápio cheio de regra -- pizza meio a
+ * meio, combo que troca item, promoção por horário -- e ela começar a
+ * errar, `IA_ESFORCO=high` na Vercel volta ao que era sem deploy.
+ */
+const ESFORCO_PADRAO: Esforco = "medium";
 
 function esforco(): Esforco {
   const pedido = process.env.IA_ESFORCO?.trim().toLowerCase();
