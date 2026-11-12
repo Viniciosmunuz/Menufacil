@@ -15,6 +15,7 @@ import {
   gerarLinkDaIa,
   salvarCanalZapi,
   salvarContaUazapi,
+  desconectarKapso,
 } from "./ia-actions";
 
 export type EstadoDaIa = {
@@ -24,6 +25,8 @@ export type EstadoDaIa = {
   noChat: boolean;
   /// o canal da Z-API (WhatsApp Web), quando este restaurante usa esse caminho
   zapiChannelId: string | null;
+  /// o número na Kapso, quando este restaurante está preso àquele caminho
+  phoneNumberId: string | null;
   /// o servidor da instância na uazapi, quando é por ela que ele fala
   uazapiBaseUrl: string | null;
   /// o nome da instância no painel da uazapi, só para mostrar aqui
@@ -54,9 +57,10 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [conferido, conferir] = useActionState<AdminFormState, FormData>(conferirConexaoDaIa, {});
   const [canal, mudarCanal] = useActionState<AdminFormState, FormData>(salvarCanalZapi, {});
   const [uazapi, mudarUazapi] = useActionState<AdminFormState, FormData>(salvarContaUazapi, {});
+  const [solto, soltar] = useActionState<AdminFormState, FormData>(desconectarKapso, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [uazapi, canal, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [solto, uazapi, canal, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
@@ -209,6 +213,18 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
                 <input type="hidden" name="restaurantId" value={restaurantId} />
                 <SubmitButton variant="secondary" size="sm">
                   Conferir conexão
+                </SubmitButton>
+              </form>
+            )}
+            {/* Soltar o número daqui é o que libera o restaurante para
+                conectar por outro caminho: enquanto a Kapso estiver
+                presa nele, o sistema o considera conectado e a tela do
+                QR code não aparece para o dono. */}
+            {estado?.phoneNumberId && (
+              <form action={soltar}>
+                <input type="hidden" name="restaurantId" value={restaurantId} />
+                <SubmitButton variant="secondary" size="sm">
+                  Soltar este número
                 </SubmitButton>
               </form>
             )}

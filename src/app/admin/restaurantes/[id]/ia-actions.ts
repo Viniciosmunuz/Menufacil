@@ -274,3 +274,39 @@ export async function salvarContaUazapi(_prev: AdminFormState, formData: FormDat
       : `Conta salva e webhook apontado. O WhatsApp está "${estado}": leia o QR code no painel da uazapi.`,
   };
 }
+
+/**
+ * Solta este restaurante do número da Kapso.
+ *
+ * **Não desconecta nada lá.** O número continua vivo na conta da Kapso;
+ * o que isto apaga é o vínculo com este restaurante, para ele poder ser
+ * conectado por outro caminho. Para voltar, é só gerar outro link de
+ * conexão aqui mesmo.
+ *
+ * Existe porque o caminho da Kapso virou um beco: a Meta recusa o envio
+ * desta conta para números brasileiros (erro 130497), então um
+ * restaurante preso nela recebe mensagem e não consegue responder. Pior,
+ * para o sistema ele conta como conectado -- e por isso a tela de
+ * conectar pelo QR code não aparecia para o dono.
+ */
+export async function desconectarKapso(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+
+  await db.atendenteIa.update({
+    where: { restaurantId },
+    data: {
+      phoneNumberId: null,
+      linkDeConexao: null,
+      numeroExibido: null,
+      // o webhook registrado lá não vale mais para este restaurante; se
+      // ele voltar para a Kapso, é registrado de novo
+      kapsoWebhookId: null,
+    },
+  });
+  refresh();
+  return {
+    ok: true,
+    message: "Número da Kapso solto. O dono já pode conectar o WhatsApp pelo QR code no painel dele.",
+  };
+}
