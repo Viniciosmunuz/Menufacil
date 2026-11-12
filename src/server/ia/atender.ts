@@ -189,7 +189,29 @@ export async function atender(evento: MensagemKapso) {
   const phoneNumberId = evento.phone_number_id;
   const zapiChannelId = evento.zapi_channel_id;
   const m = evento.message;
-  if ((!phoneNumberId && !zapiChannelId) || !m) return;
+  /**
+   * Sem canal não há restaurante, e sem restaurante não há resposta.
+   *
+   * **Esta saída era muda, e é a que mais engana.** Ela acontece antes
+   * de qualquer consulta ao banco, então a mensagem morre em poucos
+   * milissegundos sem deixar nada escrito -- e no log fica igualzinha a
+   * uma conversa normal, com o "chegou em" logo acima e nenhuma
+   * resposta depois.
+   *
+   * Em 11/11/2026 isso custou uma investigação inteira: algumas
+   * conversas eram respondidas em quatro segundos e outras sumiam em
+   * nove milissegundos, no mesmo número e no mesmo minuto. Nove
+   * milissegundos era a pista, porque o banco fica nos Estados Unidos e
+   * nenhuma consulta volta nesse tempo -- a mensagem saía daqui, antes
+   * de qualquer pergunta.
+   */
+  if ((!phoneNumberId && !zapiChannelId) || !m) {
+    console.warn(
+      `[ia] aviso sem canal, não atendido · kapso=${phoneNumberId ? "sim" : "não"}` +
+        ` zapi=${zapiChannelId ? "sim" : "não"} mensagem=${m ? "sim" : "não"}`,
+    );
+    return;
+  }
 
   // O restaurante é achado pelo canal por onde a mensagem entrou, e é o
   // mesmo canal que responde: misturar os dois seria mandar a resposta de

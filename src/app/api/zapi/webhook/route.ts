@@ -420,7 +420,10 @@ export async function POST(request: NextRequest) {
   // o formato dos dois lados, e não o número: é o que diz se a trava
   // acima está vendo o grupo, e dá para ler sem expor a conversa
   console.info(
-    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo}) · de=${forma(de)} para=${forma(para)}` +
+    // `canal` vai junto porque é o que decide se o atendimento consegue
+    // achar o restaurante: sem ele a mensagem morre lá dentro em
+    // milissegundos, e no log fica idêntica a uma que foi atendida.
+    `[zapi/webhook] ${daCasa ? "saiu" : "chegou"} em …${telefone.slice(-4)} (${tipo}) · de=${forma(de)} para=${forma(para)} canal=${m.channel_id ? "sim" : "NÃO"}` +
       (telefone ? "" : ` · sem telefone, payload: ${JSON.stringify(m).slice(0, 400)}`),
   );
 
