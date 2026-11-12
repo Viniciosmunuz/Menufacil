@@ -7,7 +7,7 @@ import { appUrl } from "@/lib/site";
 import { statusNoticeText } from "@/server/whatsapp/messages";
 
 import { variantes } from "./telefone";
-import { canalConfigurado, enviarTexto } from "./zapi";
+import { canalDo, enviarTexto, type DadosDoCanal } from "./canal";
 
 import type { OrderStatus, OrderType } from "@/generated/prisma/enums";
 
@@ -31,22 +31,27 @@ import type { OrderStatus, OrderType } from "@/generated/prisma/enums";
  * registrado; um WhatsApp que não sai vira log, não vira erro.
  */
 /**
- * O canal deste restaurante é o canal pelo qual este servidor envia?
+ * Por onde este restaurante fala com o cliente.
  *
- * O envio sai sempre pelo `ZAPI_CHANNEL_ID` do ambiente, que é um por
- * instalação. Hoje só existe um número e a pergunta é sempre sim; no dia
- * em que um segundo restaurante conectar o dele, esta conferência é o que
- * impede o aviso de um sair pelo WhatsApp do outro -- falha visível e
- * registrada, em vez de mensagem na conversa errada.
+ * Os três caminhos servem (Kapso, Z-API, uazapi), e quem escolhe é o
+ * `canal`: o restaurante tem um configurado, e é por ele que o aviso
+ * sai. Sem canal montado não há por onde falar, e o aviso simplesmente
+ * não acontece -- quem avisa o cliente volta a ser o dono, no dedo.
+ *
+ * Isto era uma conferência só da Z-API. Ficou errado no dia em que
+ * passou a existir um terceiro provedor: um restaurante na uazapi
+ * deixaria de receber "pagamento confirmado" e "saiu para entrega" sem
+ * que nada no log dissesse por quê.
  */
-function ehONossoCanal(zapiChannelId: string | null) {
-  const nosso = canalConfigurado();
-  if (!zapiChannelId || !nosso) return false;
-  if (zapiChannelId !== nosso) {
-    console.warn(`[ia] o canal do restaurante (…${zapiChannelId.slice(-6)}) não é o deste servidor: não vou avisar o cliente`);
-    return false;
-  }
-  return true;
+const CAMPOS_DO_CANAL = {
+  phoneNumberId: true,
+  zapiChannelId: true,
+  uazapiBaseUrl: true,
+  uazapiToken: true,
+} as const;
+
+function canalPara(ia: DadosDoCanal | null | undefined) {
+  return ia ? canalDo(ia) : null;
 }
 
 export async function avisarClienteDoPagamento(orderId: string) {
@@ -61,7 +66,12 @@ export async function avisarClienteDoPagamento(orderId: string) {
       customerWhatsapp: true,
       feitoPelaIa: true,
       restaurantId: true,
-      restaurant: { select: { iaEnabled: true, atendenteIa: { select: { zapiChannelId: true, ativo: true } } } },
+      restaurant: {
+        select: {
+          iaEnabled: true,
+          atendenteIa: { select: { ...CAMPOS_DO_CANAL, ativo: true } },
+        },
+      },
     },
   });
 
@@ -72,7 +82,9 @@ export async function avisarClienteDoPagamento(orderId: string) {
   // brasileiros, que é o motivo de toda esta camada existir.
   if (!noAr("iaEnabled") || !pedido.restaurant.iaEnabled) return;
   const ia = pedido.restaurant.atendenteIa;
-  if (!ia?.ativo || !ehONossoCanal(ia.zapiChannelId)) return;
+  if (!ia?.ativo) return;
+  const canal = canalPara(ia);
+  if (!canal) return;
 
   // Sem link de acompanhamento aqui.
   //
@@ -99,7 +111,8 @@ export async function avisarClienteDoPagamento(orderId: string) {
   ].join("\n");
 
   try {
-    await enviarTexto({ telefone: pedido.customerWhatsapp, texto });
+    const foi = await enviarTexto(canal, { telefone: pedido.customerWhatsapp, texto });
+    if (!foi) return;
   } catch (erro) {
     console.error(`[ia] falha ao avisar o pagamento do pedido #${pedido.number}:`, erro);
     return;
@@ -144,9 +157,12 @@ export async function iaAvisaOCliente(restaurantId: string) {
   if (!noAr("iaEnabled")) return false;
   const r = await db.restaurant.findUnique({
     where: { id: restaurantId },
-    select: { iaEnabled: true, atendenteIa: { select: { ativo: true, zapiChannelId: true } } },
+    select: {
+      iaEnabled: true,
+      atendenteIa: { select: { ativo: true, ...CAMPOS_DO_CANAL } },
+    },
   });
-  return Boolean(r?.iaEnabled && r.atendenteIa?.ativo && ehONossoCanal(r.atendenteIa.zapiChannelId));
+  return Boolean(r?.iaEnabled && r.atendenteIa?.ativo && canalPara(r.atendenteIa));
 }
 
 /**
@@ -182,7 +198,7 @@ export async function avisarStatusDoPedido(orderId: string, status: OrderStatus)
           name: true,
           entregadorEnabled: true,
           iaEnabled: true,
-          atendenteIa: { select: { ativo: true, zapiChannelId: true, ignorados: true } },
+          atendenteIa: { select: { ativo: true, ...CAMPOS_DO_CANAL, ignorados: true } },
         },
       },
     },
@@ -191,7 +207,9 @@ export async function avisarStatusDoPedido(orderId: string, status: OrderStatus)
 
   const r = pedido.restaurant;
   const ia = r.atendenteIa;
-  if (!noAr("iaEnabled") || !r.iaEnabled || !ia?.ativo || !ehONossoCanal(ia.zapiChannelId)) return;
+  if (!noAr("iaEnabled") || !r.iaEnabled || !ia?.ativo) return;
+  const canal = canalPara(ia);
+  if (!canal) return;
 
   // a lista de quem a IA nunca responde vale aqui também: é o celular do
   // dono, da família, de quem não quer saber de robô
@@ -202,7 +220,8 @@ export async function avisarStatusDoPedido(orderId: string, status: OrderStatus)
   if (!texto) return;
 
   try {
-    await enviarTexto({ telefone: pedido.customerWhatsapp, texto });
+    const foi = await enviarTexto(canal, { telefone: pedido.customerWhatsapp, texto });
+    if (!foi) return;
   } catch (erro) {
     console.error(`[ia] falha ao avisar o status do pedido #${pedido.number}:`, erro);
     return;

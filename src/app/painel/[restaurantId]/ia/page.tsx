@@ -45,6 +45,7 @@ export default async function IaPage({
         noChat: true,
         phoneNumberId: true,
         zapiChannelId: true,
+        uazapiToken: true,
         numeroExibido: true,
         ignorados: true,
         semEspera: true,
@@ -53,11 +54,11 @@ export default async function IaPage({
     conversasDaIa(restaurant.id),
   ]);
 
-  // Conectado por qualquer um dos dois caminhos. Sem WhatsApp, o chat do
+  // Conectado por qualquer um dos três caminhos. Sem WhatsApp, o chat do
   // cardápio ainda funciona -- ele não depende de conexão nenhuma --, e é
   // por isso que a página não some.
   const comWhatsapp = Boolean(
-    atendente?.phoneNumberId || atendente?.zapiChannelId,
+    atendente?.phoneNumberId || atendente?.zapiChannelId || atendente?.uazapiToken,
   );
 
   return (

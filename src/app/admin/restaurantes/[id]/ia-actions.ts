@@ -16,6 +16,7 @@ import {
   atualizarEventosDoWebhook,
   registrarWebhook,
 } from "@/server/ia/kapso";
+import { apontarWebhook, estadoDaInstancia } from "@/server/ia/uazapi";
 
 import type { AdminFormState } from "../actions";
 
@@ -170,3 +171,106 @@ export async function salvarCanalZapi(_prev: AdminFormState, formData: FormData)
   };
 }
 
+/**
+ * Liga este restaurante a uma instância da uazapi.
+ *
+ * O terceiro caminho, e o mais barato por número: a Z-API cobra por
+ * canal (cerca de R$ 100, o preço do plano Essencial inteiro) e a uazapi
+ * cobra por servidor -- até 100 números por R$ 138. Para um sistema que
+ * é vendido a restaurantes, é a diferença entre poder oferecer a Lia a
+ * todo cliente e não poder.
+ *
+ * **O token faz dois trabalhos.** É a credencial de envio e é o que o
+ * webhook usa para descobrir de qual restaurante é a mensagem: a uazapi
+ * manda esse mesmo token no corpo de cada aviso. Achar o restaurante por
+ * ele é, ao mesmo tempo, provar que o aviso é legítimo -- quem não sabe
+ * o token não consegue se passar por ninguém numa rota que é pública.
+ *
+ * Diferente da Z-API, aqui o webhook é apontado **daqui mesmo**, junto
+ * com os filtros que descartam mensagem de grupo antes de ela sair do
+ * servidor deles. Ninguém precisa abrir o painel da uazapi para
+ * configurar nada, e por isso ninguém esquece.
+ */
+export async function salvarContaUazapi(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  await requireAdmin();
+  const restaurantId = String(formData.get("restaurantId") ?? "");
+  const baseUrl = String(formData.get("baseUrl") ?? "").trim().replace(/\/+$/, "");
+  const token = String(formData.get("token") ?? "").trim();
+  const instancia = String(formData.get("instancia") ?? "").trim();
+
+  // Apagar os dois campos é como desligar: o restaurante volta para o
+  // canal que tiver sobrado (Z-API ou Kapso).
+  if (!baseUrl && !token) {
+    await db.atendenteIa.update({
+      where: { restaurantId },
+      data: { uazapiBaseUrl: null, uazapiToken: null, uazapiInstancia: null },
+    }).catch(() => null);
+    refresh();
+    return { ok: true, message: "Conta da uazapi removida." };
+  }
+
+  if (!baseUrl || !token) {
+    return { error: "Preencha os dois: o servidor e o token da instância." };
+  }
+  // Endereço errado aqui vira mensagem que não sai e webhook que nunca
+  // chega, sem nada no log explicando. Melhor barrar na hora de colar.
+  if (!/^https:\/\/[a-z0-9.-]+$/i.test(baseUrl)) {
+    return { error: "O servidor deve ser o endereço https da sua instância, como https://abc.uazapi.com." };
+  }
+
+  // Dois restaurantes na mesma instância responderiam um pelo outro: o
+  // banco barra pelo índice único, e aqui a mensagem explica o porquê.
+  const jaUsado = await db.atendenteIa.findFirst({
+    where: { uazapiToken: token, NOT: { restaurantId } },
+    select: { restaurant: { select: { name: true } } },
+  });
+  if (jaUsado) {
+    return { error: `Essa instância já está em ${jaUsado.restaurant.name}. Cada restaurante precisa do próprio WhatsApp.` };
+  }
+
+  // Fala com a uazapi **antes** de gravar.
+  //
+  // Token errado guardado é o pior dos mundos: a tela diz "salvo", o
+  // dono liga a IA, e as mensagens somem sem erro nenhum à vista. Uma
+  // chamada de verdade agora troca isso por uma mensagem clara aqui.
+  const conta = { baseUrl, token };
+  let estado: string | null = null;
+  try {
+    estado = await estadoDaInstancia(conta);
+  } catch (erro) {
+    console.error("[admin] uazapi não respondeu:", erro);
+    return { error: "Não consegui falar com a uazapi: confira o servidor e o token." };
+  }
+  if (estado === null) {
+    return { error: "A uazapi recusou essas credenciais: confira o servidor e o token." };
+  }
+
+  try {
+    await apontarWebhook({ conta, url: `${appUrl()}/api/uazapi/webhook` });
+  } catch (erro) {
+    console.error("[admin] falha ao apontar o webhook da uazapi:", erro);
+    return { error: "As credenciais valem, mas não consegui apontar o webhook. Tente de novo." };
+  }
+
+  await db.atendenteIa.upsert({
+    where: { restaurantId },
+    update: { uazapiBaseUrl: baseUrl, uazapiToken: token, uazapiInstancia: instancia || null },
+    create: {
+      restaurantId,
+      uazapiBaseUrl: baseUrl,
+      uazapiToken: token,
+      uazapiInstancia: instancia || null,
+      ignorados: [],
+      semEspera: [],
+    },
+  });
+  refresh();
+
+  const conectada = estado === "connected";
+  return {
+    ok: true,
+    message: conectada
+      ? "Conta da uazapi salva e webhook apontado. O WhatsApp está conectado."
+      : `Conta salva e webhook apontado. O WhatsApp está "${estado}": leia o QR code no painel da uazapi.`,
+  };
+}

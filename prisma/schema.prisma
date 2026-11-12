@@ -1664,6 +1664,24 @@ model AtendenteIa {
   /// numeros brasileiros (130497). Tambem unico: e por ele que o webhook
   /// descobre de qual restaurante e a mensagem.
   zapiChannelId   String? @unique
+
+  /// O servidor da instancia na uazapi, por exemplo https://abc.uazapi.com.
+  ///
+  /// Cada conta da uazapi recebe um subdominio proprio, e e por ele que
+  /// este servidor chama a API. Fica por restaurante porque nada impede
+  /// dois restaurantes em servidores diferentes.
+  uazapiBaseUrl   String?
+  /// O token da instancia na uazapi. Nunca sai do servidor.
+  ///
+  /// Faz dois trabalhos num campo so: e a credencial de envio e e o que
+  /// o webhook usa para descobrir de qual restaurante e a mensagem --
+  /// a uazapi manda este mesmo token no corpo de cada aviso. Achar o
+  /// restaurante por ele e, ao mesmo tempo, provar que o aviso e
+  /// legitimo: quem nao sabe o token nao consegue se passar por outro.
+  uazapiToken     String? @unique
+  /// o nome da instancia no painel da uazapi, so para a tela do admin
+  uazapiInstancia String?
+
   numeroExibido   String?
   /// o webhook registrado na Kapso para este numero (evita registrar duas vezes)
   kapsoWebhookId  String?

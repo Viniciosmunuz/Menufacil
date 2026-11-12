@@ -161,12 +161,12 @@ export async function ligarIaDoRestaurante(
 
   const atendente = await db.atendenteIa.findUnique({
     where: { restaurantId: restaurant.id },
-    select: { phoneNumberId: true, zapiChannelId: true },
+    select: { phoneNumberId: true, zapiChannelId: true, uazapiToken: true },
   });
-  // Vale por qualquer um dos dois caminhos: o número da Kapso ou o canal da
-  // Z-API. Exigir só o da Kapso travava quem está na Z-API, que é por onde
-  // a IA responde hoje.
-  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId)
+  // Vale por qualquer um dos três caminhos: o número da Kapso, o canal
+  // da Z-API ou a instância da uazapi. Exigir só o da Kapso travava quem
+  // está nos outros -- que é por onde a IA responde hoje.
+  if (!atendente?.phoneNumberId && !atendente?.zapiChannelId && !atendente?.uazapiToken)
     return {
       error:
         "O WhatsApp ainda não foi conectado. Fale com o suporte do MenuFácil.",

@@ -64,7 +64,22 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
       },
       _count: { select: { products: true, orders: true, menuCategories: true } },
       // o segredo do webhook e o id da Kapso nunca descem para a tela
-      atendenteIa: { select: { ativo: true, fazPedidos: true, noChat: true, zapiChannelId: true, linkDeConexao: true, numeroExibido: true, phoneNumberId: true } },
+      atendenteIa: {
+        select: {
+          ativo: true,
+          fazPedidos: true,
+          noChat: true,
+          zapiChannelId: true,
+          uazapiBaseUrl: true,
+          uazapiInstancia: true,
+          // só se existe, nunca o valor: o token é credencial e não
+          // desce para o navegador
+          uazapiToken: true,
+          linkDeConexao: true,
+          numeroExibido: true,
+          phoneNumberId: true,
+        },
+      },
     },
   });
   if (!restaurant) notFound();
@@ -238,13 +253,20 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
                     fazPedidos: restaurant.atendenteIa.fazPedidos,
                     noChat: restaurant.atendenteIa.noChat,
                     zapiChannelId: restaurant.atendenteIa.zapiChannelId,
+                    uazapiBaseUrl: restaurant.atendenteIa.uazapiBaseUrl,
+                    uazapiInstancia: restaurant.atendenteIa.uazapiInstancia,
+                    temUazapi: Boolean(restaurant.atendenteIa.uazapiToken),
                     linkDeConexao: restaurant.atendenteIa.linkDeConexao,
                     numeroExibido: restaurant.atendenteIa.numeroExibido,
                     // Conectado é ter WhatsApp por *algum* caminho. Olhar só
                     // o número da Kapso escondia os passos "Ligar a IA" e
                     // "Pedidos pela IA" de quem está na Z-API -- justamente
                     // de quem saiu da Kapso por causa do bloqueio da Meta.
-                    conectado: Boolean(restaurant.atendenteIa.phoneNumberId || restaurant.atendenteIa.zapiChannelId),
+                    conectado: Boolean(
+                      restaurant.atendenteIa.phoneNumberId ||
+                        restaurant.atendenteIa.zapiChannelId ||
+                        restaurant.atendenteIa.uazapiToken,
+                    ),
                     liberada: restaurant.iaEnabled,
                   }
                 : {
@@ -254,6 +276,9 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
                     fazPedidos: false,
                     noChat: false,
                     zapiChannelId: null,
+                    uazapiBaseUrl: null,
+                    uazapiInstancia: null,
+                    temUazapi: false,
                     linkDeConexao: null,
                     numeroExibido: null,
                     conectado: false,

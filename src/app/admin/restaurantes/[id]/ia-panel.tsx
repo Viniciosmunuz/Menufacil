@@ -10,7 +10,12 @@ import { Card } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 import type { AdminFormState } from "../actions";
-import { conferirConexaoDaIa, gerarLinkDaIa, salvarCanalZapi } from "./ia-actions";
+import {
+  conferirConexaoDaIa,
+  gerarLinkDaIa,
+  salvarCanalZapi,
+  salvarContaUazapi,
+} from "./ia-actions";
 
 export type EstadoDaIa = {
   ativo: boolean;
@@ -19,6 +24,12 @@ export type EstadoDaIa = {
   noChat: boolean;
   /// o canal da Z-API (WhatsApp Web), quando este restaurante usa esse caminho
   zapiChannelId: string | null;
+  /// o servidor da instância na uazapi, quando é por ela que ele fala
+  uazapiBaseUrl: string | null;
+  /// o nome da instância no painel da uazapi, só para mostrar aqui
+  uazapiInstancia: string | null;
+  /// se a conta da uazapi está preenchida (o token nunca sai do servidor)
+  temUazapi: boolean;
   linkDeConexao: string | null;
   numeroExibido: string | null;
   conectado: boolean;
@@ -42,9 +53,10 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
   const [gerado, gerar] = useActionState<AdminFormState, FormData>(gerarLinkDaIa, {});
   const [conferido, conferir] = useActionState<AdminFormState, FormData>(conferirConexaoDaIa, {});
   const [canal, mudarCanal] = useActionState<AdminFormState, FormData>(salvarCanalZapi, {});
+  const [uazapi, mudarUazapi] = useActionState<AdminFormState, FormData>(salvarContaUazapi, {});
   const [copiou, setCopiou] = useState(false);
 
-  const ultimo = [canal, conferido, gerado].find((s) => s.error || s.message);
+  const ultimo = [uazapi, canal, conferido, gerado].find((s) => s.error || s.message);
 
   return (
     <Card>
@@ -69,6 +81,59 @@ export function IaPanel({ restaurantId, estado }: { restaurantId: string; estado
           </Alert>
         )}
 
+        {/* O caminho da uazapi (WhatsApp Web, por QR code).
+
+            É o mais barato por número -- a Z-API cobra por canal, perto de
+            R$ 100, e a uazapi cobra por servidor, até 100 números por
+            R$ 138 --, e é onde devem nascer os restaurantes novos.
+
+            Aqui o webhook é apontado pelo próprio sistema ao salvar,
+            junto com os filtros que descartam mensagem de grupo antes de
+            sair do servidor deles. Não há nada a configurar no painel da
+            uazapi além de ler o QR code. */}
+        <div className="flex flex-col gap-2">
+          <p className="flex items-center gap-2 text-sm font-extrabold">
+            WhatsApp pela uazapi
+            {estado?.temUazapi ? <Badge tone="success">Ligado</Badge> : <Badge>Sem conta</Badge>}
+          </p>
+          <p className="text-sm text-muted">
+            Crie a instância no painel da uazapi, leia o QR code com o celular do restaurante e cole aqui o
+            endereço do servidor e o token da instância. O webhook é apontado por nós ao salvar.
+          </p>
+          <form action={mudarUazapi} className="flex flex-col gap-2">
+            <input type="hidden" name="restaurantId" value={restaurantId} />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                name="baseUrl"
+                defaultValue={estado?.uazapiBaseUrl ?? ""}
+                placeholder="https://abc.uazapi.com"
+                className="h-11 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 font-mono text-sm outline-none focus:border-brand"
+              />
+              <input
+                name="instancia"
+                defaultValue={estado?.uazapiInstancia ?? ""}
+                placeholder="nome da instância"
+                className="h-11 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 text-sm outline-none focus:border-brand"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* O token é segredo: nunca volta preenchido do servidor, e
+                  por isso o campo nasce vazio mesmo com a conta ligada. */}
+              <input
+                name="token"
+                type="password"
+                autoComplete="off"
+                placeholder={estado?.temUazapi ? "token salvo — cole de novo para trocar" : "token da instância"}
+                className="h-11 min-w-0 flex-1 rounded-control border border-line bg-surface px-3 font-mono text-sm outline-none focus:border-brand"
+              />
+              <SubmitButton variant="secondary" size="sm">
+                Salvar conta
+              </SubmitButton>
+            </div>
+          </form>
+        </div>
+
+        <div className="border-t border-line pt-4" />
         {/* O caminho da Z-API (WhatsApp Web, por QR code). É o que funciona
             hoje: a Meta recusa o envio desta conta para números
             brasileiros. O canal é criado e pareado no painel da Z-API --

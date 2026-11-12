@@ -7,10 +7,11 @@ import { isOpenNow } from "@/lib/opening-hours";
 import { avisarClienteChamou } from "@/server/push/avisos";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
-import { enviarTexto as enviarPelaKapso } from "./kapso";
+import { canalDo, enviarImagem as enviarImagemPeloCanal, enviarTexto as enviarTextoPeloCanal, ondeAchar } from "./canal";
 import { oQueSabemosDoCliente, pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
-import { enviarImagem as enviarImagemPelaZapi, enviarTexto as enviarPelaZapi } from "./zapi";
+
+
 
 // O atendimento de uma mensagem que chegou pelo WhatsApp do restaurante.
 //
@@ -150,16 +151,19 @@ export function estaNaLista(lista: string[], telefone: string) {
 /**
  * O pedaço do aviso que o atendimento usa (formato v2 da Kapso).
  *
- * A Z-API fala outro idioma, e por isso o webhook dela traduz para este
- * formato antes de chamar o `atender()` -- assim as travas, o histórico e
- * os pedidos continuam num lugar só, sem saber qual provedor trouxe a
- * mensagem. O que diz quem é quem são os dois campos de canal:
- * `phone_number_id` para a Kapso, `zapi_channel_id` para a Z-API.
+ * A Z-API e a uazapi falam outro idioma, e por isso o webhook de cada
+ * uma traduz para este formato antes de chamar o `atender()` -- assim as
+ * travas, o histórico e os pedidos continuam num lugar só, sem saber
+ * qual provedor trouxe a mensagem. O que diz quem é quem são os três
+ * campos de canal: `phone_number_id` para a Kapso, `zapi_channel_id`
+ * para a Z-API e `uazapi_token` para a uazapi. Vem um só.
  */
 export type MensagemKapso = {
   phone_number_id?: string;
   /** o canal da Z-API; quando vem, é por ele que a resposta sai */
   zapi_channel_id?: string;
+  /** o token da instância na uazapi; mesma ideia, terceiro caminho */
+  uazapi_token?: string;
   message?: {
     id?: string;
     type?: string;
@@ -186,8 +190,7 @@ export type MensagemKapso = {
 };
 
 export async function atender(evento: MensagemKapso) {
-  const phoneNumberId = evento.phone_number_id;
-  const zapiChannelId = evento.zapi_channel_id;
+  const onde = ondeAchar(evento);
   const m = evento.message;
   /**
    * Sem canal não há restaurante, e sem restaurante não há resposta.
@@ -205,10 +208,11 @@ export async function atender(evento: MensagemKapso) {
    * nenhuma consulta volta nesse tempo -- a mensagem saía daqui, antes
    * de qualquer pergunta.
    */
-  if ((!phoneNumberId && !zapiChannelId) || !m) {
+  if (!onde || !m) {
     console.warn(
-      `[ia] aviso sem canal, não atendido · kapso=${phoneNumberId ? "sim" : "não"}` +
-        ` zapi=${zapiChannelId ? "sim" : "não"} mensagem=${m ? "sim" : "não"}`,
+      `[ia] aviso sem canal, não atendido · kapso=${evento.phone_number_id ? "sim" : "não"}` +
+        ` zapi=${evento.zapi_channel_id ? "sim" : "não"}` +
+        ` uazapi=${evento.uazapi_token ? "sim" : "não"} mensagem=${m ? "sim" : "não"}`,
     );
     return;
   }
@@ -217,17 +221,29 @@ export async function atender(evento: MensagemKapso) {
   // mesmo canal que responde: misturar os dois seria mandar a resposta de
   // um restaurante pelo WhatsApp de outro.
   const atendente = await db.atendenteIa.findUnique({
-    where: zapiChannelId ? { zapiChannelId } : { phoneNumberId },
+    where: onde,
     select: {
       restaurantId: true,
       ativo: true,
       fazPedidos: true,
       ignorados: true,
       semEspera: true,
+      phoneNumberId: true,
+      zapiChannelId: true,
+      uazapiBaseUrl: true,
+      uazapiToken: true,
     },
   });
   if (!atendente) return;
   const { restaurantId } = atendente;
+
+  // Por onde responder: o mesmo caminho por onde a mensagem entrou.
+  // Daqui para baixo nada mais sabe qual provedor está no meio.
+  const canal = canalDo(atendente, evento);
+  if (!canal) {
+    console.warn(`[ia] restaurante ${restaurantId} sem canal montado, sem resposta`);
+    return;
+  }
 
   // Quem está do outro lado. O telefone é o que serve para responder; os
   // avisos novos da Meta podem vir só com o id do usuário.
@@ -350,28 +366,25 @@ export async function atender(evento: MensagemKapso) {
   /** manda pelo canal por onde a conversa chegou e guarda no histórico */
   const enviar = async (saida: Saida) => {
     if (typeof saida !== "string") {
-      // Imagem só pela Z-API: é o canal em uso, e é o único com endpoint de
-      // imagem montado aqui. Pela Kapso o cliente continua recebendo o
-      // código copia e cola, que resolve sozinho -- melhor do que falhar.
-      if (!zapiChannelId || !telefone) return true;
+      // Canal que não manda imagem não é falha: pela Kapso o cliente
+      // continua recebendo o código copia e cola do Pix, que resolve
+      // sozinho -- melhor do que deixar de responder.
+      let foi = false;
       try {
-        await enviarImagemPelaZapi({ telefone, url: saida.imagem });
+        foi = await enviarImagemPeloCanal(canal, { telefone, url: saida.imagem });
       } catch (erro) {
         // Imagem que não sobe não pode derrubar o Pix: o código de texto
         // vem logo atrás e é ele que o cliente precisa.
         console.error("[ia] falha ao mandar a imagem:", erro);
         return true;
       }
+      if (!foi) return true;
       await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto: MARCA_IMAGEM } });
       return true;
     }
     const texto = saida;
-    if (zapiChannelId) {
-      if (!telefone) return false;
-      await enviarPelaZapi({ telefone, texto });
-    } else {
-      await enviarPelaKapso({ phoneNumberId: phoneNumberId!, telefone, usuario, texto });
-    }
+    const foi = await enviarTextoPeloCanal(canal, { telefone, usuario, texto });
+    if (!foi) return false;
     await db.iaMensagem.create({ data: { restaurantId, contato, papel: "IA", texto } });
     return true;
   };
