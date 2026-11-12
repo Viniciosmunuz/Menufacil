@@ -225,7 +225,19 @@ export async function atender(evento: MensagemKapso) {
 
   // Número da lista do dono (a família, os amigos): a IA não existe para
   // eles. Nem responde, nem guarda.
-  if (telefone && estaNaLista(atendente.ignorados, telefone)) return;
+  //
+  // **Sai anotando.** Esta trava era silenciosa, e silêncio aqui é caro:
+  // do lado de fora, número ignorado e sistema quebrado parecem a mesma
+  // coisa -- a mensagem chega, nada volta. Em 11/11/2026 levou meia
+  // hora de investigação para descobrir que uma conversa sem resposta
+  // era simplesmente um número que estava na lista.
+  //
+  // Só o fim do número, como em todo log deste caminho: serve para
+  // reconhecer qual é, não para virar agenda.
+  if (telefone && estaNaLista(atendente.ignorados, telefone)) {
+    console.info(`[ia] número na lista de ignorados, sem resposta · …${telefone.slice(-4)}`);
+    return;
+  }
 
   /**
    * O restaurante está aberto agora?
