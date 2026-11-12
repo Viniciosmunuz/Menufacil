@@ -59,8 +59,30 @@ const RESPOSTAS_POR_HORA = 15;
  * passe livre.
  */
 const RESPOSTAS_POR_HORA_TESTE = 60;
-/** quanto da conversa a IA lê para ter contexto */
-const HISTORICO = 12;
+/**
+ * Quanto da conversa a IA lê para ter contexto.
+ *
+ * **Eram 12, e 12 não dá para anotar um pedido.** Conte uma conversa
+ * comum: "oi" (1), ela responde (2), o cliente diz o item (3), ela
+ * pergunta o tamanho (4), ele responde (5), ela oferece bebida (6), ele
+ * responde (7), entrega ou retirada (8), ele responde (9), o endereço
+ * (10), ela confere (11), a forma de pagamento (12). O item que ele
+ * pediu já saiu da janela antes de o pedido fechar -- e ela pergunta de
+ * novo o que ele acabou de dizer, ou pior, monta o pedido sem ele.
+ *
+ * Aconteceu em 11/11/2026, e o log mostrava sem margem para dúvida: a
+ * conversa crescia 1, 3, 5, 7, 9, 11, 12, 12, 12, 12 -- parada no teto
+ * enquanto o cliente continuava falando.
+ *
+ * Quarenta cobre um pedido inteiro com folga, inclusive os que mudam de
+ * ideia no meio. O custo é pequeno perto do que já vai em cada chamada:
+ * mensagem de WhatsApp tem poucas dezenas de tokens, e o cardápio, que é
+ * o grosso do pedido, viaja no bloco em cache.
+ *
+ * O teto continua existindo, e a pausa abaixo também: conversa de
+ * ontem não entra na de hoje.
+ */
+const HISTORICO = 40;
 /** parada maior que isto na conversa e a próxima mensagem começa outra */
 const PAUSA_NOVA_CONVERSA_H = 4;
 /**
