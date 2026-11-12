@@ -82,11 +82,20 @@ export async function avisarClienteDoPagamento(orderId: string) {
   // para a conversa perguntando se deu certo. Quem manda o link é o
   // aviso de pedido aceito, logo adiante neste arquivo, quando já existe
   // o que acompanhar.
+  // Este aviso fala do dinheiro, e só dele.
+  //
+  // Dizia "já foi para a cozinha", o que não era verdade ainda: o Pix
+  // cair não faz ninguém aceitar o pedido. Quem conta que a cozinha
+  // começou é o aviso de aceite, logo adiante neste arquivo, quando o
+  // restaurante de fato aceitou. Cada aviso com um assunto só -- senão o
+  // cliente recebe a mesma notícia duas vezes e nenhuma delas no momento
+  // em que ela é verdade.
   const primeiroNome = pedido.customerName.trim().split(/\s+/)[0];
   const texto = [
     `Pagamento confirmado, ${primeiroNome}! ✅`,
     "",
-    `Seu pedido *#${pedido.number}* de ${formatCents(pedido.totalCents)} já foi para a cozinha.`,
+    `Recebemos o Pix do pedido *#${pedido.number}*, de ${formatCents(pedido.totalCents)}.`,
+    "Avisamos assim que o restaurante confirmar.",
   ].join("\n");
 
   try {

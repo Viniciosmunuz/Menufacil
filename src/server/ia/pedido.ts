@@ -378,8 +378,24 @@ async function criarPedido(ctx: ContextoDoPedido): Promise<ResultadoDaFerramenta
 
   const base = `Pedido #${pedido.number} criado, total ${formatCents(pedido.totalCents)}.`;
   if (pedido.paymentMethod !== "PIX") {
+    // **Quem dá o pedido por confirmado é o restaurante, não ela.**
+    //
+    // Até aqui ela dizia "o restaurante já recebeu o seu pedido" na hora
+    // de criar, e minutos depois chegava o aviso de aceite dizendo
+    // "confirmado!". Duas mensagens anunciando a mesma coisa, e a
+    // primeira prometendo algo que ainda não tinha acontecido: o pedido
+    // estava no painel, ninguém tinha olhado.
+    //
+    // Ela segue respondendo -- o cliente acabou de dizer "sim" e ficar
+    // calada seria pior --, mas o que ela diz agora é que anotou e que
+    // avisa quando sair a confirmação. O "confirmado" fica para o aviso
+    // de aceite, que é quando alguém de fato aceitou.
     return {
-      texto: `${base} O pagamento é na ${pedido.type === "DELIVERY" ? "entrega" : "retirada"}. Diga o número ao cliente e que o restaurante já recebeu o pedido.`,
+      texto:
+        `${base} O pagamento é na ${pedido.type === "DELIVERY" ? "entrega" : "retirada"}.` +
+        " Diga o número do pedido ao cliente e que você já mandou para o restaurante." +
+        " NÃO diga que está confirmado nem que o restaurante já recebeu: ele ainda vai aceitar," +
+        " e quem avisa isso é o sistema, numa mensagem própria. Diga que você avisa assim que sair a confirmação.",
     };
   }
   const pix = await instrucoesDoPix(ctx, pedido.id, true);
