@@ -37,7 +37,22 @@ const IDADE_MAXIMA_MIN = 30;
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-type Conteudo = { type?: string; "@class"?: string; message?: string };
+type Conteudo = {
+  type?: string;
+  "@class"?: string;
+  message?: string;
+  /**
+   * A mensagem veio de um grupo.
+   *
+   * A Z-API manda isto em todo conteúdo e não documenta. Foi encontrado
+   * em 11/11/2026, com um log que anota os nomes dos campos que chegam e
+   * que este arquivo não lê -- é a resposta para a pergunta que estava
+   * escrita aqui desde que a trava de grupo foi montada no escuro.
+   */
+  is_group?: boolean;
+  /** quando a mensagem foi escrita; o mesmo que `metadata.moment` */
+  moment?: number;
+};
 type AvisoOmni = {
   messageEventType?: string;
   message?: {
@@ -239,17 +254,35 @@ export async function POST(request: NextRequest) {
 
   // Grupo não é atendimento.
   //
-  // Os dois lados são conferidos porque ainda não sabemos em qual campo a
-  // Z-API põe o grupo: a documentação não traz exemplo de mensagem
-  // recebida, e o que ela promete já se mostrou diferente do que envia
-  // duas vezes -- o `messageEventType` que não existe e o corpo em gzip
-  // que ela não anuncia. Ficar calado à toa não custa nada; responder um
-  // estranho custa o número.
+  // **A pergunta que estava aqui tem resposta: o campo é `is_group`,**
+  // dentro de cada `contents[]`. A Z-API manda e não documenta; foi
+  // encontrado anotando os nomes dos campos que chegavam e não eram
+  // lidos.
+  //
+  // Ler o campo importa porque a adivinhação falhava justamente no caso
+  // que mais dói. Quando alguém escreve NO grupo, o remetente que chega
+  // aqui é o telefone daquela pessoa e o nome dela -- de grupo, nada.
+  // Para este arquivo era conversa de um para um com um desconhecido, e
+  // a IA respondia cada participante no privado. Num grupo movimentado
+  // são dezenas de pessoas que nunca falaram com o restaurante
+  // recebendo mensagem sozinhas, o que é exatamente o que derruba um
+  // número no WhatsApp.
+  //
+  // A checagem pelo identificador fica, atrás desta: são duas perguntas
+  // diferentes -- "o remetente é um grupo" e "esta mensagem nasceu num
+  // grupo" --, e a segunda é a que pega a mensagem do participante.
+  const deGrupo = (m.contents ?? []).some((c) => c.is_group === true);
   const de = m.sender?.identifier;
   const para = m.recipient?.identifier;
   // os nomes são de quem escreve para o restaurante, então ficam cortados:
   // servem para reconhecer um grupo, não para virar agenda
   const corta = (v?: string) => (v ? v.slice(0, 40) : "(sem nome)");
+  if (deGrupo) {
+    console.info(
+      `[zapi/webhook] de grupo (is_group), ignorado · de=${forma(de)} "${corta(m.sender?.name)}"`,
+    );
+    return NextResponse.json({ ok: true, ignorado: "grupo" });
+  }
   if (ehGrupo(de) || ehGrupo(para)) {
     // o nome vai junto: é o que confirma que o que a trava barrou era
     // mesmo um grupo, e não um número comprido que eu entendi mal
@@ -305,7 +338,10 @@ export async function POST(request: NextRequest) {
   // o celular do restaurante fica sem sinal, a Z-API acumula e entrega
   // em bloco --, e responder cinco minutos depois ainda serve ao
   // cliente. Meia hora depois, não serve mais a ninguém.
-  const quando = m.metadata?.moment;
+  // O `moment` chega nos dois lugares, e nem sempre nos dois: o do
+  // conteúdo apareceu junto com o `is_group`, no mesmo log de campos não
+  // lidos. Vale o primeiro que existir.
+  const quando = m.metadata?.moment ?? (m.contents ?? []).find((c) => c.moment)?.moment;
   if (typeof quando === "number" && quando > 0) {
     // a Z-API manda em milissegundos; alguns eventos vêm em segundos
     const ms = quando < 1e12 ? quando * 1000 : quando;
