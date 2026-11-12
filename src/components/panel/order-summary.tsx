@@ -200,7 +200,19 @@ export function OrderDrawer({
   return (
     <details className="drawer group rounded-card border border-line bg-surface open:border-line-strong">
       <summary className="flex cursor-pointer list-none items-start gap-3 rounded-card px-4 py-3.5 hover:bg-surface-2/60 sm:items-center sm:gap-4 sm:px-5 [&::-webkit-details-marker]:hidden">
-        <span className="mt-0.5 shrink-0 font-extrabold tabular-nums text-muted sm:mt-0 sm:w-14">#{o.number}</span>
+        {/* Largura mínima, e não fixa.
+
+            A coluna existe para os nomes começarem todos na mesma
+            altura -- sem ela a lista fica serrilhada. Mas 56px fixos
+            foram dimensionados para quatro dígitos, e o número recomeça
+            todo dia: na prática é "#4" ocupando 22px e sobrando o
+            resto, bem no lugar onde o nome do cliente é cortado.
+
+            Com o mínimo, "#4" e "#99" alinham igual e o espaço que
+            sobrava vai para o nome. Num dia de 1200 pedidos a coluna
+            cresce sozinha e a lista segue legível, que é o que a
+            largura fixa não fazia. */}
+        <span className="mt-0.5 shrink-0 font-extrabold tabular-nums text-muted sm:mt-0 sm:min-w-10">#{o.number}</span>
 
         <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           {/* Com o botão do passo na linha o espaço aperta, e aí o nome
