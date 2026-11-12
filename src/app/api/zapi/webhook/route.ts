@@ -56,9 +56,31 @@ type Conteudo = {
   phone?: string;
   /** o identificador da conversa ou do contato na Z-API */
   identifier?: string;
-  /** metadados de roteamento; pode ser onde o chat de origem se esconde */
-  internal_information?: unknown;
-  external_information?: unknown;
+  /**
+   * Onde a Z-API conta de que conversa a mensagem veio.
+   *
+   * Nada disto é documentado. Foi lido do que chega, em 11/11/2026,
+   * depois de duas tentativas erradas de adivinhar o campo de grupo.
+   *
+   * Numa mensagem de grupo vêm `group_id`, `group_name` e
+   * `participant_lid` -- o participante que digitou. Numa conversa
+   * comum vêm só `integration_id` e `instance_id`.
+   */
+  internal_information?: {
+    group_id?: string;
+    group_name?: string;
+    participant_lid?: string;
+  };
+  /**
+   * O mesmo, do lado de fora: aqui moram `is_group` e `is_newsletter`.
+   *
+   * É onde o `is_group` sempre esteve. A trava anterior procurava um
+   * nível acima, no próprio conteúdo, e por isso nunca disparou.
+   */
+  external_information?: {
+    is_group?: boolean;
+    is_newsletter?: boolean;
+  };
 };
 type AvisoOmni = {
   messageEventType?: string;
@@ -242,36 +264,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // **Os valores das marcas de grupo, enquanto a trava não acerta.**
-  //
-  // `is_group` chega em todo conteúdo e a trava que o lê nunca disparou,
-  // nem nas mensagens que a IA respondeu no privado de participantes de
-  // grupo. Ou ele não vem `true`, ou não é booleano, ou não quer dizer o
-  // que o nome promete.
-  //
-  // Aqui vão os valores com o tipo de cada um, e só destes campos: dois
-  // sinalizadores e dois identificadores de roteamento. `message` fica
-  // de fora -- é o que a pessoa escreveu, e isso não vai para log.
-  //
-  // Temporário: sai assim que a trava estiver certa.
-  for (const c of m.contents ?? []) {
-    const amostra = { is_group: c.is_group, phone: c.phone };
-    // `internal_information` e `external_information` são os dois campos
-    // que sobraram sem leitura, e é onde caberia o chat de origem: numa
-    // mensagem de grupo o WhatsApp separa o chat (o grupo) de quem
-    // digitou (o participante), e a Z-API entrega só o participante nos
-    // campos que este arquivo lê. Só as CHAVES deles: são objetos, e o
-    // que a pessoa escreveu pode estar lá dentro.
-    const dentro = (v: unknown) =>
-      v && typeof v === "object" ? `{${Object.keys(v).join(",")}}` : JSON.stringify(v);
-    console.info(
-      `[zapi/webhook] marcas: ${Object.entries(amostra)
-        .map(([k, v]) => `${k}=${typeof v}:${JSON.stringify(v)}`)
-        .join(" ")}` +
-        ` interna=${dentro(c.internal_information)} externa=${dentro(c.external_information)}` +
-        ` · de=${forma(m.sender?.identifier)} para=${forma(m.recipient?.identifier)}`,
-    );
-  }
 
   // Recibo de entrega não é mensagem.
   //
@@ -309,15 +301,30 @@ export async function POST(request: NextRequest) {
   // A checagem pelo identificador fica, atrás desta: são duas perguntas
   // diferentes -- "o remetente é um grupo" e "esta mensagem nasceu num
   // grupo" --, e a segunda é a que pega a mensagem do participante.
-  const deGrupo = (m.contents ?? []).some((c) => c.is_group === true);
+  // Quatro marcas, e qualquer uma basta. São o mesmo fato contado de
+  // formas diferentes pela Z-API, e preferir o excesso é deliberado:
+  // deixar de responder um cliente custa um pedido, responder trinta
+  // desconhecidos de um grupo custa o número.
+  const deGrupo = (m.contents ?? []).some(
+    (c) =>
+      c.external_information?.is_group === true ||
+      c.external_information?.is_newsletter === true ||
+      Boolean(c.internal_information?.group_id) ||
+      Boolean(c.internal_information?.participant_lid),
+  );
+  const nomeDoGrupo = (m.contents ?? []).find((c) => c.internal_information?.group_name)
+    ?.internal_information?.group_name;
   const de = m.sender?.identifier;
   const para = m.recipient?.identifier;
   // os nomes são de quem escreve para o restaurante, então ficam cortados:
   // servem para reconhecer um grupo, não para virar agenda
   const corta = (v?: string) => (v ? v.slice(0, 40) : "(sem nome)");
   if (deGrupo) {
+    // O nome do grupo vai junto: é o que confirma, lendo o log, que a
+    // trava barrou o que devia -- e foi a falta disso que deixou duas
+    // correções erradas parecerem certas.
     console.info(
-      `[zapi/webhook] de grupo (is_group), ignorado · de=${forma(de)} "${corta(m.sender?.name)}"`,
+      `[zapi/webhook] de grupo, ignorado · de=${forma(de)} grupo="${corta(nomeDoGrupo)}"`,
     );
     return NextResponse.json({ ok: true, ignorado: "grupo" });
   }
