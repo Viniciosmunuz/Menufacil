@@ -1731,6 +1731,12 @@ model IaRascunho {
   contato      String
   /// o checkout e os itens, no formato que o site manda
   dados        Json
+  /// A assinatura do pedido conferido: itens, total, entrega e pagamento.
+  ///
+  /// Serve so para saber se o pedido mudou entre duas conferencias, e
+  /// com isso decidir se o cliente precisa confirmar de novo. Ja guardou
+  /// o texto do resumo, e isso era fragil: o texto carrega nome,
+  /// referencia e observacoes, que a IA reescreve a cada conferencia.
   resumo       String
   totalCents   Int
 

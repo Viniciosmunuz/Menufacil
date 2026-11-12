@@ -239,15 +239,58 @@ async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unk
   //
   // Quando o pedido muda, o resumo muda junto, o relógio reinicia e a
   // trava continua valendo inteira: ninguém confirma um total que não viu.
+  // **O que é "o mesmo pedido", para efeito de reconfirmar.**
+  //
+  // Comparar o texto do resumo era frágil demais: ele carrega o nome do
+  // cliente, a referência do endereço e as observações, todos texto
+  // livre que a IA reescreve de uma conferência para a outra. Bastava
+  // ela trocar "casa verde" por "Casa Verde" para o pedido parecer
+  // outro, o relógio do "sim" reiniciar e o `criar_pedido` recusar a
+  // confirmação que o cliente tinha acabado de dar.
+  //
+  // O que obriga o cliente a confirmar de novo é mudar o que ele paga ou
+  // recebe: os itens, o total, o tipo de entrega e a forma de pagamento.
+  // Reescrever a referência não muda nada disso, e não deve custar uma
+  // volta inteira de conversa.
+  //
+  // Guardado no campo `resumo` porque ele existe só para esta
+  // comparação -- nada mais no sistema lê o texto de lá.
+  const assinatura = [
+    p.type,
+    p.method,
+    p.totalCents,
+    p.deliveryFeeCents,
+    ...p.lines.map((l) => `${l.quantity}x${l.productName}|${l.optionsText ?? ""}|${l.totalCents}`),
+  ].join("~");
+
   const anterior = await db.iaRascunho.findUnique({
     where: { restaurantId_contato: { restaurantId: ctx.restaurantId, contato: ctx.contato } },
     select: { resumo: true, totalCents: true, createdAt: true },
   });
-  const mesmoPedido = anterior?.resumo === resumo && anterior.totalCents === p.totalCents;
+  const mesmoPedido = anterior?.resumo === assinatura && anterior.totalCents === p.totalCents;
+
+  // **Por que a comparação disse que o pedido mudou.**
+  //
+  // Esta comparação é o que impede o relógio do "sim" de reiniciar à
+  // toa, e em 11/11/2026 ela estava deixando passar: o cliente confirmava
+  // e o `criar_pedido` recusava dizendo que ele não tinha confirmado. Ou
+  // o resumo muda em algum detalhe entre duas conferências do mesmo
+  // pedido, ou o campo não está sendo gravado.
+  //
+  // O tamanho e o total, nunca o texto: o resumo tem o endereço do
+  // cliente dentro. Dois tamanhos iguais com `igual=false` apontam para
+  // uma diferença miúda, tipo espaço ou acento; tamanhos diferentes
+  // dizem que o pedido mudou mesmo. Temporário.
+  if (anterior) {
+    console.info(
+      `[ia] rascunho: igual=${mesmoPedido} assinatura=${anterior.resumo?.length ?? "null"}→${assinatura.length}` +
+        ` total=${anterior.totalCents}→${p.totalCents}`,
+    );
+  }
   await db.iaRascunho.upsert({
     where: { restaurantId_contato: { restaurantId: ctx.restaurantId, contato: ctx.contato } },
-    create: { restaurantId: ctx.restaurantId, contato: ctx.contato, dados, resumo, totalCents: p.totalCents },
-    update: { dados, resumo, totalCents: p.totalCents, ...(mesmoPedido ? {} : { createdAt: new Date() }) },
+    create: { restaurantId: ctx.restaurantId, contato: ctx.contato, dados, resumo: assinatura, totalCents: p.totalCents },
+    update: { dados, resumo: assinatura, totalCents: p.totalCents, ...(mesmoPedido ? {} : { createdAt: new Date() }) },
   });
 
   // **Conferido de novo depois que o cliente já respondeu: não repete o
