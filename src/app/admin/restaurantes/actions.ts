@@ -25,6 +25,7 @@ import { requireAdmin } from "@/server/auth/dal";
 import { MIN_PASSWORD_LENGTH } from "@/server/auth/password";
 import { linkOwner, prepareTemporaryPassword, resetOwnerPassword, type NewCredentials } from "@/server/owners";
 import { activationChecklist } from "@/server/restaurants/checklist";
+import { clonarCardapio } from "@/server/restaurants/clonar-cardapio";
 import { excluirRestaurante } from "@/server/restaurants/delete";
 import { availableSlug, isSlugTaken } from "@/server/restaurants/slug";
 
@@ -475,4 +476,58 @@ export async function desfazerMensalidade(formData: FormData) {
   await db.restaurantPayment.deleteMany({ where: { restaurantId, competencia } });
   await audit({ actorUserId: admin.id, restaurantId, action: "admin.mensalidade_desfeita", details: { competencia } });
   refresh();
+}
+
+const clonarSchema = z.object({
+  destinoId: text("Restaurante de destino não informado."),
+  origemId: text("Escolha de onde copiar o cardápio."),
+  substituir: checkbox,
+});
+
+/**
+ * Copia o cardápio de outro restaurante para este.
+ *
+ * Fica no admin, e não no painel do dono, porque mexe em dois
+ * restaurantes ao mesmo tempo: quem clona precisa enxergar os dois, e
+ * um dono só enxerga o dele.
+ */
+export async function clonarCardapioAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const parsed = clonarSchema.safeParse(formObject(formData));
+  if (!parsed.success) return { error: "Escolha de onde copiar o cardápio." };
+  const { destinoId, origemId, substituir } = parsed.data;
+
+  if (origemId === destinoId) return { error: "Escolha outro restaurante: a origem é este mesmo." };
+
+  const [origem, destino] = await Promise.all([
+    db.restaurant.findUnique({ where: { id: origemId }, select: { name: true } }),
+    db.restaurant.findUnique({ where: { id: destinoId }, select: { name: true } }),
+  ]);
+  if (!origem || !destino) return { error: "Restaurante não encontrado." };
+
+  let feito;
+  try {
+    feito = await clonarCardapio({ origemId, destinoId, substituir });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Não deu para copiar o cardápio." };
+  }
+
+  await audit({
+    actorUserId: admin.id,
+    action: "restaurant.menu_cloned",
+    restaurantId: destinoId,
+    details: { de: origem.name, substituiu: substituir, ...feito },
+  });
+
+  refresh();
+  return {
+    ok: true,
+    message:
+      `Cardápio de ${origem.name} copiado: ${feito.categorias} categorias, ${feito.produtos} produtos` +
+      `${feito.grupos > 0 ? `, ${feito.grupos} grupos de opções e ${feito.opcoes} opções` : ""}.` +
+      " Confira a impressora de cada categoria na tela de impressão: ela não vem junto.",
+  };
 }

@@ -15,11 +15,13 @@ import { formatDateTime } from "@/lib/format";
 import { restaurantStatusLabel, restaurantStatusTone } from "@/lib/labels";
 import { requireAdmin } from "@/server/auth/dal";
 import { resumoDoFullDelivery } from "@/server/pagamentos/relatorio";
+import { tamanhoDoCardapio } from "@/server/restaurants/clonar-cardapio";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { resumoDaExclusao } from "@/server/restaurants/delete";
 import { saudeDoRestaurante } from "@/server/restaurants/saude";
 
 import { BasicsForm } from "./basics-form";
+import { ClonarCardapioPanel } from "./clonar-cardapio-panel";
 import { CobrancaPanel } from "./cobranca-panel";
 import { SaudePanel } from "./saude-panel";
 import { DeletePanel } from "./delete-panel";
@@ -75,7 +77,7 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
   const donos = restaurant.owners.filter((o) => o.role === "OWNER");
   const garcons = restaurant.owners.filter((o) => o.role === "STAFF");
 
-  const [checklist, categories, logs, resumoExclusao, fullDelivery, saude, mensalidades] = await Promise.all([
+  const [checklist, categories, logs, resumoExclusao, fullDelivery, saude, mensalidades, cardapioDaqui, cardapiosDosOutros] = await Promise.all([
     activationChecklist(id),
     db.platformCategory.findMany({
       where: { OR: [{ active: true }, { restaurants: { some: { id } } }] },
@@ -96,6 +98,19 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
       orderBy: { competencia: "desc" },
       take: 6,
       select: { competencia: true, amountCents: true, paidAt: true, note: true },
+    }),
+    tamanhoDoCardapio(id),
+    // Os outros restaurantes que têm cardápio, para copiar de um deles.
+    // Quem não tem produto fica de fora: oferecer um restaurante vazio
+    // na lista é oferecer um clique que não faz nada.
+    db.restaurant.findMany({
+      where: { id: { not: id }, products: { some: {} } },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { products: true, menuCategories: true } },
+      },
     }),
   ]);
 
@@ -201,6 +216,17 @@ export default async function AdminRestaurantPage({ params, searchParams }: Page
               entregadorEnabled: restaurant.entregadorEnabled,
               iaEnabled: restaurant.iaEnabled,
             }}
+          />
+
+          <ClonarCardapioPanel
+            restaurantId={restaurant.id}
+            temCardapio={cardapioDaqui}
+            outros={cardapiosDosOutros.map((r) => ({
+              id: r.id,
+              name: r.name,
+              produtos: r._count.products,
+              categorias: r._count.menuCategories,
+            }))}
           />
 
           <IaPanel

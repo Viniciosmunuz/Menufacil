@@ -11,6 +11,7 @@ const actionLabel: Record<string, string> = {
   "owner.remove": "Acesso de dono removido",
   "owner.password_reset": "Nova senha provisória gerada",
   "user.password_change": "Senha alterada",
+  "restaurant.menu_cloned": "Cardápio copiado de outro restaurante",
   "restaurant.info": "Informações e fotos alteradas",
   "restaurant.contact": "Contato alterado",
   "restaurant.address": "Endereço alterado",
