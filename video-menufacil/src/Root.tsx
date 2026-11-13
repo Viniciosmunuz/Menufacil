@@ -3,6 +3,7 @@ import { Composition } from "remotion";
 import { loadFont as loadSerif } from "@remotion/google-fonts/PlayfairDisplay";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont } from "@remotion/google-fonts/Nunito";
+import { Comercial, DURACAO_COMERCIAL } from "./Comercial";
 import { DURACAO_EM_SEGUNDOS, Explicacao } from "./Explicacao";
 import { DURACAO_LIA, Lia } from "./Lia";
 import { DURACAO_LIAFALA, LiaFala } from "./LiaFala";
@@ -28,6 +29,16 @@ loadSerif();
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      {/* O comercial do sistema: fundo escuro, um aparelho em cena, sem
+          voz. É o único de fundo preto, porque é o único que só vende. */}
+      <Composition
+        id="Comercial"
+        component={Comercial}
+        durationInFrames={Math.round(DURACAO_COMERCIAL * FPS)}
+        fps={FPS}
+        width={1080}
+        height={1920}
+      />
       {/* O comercial da Lia: a conversa acontecendo, bolha por bolha. */}
       <Composition
         id="Lia"
