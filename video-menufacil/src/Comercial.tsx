@@ -597,11 +597,17 @@ const Virada: React.FC = () => {
 
 // ─── cena 3: o cardápio ───────────────────────────────────────────────
 
+/**
+ * Os pratos que saltam do aparelho são os do cardápio de hoje do
+ * Papaléguas, com as fotos novas dele -- nome e preço copiados da
+ * página, e não inventados. As fotos antigas de `public/fotos` ficam
+ * para os vídeos anteriores.
+ */
 const PRATOS = [
-  { foto: "picanha.webp", nome: "Picanha", preco: "R$ 38,00", x: -372, y: -250, gira: -7 },
-  { foto: "parmegiana-frango.webp", nome: "Parmegiana", preco: "R$ 40,00", x: 376, y: -120, gira: 6 },
-  { foto: "pizza-especial.webp", nome: "Pizza especial", preco: "R$ 62,00", x: -380, y: 250, gira: 5 },
-  { foto: "tambaqui.webp", nome: "Tambaqui", preco: "R$ 54,00", x: 372, y: 360, gira: -5 },
+  { foto: "pap-picanha.webp", nome: "Picanha", preco: "R$ 38,00", x: -372, y: -250, gira: -7 },
+  { foto: "pap-parmegiana.webp", nome: "Parmegiana", preco: "R$ 40,00", x: 376, y: -120, gira: 6 },
+  { foto: "pap-pizza.webp", nome: "Pizza 1 sabor", preco: "R$ 22,00", x: -380, y: 250, gira: 5 },
+  { foto: "pap-contra-file.webp", nome: "Contra filé", preco: "R$ 34,00", x: 372, y: 360, gira: -5 },
 ];
 
 /** Um prato que salta de dentro do aparelho e fica boiando ao lado. */
@@ -652,7 +658,7 @@ const Cardapio: React.FC = () => {
   const ry = (1 - chega) * -34 + Math.sin(t * 0.8) * 5;
   const rx = (1 - chega) * 26 + 4;
 
-  // o toque no "+" da picanha, nas coordenadas da captura
+  // o toque no "+" da batata frita, nas coordenadas da captura
   const TOQUE = 2.4;
   const onda = vai(t, TOQUE, 0.55);
   const barra = mola(TOQUE + 0.35, 150);
@@ -675,7 +681,7 @@ const Cardapio: React.FC = () => {
         <div style={{ position: "relative" }}>
           <Telefone rx={rx} ry={ry} status="clara">
             <Img
-              src={staticFile("telas/tela-cardapio.jpg")}
+              src={staticFile("telas/tela-cardapio-papaleguas.jpg")}
               style={{
                 width: 520,
                 height: 1068,
@@ -688,8 +694,8 @@ const Cardapio: React.FC = () => {
               <span
                 style={{
                   position: "absolute",
-                  left: 294 - 60,
-                  top: 666 - 60,
+                  left: 201 - 60,
+                  top: 615 - 60,
                   width: 120,
                   height: 120,
                   borderRadius: 120,
@@ -720,7 +726,7 @@ const Cardapio: React.FC = () => {
                 transform: `translateY(${(1 - barra) * 140}px)`,
               }}
             >
-              <span>1 item · R$ 38,00</span>
+              <span>1 item · R$ 16,00</span>
               <span>Ver carrinho →</span>
             </div>
           </Telefone>
