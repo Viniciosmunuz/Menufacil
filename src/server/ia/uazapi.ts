@@ -392,3 +392,44 @@ export async function conferirPareamento(conta: ContaUazapi): Promise<Pareamento
     return null;
   }
 }
+
+type MidiaBaixada = { fileURL?: string; mimetype?: string };
+
+/**
+ * O endereço público de uma mídia que chegou pelo WhatsApp.
+ *
+ * Serve ao áudio: o webhook recebe só o aviso de que chegou uma mensagem
+ * de voz, e o arquivo em si tem de ser pedido. A URL que volta vale dois
+ * dias -- o que é mais do que suficiente aqui, porque ela é usada em
+ * seguida, na mesma requisição, e depois nunca mais.
+ *
+ * `generate_mp3` deixa o provedor converter do formato do WhatsApp (OGG)
+ * para MP3. Não é preciosismo: é o formato que todo serviço de
+ * transcrição aceita sem reclamar.
+ *
+ * A uazapi também transcreve sozinha, com `transcribe: true`, mas para
+ * isso a chave do serviço de transcrição teria de ficar guardada no
+ * servidor dela. Preferimos baixar e transcrever por conta própria: a
+ * chave não sai da Vercel.
+ *
+ * Documentação: https://docs.uazapi.com/endpoint/post/message~download
+ */
+export async function baixarMidia(
+  conta: ContaUazapi,
+  messageId: string,
+): Promise<{ url: string; mimetype: string | null } | null> {
+  try {
+    const dados = await chamar<MidiaBaixada>(conta, "/message/download", {
+      id: messageId,
+      generate_mp3: true,
+    });
+    if (!dados?.fileURL) {
+      console.warn(`[uazapi] download sem fileURL para a mensagem …${messageId.slice(-8)}`);
+      return null;
+    }
+    return { url: dados.fileURL, mimetype: dados.mimetype ?? null };
+  } catch (erro) {
+    console.error("[uazapi] falha ao baixar a mídia:", erro);
+    return null;
+  }
+}

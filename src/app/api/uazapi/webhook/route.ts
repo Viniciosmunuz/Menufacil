@@ -2,6 +2,8 @@ import { after, NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/lib/db";
 import { atender, type MensagemKapso } from "@/server/ia/atender";
+import { transcrever, transcricaoLigada } from "@/server/ia/transcrever";
+import { baixarMidia } from "@/server/ia/uazapi";
 
 /**
  * O que a uazapi avisa quando chega mensagem no WhatsApp do restaurante.
@@ -310,6 +312,7 @@ export async function POST(req: NextRequest) {
   after(async () => {
     const comecou = Date.now();
     try {
+      await ouvirOAudio(paraAtender, token, chave, tipo);
       await atender(paraAtender);
     } catch (erro) {
       // nada daqui volta para a uazapi: o 200 já foi. Fica no log, e a
@@ -330,4 +333,50 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   return NextResponse.json({ ok: true, webhook: "uazapi" });
+}
+
+/** os tipos que a uazapi usa para mensagem de voz */
+const EH_AUDIO = new Set(["audio", "voice", "ptt", "audiomessage", "pttmessage"]);
+
+/**
+ * O áudio do cliente, virado texto antes de a IA ler.
+ *
+ * Muda o `paraAtender` no lugar: dali para a frente o atendimento trata
+ * aquilo como uma mensagem escrita comum, e nada mais no caminho precisa
+ * saber que veio de um áudio.
+ *
+ * **O prefixo 🎤 fica no texto de propósito.** Ele diz duas coisas: ao
+ * dono, lendo a conversa no painel depois, que aquilo foi falado e não
+ * digitado; e à própria IA, que está lendo uma transcrição -- e
+ * transcrição erra nome de prato, troca número e perde pontuação, então
+ * é melhor ela perguntar do que adivinhar.
+ *
+ * Falhou? Não faz nada, e o atendimento segue para o caminho de sempre:
+ * ela pede por escrito. Um áudio sem transcrição é o que já era antes.
+ */
+async function ouvirOAudio(
+  paraAtender: MensagemKapso,
+  token: string,
+  messageId: string | undefined,
+  tipo: string,
+) {
+  if (!EH_AUDIO.has(tipo) || !messageId || !transcricaoLigada()) return;
+
+  const atendente = await db.atendenteIa.findUnique({
+    where: { uazapiToken: token },
+    select: { uazapiBaseUrl: true, uazapiToken: true },
+  });
+  if (!atendente?.uazapiBaseUrl || !atendente.uazapiToken) return;
+
+  const midia = await baixarMidia(
+    { baseUrl: atendente.uazapiBaseUrl, token: atendente.uazapiToken },
+    messageId,
+  );
+  if (!midia) return;
+
+  const texto = await transcrever(midia.url);
+  if (!texto) return;
+
+  paraAtender.message!.type = "text";
+  paraAtender.message!.text = { body: `🎤 ${texto}` };
 }
