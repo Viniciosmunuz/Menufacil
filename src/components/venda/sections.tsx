@@ -75,30 +75,27 @@ function BotaoDoForm({
   );
 }
 
-/** a etiqueta quadriculada que abre cada seção */
-function Etiqueta({ children }: { children: ReactNode }) {
-  return (
-    <p className="etiqueta-grade mx-auto mb-5 w-fit rounded-2xl border border-brand/25 bg-brand-soft px-5 py-2 text-[0.92rem] font-bold text-ink">
-      {children}
-    </p>
-  );
-}
-
-/** o cabeçalho de uma seção: etiqueta, título com destaque, uma linha de apoio */
+/**
+ * O cabeçalho de uma seção: o título e uma linha de apoio.
+ *
+ * Toda seção abria com uma pílula colorida em cima do título ("Soluções",
+ * "Planos", "Dúvidas") e fechava o título com uma segunda frase em
+ * laranja. Repetido oito vezes, virou a assinatura de página feita por
+ * gerador: o olho reconhece o molde antes de ler a primeira palavra. A
+ * pílula saiu, e o laranja no título ficou só no topo e na chamada do
+ * fim, que são os dois lugares onde ele tem o que destacar.
+ */
 function Titulo({
   children,
   destaque,
   sub,
-  etiqueta,
 }: {
   children: ReactNode;
   destaque?: string;
   sub?: string;
-  etiqueta?: string;
 }) {
   return (
     <div className="mx-auto mb-9 max-w-2xl text-center sm:mb-12">
-      {etiqueta && <Etiqueta>{etiqueta}</Etiqueta>}
       <h2 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.6rem]">
         {children}
         {destaque && (
@@ -217,6 +214,12 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
   // Uma volta da esteira precisa ser mais larga que a tela, senão abre um
   // buraco antes de ela recomeçar: os restaurantes se repetem até dar 14 (uns 2.100px, mais que uma tela larga).
   const volta = Array.from({ length: 14 }, (_, i) => restaurantes[i % Math.max(restaurantes.length, 1)]);
+  // Com poucos restaurantes a faixa não anda: ficam parados, cada um uma
+  // vez. A esteira repetia o mesmo nome catorze vezes para encher a
+  // tela, e um cliente só passando em fila é pior do que um cliente só
+  // -- parece plateia de papelão. Ela volta sozinha quando houver gente
+  // para encher uma volta de verdade.
+  const parada = restaurantes.length < 6;
   return (
     <section className="pt-9 sm:pt-12">
       <Miolo>
@@ -225,22 +228,30 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
       {restaurantes.length > 0 && (
         <div className="mt-10 border-t border-line pt-9 lg:mt-0 lg:border-0 lg:pt-0">
           <p className="px-5 text-center text-[0.72rem] font-extrabold tracking-[0.16em] text-faint uppercase">
-            Restaurantes que já usam o MenuFácil
+            {restaurantes.length === 1 ? "Quem já usa o MenuFácil" : "Restaurantes que já usam o MenuFácil"}
           </p>
           {/* duas voltas iguais lado a lado: quando a primeira sai, a
               segunda está no lugar dela, e a animação recomeça sem salto.
               As bordas somem num degradê para ninguém ver a emenda. */}
-          <div className="group mt-5 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
-            <div className="flex w-max animate-[esteira_45s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none">
-              {[0, 1].map((copia) => (
-                <div key={copia} className="flex gap-3 pr-3" aria-hidden={copia === 1 || undefined}>
-                  {volta.map((r, i) => (
-                    <Selo key={i} r={r} traco={i % 2 === 1} escondido={copia === 1} />
-                  ))}
-                </div>
+          {parada ? (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-5">
+              {restaurantes.map((r) => (
+                <Selo key={r.slug} r={r} traco={false} escondido={false} />
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="group mt-5 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
+              <div className="flex w-max animate-[esteira_45s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none">
+                {[0, 1].map((copia) => (
+                  <div key={copia} className="flex gap-3 pr-3" aria-hidden={copia === 1 || undefined}>
+                    {volta.map((r, i) => (
+                      <Selo key={i} r={r} traco={i % 2 === 1} escondido={copia === 1} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -263,7 +274,7 @@ export function Filme() {
   return (
     <section id={SECOES.filme} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta="Em 55 segundos" sub="Do pedido do cliente à comanda na cozinha, com o sistema rodando de verdade.">
+        <Titulo sub="Em 55 segundos: do pedido do cliente à comanda na cozinha, com o sistema rodando de verdade.">
           Veja o MenuFácil funcionando
         </Titulo>
         <figure className="mx-auto max-w-4xl">
@@ -374,7 +385,7 @@ export function AntesEDepois() {
   return (
     <section id={SECOES.antes} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta={ANTES_DEPOIS.etiqueta} sub={ANTES_DEPOIS.texto}>
+        <Titulo sub={ANTES_DEPOIS.texto}>
           {ANTES_DEPOIS.titulo}
         </Titulo>
         <div className="mx-auto grid max-w-5xl items-center gap-5 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
@@ -395,7 +406,7 @@ export function Solucoes() {
   return (
     <section id={SECOES.recursos} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta={SOLUCOES_TEXTO.etiqueta} destaque={SOLUCOES_TEXTO.tituloDestaque} sub={SOLUCOES_TEXTO.texto}>
+        <Titulo destaque={SOLUCOES_TEXTO.tituloDestaque} sub={SOLUCOES_TEXTO.texto}>
           {SOLUCOES_TEXTO.titulo}
         </Titulo>
         <AbasDeSolucoes />
@@ -410,7 +421,7 @@ export function Segmentos() {
   return (
     <section id={SECOES.segmentos} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta={SEGMENTOS_TEXTO.etiqueta} destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
+        <Titulo destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
           {SEGMENTOS_TEXTO.titulo}
         </Titulo>
         <ul className="mx-auto grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
@@ -534,7 +545,7 @@ export function Planos() {
   return (
     <section id={SECOES.planos} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta="Planos" sub={PLANOS_TEXTO.texto}>
+        <Titulo sub={PLANOS_TEXTO.texto}>
           {PLANOS_TEXTO.titulo}
         </Titulo>
 
@@ -620,7 +631,7 @@ export function Adicionais() {
   return (
     <section id={SECOES.adicionais} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta={ADICIONAIS_TEXTO.etiqueta} sub={ADICIONAIS_TEXTO.texto}>
+        <Titulo sub={ADICIONAIS_TEXTO.texto}>
           {ADICIONAIS_TEXTO.titulo}
         </Titulo>
 
@@ -644,7 +655,7 @@ export function Depoimentos() {
   return (
     <section id={SECOES.depoimentos} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta="Depoimentos" sub="Restaurantes que confiam no MenuFácil.">
+        <Titulo sub="Restaurantes que confiam no MenuFácil.">
           Quem já usa
         </Titulo>
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -672,7 +683,7 @@ export function Duvidas() {
   return (
     <section id={SECOES.duvidas} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo etiqueta="Dúvidas">Perguntas frequentes</Titulo>
+        <Titulo>Perguntas frequentes</Titulo>
         <div className="mx-auto flex max-w-2xl flex-col gap-2.5">
           {perguntas.map(({ q, a }) => (
             <details key={q} className="drawer group rounded-[1.2rem] border border-line bg-bg">

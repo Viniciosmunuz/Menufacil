@@ -103,10 +103,10 @@ export const SECOES = {
 
 export const TOPO = {
   etiqueta: "Sistema de delivery e salão",
-  titulo: "Seu restaurante organizado.",
-  tituloDestaque: "Seus pedidos sob controle.",
+  titulo: "Receba pedidos pelo seu próprio link.",
+  tituloDestaque: "Sem comissão.",
   texto:
-    "Receba pedidos, imprima comandas e gerencie delivery e salão em um só sistema, sem comissão por pedido.",
+    "Delivery, salão e comanda impressa no mesmo sistema. O cliente paga direto para você, e a gente monta o cardápio junto.",
   /** o link abaixo do cartão, para quem quer ver antes de falar */
   secundario: "Ver um cardápio funcionando",
 };
@@ -116,7 +116,7 @@ export const PROMESSAS: { icon: LucideIcon; title: string }[] = [
   { icon: Percent, title: "Sem comissão por pedido" },
   { icon: BadgePercent, title: "Sem taxa de adesão" },
   { icon: Headset, title: "Suporte incluso" },
-  { icon: ChefHat, title: "Atendimento rápido e humanizado" },
+  { icon: ChefHat, title: "Cardápio montado por nós" },
 ];
 
 // ─── antes e depois ───────────────────────────────────────────────────
@@ -134,8 +134,8 @@ export const ANTES_DEPOIS: {
   com: Contraste[];
 } = {
   etiqueta: "Antes e depois",
-  titulo: "Veja a diferença no seu dia a dia",
-  texto: "Compare a rotina do restaurante com e sem o MenuFácil.",
+  titulo: "O mesmo sábado à noite, de dois jeitos",
+  texto: "De um lado, o WhatsApp lotado e o caderno. Do outro, o pedido saindo pronto na impressora.",
   sem: [
     { icon: MessageSquareWarning, title: "Pedido perdido no WhatsApp", text: "Conversa misturada, pedido esquecido e cliente cobrando." },
     { icon: FileX, title: "Anotando tudo à mão", text: "Item trocado, observação esquecida e letra que a cozinha não entende." },
@@ -167,8 +167,8 @@ export type Solucao = {
 
 export const SOLUCOES_TEXTO = {
   etiqueta: "Soluções",
-  titulo: "Um sistema.",
-  tituloDestaque: "Tudo conectado.",
+  titulo: "Delivery, salão e balcão no mesmo cardápio",
+  tituloDestaque: "",
   texto: "Delivery, salão, impressão e totem no mesmo cadastro de produtos. Mudou num lugar, mudou em todos.",
 };
 
@@ -240,8 +240,8 @@ export const SOLUCOES: Solucao[] = [
 
 export const SEGMENTOS_TEXTO = {
   etiqueta: "Para todo tipo de cardápio",
-  titulo: "Feito para o",
-  tituloDestaque: "seu tipo de negócio",
+  titulo: "O cardápio do jeito que você vende",
+  tituloDestaque: "",
   texto: "Pizza meio a meio, açaí montado, marmita do dia: o cardápio se monta do jeito que você vende.",
 };
 
@@ -482,8 +482,8 @@ export const ADICIONAIS_TEXTO = {
 };
 
 export const PLANOS_TEXTO = {
-  titulo: "Escolha o plano ideal para o seu restaurante.",
-  texto: "Todos os planos incluem suporte, sistema estável e atualizações constantes.",
+  titulo: "Quanto custa",
+  texto: "Mensalidade fixa, sem comissão por pedido e sem taxa de adesão. O que você vende é seu.",
 };
 
 // ─── totem ────────────────────────────────────────────────────────────
@@ -572,9 +572,9 @@ export const DUVIDAS = [
 // ─── chamada final ────────────────────────────────────────────────────
 
 export const FINAL = {
-  titulo: "Pronto para",
-  tituloDestaque: "organizar o seu restaurante",
-  texto: "Fale com a nossa equipe, tire as suas dúvidas e veja o sistema funcionando com o seu cardápio.",
+  titulo: "Quer ver funcionando",
+  tituloDestaque: "com o seu cardápio",
+  texto: "Chama a gente no WhatsApp: tiramos as suas dúvidas e mostramos o sistema rodando com os seus pratos.",
   botao: "Falar no WhatsApp",
   /** o que vem embaixo do botão: só o que já é verdade em todos os planos */
   garantias: ["Sem comissão por pedido", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
