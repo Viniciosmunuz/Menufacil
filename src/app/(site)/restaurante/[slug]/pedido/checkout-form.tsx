@@ -464,6 +464,15 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
 
                         {pontos.length > 0 && (
                           <>
+                            {/* Entre os dois seletores, e não embaixo:
+                                aqui ela explica o seletor que vem logo
+                                abaixo, antes de a pessoa se perguntar por
+                                que apareceu outro campo. Embaixo, virava
+                                nota de rodapé de algo que já foi
+                                respondido. */}
+                            <p className="text-xs text-muted">
+                              Em {bairro} entregamos só nestes lugares.
+                            </p>
                             <Select
                               id="ponto"
                               name="ponto"
@@ -480,14 +489,6 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                                 </option>
                               ))}
                             </Select>
-                            {/* Miúdo de propósito: é um limite, não um
-                                aviso de erro. Quem está num dos dois
-                                lugares nem precisa ler; quem não está
-                                descobre aqui, antes de digitar o resto do
-                                endereço, e não depois de pagar. */}
-                            <p className="text-xs text-muted">
-                              Em {bairro} entregamos só nestes lugares.
-                            </p>
                           </>
                         )}
 
