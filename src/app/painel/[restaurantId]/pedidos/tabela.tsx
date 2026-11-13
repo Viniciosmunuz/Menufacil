@@ -1,4 +1,5 @@
-import { Banknote, Bike, Bot, CreditCard, ExternalLink, QrCode } from "lucide-react";
+import { Banknote, Bike, CreditCard, ExternalLink, QrCode } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Fragment } from "react";
 
@@ -213,13 +214,20 @@ export function TabelaDePedidos<T extends Pedido>({
                       {/* o pedido que a IA anotou na conversa: o dono não
                           digitou, e o cliente também não. Vale saber antes
                           de ligar perguntando. */}
+                      {/* o rosto dela, como na lista do balcão: o mesmo
+                          sinal nas duas telas se aprende uma vez */}
                       {p.feitoPelaIa && (
                         <span
-                          title="Anotado pela IA no WhatsApp"
-                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[0.625rem] font-extrabold text-brand"
+                          title="Pedido anotado pela Lia"
+                          className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-full border border-brand/40 bg-brand-soft"
                         >
-                          <Bot className="size-3" aria-hidden="true" />
-                          IA
+                          <Image
+                            src="/atendente-ia.webp"
+                            alt="Pedido anotado pela Lia"
+                            width={40}
+                            height={40}
+                            className="size-full object-cover"
+                          />
                         </span>
                       )}
                     </div>

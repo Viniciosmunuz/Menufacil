@@ -1,4 +1,5 @@
-import { Bike, Bot, ChevronDown, MessageSquare } from "lucide-react";
+import { Bike, ChevronDown, MessageSquare } from "lucide-react";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -235,12 +236,28 @@ export function OrderDrawer({
             </Badge>
             {/* quem está no balcão precisa saber na hora que ninguém anotou este pedido */}
             {o.origin === "TOTEM" && <Badge tone="brand">Totem</Badge>}
-            {/* ninguém do restaurante anotou: foi a IA, na conversa com este número */}
+            {/* Ninguém do restaurante anotou: foi a Lia, na conversa com
+                este número.
+
+                O rosto dela no lugar do selo escrito. A linha do pedido é
+                disputada -- nome, bairro, hora, total e os outros selos --
+                e "Feito pela IA" gastava metade da largura para dizer o
+                que a cara dela diz sozinha. Quem trabalha nesta tela
+                aprende o rosto no primeiro dia; quem não aprendeu lê o
+                `title` ao passar o mouse. */}
             {o.feitoPelaIa && (
-              <Badge tone="brand" className="shrink-0 gap-1">
-                <Bot className="size-3.5" aria-hidden="true" />
-                Feito pela IA
-              </Badge>
+              <span
+                title="Pedido anotado pela Lia"
+                className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-full border border-brand/40 bg-brand-soft"
+              >
+                <Image
+                  src="/atendente-ia.webp"
+                  alt="Pedido anotado pela Lia"
+                  width={48}
+                  height={48}
+                  className="size-full object-cover"
+                />
+              </span>
             )}
             {/* no 100% Delivery o cliente fala por aqui, não pelo WhatsApp:
                 sem este selo, a mensagem dele ficaria sem resposta dentro de
