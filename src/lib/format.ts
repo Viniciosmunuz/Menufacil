@@ -80,6 +80,27 @@ export function startOfDaysAgo(days: number, now = new Date()) {
   return new Date(startOfToday(now).getTime() - days * 24 * 60 * 60 * 1000);
 }
 
+/**
+ * Meia-noite do dia 1 de uma competência ("2026-10"), no fuso da
+ * plataforma, como instante UTC.
+ *
+ * O dia 1 é montado ao meio-dia de propósito: com `Date.UTC(ano, mes, 1)`
+ * cru, um fuso a oeste joga o instante para o dia 31 do mês anterior, e
+ * o mês inteiro sairia deslocado em um dia.
+ */
+export function inicioDaCompetencia(competencia: string) {
+  const [ano, mes] = competencia.split("-").map(Number);
+  return startOfToday(new Date(Date.UTC(ano, mes - 1, 1, 12)));
+}
+
+/** meia-noite do dia 1 do mês seguinte: o fim aberto da competência */
+export function fimDaCompetencia(competencia: string) {
+  const [ano, mes] = competencia.split("-").map(Number);
+  // `mes` sem o -1 já é o mês seguinte, e dezembro vira janeiro do ano
+  // que vem sozinho
+  return startOfToday(new Date(Date.UTC(ano, mes, 1, 12)));
+}
+
 /** "seg", "ter"... para o eixo do gráfico da semana */
 export function weekdayShort(date: Date) {
   return date.toLocaleDateString("pt-BR", { weekday: "short", timeZone: TIME_ZONE }).replace(".", "");

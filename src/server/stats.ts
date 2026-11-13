@@ -3,7 +3,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import type { OrderStatus, OrderType, PaymentMethod } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
-import { startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
+import { TIME_ZONE, fimDaCompetencia, inicioDaCompetencia, startOfDaysAgo, startOfToday, todayKey, weekdayShort } from "@/lib/format";
 import { inicioDaOperacao } from "@/lib/opening-hours";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { EXCLUDE_UNPAID } from "@/lib/order-flow";
@@ -538,11 +538,27 @@ export type MesAteAgora = {
  * Fala em venda, e não em lucro: o MenuFácil sabe quanto entrou, não quanto
  * custou fazer.
  */
-export async function mesAteAgora(escopo: Prisma.OrderWhereInput = {}): Promise<MesAteAgora> {
+export async function mesAteAgora(
+  escopo: Prisma.OrderWhereInput = {},
+  /**
+   * A competência a olhar ("2026-10"). Sem ela, o mês corrente.
+   *
+   * Mês passado tem fim, e o corrente não: por isso a janela fecha no
+   * dia 1 do mês seguinte em vez de ir até agora. Sem esse fim, pedir
+   * outubro traria outubro, novembro e o que vier.
+   */
+  competencia?: string,
+): Promise<MesAteAgora> {
   const hoje = todayKey();
-  const diaDoMes = Number(hoje.slice(8, 10));
+  const alvo = competencia ?? hoje.slice(0, 7);
+  const corrente = alvo === hoje.slice(0, 7);
+
+  const quando = corrente
+    ? { gte: inicioDaCompetencia(alvo) }
+    : { gte: inicioDaCompetencia(alvo), lt: fimDaCompetencia(alvo) };
+
   const pedidos = await db.order.findMany({
-    where: { ...escopo, ...VALE, ...EXCLUDE_UNPAID, createdAt: { gte: startOfDaysAgo(diaDoMes - 1) } },
+    where: { ...escopo, ...VALE, ...EXCLUDE_UNPAID, createdAt: quando },
     select: { createdAt: true, totalCents: true },
   });
 
@@ -560,7 +576,7 @@ export async function mesAteAgora(escopo: Prisma.OrderWhereInput = {}): Promise<
     dias.length === 0 ? null : dias.reduce((a, b) => (b[campo] > a[campo] ? b : a));
 
   return {
-    competencia: hoje.slice(0, 7),
+    competencia: alvo,
     pedidos: pedidos.length,
     centavos: pedidos.reduce((s, p) => s + p.totalCents, 0),
     maisPedidos: maior("pedidos"),
@@ -749,4 +765,40 @@ export async function atrasosDaPlataforma(reguas: TemposDeUmRestaurante[]): Prom
     })
     // a casa mais parada primeiro: é para ela que se liga antes
     .sort((a, b) => b.pior.minutos - a.pior.minutos);
+}
+
+/**
+ * Os meses em que este restaurante vendeu, do mais novo para o mais velho.
+ *
+ * Serve ao seletor da tela de resumo: ele lista o que existe, e não doze
+ * meses fixos -- restaurante que abriu em setembro não tem janeiro, e
+ * oferecer o mês vazio é prometer uma tela que vai estar em branco.
+ *
+ * Em SQL, e não lendo todos os pedidos para agrupar aqui: a pergunta é
+ * "quais meses existem", e isso o banco responde com um índice sem
+ * trazer uma linha por pedido.
+ *
+ * A dupla conversão de fuso é necessária: a coluna é um timestamp sem
+ * fuso guardado em UTC, então primeiro se diz ao banco que aquilo é UTC
+ * e só então se converte para o fuso da plataforma. Sem o primeiro
+ * passo, o pedido das 22h de 31/10 em Manaus cairia em novembro.
+ *
+ * O mês corrente entra sempre, mesmo sem venda nenhuma: é o que a tela
+ * abre por padrão, e some-lo da lista faria o seletor abrir marcando um
+ * mês que não é o que está na tela.
+ */
+export async function mesesComVenda(restaurantId: string): Promise<string[]> {
+  const linhas = await db.$queryRaw<{ mes: string }[]>`
+    SELECT DISTINCT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${TIME_ZONE}, 'YYYY-MM') AS mes
+    FROM "Order"
+    WHERE "restaurantId" = ${restaurantId}
+      AND "origin" <> 'SALAO'
+      AND "status" <> 'CANCELED'
+    ORDER BY mes DESC
+    LIMIT 24
+  `;
+
+  const meses = new Set(linhas.map((l) => l.mes));
+  meses.add(todayKey().slice(0, 7));
+  return [...meses].sort().reverse();
 }

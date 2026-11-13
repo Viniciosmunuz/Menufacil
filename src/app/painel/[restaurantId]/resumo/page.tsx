@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { Card } from "@/components/ui/card";
-import { competenciaLabel } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { formatCents, startOfDaysAgo } from "@/lib/format";
 import { requireRestaurantAccess } from "@/server/auth/dal";
-import { fechamentoDoDia, mesAteAgora, type LinhaDoFechamento } from "@/server/stats";
+import { fechamentoDoDia, mesAteAgora, mesesComVenda, type LinhaDoFechamento } from "@/server/stats";
+
+import { SeletorDeMes } from "./seletor-de-mes";
 
 export const metadata: Metadata = { title: "Resumo mensal" };
 
@@ -54,16 +55,27 @@ function Numero({ icone, fundo, rotulo: r, valor, apoio }: { icone: ReactNode; f
   );
 }
 
-export default async function ResumoPage({ params }: PageProps<"/painel/[restaurantId]/resumo">) {
+export default async function ResumoPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/resumo">) {
   const { restaurantId } = await params;
+  const { mes: mesPedido } = await searchParams;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
 
   const escopo = { restaurantId: restaurant.id };
   // o salão tem o caixa dele: aqui é o delivery, como no resto desta área
   const semSalao = { ...escopo, origin: { not: "SALAO" as const } };
 
+  /**
+   * O mes pedido na URL, se for um dos que existem.
+   *
+   * Confere contra a lista em vez de aceitar o texto: `?mes=2026-13` ou
+   * um mes de antes de o restaurante abrir devolveriam uma tela vazia
+   * que parece defeito. Fora da lista, cai no mes corrente.
+   */
+  const meses = await mesesComVenda(restaurant.id);
+  const competencia = typeof mesPedido === "string" && meses.includes(mesPedido) ? mesPedido : meses[0];
+
   const [mes, horarios, produtos] = await Promise.all([
-    mesAteAgora(escopo),
+    mesAteAgora(escopo, competencia),
     db.restaurant.findUniqueOrThrow({
       where: { id: restaurant.id },
       select: { openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } } },
@@ -78,7 +90,6 @@ export default async function ResumoPage({ params }: PageProps<"/painel/[restaur
   ]);
 
   const fechamento = await fechamentoDoDia(escopo, horarios.openingHours);
-  const nome = competenciaLabel(mes.competencia);
 
   return (
     <div className="flex flex-col gap-5">
@@ -86,11 +97,7 @@ export default async function ResumoPage({ params }: PageProps<"/painel/[restaur
         title="Fechamento e resumo mensal"
         description="Vendas, pedidos e resultados do período."
         back={{ href: `/painel/${restaurant.id}`, label: "Visão geral" }}
-        actions={
-          <span className="rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-bold text-muted first-letter:uppercase">
-            {nome}
-          </span>
-        }
+        actions={<SeletorDeMes base={`/painel/${restaurant.id}/resumo`} mes={mes.competencia} meses={meses} />}
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
