@@ -14,6 +14,7 @@ import { flavorSlots, flavorsText, pizzaPrice, pizzaProblems, type PizzaFlavor }
 import { optionalText, parseMoneyToCents, phone, text } from "@/lib/validation";
 import { prontoParaCobrar } from "@/server/pagamentos/conta";
 import { queueNewOrderMessages } from "@/server/whatsapp/queue";
+import { areaDoPedido } from "@/lib/area-de-entrega";
 
 // Criação do pedido feito pelo cliente no site. Nada que vem do navegador é
 // confiado: preço, taxa, disponibilidade e se o restaurante está aberto são
@@ -152,39 +153,8 @@ export type OrderItems = z.infer<typeof itemsSchema>;
  * mesmo que o pedido vai ter.
  */
 /** o bairro do cliente na lista do restaurante, comparando sem acento nem caixa */
-/**
- * Em que área de entrega cai este bairro.
- *
- * Casa pelo nome da área **ou** por qualquer apelido dela. O apelido
- * existe porque nem todo lugar atendido é um bairro: na BR-174 o
- * restaurante entrega no Hotel Calleb e na fábrica de gelo, e não na
- * rodovia inteira. Quem diz "estou no Hotel Calleb" tem de cair na
- * mesma taxa de quem diz "BR-174 km 107" -- é o mesmo lugar.
- *
- * Serve igual para o bairro escrito de outro jeito: "cohab 2" e
- * "Cohab II" eram dois bairros diferentes para o sistema, e o segundo
- * jeito de escrever levava o pedido a ser recusado sem explicação.
- */
-export function areaDoPedido<T extends { name: string; apelidos?: string[] }>(
-  areas: T[],
-  bairro: string | null | undefined,
-) {
-  if (!bairro) return null;
-  const limpo = chave(bairro);
-  return (
-    areas.find(
-      (a) => chave(a.name) === limpo || (a.apelidos ?? []).some((ap) => chave(ap) === limpo),
-    ) ?? null
-  );
-}
-
-const chave = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/gi, " ")
-    .trim()
-    .toLowerCase();
+// o casamento do bairro com a área vive em lib/area-de-entrega, com teste
+export { areaDoPedido };
 
 export async function prepararPedido(params: { slug: string; input: CheckoutInput; items: OrderItems }) {
   const { input, items } = params;
