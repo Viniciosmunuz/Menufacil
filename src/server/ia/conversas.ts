@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { formatPhone } from "@/lib/format";
 
 /**
  * As conversas que a IA teve, para o dono ver no painel.
@@ -102,4 +103,44 @@ export async function falasDaConversa(restaurantId: string, contato: string): Pr
   return falas
     .reverse()
     .map((f) => ({ id: f.id, papel: f.papel, texto: f.texto, quando: f.createdAt }));
+}
+
+/** quanto tempo um chamado continua valendo como aviso na tela */
+const CHAMADO_VALE_MS = 3 * 60 * 60 * 1000;
+
+export type ChamadoEsperando = {
+  /** o que identifica este chamado; dispensado no aparelho, não volta */
+  chave: string;
+  contato: string;
+  quem: string;
+  motivo: string;
+  quando: Date;
+};
+
+/**
+ * Quem pediu para falar com uma pessoa e ainda não foi atendido.
+ *
+ * Três horas de validade, e não "tudo o que existe": o aviso serve para
+ * quem está no balcão agora. Abrir o painel de manhã e encontrar no
+ * canto o cliente que chamou às onze da noite não ajuda ninguém -- ele
+ * já desistiu ou já foi atendido pelo celular.
+ *
+ * Não há campo de atendido no banco de propósito; quem dispensa é o
+ * aparelho que viu, como no recado do chat.
+ */
+export async function chamadosEsperando(restaurantId: string): Promise<ChamadoEsperando[]> {
+  const chamados = await db.iaChamado.findMany({
+    where: { restaurantId, createdAt: { gte: new Date(Date.now() - CHAMADO_VALE_MS) } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: { id: true, contato: true, nome: true, motivo: true, createdAt: true },
+  });
+
+  return chamados.map((c) => ({
+    chave: c.id,
+    contato: c.contato,
+    quem: c.nome?.trim() || formatPhone(c.contato),
+    motivo: c.motivo,
+    quando: c.createdAt,
+  }));
 }

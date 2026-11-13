@@ -280,6 +280,7 @@ model Restaurant {
   atendenteIa         AtendenteIa?
   iaMensagens         IaMensagem[]
   iaRascunhos         IaRascunho[]
+  iaChamados          IaChamado[]
   menuCategories      MenuCategory[]
   products            Product[]
   orders              Order[]
@@ -1779,6 +1780,38 @@ model IaRascunho {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@unique([restaurantId, contato])
+}
+
+/// A Lia passou a conversa para uma pessoa.
+///
+/// Existe para o painel poder mostrar isso. O aviso por push ja saia
+/// antes, mas push depende de o aparelho ter autorizado, de o celular
+/// estar com a tela ligada e de ninguem ter mandado o navegador calar a
+/// boca -- e, quando falha, falha calado. Quem esta no painel com os
+/// pedidos abertos nao via nada: a cliente pediu para falar com uma
+/// pessoa e ficou esperando.
+///
+/// Guardado por conversa, e nao por pedido: quem pede para falar com
+/// alguem muitas vezes nem tem pedido ainda.
+///
+/// Nao tem campo de "atendido". Quem dispensa o aviso e o painel, no
+/// proprio aparelho, como ja faz com o recado do chat -- marcar no banco
+/// faria o aviso sumir da tela do balcao porque alguem olhou no celular.
+model IaChamado {
+  id           String  @id @default(cuid())
+  restaurantId String
+  /// o telefone do cliente, como chegou do WhatsApp
+  contato      String
+  /// o nome, quando a conversa ja tinha dito qual e
+  nome         String?
+  /// em poucas palavras, por que ela chamou ("quer falar com o dono")
+  motivo       String
+
+  createdAt DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, createdAt])
 }
 
 /// Aviso da Kapso ja tratado. A Kapso reenvia quando nao recebe resposta a

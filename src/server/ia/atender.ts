@@ -389,12 +389,36 @@ export async function atender(evento: MensagemKapso) {
     return true;
   };
 
-  /** registra que uma pessoa assumiu: cala a IA e avisa o dono no celular */
-  const passarParaUmaPessoa = async () => {
+  /**
+   * Registra que uma pessoa assumiu: cala a IA e chama quem atende.
+   *
+   * Dois avisos, de propósito, porque falham por motivos diferentes. O
+   * push chega em quem está longe da tela -- e só se o aparelho tiver
+   * autorizado, o que falha calado. O `IaChamado` é o que o painel
+   * aberto no balcão mostra no canto, do mesmo jeito que mostra pedido
+   * novo e recado do chat: lá, quem está olhando a tela vê sem depender
+   * de permissão nenhuma.
+   */
+  const passarParaUmaPessoa = async (motivo?: string | null) => {
     await db.iaMensagem.create({ data: { restaurantId, contato, papel: "HUMANO", texto: MARCA_CHAMOU } });
+
+    await db.iaChamado
+      .create({
+        data: {
+          restaurantId,
+          contato: telefone ?? contato,
+          // o nome do perfil do WhatsApp: pode ser "😎" ou o nome de uma
+          // loja, e tudo bem -- isto vai para um aviso na tela, nao para
+          // a comanda. Quem le reconhece quem esta chamando.
+          nome: evento.push_name?.trim() || null,
+          motivo: motivo?.trim() || "pediu para falar com uma pessoa",
+        },
+      })
+      .catch((erro) => console.error("[ia] falha ao registrar o chamado:", erro));
+
     await avisarClienteChamou({
       restaurantId,
-      quem: telefone ? formatPhone(telefone) : "Um cliente",
+      quem: evento.push_name?.trim() || (telefone ? formatPhone(telefone) : "Um cliente"),
     }).catch((erro) => console.error("[ia] falha ao avisar o dono:", erro));
   };
 
@@ -418,7 +442,7 @@ export async function atender(evento: MensagemKapso) {
     console.warn(`[ia] teto de ${teto} respostas por hora atingido no restaurante ${restaurantId}`);
     try {
       await enviar("Vou chamar alguém do restaurante para continuar com você, só um instante! 😊");
-      await passarParaUmaPessoa();
+      await passarParaUmaPessoa("muitas mensagens seguidas: a IA passou a conversa");
     } catch (erro) {
       console.error("[ia] falha ao avisar que passou para uma pessoa:", erro);
     }
@@ -623,7 +647,7 @@ export async function atender(evento: MensagemKapso) {
   ]);
 
   // o registro de "humano" é o que faz a IA ficar quieta daqui em diante
-  if (mandou && resposta.chamouPessoa) await passarParaUmaPessoa();
+  if (mandou && resposta.chamouPessoa) await passarParaUmaPessoa(resposta.motivoDaChamada);
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
   console.info(

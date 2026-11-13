@@ -90,6 +90,19 @@ const CHAMAR_PESSOA: Anthropic.Beta.BetaTool = {
   },
 };
 
+/**
+ * O motivo que a ferramenta recebeu, se veio em forma de texto.
+ *
+ * O modelo manda o que quiser em `input`, então nada aqui confia no
+ * formato. Sem motivo o aviso ainda serve -- quem o lê já sabe o
+ * essencial, que é que alguém está esperando uma pessoa.
+ */
+function motivoDe(input: unknown): string | null {
+  if (!input || typeof input !== "object") return null;
+  const motivo = (input as { motivo?: unknown }).motivo;
+  return typeof motivo === "string" && motivo.trim() ? motivo.trim().slice(0, 140) : null;
+}
+
 function quemVoceE(nome: string, dono: string | null, noCardapio: boolean) {
   const quem = dono ? `chamar ${dono} (com o artigo certo: "o ${dono}" ou "a ${dono}")` : "chamar alguém da equipe";
   const identidade = `Quem é você:
@@ -270,6 +283,8 @@ export type Resposta = {
   imagens: string[];
   /** a IA passou a conversa para uma pessoa */
   chamouPessoa: boolean;
+  /** por que ela chamou, nas palavras dela -- vira o aviso no painel */
+  motivoDaChamada: string | null;
   modelo: string;
   tokens: { entrada: number; saida: number; cache: number };
 };
@@ -341,6 +356,7 @@ export async function responder(params: {
   const anexos: string[] = [];
   const imagens: string[] = [];
   let chamouPessoa = false;
+  let motivoDaChamada: string | null = null;
   const tokens = { entrada: 0, saida: 0, cache: 0 };
 
   try {
@@ -382,6 +398,7 @@ export async function responder(params: {
           const r =
             bloco.name === "chamar_pessoa"
               ? ((chamouPessoa = true),
+                (motivoDaChamada = motivoDe(bloco.input)),
                 { texto: "Pronto, o restaurante foi avisado. Escreva agora a mensagem ao cliente; depois dela você não responde mais esta conversa." })
               : pedidos
                 ? await executarFerramenta(pedidos, bloco.name, bloco.input)
@@ -401,13 +418,13 @@ export async function responder(params: {
         .map((b) => b.text)
         .join("\n")
         .trim();
-      if (!texto) return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
+      if (!texto) return semTexto(anexos, imagens, modelo, tokens, chamouPessoa, motivoDaChamada);
 
-      return { texto, anexos, imagens, chamouPessoa, modelo: resposta.model, tokens };
+      return { texto, anexos, imagens, chamouPessoa, motivoDaChamada, modelo: resposta.model, tokens };
     }
 
     console.warn("[ia] idas e voltas demais com as ferramentas; a conversa fica para o restaurante");
-    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
+    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa, motivoDaChamada);
   } catch (erro) {
     // do mais específico para o mais geral: o que é passageiro e o que é
     // configuração errada pedem atitudes diferentes de quem lê o log
@@ -422,7 +439,7 @@ export async function responder(params: {
     } else {
       console.error("[ia] falha ao chamar a Anthropic:", erro);
     }
-    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa);
+    return semTexto(anexos, imagens, modelo, tokens, chamouPessoa, motivoDaChamada);
   }
 }
 
@@ -438,12 +455,13 @@ function semTexto(
   modelo: string,
   tokens: Resposta["tokens"],
   chamouPessoa: boolean,
+  motivoDaChamada: string | null,
 ): Resposta | null {
   if (anexos.length > 0) {
-    return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, imagens, chamouPessoa, modelo, tokens };
+    return { texto: "Segue aqui embaixo o Pix para pagamento. Qualquer dúvida, é só chamar.", anexos, imagens, chamouPessoa, motivoDaChamada, modelo, tokens };
   }
   if (chamouPessoa) {
-    return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, imagens, chamouPessoa, modelo, tokens };
+    return { texto: "Já avisei o restaurante, alguém vai falar com você em instantes!", anexos, imagens, chamouPessoa, motivoDaChamada, modelo, tokens };
   }
   // Ela começou a atender e parou no meio: erro da Anthropic, idas e
   // voltas demais com as ferramentas, resposta vazia.
@@ -457,6 +475,9 @@ function semTexto(
     anexos,
     imagens,
     chamouPessoa: true,
+    // a falha e o motivo: quem ler o aviso no painel precisa saber que
+    // ninguem pediu nada -- ela quebrou e passou a bola
+    motivoDaChamada: motivoDaChamada ?? "a IA teve um erro e passou a conversa",
     modelo,
     tokens,
   };

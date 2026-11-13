@@ -2,6 +2,7 @@ import { Bike, ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer,
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AvisosDaIa } from "@/components/panel/avisos-da-ia";
 import { AvisosDeMensagem } from "@/components/panel/avisos-de-mensagem";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
@@ -26,6 +27,7 @@ import { EXCLUDE_UNPAID, FINAL_ORDER_STATUSES, esperaAceite, nextOrderStep, paga
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
+import { chamadosEsperando } from "@/server/ia/conversas";
 import { algumComputadorAcordado, listDevices } from "@/server/print/devices";
 import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
@@ -87,7 +89,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // tela dele, com o mapa das mesas.
   const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, printFacilLigado, ultimos] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, chamados, printFacilLigado, ultimos] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
@@ -124,6 +126,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // só no 100% Delivery existe conversa: nos outros o cliente fala pelo
     // WhatsApp, e o recado nunca passa por aqui
     restaurant.fullDeliveryEnabled ? recadosEsperando(restaurant.id) : Promise.resolve([]),
+    // quem pediu para falar com uma pessoa e ainda esta esperando. Vale
+    // para qualquer restaurante com a IA ligada -- a conversa dela
+    // acontece no WhatsApp, fora do 100% Delivery
+    restaurant.iaEnabled ? chamadosEsperando(restaurant.id) : Promise.resolve([]),
     // com um computador acordado, o botão Imprimir de cada pedido manda a
     // via de volta para ele em vez de tentar imprimir no aparelho de quem
     // tocou -- que no celular não tem impressora nenhuma
@@ -197,7 +203,14 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
-        recados={recados.length > 0 ? <AvisosDeMensagem mensagens={recados} base={base} /> : null}
+        recados={
+          chamados.length > 0 || recados.length > 0 ? (
+            <>
+              {chamados.length > 0 && <AvisosDaIa chamados={chamados} />}
+              {recados.length > 0 && <AvisosDeMensagem mensagens={recados} base={base} />}
+            </>
+          ) : null
+        }
         avisos={
           <PushAvisos
             restaurantId={restaurant.id}
