@@ -99,9 +99,16 @@ function Indicador({
     <div className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-4">
       <span className={cn("grid size-11 shrink-0 place-items-center rounded-full text-white", fundo)}>{icone}</span>
 
-      <div className="min-w-0 flex-1">
-        <p className="text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
-        <p className="mt-0.5 text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
+      {/* `overflow-hidden` junto com o `min-w-0`: sem ele, o texto que não
+          cabe não some nem encolhe -- ele vaza para fora da coluna e
+          atravessa o gráfico ao lado, porque no flex o que transborda de
+          um item é desenhado por cima do seguinte. Só aparecia no card de
+          vendas, que é o único com valor largo e apoio longo ("5 pedidos
+          · 2 confirmados"); os outros têm texto curto e nunca encostaram
+          no limite. */}
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
+        <p className="mt-0.5 truncate text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
         <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-muted">
           <span className="truncate">{apoio}</span>
           {extra}
