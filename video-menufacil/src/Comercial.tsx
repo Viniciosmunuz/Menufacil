@@ -39,7 +39,7 @@ import { COR, FONTE, seg } from "./marca";
  * Se entrar locução por cima, as chamadas de cada cena saem.
  */
 
-export const DURACAO_COMERCIAL = 32;
+export const DURACAO_COMERCIAL = 38.4;
 
 const SERIFADA = '"Playfair Display", Georgia, serif';
 const MONO = '"JetBrains Mono", Consolas, monospace';
@@ -56,7 +56,8 @@ const CENA = {
   cardapio: [6.0, 13.4],
   lia: [13.1, 20.6],
   painel: [20.3, 26.8],
-  marca: [26.5, 32],
+  chama: [26.5, 33.2],
+  marca: [32.9, 38.4],
 } as const;
 
 // ─── movimento ────────────────────────────────────────────────────────
@@ -1219,7 +1220,213 @@ const Painel: React.FC = () => {
   );
 };
 
-// ─── cena 6: a marca ──────────────────────────────────────────────────
+// ─── cena 6: quando o cliente pede uma pessoa ─────────────────────────
+
+/**
+ * O cliente pede algo que só gente resolve, a Lia avisa que vai chamar
+ * alguém, e o aviso sobe no painel.
+ *
+ * Ele pediu esta cena, e ela responde a pergunta que todo dono faz
+ * quando ouve "IA atendendo": e quando o cliente quiser falar comigo?
+ * O exemplo é o caso real da regra dela -- mexer em pedido que já foi
+ * feito é assunto de pessoa -- e continua a história da Marina, que
+ * acabou de pedir a picanha.
+ *
+ * O cartão do aviso é o do painel (`avisos-da-ia.tsx`), redesenhado em
+ * tamanho de vídeo: no tamanho real ele teria um dedo de largura.
+ */
+const Chama: React.FC = () => {
+  const { t, mola } = useTempo();
+  const dura = CENA.chama[1] - CENA.chama[0];
+  const conversa = vai(t, 0.3, 0.7);
+  const painel = vai(t, 1.6, 0.9);
+  const AVISO = 3.3;
+  const aviso = mola(AVISO, 130);
+  // o sino: três ondas saindo do ícone logo que o aviso sobe
+  const onda = (i: number) =>
+    interpolate(t, [AVISO + 0.1 + i * 0.35, AVISO + 1.2 + i * 0.35], [0, 1], PRESO);
+  const pulsa = t > AVISO + 1.2 ? Math.max(0, Math.sin((t - AVISO - 1.2) * 5)) * 0.05 : 0;
+  const L = 900;
+  const A = (L * 556) / 800;
+
+  return (
+    <Cena dura={dura}>
+      <Chamada a="Pediu uma pessoa?" b="a Lia te chama na hora." tamanho={78} />
+
+      {/* a conversa, solta do aparelho: aqui o assunto é o que acontece
+          do outro lado, no painel */}
+      <div
+        style={{
+          position: "absolute",
+          top: 400,
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent: "center",
+          opacity: conversa,
+          transform: `translateY(${(1 - conversa) * 40}px)`,
+        }}
+      >
+        <div
+          style={{
+            width: 500,
+            padding: "20px 18px",
+            borderRadius: 28,
+            background: ZAP.fundo,
+            border: `1.5px solid ${COR.line}`,
+            boxShadow: "0 30px 50px -28px rgba(29,32,38,0.4)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 11,
+            minHeight: 236,
+            transform: "scale(1.62)",
+            transformOrigin: "50% 0%",
+          }}
+        >
+          <Balao de="cliente" atrasa={0.6} hora="20:47">
+            Dá pra trocar a macaxeira por batata frita?
+          </Balao>
+          <Balao de="lia" atrasa={1.5} hora="20:47">
+            Vou chamar uma pessoa do restaurante pra ver isso com você. Só um instante!
+          </Balao>
+        </div>
+      </div>
+
+      {/* o painel, e o aviso subindo por cima dele */}
+      <div
+        style={{
+          position: "absolute",
+          top: 905,
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent: "center",
+          opacity: painel,
+          transform: `translateY(${(1 - painel) * 120}px)`,
+        }}
+      >
+        <div style={{ position: "relative", width: L }}>
+          <div
+            style={{
+              borderRadius: 26,
+              overflow: "hidden",
+              background: "#1b1e24",
+              boxShadow: "0 60px 90px -34px rgba(29,32,38,0.5), 0 0 0 1.5px rgba(29,32,38,0.12)",
+            }}
+          >
+            <div style={{ height: 44, display: "flex", alignItems: "center", gap: 10, padding: "0 20px" }}>
+              {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
+                <span key={c} style={{ width: 14, height: 14, borderRadius: 14, background: c }} />
+              ))}
+            </div>
+            <Img
+              src={staticFile("telas/tela-pedidos.jpg")}
+              style={{ width: L, height: A, display: "block", filter: `brightness(${1 - aviso * 0.12})` }}
+            />
+          </div>
+
+          <div
+            style={{
+              position: "absolute",
+              left: -30,
+              right: -30,
+              bottom: -70,
+              padding: "30px 32px",
+              borderRadius: 34,
+              background: COR.surface,
+              border: `2.5px solid ${COR.brandLine}`,
+              boxShadow: "0 50px 80px -24px rgba(29,32,38,0.55)",
+              opacity: Math.min(1, aviso * 1.6),
+              transform: `translateY(${(1 - aviso) * 160}px) scale(${0.9 + aviso * 0.1})`,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+              <span
+                style={{
+                  position: "relative",
+                  width: 76,
+                  height: 76,
+                  borderRadius: 76,
+                  background: COR.brandTint,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: 76,
+                      border: `3px solid ${COR.brand}`,
+                      opacity: t > AVISO ? (1 - onda(i)) * 0.7 : 0,
+                      transform: `scale(${1 + onda(i) * 1.1})`,
+                    }}
+                  />
+                ))}
+                <svg
+                  width="42"
+                  height="42"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={COR.brand}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 14v-2a9 9 0 0 1 18 0v2" />
+                  <path d="M21 16a2 2 0 0 1-2 2h-1v-6h3zM3 16a2 2 0 0 0 2 2h1v-6H3z" />
+                  <path d="M21 16v2a4 4 0 0 1-4 4h-5" />
+                </svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 38,
+                    fontWeight: 800,
+                    color: TINTA,
+                    letterSpacing: -0.8,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Marina quer falar com você
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 600, color: VELADO, whiteSpace: "nowrap" }}>
+                  Quer trocar a macaxeira por batata frita
+                </div>
+              </div>
+              <span
+                style={{
+                  padding: "18px 30px",
+                  borderRadius: 18,
+                  background: COR.brand,
+                  color: BRANCO,
+                  fontSize: 30,
+                  fontWeight: 800,
+                  boxShadow: "0 14px 30px -12px rgba(249,104,11,0.8)",
+                  transform: `scale(${1 + pulsa})`,
+                }}
+              >
+                Responder
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1745, textAlign: "center" }}>
+        <Pilula atrasa={4.6} cheia>
+          Aviso no painel e no celular
+        </Pilula>
+      </div>
+    </Cena>
+  );
+};
+
+// ─── cena 7: a marca ──────────────────────────────────────────────────
 
 const Marca: React.FC = () => {
   const { t, mola } = useTempo();
@@ -1310,6 +1517,9 @@ export const Comercial: React.FC = () => (
     </Trecho>
     <Trecho de={CENA.painel}>
       <Painel />
+    </Trecho>
+    <Trecho de={CENA.chama}>
+      <Chama />
     </Trecho>
     <Trecho de={CENA.marca}>
       <Marca />
