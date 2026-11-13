@@ -30,6 +30,21 @@ import { responder, type Turno } from "./responder";
 
 /** o teto por sessão, na janela de uma hora */
 const RESPOSTAS_POR_HORA = 20;
+/**
+ * O teto do restaurante inteiro no chat do cardápio, por hora.
+ *
+ * O teto por sessão sozinho não segura ninguém mal-intencionado: a
+ * sessão é um texto que o navegador inventa, então um script que troque
+ * de sessão a cada chamada conversa sem limite -- e cada resposta é
+ * crédito da Anthropic saindo da conta do MenuFácil.
+ *
+ * Trezentas respostas por hora é muito mais do que um restaurante cheio
+ * usa (são cinco por minuto, a hora inteira), e é um prejuízo com fim
+ * para o pior caso. Quem bate aqui ouve o mesmo recado do teto por
+ * sessão, e o WhatsApp não é afetado: a conta olha só as conversas da
+ * web.
+ */
+const RESPOSTAS_POR_HORA_DO_RESTAURANTE = 300;
 /** quanto da conversa anterior vai junto para o modelo */
 const HISTORICO = 16;
 /** o tamanho máximo de uma mensagem do cliente */
@@ -73,6 +88,19 @@ export async function conversarNoCardapio(params: {
     },
   });
   if (respostasNaHora >= RESPOSTAS_POR_HORA) return { ok: false, motivo: "teto" };
+
+  const doRestauranteNaHora = await db.iaMensagem.count({
+    where: {
+      restaurantId: params.restaurantId,
+      contato: { startsWith: "web:" },
+      papel: "IA",
+      createdAt: { gte: new Date(agora - 60 * 60_000) },
+    },
+  });
+  if (doRestauranteNaHora >= RESPOSTAS_POR_HORA_DO_RESTAURANTE) {
+    console.warn(`[ia/chat] teto do restaurante ${params.restaurantId} atingido: ${doRestauranteNaHora} respostas na hora`);
+    return { ok: false, motivo: "teto" };
+  }
 
   // Fechado é silêncio, como no WhatsApp: a IA não inventa horário nem
   // promete entrega que a cozinha não vai fazer.
