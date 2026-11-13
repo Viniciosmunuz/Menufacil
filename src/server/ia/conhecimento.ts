@@ -211,7 +211,10 @@ export async function conhecimentoDoRestaurante(
     } else if (umaTaxaSo) {
       linhas.push(`- Taxa de entrega: ${areas[0].feeCents > 0 ? formatCents(areas[0].feeCents) : "grátis"}, em qualquer bairro atendido`);
     }
-    if (r.deliveryTimeMin && r.deliveryTimeMax) linhas.push(`- Tempo de entrega: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos`);
+    if (r.deliveryTimeMin && r.deliveryTimeMax)
+      linhas.push(
+        `- Tempo de entrega: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos. SÓ diga isso se o cliente perguntar quanto tempo demora. Nunca ofereça o prazo por conta própria, nem no meio de outra resposta.`,
+      );
     if (areas.length > 0) {
       linhas.push(`- BAIRROS ATENDIDOS (a entrega só vai nestes; fora deles, só retirada):`);
       for (const a of areas) {
