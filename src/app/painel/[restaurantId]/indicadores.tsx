@@ -1,10 +1,10 @@
-import { Bike, ChefHat, Receipt, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Bike, ChefHat, Receipt, ShoppingCart, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatCents, formatMinutos } from "@/lib/format";
-import type { DiaDaSemana, TemposDoAtendimento } from "@/server/stats";
+import type { TemposDoAtendimento } from "@/server/stats";
 
 // Os quatro números que o dono procura ao abrir o painel: quanto vendeu,
 // quanto vale cada pedido, quanto a cozinha está levando e quanto a
@@ -18,34 +18,6 @@ import type { DiaDaSemana, TemposDoAtendimento } from "@/server/stats";
 // verdade, dia a dia: dinheiro e ticket saem da mesma semana que o gráfico
 // mostra embaixo, cozinha e entrega saem da mediana de cada dia. Dia sem
 // medida some da linha em vez de virar um zero que não aconteceu.
-
-/** a linha fininha do histórico; o dia sem medida é pulado */
-function Risco({ valores, cor }: { valores: (number | null)[]; cor: string }) {
-  const pontos = valores.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v !== null);
-  // menos de três pontos não desenha tendência nenhuma, desenha ruído
-  if (pontos.length < 3) return null;
-
-  const nums = pontos.map((p) => p.v);
-  const maior = Math.max(...nums);
-  const menor = Math.min(...nums);
-  const vao = maior - menor || 1;
-  const passo = valores.length > 1 ? 100 / (valores.length - 1) : 100;
-  const d = pontos.map((p) => `${(p.i * passo).toFixed(1)},${(24 - ((p.v - menor) / vao) * 20).toFixed(1)}`);
-
-  return (
-    <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="h-6 w-full" aria-hidden="true">
-      <polyline
-        points={d.join(" ")}
-        fill="none"
-        stroke={cor}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
 
 /**
  * Quanto mudou, em porcento.
@@ -62,19 +34,35 @@ function Variacao({ atual, anterior, menosEMelhor = false }: { atual: number; an
   const bom = menosEMelhor ? !subiu : subiu;
   const Icone = subiu ? TrendingUp : TrendingDown;
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-0.5 text-xs font-extrabold", bom ? "text-success" : "text-danger")}>
+    // Pílula, e não texto solto: a variação é o que o olho procura
+    // depois do número, e com fundo ela se separa da linha de apoio sem
+    // precisar de outra linha só para ela.
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-extrabold",
+        bom ? "bg-success-soft text-success" : "bg-danger-soft text-danger",
+      )}
+    >
+      <Icone className="size-3.5" aria-hidden="true" />
       {subiu ? "+" : ""}
       {pct}%
-      <Icone className="size-3.5" aria-hidden="true" />
     </span>
   );
 }
 
+/**
+ * O tom de cada cartão: fundo claro no selo, ícone na cor cheia.
+ *
+ * Antes o selo era um círculo da cor cheia com o ícone branco. Quatro
+ * círculos saturados em linha puxavam o olho antes dos números, que são
+ * o assunto -- e é por isso que o painel que ele mandou como referência
+ * usa o inverso: a cor fica no véu, e o preto fica no valor.
+ */
 const TONS = {
-  laranja: { fundo: "bg-brand", linha: "var(--color-brand)" },
-  ambar: { fundo: "bg-warning", linha: "var(--color-warning)" },
-  verde: { fundo: "bg-success", linha: "var(--color-success)" },
-  azul: { fundo: "bg-info", linha: "var(--color-info)" },
+  laranja: "bg-brand-soft text-brand",
+  ambar: "bg-warning-soft text-warning",
+  verde: "bg-success-soft text-success",
+  azul: "bg-info-soft text-info",
 } as const;
 
 function Indicador({
@@ -83,43 +71,49 @@ function Indicador({
   titulo,
   valor,
   apoio,
+  detalhe,
   extra,
-  serie,
 }: {
   icone: ReactNode;
   tom: keyof typeof TONS;
   titulo: string;
   valor: string;
+  /** a frase ao lado da variação: "vs ontem", "Tempo médio" */
   apoio: string;
+  /** a linha de contagem, quando existe: "6 pedidos · 6 concluídos" */
+  detalhe?: { icone: ReactNode; texto: string };
   extra?: ReactNode;
-  serie: (number | null)[];
 }) {
-  const { fundo, linha } = TONS[tom];
   return (
-    /* O gráfico embaixo, e não ao lado do número.
+    /* O cartão no molde que ele mandou: selo de cor clara, o valor em
+     * corpo grande logo abaixo do título, e a variação numa pílula no pé.
      *
-     * Ao lado ele não cabia: em quatro colunas sobram uns 95px para o
-     * texto, e "R$ 316,50" em corpo grande pede mais do que isso. O
-     * primeiro remendo foi cortar o número com reticências -- que é pior
-     * do que o problema, porque um valor de dinheiro pela metade não
-     * serve para nada. Embaixo, o número tem a largura inteira do cartão
-     * e o risco também, o que ainda o deixa mais legível do que era nos
-     * 56px de antes. */
-    <div className="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-surface p-4">
+     * O risco de sete dias saiu daqui. Ele existia para dar contexto ao
+     * número do dia, e a pílula dá o mesmo contexto com uma conta que se
+     * lê de relance ("+55% vs ontem") em vez de uma linha que o olho tem
+     * de interpretar. O histórico continua inteiro no gráfico de sete
+     * dias logo abaixo, que é maior e tem eixo. */
+    <div className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-4">
       <div className="flex min-w-0 items-center gap-3">
-        <span className={cn("grid size-11 shrink-0 place-items-center rounded-full text-white", fundo)}>{icone}</span>
+        <span className={cn("grid size-12 shrink-0 place-items-center rounded-[1.1rem]", TONS[tom])}>{icone}</span>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
-          <p className="mt-0.5 text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-muted">
-            <span className="truncate">{apoio}</span>
-            {extra}
-          </p>
+          <p className="mt-1 text-[1.65rem] leading-none font-extrabold tabular-nums">{valor}</p>
         </div>
       </div>
 
-      <Risco valores={serie} cor={linha} />
+      {detalhe && (
+        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
+          <span className="shrink-0 text-faint">{detalhe.icone}</span>
+          <span className="truncate">{detalhe.texto}</span>
+        </p>
+      )}
+
+      <p className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
+        {extra}
+        <span className="truncate">{apoio}</span>
+      </p>
     </div>
   );
 }
@@ -131,7 +125,6 @@ export function Indicadores({
   centavos,
   centavosOntem,
   concluidos,
-  semana,
   tempos,
 }: {
   href: string;
@@ -140,15 +133,10 @@ export function Indicadores({
   centavos: number;
   centavosOntem: number;
   concluidos: number;
-  semana: DiaDaSemana[];
   tempos: TemposDoAtendimento;
 }) {
   const ticket = pedidos > 0 ? Math.round(centavos / pedidos) : 0;
   const ticketOntem = pedidosOntem > 0 ? Math.round(centavosOntem / pedidosOntem) : 0;
-
-  // dinheiro e ticket saem da mesma semana que o gráfico mostra embaixo
-  const serieVendas = semana.map((d) => (d.centavos > 0 ? d.centavos : null));
-  const serieTicket = semana.map((d) => (d.pedidos > 0 ? Math.round(d.centavos / d.pedidos) : null));
 
   // A frase só aparece quando os dois lados discordam -- é aí que o número
   // sozinho engana: dobrar o movimento com o ticket pela metade parece
@@ -170,9 +158,12 @@ export function Indicadores({
           tom="laranja"
           titulo="Vendas hoje"
           valor={formatCents(centavos)}
-          apoio={`${pedidos} ${pedidos === 1 ? "pedido" : "pedidos"}${concluidos > 0 ? ` · ${concluidos} concluído${concluidos === 1 ? "" : "s"}` : ""}`}
+          apoio="vs ontem"
+          detalhe={{
+            icone: <ShoppingCart className="size-3.5" aria-hidden="true" />,
+            texto: `${pedidos} ${pedidos === 1 ? "pedido" : "pedidos"}${concluidos > 0 ? ` · ${concluidos} concluído${concluidos === 1 ? "" : "s"}` : ""}`,
+          }}
           extra={<Variacao atual={centavos} anterior={centavosOntem} />}
-          serie={serieVendas}
         />
 
         <Indicador
@@ -180,9 +171,8 @@ export function Indicadores({
           tom="ambar"
           titulo="Ticket médio"
           valor={ticket > 0 ? formatCents(ticket) : "—"}
-          apoio="Por pedido"
+          apoio="vs ontem"
           extra={<Variacao atual={ticket} anterior={ticketOntem} />}
-          serie={serieTicket}
         />
 
         <Indicador
@@ -196,7 +186,6 @@ export function Indicadores({
               <Variacao atual={tempos.cozinha.minutos} anterior={tempos.normal.cozinha.minutos} menosEMelhor />
             ) : null
           }
-          serie={tempos.serie.cozinha}
         />
 
         <Indicador
@@ -210,7 +199,6 @@ export function Indicadores({
               <Variacao atual={tempos.entrega.minutos} anterior={tempos.normal.entrega.minutos} menosEMelhor />
             ) : null
           }
-          serie={tempos.serie.entrega}
         />
       </div>
 

@@ -108,7 +108,6 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
         centavos={dia.centavosHoje}
         centavosOntem={dia.centavosOntem}
         concluidos={completedToday}
-        semana={semana}
         tempos={tempos}
       />
 
