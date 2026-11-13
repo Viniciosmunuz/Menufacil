@@ -1820,3 +1820,26 @@ model IaEventoProcessado {
   chave     String   @id
   createdAt DateTime @default(now())
 }
+
+/// Uma senha errada na tela de entrar.
+///
+/// Existe so para contar: sem isto, quem quisesse a conta de um
+/// restaurante podia testar senhas a noite inteira, sem pausa nenhuma.
+///
+/// Guarda o login digitado e o endereco de quem digitou, e nao o
+/// usuario: a maior parte das tentativas de adivinhar e contra login que
+/// nem existe, e essas tambem tem de entrar na conta.
+///
+/// As linhas valem por minutos. O que passa de um dia e apagado na
+/// propria tela de entrar, entao esta tabela nao cresce.
+model TentativaDeLogin {
+  id        String   @id @default(cuid())
+  /// o login como foi digitado, em minusculas e sem espaco
+  login     String
+  /// de onde veio; "?" quando o endereco nao chegou
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([login, createdAt])
+  @@index([createdAt])
+}

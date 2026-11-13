@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { dummyPasswordCheck, verifyPassword } from "@/server/auth/password";
 import { homeFor, safeReturnPath } from "@/server/auth/redirects";
 import { createSession } from "@/server/auth/session";
+import { anotarTentativa, esperaParaTentar, esquecerTentativas } from "@/server/auth/tentativas";
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1),
@@ -62,6 +63,17 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (!parsed.success) return { error: "Informe o e-mail, o CPF ou o telefone e a senha.", email: typedEmail };
 
   const { email, password, returnTo } = parsed.data;
+
+  // O freio vem antes de conferir a senha: depois do teto, nem a senha
+  // certa entra -- senão quem está adivinhando continuaria testando, só
+  // sem ver a mensagem de erro.
+  const espera = await esperaParaTentar(email);
+  if (espera > 0) {
+    return {
+      error: `Muitas tentativas com senha errada. Tente de novo em ${espera} ${espera === 1 ? "minuto" : "minutos"}.`,
+      email: typedEmail,
+    };
+  }
   const user = email.includes("@")
     ? await db.user.findUnique({ where: { email } })
     : ((await contaPorCpf(email)) ?? (await contaPorTelefone(email)));
@@ -71,11 +83,15 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     ? await verifyPassword(password, user.passwordHash)
     : (await dummyPasswordCheck(password), false);
 
-  if (!user || !valid) return { error: "E-mail, CPF, telefone ou senha incorretos.", email: typedEmail };
+  if (!user || !valid) {
+    await anotarTentativa(email);
+    return { error: "E-mail, CPF, telefone ou senha incorretos.", email: typedEmail };
+  }
   if (user.status !== "ACTIVE") {
     return { error: "Esta conta está desativada. Fale com o suporte do MenuFácil.", email: typedEmail };
   }
 
+  await esquecerTentativas(email);
   await createSession(user.id);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
