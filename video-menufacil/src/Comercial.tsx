@@ -214,59 +214,213 @@ const Pilula: React.FC<{ children: React.ReactNode; atrasa: number; cheia?: bool
 // ─── o aparelho ───────────────────────────────────────────────────────
 
 /**
- * O celular: moldura escura, canto bem redondo, luz laranja por trás.
+ * O aparelho, desenhado como um iPhone.
+ *
+ * O primeiro era um retângulo escuro de canto redondo, e ele pediu um
+ * iPhone. O que faz o olho ler "iPhone" são quatro coisas, e as quatro
+ * estão aqui: o aro de titânio fino com reflexo, a ilha preta no alto,
+ * os botões na lateral (ação e volume de um lado, liga do outro) e a
+ * barrinha de início no pé. A barra de status com hora, sinal e bateria
+ * fecha a conta -- sem ela a tela parece uma imagem colada num molde.
  *
  * A perspectiva fica no pai e o giro no filho -- com as duas no mesmo
- * elemento o giro sai achatado, sem profundidade.
+ * elemento o giro sai achatado, sem profundidade. Os botões ficam dentro
+ * do elemento que gira, senão o aparelho vira e eles ficam parados.
+ *
+ * `status` diz a cor da hora e dos ícones: clara sobre foto escura,
+ * escura sobre tela branca.
  */
+const TITANIO =
+  "linear-gradient(135deg,#f4f1ec 0%,#b9b4ab 18%,#8d8980 38%,#d9d5cd 52%,#7f7b73 70%,#c9c5bd 86%,#eeebe5 100%)";
+
+const Botao: React.FC<{ lado: "esq" | "dir"; topo: number; altura: number }> = ({
+  lado,
+  topo,
+  altura,
+}) => (
+  <span
+    style={{
+      position: "absolute",
+      top: topo,
+      [lado === "esq" ? "left" : "right"]: -5,
+      width: 6,
+      height: altura,
+      borderRadius: 3,
+      background: "linear-gradient(180deg,#cfcbc3,#8b877f 50%,#bdb9b1)",
+    }}
+  />
+);
+
+const Status: React.FC<{ cor: string }> = ({ cor }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 62,
+      padding: "0 40px 0 46px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      color: cor,
+      fontFamily: '"SF Pro Text", -apple-system, "Segoe UI", system-ui, sans-serif',
+      fontSize: 21,
+      fontWeight: 700,
+      letterSpacing: -0.2,
+    }}
+  >
+    <span>20:41</span>
+    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* sinal */}
+      <svg width="24" height="16" viewBox="0 0 24 16">
+        {[0, 1, 2, 3].map((i) => (
+          <rect key={i} x={i * 6} y={12 - i * 4} width="4.2" height={4 + i * 4} rx="1.2" fill={cor} />
+        ))}
+      </svg>
+      {/* wi-fi */}
+      <svg width="22" height="16" viewBox="0 0 22 16" fill="none" stroke={cor} strokeWidth="2.4" strokeLinecap="round">
+        <path d="M2 6.2a13 13 0 0 1 18 0" />
+        <path d="M5.4 9.8a8 8 0 0 1 11.2 0" />
+        <circle cx="11" cy="13.4" r="1.3" fill={cor} stroke="none" />
+      </svg>
+      {/* bateria */}
+      <svg width="34" height="16" viewBox="0 0 34 16" fill="none">
+        <rect x="1" y="1" width="28" height="14" rx="4.4" stroke={cor} strokeOpacity="0.45" strokeWidth="1.6" />
+        <rect x="3.2" y="3.2" width="20" height="9.6" rx="2.6" fill={cor} />
+        <rect x="30.6" y="5" width="2.4" height="6" rx="1.2" fill={cor} fillOpacity="0.5" />
+      </svg>
+    </span>
+  </div>
+);
+
 const Telefone: React.FC<{
   children: React.ReactNode;
   largura?: number;
   altura?: number;
   rx?: number;
   ry?: number;
-}> = ({ children, largura = 520, altura = 1068, rx = 0, ry = 0 }) => (
-  <div style={{ perspective: 2200 }}>
-    <div
-      style={{
-        width: largura + 28,
-        height: altura + 28,
-        padding: 14,
-        borderRadius: 74,
-        background: "linear-gradient(145deg,#2b2e35,#0b0c0f 55%)",
-        boxShadow: [
-          "0 0 0 2px rgba(255,255,255,0.10) inset",
-          "0 60px 90px -30px rgba(29,32,38,0.45)",
-          "0 20px 40px -20px rgba(29,32,38,0.25)",
-        ].join(","),
-        transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
-      }}
-    >
+  status?: "clara" | "escura";
+}> = ({ children, largura = 520, altura = 1068, rx = 0, ry = 0, status = "escura" }) => {
+  const ARO = 5;
+  const BORDA = 11;
+  const cor = status === "clara" ? "#ffffff" : "#111316";
+  return (
+    <div style={{ perspective: 2200 }}>
       <div
         style={{
           position: "relative",
-          width: largura,
-          height: altura,
-          borderRadius: 60,
-          overflow: "hidden",
-          background: BRANCO,
+          width: largura + (ARO + BORDA) * 2,
+          height: altura + (ARO + BORDA) * 2,
+          padding: ARO,
+          borderRadius: 82,
+          background: TITANIO,
+          boxShadow: [
+            "0 60px 90px -30px rgba(29,32,38,0.45)",
+            "0 20px 40px -20px rgba(29,32,38,0.25)",
+          ].join(","),
+          transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
         }}
       >
-        {children}
-        {/* o brilho do vidro: uma faixa diagonal quase invisível */}
+        <Botao lado="esq" topo={190} altura={46} />
+        <Botao lado="esq" topo={270} altura={84} />
+        <Botao lado="esq" topo={372} altura={84} />
+        <Botao lado="dir" topo={310} altura={132} />
+
+        {/* a borda preta do vidro, entre o aro e a tela */}
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(115deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 28%)",
-            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            padding: BORDA,
+            borderRadius: 77,
+            background: "#050506",
           }}
-        />
+        >
+          <div
+            style={{
+              position: "relative",
+              width: largura,
+              height: altura,
+              borderRadius: 66,
+              overflow: "hidden",
+              background: BRANCO,
+            }}
+          >
+            {children}
+
+            {status === "clara" ? (
+              // um véu escuro só no alto, para a hora branca aparecer
+              // em cima de qualquer foto
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 96,
+                  background: "linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0))",
+                }}
+              />
+            ) : null}
+            <Status cor={cor} />
+
+            {/* a ilha */}
+            <div
+              style={{
+                position: "absolute",
+                top: 14,
+                left: "50%",
+                marginLeft: -76,
+                width: 152,
+                height: 40,
+                borderRadius: 20,
+                background: "#000",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: 13,
+                  width: 14,
+                  height: 14,
+                  borderRadius: 14,
+                  background: "radial-gradient(circle at 35% 35%, #2b3350, #0a0c14 70%)",
+                }}
+              />
+            </div>
+
+            {/* a barrinha de início */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 9,
+                left: "50%",
+                marginLeft: -92,
+                width: 184,
+                height: 6,
+                borderRadius: 6,
+                background: "rgba(17,19,22,0.85)",
+              }}
+            />
+
+            {/* o brilho do vidro: uma faixa diagonal quase invisível */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 26%)",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── cena 1: o sábado à noite ─────────────────────────────────────────
 
@@ -519,7 +673,7 @@ const Cardapio: React.FC = () => {
         }}
       >
         <div style={{ position: "relative" }}>
-          <Telefone rx={rx} ry={ry}>
+          <Telefone rx={rx} ry={ry} status="clara">
             <Img
               src={staticFile("telas/tela-cardapio.jpg")}
               style={{
@@ -552,7 +706,7 @@ const Cardapio: React.FC = () => {
                 position: "absolute",
                 left: 18,
                 right: 18,
-                bottom: 22,
+                bottom: 30,
                 padding: "20px 26px",
                 borderRadius: 26,
                 background: COR.brand,
@@ -749,7 +903,7 @@ const CenaLia: React.FC = () => {
             >
               <div
                 style={{
-                  padding: "46px 22px 16px",
+                  padding: "70px 22px 16px",
                   background: "#f7f5f3",
                   borderBottom: "1px solid #e3ded6",
                   display: "flex",
@@ -829,10 +983,10 @@ const CenaLia: React.FC = () => {
           <div
             style={{
               position: "absolute",
-              right: -150,
-              top: -70,
-              width: 250,
-              height: 250,
+              right: -185,
+              bottom: -30,
+              width: 240,
+              height: 240,
               borderRadius: 250,
               padding: 7,
               background: `linear-gradient(140deg, ${COR.brand}, ${COR.brandLine})`,
