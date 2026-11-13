@@ -23,7 +23,7 @@ import type { DiaDaSemana, TemposDoAtendimento } from "@/server/stats";
 function Risco({ valores, cor }: { valores: (number | null)[]; cor: string }) {
   const pontos = valores.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v !== null);
   // menos de três pontos não desenha tendência nenhuma, desenha ruído
-  if (pontos.length < 3) return <span className="w-14 shrink-0 sm:w-16" aria-hidden="true" />;
+  if (pontos.length < 3) return null;
 
   const nums = pontos.map((p) => p.v);
   const maior = Math.max(...nums);
@@ -33,7 +33,7 @@ function Risco({ valores, cor }: { valores: (number | null)[]; cor: string }) {
   const d = pontos.map((p) => `${(p.i * passo).toFixed(1)},${(24 - ((p.v - menor) / vao) * 20).toFixed(1)}`);
 
   return (
-    <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="h-7 w-14 shrink-0 sm:w-16" aria-hidden="true">
+    <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="h-6 w-full" aria-hidden="true">
       <polyline
         points={d.join(" ")}
         fill="none"
@@ -96,23 +96,27 @@ function Indicador({
 }) {
   const { fundo, linha } = TONS[tom];
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-4">
-      <span className={cn("grid size-11 shrink-0 place-items-center rounded-full text-white", fundo)}>{icone}</span>
+    /* O gráfico embaixo, e não ao lado do número.
+     *
+     * Ao lado ele não cabia: em quatro colunas sobram uns 95px para o
+     * texto, e "R$ 316,50" em corpo grande pede mais do que isso. O
+     * primeiro remendo foi cortar o número com reticências -- que é pior
+     * do que o problema, porque um valor de dinheiro pela metade não
+     * serve para nada. Embaixo, o número tem a largura inteira do cartão
+     * e o risco também, o que ainda o deixa mais legível do que era nos
+     * 56px de antes. */
+    <div className="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-surface p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={cn("grid size-11 shrink-0 place-items-center rounded-full text-white", fundo)}>{icone}</span>
 
-      {/* `overflow-hidden` junto com o `min-w-0`: sem ele, o texto que não
-          cabe não some nem encolhe -- ele vaza para fora da coluna e
-          atravessa o gráfico ao lado, porque no flex o que transborda de
-          um item é desenhado por cima do seguinte. Só aparecia no card de
-          vendas, que é o único com valor largo e apoio longo ("5 pedidos
-          · 2 confirmados"); os outros têm texto curto e nunca encostaram
-          no limite. */}
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
-        <p className="mt-0.5 truncate text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-muted">
-          <span className="truncate">{apoio}</span>
-          {extra}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
+          <p className="mt-0.5 text-[1.5rem] leading-none font-extrabold tabular-nums">{valor}</p>
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-muted">
+            <span className="truncate">{apoio}</span>
+            {extra}
+          </p>
+        </div>
       </div>
 
       <Risco valores={serie} cor={linha} />

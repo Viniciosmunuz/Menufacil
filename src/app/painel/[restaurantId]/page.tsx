@@ -145,7 +145,11 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           link do cardápio. As três são consulta -- abre quem quiser. O
           link era um bloco no alto da tela para uma coisa que o dono já
           fez na primeira semana. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      {/* `items-start`: sem ele o grid dá a todos a altura do mais alto, e
+          abrir uma das gavetas esticava as outras duas junto -- dois
+          cartões fechados com meio palmo de vazio dentro, do tamanho do
+          que o vizinho abriu. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
             obrigava a ir até o cardápio e procurar quais eram, para uma
             coisa de um segundo. Religar acontece aqui mesmo. */}
