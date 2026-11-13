@@ -296,8 +296,10 @@ export async function saveDeliveryAreas(_prev: SectionState, formData: FormData)
   const acc = await access(formData);
   const nomes = formData.getAll("areaName").map((v) => String(v).trim());
   const taxas = formData.getAll("areaFee").map((v) => String(v));
+  const outros = formData.getAll("areaApelidos").map((v) => String(v));
 
-  const areas: { name: string; feeCents: number; position: number }[] = [];
+  const areas: { name: string; apelidos: string[]; feeCents: number; position: number }[] = [];
+  /** cada nome e cada apelido, para não deixar o mesmo lugar em dois lugares */
   const vistos = new Set<string>();
   for (let i = 0; i < nomes.length; i++) {
     const name = nomes[i];
@@ -306,7 +308,24 @@ export async function saveDeliveryAreas(_prev: SectionState, formData: FormData)
     const chave = name.toLowerCase();
     if (vistos.has(chave)) return { fieldErrors: { areas: `"${name}" está na lista duas vezes.` } };
     vistos.add(chave);
-    areas.push({ name, feeCents: parseMoneyToCents(taxas[i]) ?? 0, position: areas.length });
+
+    // Os outros nomes vêm numa linha só, separados por vírgula: é como
+    // alguém escreveria de cabeça, e poupa um botão de "adicionar" para
+    // cada apelido.
+    const apelidos: string[] = [];
+    for (const bruto of (outros[i] ?? "").split(",")) {
+      const apelido = bruto.trim();
+      if (!apelido) continue;
+      if (apelido.length > 60) return { fieldErrors: { areas: `"${apelido.slice(0, 20)}..." é um nome longo demais.` } };
+      const k = apelido.toLowerCase();
+      // Apelido repetido mandaria o mesmo nome para duas taxas, e o
+      // pedido pegaria a primeira -- erro caro e silencioso.
+      if (vistos.has(k)) return { fieldErrors: { areas: `"${apelido}" está na lista duas vezes.` } };
+      vistos.add(k);
+      apelidos.push(apelido);
+    }
+
+    areas.push({ name, apelidos, feeCents: parseMoneyToCents(taxas[i]) ?? 0, position: areas.length });
   }
 
   await db.$transaction([

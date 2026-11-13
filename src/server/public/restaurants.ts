@@ -64,13 +64,36 @@ function toCard(r: CardRow): PublicRestaurantCard {
   };
 }
 
-/** os bairros que o restaurante atende agora; vazio = atende qualquer um */
+/**
+ * Os bairros que o restaurante atende agora; vazio = atende qualquer um.
+ *
+ * Cada apelido vira uma opção própria na lista, logo abaixo da área a
+ * que pertence e com a mesma taxa. É de propósito: na BR-174 o
+ * restaurante atende o Hotel Calleb e a fábrica de gelo, e quem está lá
+ * procura o nome do lugar onde está -- não "BR-174 (km 107)", que não
+ * diz nada a quem não conhece a quilometragem.
+ *
+ * O que o cliente escolhe é o que fica guardado no endereço do pedido,
+ * e é o que o entregador lê. A taxa vem da área, sempre a mesma para
+ * todos os nomes dela.
+ */
 export async function areasDeEntrega(restaurantId: string) {
-  return db.deliveryArea.findMany({
+  const areas = await db.deliveryArea.findMany({
     where: { restaurantId, active: true },
     orderBy: [{ position: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, feeCents: true },
+    select: { id: true, name: true, apelidos: true, feeCents: true },
   });
+
+  return areas.flatMap((a) => [
+    { id: a.id, name: a.name, feeCents: a.feeCents },
+    // o índice entra no id só para o React ter chave única; nada mais
+    // depende dele
+    ...a.apelidos.map((apelido, i) => ({
+      id: `${a.id}:${i}`,
+      name: apelido,
+      feeCents: a.feeCents,
+    })),
+  ]);
 }
 
 export async function listRestaurants(filters: {

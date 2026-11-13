@@ -260,7 +260,7 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
   );
 }
 
-export type AreaData = { id: string; name: string; feeCents: number };
+export type AreaData = { id: string; name: string; apelidos: string[]; feeCents: number };
 
 /**
  * Os bairros que o restaurante atende.
@@ -273,7 +273,7 @@ export type AreaData = { id: string; name: string; feeCents: number };
  * O aviso em cima disso não é decoração: é a única chance de o dono
  * entender que uma lista pela metade deixa cliente de fora.
  */
-type Linha = { chave: string; name: string; fee: string };
+type Linha = { chave: string; name: string; fee: string; apelidos: string };
 
 /**
  * Uma linha da lista de bairros.
@@ -291,11 +291,21 @@ const LinhaDeBairro = memo(function LinhaDeBairro({
 }: {
   linha: Linha;
   numero: number;
-  mexer: (chave: string, campo: "name" | "fee", valor: string) => void;
+  mexer: (chave: string, campo: "name" | "fee" | "apelidos", valor: string) => void;
   tirar: (chave: string) => void;
 }) {
+  /**
+   * O campo dos outros nomes fica escondido até alguém precisar dele.
+   *
+   * A maioria dos bairros não tem segundo nome, e uma lista de dezessete
+   * campos vazios faz o dono procurar o que preencher onde não há nada.
+   * Quem já tem apelido salvo abre com o campo à mostra.
+   */
+  const [abrirApelidos, setAbrirApelidos] = useState(Boolean(linha.apelidos));
+
   return (
-    <div className="grid grid-cols-[1fr_2.75rem] items-center gap-3 sm:grid-cols-[1fr_9rem_2.75rem]">
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-[1fr_2.75rem] items-center gap-3 sm:grid-cols-[1fr_9rem_2.75rem]">
       <Input
         name="areaName"
         aria-label={`Bairro ${numero}`}
@@ -319,13 +329,44 @@ const LinhaDeBairro = memo(function LinhaDeBairro({
       >
         <Trash2 className="size-4" aria-hidden="true" />
       </button>
+      </div>
+
+      {/* O campo vai ao servidor mesmo fechado, e sempre: é a posição
+          dele na lista que casa o apelido com o bairro certo. Faltando
+          numa linha, todos os seguintes grudariam no bairro errado. */}
+      {abrirApelidos ? (
+        <div className="flex flex-col gap-1">
+          <Input
+            name="areaApelidos"
+            aria-label={`Outros nomes do bairro ${numero}`}
+            placeholder="Ex.: Hotel Calleb, fábrica de gelo"
+            value={linha.apelidos}
+            onChange={(e) => mexer(linha.chave, "apelidos", e.target.value)}
+          />
+          <p className="text-xs text-muted">
+            Outros nomes para o mesmo lugar, separados por vírgula. Cada um aparece como uma opção no
+            cardápio e cobra esta mesma taxa.
+          </p>
+        </div>
+      ) : (
+        <>
+          <input type="hidden" name="areaApelidos" value={linha.apelidos} />
+          <button
+            type="button"
+            onClick={() => setAbrirApelidos(true)}
+            className="self-start text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+          >
+            + outros nomes deste lugar
+          </button>
+        </>
+      )}
     </div>
   );
 });
 
 export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; areas: AreaData[] }) {
   const [linhas, setLinhas] = useState(() =>
-    areas.length ? areas.map((a) => ({ chave: a.id, name: a.name, fee: centsToInput(a.feeCents) })) : [],
+    areas.length ? areas.map((a) => ({ chave: a.id, name: a.name, fee: centsToInput(a.feeCents), apelidos: a.apelidos.join(", ") })) : [],
   );
   const [colando, setColando] = useState(false);
   const [colado, setColado] = useState("");
@@ -337,7 +378,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
    * resto vem junto. Quem cobra diferente por bairro troca linha a linha.
    */
   const taxaPadrao = linhas.length ? linhas[linhas.length - 1].fee : centsToInput(r.deliveryFeeCents);
-  const nova = () => setLinhas((l) => [...l, { chave: `novo-${Date.now()}-${l.length}`, name: "", fee: taxaPadrao }]);
+  const nova = () => setLinhas((l) => [...l, { chave: `novo-${Date.now()}-${l.length}`, name: "", fee: taxaPadrao, apelidos: "" }]);
 
   /**
    * Cola uma lista inteira de uma vez.
@@ -349,7 +390,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
    */
   /** muda um campo de uma linha; é o estado que manda, não o DOM */
   const mexer = useCallback(
-    (chave: string, campo: "name" | "fee", valor: string) =>
+    (chave: string, campo: "name" | "fee" | "apelidos", valor: string) =>
       setLinhas((l) => l.map((x) => (x.chave === chave ? { ...x, [campo]: valor } : x))),
     [],
   );
@@ -366,7 +407,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
       const chave = name.toLowerCase();
       if (jaTem.has(chave)) continue; // colou duas vezes: não duplica
       jaTem.add(chave);
-      novas.push({ chave: `colado-${Date.now()}-${novas.length}`, name, fee: taxaPadrao });
+      novas.push({ chave: `colado-${Date.now()}-${novas.length}`, name, fee: taxaPadrao, apelidos: "" });
     }
     setLinhas((l) => [...l, ...novas]);
     setColado("");

@@ -317,6 +317,22 @@ model DeliveryArea {
   id           String  @id @default(cuid())
   restaurantId String
   name         String
+  /// Outros nomes do mesmo lugar, que valem a mesma taxa.
+  ///
+  /// Existe porque nem todo lugar que se atende e um bairro. Na BR-174
+  /// o Papaleguas entrega em dois pontos -- o Hotel Calleb e a fabrica
+  /// de gelo -- e nao na rodovia inteira: cadastrar "BR-174" deixaria
+  /// alguem a 20 km marcar a opcao, e cadastrar so "Centro" faria a Lia
+  /// recusar o hospede que diz "estou na BR".
+  ///
+  /// Serve tambem para o mesmo bairro escrito de outro jeito: quem
+  /// digita "cohab 2" num restaurante que cadastrou "Cohab II" tinha o
+  /// pedido recusado sem ninguem entender por que.
+  ///
+  /// Cada apelido vira uma opcao propria na lista do cardapio, porque o
+  /// cliente procura onde ele esta, nao o nome do trecho. A taxa e uma
+  /// so, a da area.
+  apelidos     String[] @default([])
   feeCents     Int     @default(0)
   /// Desligar guarda o bairro e a taxa para quando voltar a entregar la;
   /// apagar perde os dois. Bairro desligado nao aparece para o cliente.

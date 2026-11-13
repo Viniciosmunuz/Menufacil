@@ -34,7 +34,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, name: true, pizzaFlavors: true, _count: { select: { products: true } } },
       },
-      deliveryAreas: { orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, name: true, feeCents: true } },
+      deliveryAreas: { orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, name: true, apelidos: true, feeCents: true } },
     },
   });
 

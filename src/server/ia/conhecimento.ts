@@ -116,7 +116,7 @@ export async function conhecimentoDoRestaurante(
       deliveryAreas: {
         where: { active: true },
         orderBy: [{ position: "asc" }, { name: "asc" }],
-        select: { name: true, feeCents: true },
+        select: { name: true, apelidos: true, feeCents: true },
       },
       minOrderCents: true,
       deliveryTimeMin: true,
@@ -215,9 +215,18 @@ export async function conhecimentoDoRestaurante(
     if (areas.length > 0) {
       linhas.push(`- BAIRROS ATENDIDOS (a entrega só vai nestes; fora deles, só retirada):`);
       for (const a of areas) {
-        linhas.push(`  - ${a.name}${umaTaxaSo ? "" : `: ${a.feeCents > 0 ? formatCents(a.feeCents) : "grátis"}`}`);
+        // Os apelidos entram na mesma linha da área, e não como linhas
+        // soltas: assim ela entende que são o mesmo lugar com a mesma
+        // taxa, em vez de tratar "Hotel Calleb" e "BR-174 (km 107)"
+        // como dois destinos diferentes.
+        const outrosNomes = a.apelidos.length ? ` (também: ${a.apelidos.join(", ")})` : "";
+        linhas.push(
+          `  - ${a.name}${outrosNomes}${umaTaxaSo ? "" : `: ${a.feeCents > 0 ? formatCents(a.feeCents) : "grátis"}`}`,
+        );
       }
       linhas.push("  - Se o cliente disser um bairro que não está nesta lista, não anote entrega: diga que ali ainda não há entrega e ofereça a retirada no local.");
+      linhas.push("  - Os nomes entre parênteses depois de \"também:\" valem como o bairro da linha: quem diz um deles está nessa área e paga essa taxa. Ao anotar o pedido, use o nome que o CLIENTE falou -- é ele que o entregador vai ler na porta.");
+      linhas.push("  - Alguns desses nomes são pontos soltos (um hotel, uma fábrica, um posto na estrada), e não bairros. Se o cliente disser só o nome da estrada, sem dizer em qual desses pontos está, pergunte: ali só se entrega nos lugares desta lista, não na estrada inteira.");
     }
   }
   if (r.minOrderCents > 0) linhas.push(`- Pedido mínimo: ${formatCents(r.minOrderCents)}`);
