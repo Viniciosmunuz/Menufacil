@@ -2,6 +2,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/lib/db";
 import { atender, type MensagemKapso } from "@/server/ia/atender";
+import { faxinaDaIa } from "@/server/ia/faxina";
 import { transcrever, transcricaoLigada } from "@/server/ia/transcrever";
 import { baixarMidia } from "@/server/ia/uazapi";
 
@@ -320,6 +321,8 @@ export async function POST(req: NextRequest) {
       console.error("[uazapi/webhook] falha ao atender:", erro);
     }
     console.info(`[uazapi/webhook] atendimento em ${Date.now() - comecou}ms`);
+    // depois de responder, e só de vez em quando: ver o arquivo
+    await faxinaDaIa();
   });
 
   return NextResponse.json({ ok: true });
