@@ -34,7 +34,21 @@ const INTERVALO_MS = 4000;
  */
 const DESISTE_MS = 120_000;
 
-export function ConectarWhatsapp({ restaurantId }: { restaurantId: string }) {
+export function ConectarWhatsapp({
+  restaurantId,
+  /**
+   * A conexão existe no provedor, mas o WhatsApp não está pareado.
+   *
+   * São dois casos com a mesma tela e recados diferentes: quem nunca
+   * conectou precisa saber o que vai acontecer; quem já tinha conectado
+   * precisa saber que **caiu**, senão fica procurando o que ele mesmo
+   * desligou errado.
+   */
+  retomando = false,
+}: {
+  restaurantId: string;
+  retomando?: boolean;
+}) {
   const [estado, setEstado] = useState<EstadoDaConexao | null>(null);
   const [pendente, comecar] = useTransition();
   const desdeRef = useRef<number>(0);
@@ -80,12 +94,13 @@ export function ConectarWhatsapp({ restaurantId }: { restaurantId: string }) {
       {!estado?.qrcode ? (
         <>
           <p className="text-sm text-muted">
-            Conecte o WhatsApp do restaurante lendo um QR Code, como no WhatsApp Web. Tenha o celular do
-            restaurante em mãos.
+            {retomando
+              ? "O WhatsApp deste restaurante não está conectado. Leia o QR Code de novo com o celular do restaurante para a Lia voltar a responder."
+              : "Conecte o WhatsApp do restaurante lendo um QR Code, como no WhatsApp Web. Tenha o celular do restaurante em mãos."}
           </p>
           <Button onClick={pedir} disabled={pendente} variant="secondary" size="sm">
             <QrCode className="size-4" aria-hidden="true" />
-            {pendente ? "Gerando…" : "Conectar WhatsApp"}
+            {pendente ? "Gerando…" : retomando ? "Ler o QR Code" : "Conectar WhatsApp"}
           </Button>
         </>
       ) : (

@@ -8,6 +8,7 @@ import { noAr } from "@/lib/features";
 import { formatPhone } from "@/lib/format";
 import { requireDono } from "@/server/auth/dal";
 import { conversasDaIa } from "@/server/ia/conversas";
+import { conferirPareamento } from "@/server/ia/uazapi";
 
 import { Esquecer, NoCardapio, Pedidos } from "./chaves";
 import { ConversasDaIa } from "./conversas";
@@ -45,6 +46,7 @@ export default async function IaPage({
         noChat: true,
         phoneNumberId: true,
         zapiChannelId: true,
+        uazapiBaseUrl: true,
         uazapiToken: true,
         numeroExibido: true,
         ignorados: true,
@@ -54,12 +56,44 @@ export default async function IaPage({
     conversasDaIa(restaurant.id),
   ]);
 
+  /**
+   * Na uazapi, ter token **não** é estar conectado.
+   *
+   * O token nasce no instante em que a instância é criada no servidor,
+   * antes de alguém ler o QR -- e tem de ser assim, senão uma falha no
+   * meio do caminho deixaria a instância viva lá e desconhecida aqui,
+   * ocupando um lugar do plano. O efeito colateral mordeu em 12/11/2026:
+   * ele tocou em Conectar, viu o QR, não leu, e ao voltar à página o
+   * botão tinha sumido -- o token já estava gravado, a tela deu o
+   * restaurante por conectado e não havia mais como chegar no QR.
+   *
+   * Então quem responde isto é a uazapi, não o banco. De quebra resolve
+   * o caso que ia aparecer mais tarde e seria pior: a sessão do QR
+   * expira sozinha depois de um tempo, e sem esta pergunta o dono veria
+   * "ligada" com a IA muda, sem nada na tela explicando.
+   *
+   * `null` é "não consegui perguntar" (provedor fora do ar, rede), e aí
+   * vale o que está guardado: mostrar o QR a quem está conectado é pior
+   * do que deixar a tela como estava.
+   */
+  const contaUazapi =
+    atendente?.uazapiToken && atendente?.uazapiBaseUrl
+      ? { baseUrl: atendente.uazapiBaseUrl, token: atendente.uazapiToken }
+      : null;
+
+  const pareamento = contaUazapi
+    ? await conferirPareamento(contaUazapi).catch(() => null)
+    : null;
+
+  /** a uazapi respondeu, e respondeu que o WhatsApp não está pareado */
+  const uazapiSolta = Boolean(pareamento && !pareamento.conectado);
+
   // Conectado por qualquer um dos três caminhos. Sem WhatsApp, o chat do
   // cardápio ainda funciona -- ele não depende de conexão nenhuma --, e é
   // por isso que a página não some.
-  const comWhatsapp = Boolean(
-    atendente?.phoneNumberId || atendente?.zapiChannelId || atendente?.uazapiToken,
-  );
+  const comWhatsapp =
+    Boolean(atendente?.phoneNumberId || atendente?.zapiChannelId || atendente?.uazapiToken) &&
+    !uazapiSolta;
 
   return (
     <div className="flex flex-col gap-5">
@@ -98,7 +132,7 @@ export default async function IaPage({
              só na uazapi, onde o QR code tem API. Quem está num dos
              outros dois provedores nunca cai aqui: ter canal lá já
              conta como conectado. */
-          <ConectarWhatsapp restaurantId={restaurant.id} />
+          <ConectarWhatsapp restaurantId={restaurant.id} retomando={uazapiSolta} />
         )}
       </Card>
 
