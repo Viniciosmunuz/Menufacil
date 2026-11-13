@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Easing,
   Img,
   Sequence,
@@ -37,6 +38,12 @@ import { COR, FONTE, seg } from "./marca";
  *
  * **Não há narração.** Todo texto na tela está ali porque ninguém fala.
  * Se entrar locução por cima, as chamadas de cada cena saem.
+ *
+ * **Os sons são pequenos de propósito.** Estalo de mensagem, toque,
+ * impressora, o sino do painel. Todos curtos e baixos (`SONS`, no fim
+ * do arquivo): eles marcam o que acontece na tela e deixam o meio da
+ * faixa livre para a voz que vai entrar por cima. Nenhum passa de 0,4 de
+ * volume, e não há trilha.
  */
 
 export const DURACAO_COMERCIAL = 38.4;
@@ -1492,6 +1499,60 @@ const Marca: React.FC = () => {
   );
 };
 
+// ─── os sons ──────────────────────────────────────────────────────────
+
+/**
+ * Cada som, no segundo em que a coisa acontece na tela.
+ *
+ * Os tempos são os mesmos números das cenas somados ao começo de cada
+ * uma -- mexeu num atraso lá em cima, mexe aqui. Ficam todos num lugar
+ * só para dar para ouvir a faixa inteira de uma vez e para, quando a
+ * narração entrar, baixar tudo num número.
+ *
+ * O sino é o `som-sino.wav` do próprio painel: é o que toca de verdade
+ * no balcão quando chega pedido ou quando a Lia chama alguém.
+ */
+const VOLUME_GERAL = 1;
+
+const c = CENA;
+const SONS: { em: number; som: string; vol: number }[] = [
+  // as mensagens empilhando na tela de bloqueio
+  ...[0, 1, 2, 3, 4, 5].map((i) => ({ em: c.caos[0] + 0.45 + i * 0.38, som: "chega", vol: 0.34 })),
+  // a laranja abrindo e depois subindo
+  { em: c.virada[0], som: "sopro", vol: 0.3 },
+  { em: c.virada[1] - 0.7, som: "sopro", vol: 0.22 },
+  // o toque no "+", e os pratos saltando
+  { em: c.cardapio[0] + 2.4, som: "toque", vol: 0.4 },
+  ...[0, 1, 2, 3].map((i) => ({ em: c.cardapio[0] + 3.3 + i * 0.22, som: "salta", vol: 0.2 })),
+  // a conversa com a Lia: o cliente chega, ela sai
+  { em: c.lia[0] + 0.8, som: "chega", vol: 0.34 },
+  { em: c.lia[0] + 1.85, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 2.8, som: "chega", vol: 0.34 },
+  { em: c.lia[0] + 4.3, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 4.9, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 5.7, som: "chega", vol: 0.34 },
+  { em: c.lia[0] + 6.3, som: "sai", vol: 0.28 },
+  // o pedido chegando no painel, e a comanda saindo
+  { em: c.painel[0] + 1.1, som: "sino", vol: 0.3 },
+  { em: c.painel[0] + 2.2, som: "impressora", vol: 0.3 },
+  // o cliente pede uma pessoa, e o aviso sobe
+  { em: c.chama[0] + 0.6, som: "chega", vol: 0.34 },
+  { em: c.chama[0] + 1.5, som: "sai", vol: 0.28 },
+  { em: c.chama[0] + 3.3, som: "sino", vol: 0.32 },
+  // o logo
+  { em: c.marca[0] + 0.1, som: "fecho", vol: 0.3 },
+];
+
+const Sons: React.FC = () => (
+  <>
+    {SONS.map((s, i) => (
+      <Sequence key={i} from={seg(s.em)} layout="none">
+        <Audio src={staticFile(`sons/${s.som}.wav`)} volume={s.vol * VOLUME_GERAL} />
+      </Sequence>
+    ))}
+  </>
+);
+
 // ─── a montagem ───────────────────────────────────────────────────────
 
 const Trecho: React.FC<{ de: readonly [number, number]; children: React.ReactNode }> = ({
@@ -1529,5 +1590,6 @@ export const Comercial: React.FC = () => (
     <Trecho de={CENA.virada}>
       <Virada />
     </Trecho>
+    <Sons />
   </AbsoluteFill>
 );
