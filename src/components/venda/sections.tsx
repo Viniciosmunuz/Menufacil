@@ -526,9 +526,12 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
     <div
       className={cn(
         "relative flex h-full flex-col rounded-[1.6rem] bg-bg p-6 sm:p-7",
-        destaque
-          ? "border-2 border-brand shadow-[0_24px_60px_-28px_rgb(249_104_11/0.6)] lg:-my-4 lg:py-10"
-          : "border border-line",
+        // Os dois cartões têm a mesma moldura. O destacado tinha um
+        // contorno laranja grosso e crescia para fora da linha, e ele
+        // pediu para tirar: com dois planos só, o contorno não ajudava a
+        // escolher, só fazia um parecer o "certo" e o outro o resto. O
+        // que distingue o plano de entrada agora é o botão cheio.
+        "border border-line",
       )}
     >
       {plano.selo ? (
@@ -537,15 +540,29 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
         </span>
       ) : null}
 
-      <div className="flex items-start gap-3 pr-20">
-        <span className="grid size-11 shrink-0 place-items-center rounded-[0.85rem] bg-brand-soft text-brand">
-          <Icone className="size-[1.3rem]" aria-hidden="true" />
-        </span>
+      <div className={cn("flex items-start gap-3", plano.selo && "pr-20")}>
+        {plano.apresenta ? (
+          <span className="size-12 shrink-0 overflow-hidden rounded-full border border-brand/40 bg-brand-soft">
+            <Image src={plano.apresenta.foto} alt={plano.apresenta.nome} width={96} height={96} className="size-full object-cover" />
+          </span>
+        ) : (
+          <span className="grid size-11 shrink-0 place-items-center rounded-[0.85rem] bg-brand-soft text-brand">
+            <Icone className="size-[1.3rem]" aria-hidden="true" />
+          </span>
+        )}
         <div className="min-w-0">
           <h3 className="text-lg leading-tight font-extrabold">{plano.nome}</h3>
           <p className="mt-1 text-sm leading-snug text-muted">{plano.resumo}</p>
         </div>
       </div>
+
+      {/* A fala dela, como uma mensagem que chegou: é o plano se
+          apresentando na voz de quem vai trabalhar no restaurante. */}
+      {plano.apresenta && (
+        <p className="mt-4 rounded-2xl rounded-tl-md bg-surface px-4 py-3 text-[0.9rem] leading-snug text-ink/90">
+          {plano.apresenta.fala}
+        </p>
+      )}
 
       <p className="mt-6 flex items-end gap-1.5">
         <span className="text-[2.5rem] leading-none font-extrabold tracking-tight text-brand">{plano.preco}</span>

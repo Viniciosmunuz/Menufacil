@@ -120,13 +120,16 @@ export function BarraDeContato() {
         // No celular ela ocupa o pé inteiro, que é onde o polegar está.
         // No computador ela ia de ponta a ponta no meio da tela e tapava o
         // texto que a pessoa estava lendo; lá ela vira um cartão no canto.
-        "fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[22rem]",
-        cartaoVisivel ? "translate-y-full lg:translate-y-[calc(100%+2rem)]" : "translate-y-0",
+        "fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 lg:hidden 2xl:block 2xl:inset-x-auto 2xl:right-6 2xl:bottom-6 2xl:w-[22rem]",
+        // Entre o notebook e o monitor grande ela some: nessa largura o
+        // canto direito ainda e conteudo (ela tapava o cartao do plano),
+        // e o botao "Quero conhecer" do topo ja esta sempre a vista.
+        cartaoVisivel ? "translate-y-full 2xl:translate-y-[calc(100%+2rem)]" : "translate-y-0",
       )}
       aria-hidden={cartaoVisivel}
       inert={cartaoVisivel}
     >
-      <div className="mx-auto max-w-3xl rounded-t-[1.6rem] bg-[#18120e]/96 px-4 pt-3 lg:rounded-[1.4rem] lg:pb-4 pb-[max(0.9rem,env(safe-area-inset-bottom))] text-white shadow-[0_-18px_40px_-20px_rgb(0_0_0/0.6)] backdrop-blur sm:px-6">
+      <div className="mx-auto max-w-3xl rounded-t-[1.6rem] bg-[#18120e]/96 px-4 pt-3 2xl:rounded-[1.4rem] 2xl:pb-4 pb-[max(0.9rem,env(safe-area-inset-bottom))] text-white shadow-[0_-18px_40px_-20px_rgb(0_0_0/0.6)] backdrop-blur sm:px-6">
         {state.ok ? (
           <p className="flex items-center justify-center gap-2 py-3 text-sm font-bold">
             <CircleCheck className="size-5 text-success" aria-hidden="true" />

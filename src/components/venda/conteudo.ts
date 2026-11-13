@@ -350,6 +350,15 @@ export type Plano = {
   destaque?: boolean;
   /** selo acima do nome, quando há o que dizer */
   selo?: string;
+  /**
+   * Quem apresenta o plano, quando ele tem rosto.
+   *
+   * Só o plano da IA tem: nele o que se vende é a Lia, e um ícone de
+   * robô dizia o contrário do que ela é -- uma atendente com nome, não
+   * um recurso de software. A foto e a fala dela entram no lugar do
+   * ícone e do resumo.
+   */
+  apresenta?: { nome: string; foto: string; fala: string };
 };
 
 // Dois planos, e o que separa um do outro é a IA. Salão e Totem saíram
@@ -383,21 +392,25 @@ export const PLANOS: Plano[] = [
     preco: 'R$ 199,90',
     periodo: '/mês',
     icone: Bot,
-    // A IA já anota pedido e manda Pix, mas ainda não está atendendo
-    // cliente de verdade. Vender como pronta queimaria a confiança de quem
-    // assinasse hoje e não visse resposta nenhuma.
-    selo: 'Em implantação',
-    resumo: 'Tudo do Delivery, com a IA atendendo o WhatsApp do restaurante.',
+    // O selo "Em implantação" saiu em 13/11/2026: ela já atende de
+    // verdade no WhatsApp, anota pedido, manda Pix e ouve áudio.
+    resumo: 'Tudo do Delivery, com a Lia atendendo o WhatsApp do restaurante.',
+    apresenta: {
+      nome: 'Lia',
+      foto: '/atendente-ia.webp',
+      fala: 'Oi, eu sou a Lia. Atendo o WhatsApp do seu restaurante, anoto o pedido e mando o Pix. Quando o cliente quer falar com você, eu te chamo.',
+    },
     tituloDosItens: 'Tudo do Delivery, mais',
     itens: [
-      'Atendimento automático no WhatsApp',
-      'Respostas sobre o cardápio e o funcionamento',
-      'Pedido anotado pela própria conversa',
-      'Envio do Pix e aviso do comprovante recebido',
-      'Passagem para uma pessoa quando o cliente pede',
+      'A Lia atende o WhatsApp do restaurante',
+      'Responde sobre o cardápio, os preços e o horário',
+      'Anota o pedido pela conversa e manda o Pix',
+      'Entende mensagem de áudio',
+      'Avisa o cliente quando o pedido é aceito e quando sai',
+      'Chama você quando o cliente pede uma pessoa',
     ],
-    botao: 'Quero saber do Menu Fácil IA',
-    mensagem: 'Olá! Quero saber do plano Menu Fácil IA (R$ 199,90/mês) para o meu restaurante.',
+    botao: 'Quero a Lia no meu WhatsApp',
+    mensagem: 'Olá! Quero o plano Menu Fácil IA (R$ 199,90/mês), com a Lia, para o meu restaurante.',
   },
 ];
 
