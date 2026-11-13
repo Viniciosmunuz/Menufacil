@@ -164,6 +164,24 @@ export async function POST(request: NextRequest) {
   //
   // O que não dá para ler vira registro e 200. Entender o corpo é problema
   // nosso; para ela, recebemos.
+  // A chave do endereço, quando existe.
+  //
+  // Este webhook reconhecia quem chama só pelo id do canal, que é um
+  // identificador e não um segredo: quem o conhecesse podia forjar
+  // mensagens e fazer a Lia responder a qualquer número. Com
+  // `ZAPI_WEBHOOK_SECRET` no ambiente, o endereço cadastrado na Z-API
+  // passa a precisar de `?chave=<o mesmo valor>`.
+  //
+  // É opcional de propósito: sem a variável nada muda, então ligar isto
+  // é uma decisão tomada junto com a troca do endereço no painel deles,
+  // e não um deploy que emudece o canal. Quem erra a chave recebe 200
+  // como todo o resto -- erro aqui faz a Z-API suspender a entrega.
+  const segredo = process.env.ZAPI_WEBHOOK_SECRET?.trim();
+  if (segredo && request.nextUrl.searchParams.get("chave") !== segredo) {
+    console.warn("[zapi/webhook] chamada sem a chave do endereço; ignorada");
+    return NextResponse.json({ ok: true, ignorado: "sem-chave" });
+  }
+
   let aviso: AvisoOmni;
   const bytes = Buffer.from(await request.arrayBuffer());
   let cru: string;
