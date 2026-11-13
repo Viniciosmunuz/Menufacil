@@ -115,7 +115,18 @@ export function ChatIa({
           // Rente à barra de baixo, e não no meio do cardápio: a conta
           // soma a faixa do gesto do iPhone, senão o círculo cai embaixo
           // dela em quem tem o aparelho sem botão.
-          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)_+_4.5rem)] z-40 size-12 transition-transform active:scale-95 lg:bottom-6"
+          //
+          // E ela sai de cena quando a barra do carrinho aparece. Os dois
+          // ficam no mesmo canto, e a bolha tapava o valor do carrinho --
+          // que é exatamente o que o cliente está olhando naquele
+          // momento. Quem anuncia é o cardápio, no `data-carrinho` do
+          // body: "1" é a barra só no celular (no computador a coluna da
+          // direita faz esse papel e não há conflito), "sempre" é a barra
+          // à mostra em qualquer largura, como no totem.
+          className={cn(
+            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom)_+_4.5rem)] z-40 size-12 transition-transform active:scale-95 lg:bottom-6",
+            "[body[data-carrinho='1']_&]:max-lg:hidden [body[data-carrinho='sempre']_&]:hidden",
+          )}
         >
           <span className="block size-full overflow-hidden rounded-full bg-brand-soft shadow-lg shadow-ink/20">
             <Image

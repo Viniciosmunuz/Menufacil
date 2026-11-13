@@ -791,6 +791,29 @@ export function RestaurantMenu({
   const mineInCart = cart.restaurant?.id === restaurant.id ? cart : null;
   const sectionKey = visible.map((c) => c.id).join(",");
 
+  /**
+   * A barra do carrinho está na tela.
+   *
+   * Anunciado no `body` porque quem precisa saber disso é a bolha da
+   * Lia, que não é filha deste componente -- ela é montada ao lado, na
+   * página. Dois botões flutuantes no mesmo canto significam um toque
+   * errado: a bolha tapava o valor do carrinho, que é justamente o que o
+   * cliente está olhando quando a barra aparece.
+   *
+   * O `sempre` vai junto porque a barra só existe no celular, a não ser
+   * que o cardápio esteja num lugar onde ela fica sempre à mostra (o
+   * totem). Sem isso a Lia sumiria no computador, onde não atrapalha
+   * ninguém.
+   */
+  const comBarraDoCarrinho = Boolean(mineInCart && mineInCart.items.length > 0 && !teclado);
+  useEffect(() => {
+    const body = document.body;
+    body.dataset.carrinho = comBarraDoCarrinho ? (barraSempreVisivel ? "sempre" : "1") : "";
+    return () => {
+      body.dataset.carrinho = "";
+    };
+  }, [comBarraDoCarrinho, barraSempreVisivel]);
+
   // aba ativa acompanha a rolagem do cardápio
   useEffect(() => {
     const sections = [...document.querySelectorAll<HTMLElement>("[data-menu-section]")];
