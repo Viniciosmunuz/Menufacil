@@ -42,6 +42,7 @@ export function EsgotadosCard({
       titulo={um ? "1 produto esgotado" : `${esgotados.length} produtos esgotados`}
       resumo={`${esgotados.map((p) => p.nome).join(", ")} — não ${um ? "aparece" : "aparecem"} para o cliente`}
       icone={<PackageX />}
+      flutuante
     >
       <ul className="flex flex-col divide-y divide-line">
         {esgotados.map((p) => (

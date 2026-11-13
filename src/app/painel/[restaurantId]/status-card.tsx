@@ -58,6 +58,7 @@ export function StatusCard({
         resumo={url.replace(/^https?:\/\//, "")}
         icone={<CircleCheck className="text-success" />}
         className="border-success/30"
+        flutuante
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="min-w-0 flex-1 basis-60 truncate rounded-control border border-line bg-bg/60 px-3 py-2 font-mono text-sm">

@@ -37,6 +37,7 @@ export function FechamentoCard({ linhas, totalCentavos, totalPedidos }: { linhas
       titulo="Fechamento do dia"
       resumo={`${formatCents(totalCentavos)} em ${totalPedidos} ${totalPedidos === 1 ? "pedido" : "pedidos"}`}
       icone={<Wallet />}
+      flutuante
     >
       <ul className="flex flex-col divide-y divide-line">
         {linhas.map((l) => {
