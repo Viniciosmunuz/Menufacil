@@ -37,7 +37,7 @@ const PING_MS = 15_000;
  * cozinha: não há nada para avisar.
  */
 async function retrato(restaurantId: string) {
-  const [pedidos, conversas] = await Promise.all([
+  const [pedidos, conversas, chamados] = await Promise.all([
     db.order.aggregate({
       where: { restaurantId, origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] } },
       _count: { _all: true },
@@ -48,6 +48,25 @@ async function retrato(restaurantId: string) {
       _sum: { restaurantUnread: true },
       _max: { lastMessageAt: true },
     }),
+    /**
+     * Quem a Lia mandou atender, nas últimas três horas.
+     *
+     * Entra no retrato pelo mesmo motivo da conversa: sem isto, o
+     * cliente que pede para falar com uma pessoa só aparece no canto do
+     * painel quando o próximo pedido mudar de status -- ou seja, nunca,
+     * numa noite parada. Foi exatamente o que aconteceu no primeiro
+     * teste: a Lia disse "vou chamar o vini" e a tela do balcão ficou
+     * igual.
+     *
+     * Três horas é a mesma janela em que o aviso vale na tela: fora
+     * dela o chamado não vira cartão, então mudar o retrato por causa
+     * dele seria um refresh que não muda nada.
+     */
+    db.iaChamado.aggregate({
+      where: { restaurantId, createdAt: { gte: new Date(Date.now() - 3 * 60 * 60 * 1000) } },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
   ]);
   return [
     pedidos._count._all,
@@ -55,6 +74,8 @@ async function retrato(restaurantId: string) {
     pedidos._max.updatedAt?.getTime() ?? 0,
     conversas._sum.restaurantUnread ?? 0,
     conversas._max.lastMessageAt?.getTime() ?? 0,
+    chamados._count._all,
+    chamados._max.createdAt?.getTime() ?? 0,
   ].join(":");
 }
 
