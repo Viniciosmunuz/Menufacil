@@ -29,8 +29,8 @@ loadSerif();
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      {/* O comercial do sistema: fundo escuro, um aparelho em cena, sem
-          voz. É o único de fundo preto, porque é o único que só vende. */}
+      {/* O comercial do sistema: papel claro, um aparelho em cena, sem
+          voz. */}
       <Composition
         id="Comercial"
         component={Comercial}

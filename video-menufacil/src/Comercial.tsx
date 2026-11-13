@@ -17,10 +17,12 @@ import { COR, FONTE, seg } from "./marca";
  * O comercial do sistema, só em design gráfico -- sem ator e sem voz.
  *
  * Ele pediu um "comercial de app caro". O que faz um comercial desses
- * parecer caro não é efeito, é contenção: fundo escuro, um aparelho só
- * em cena, luz laranja por trás, e uma frase curta por vez. Por isso
- * este é o único vídeo do canal de fundo preto -- os outros são papel
- * branco porque explicam; este vende.
+ * parecer caro não é efeito, é contenção: um aparelho só em cena, muito
+ * espaço em volta e uma frase curta por vez.
+ *
+ * **O fundo é o papel da marca, e não preto.** O primeiro corte era
+ * escuro com luz laranja, e ele não gostou. Branco com creme é a cara do
+ * sistema; o preto fazia o comercial parecer de outro produto.
  *
  * **As telas são as de verdade.** O cardápio e o painel de pedidos são
  * capturas do sistema, as mesmas do site. A conversa da Lia é desenhada,
@@ -42,9 +44,9 @@ export const DURACAO_COMERCIAL = 32;
 const SERIFADA = '"Playfair Display", Georgia, serif';
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
-const NOITE = COR.night;
 const BRANCO = "#ffffff";
-const VELADO = "rgba(255,255,255,0.62)";
+const TINTA = COR.ink;
+const VELADO = COR.muted;
 
 /** Onde cada cena entra e sai, em segundos. As vizinhas se sobrepõem
     três décimos: é o fundido de uma na outra. */
@@ -101,7 +103,7 @@ const Cena: React.FC<{ children: React.ReactNode; dura: number; semSaida?: boole
 // ─── o fundo ──────────────────────────────────────────────────────────
 
 /**
- * Preto com duas luzes laranja que andam devagar.
+ * Papel branco com creme e um sopro de laranja que andam devagar.
  *
  * São gradientes radiais, e não desfoque: `filter: blur` numa área deste
  * tamanho dobra o tempo de render, e o gradiente dá a mesma luz.
@@ -117,9 +119,9 @@ const Fundo: React.FC = () => {
     <AbsoluteFill
       style={{
         background: [
-          `radial-gradient(60% 34% at ${x1}% ${y1}%, rgba(249,104,11,0.34), transparent 70%)`,
-          `radial-gradient(55% 30% at ${x2}% ${y2}%, rgba(249,104,11,0.16), transparent 70%)`,
-          NOITE,
+          `radial-gradient(60% 34% at ${x1}% ${y1}%, rgba(249,104,11,0.13), transparent 70%)`,
+          `radial-gradient(70% 36% at ${x2}% ${y2}%, rgba(230,219,202,0.75), transparent 72%)`,
+          COR.bg,
         ].join(","),
       }}
     />
@@ -151,7 +153,7 @@ const Chamada: React.FC<{
           fontWeight: 800,
           letterSpacing: -2.4,
           lineHeight: 1.06,
-          color: BRANCO,
+          color: TINTA,
           opacity: p1,
           transform: `translateY(${(1 - p1) * 26}px)`,
         }}
@@ -196,10 +198,10 @@ const Pilula: React.FC<{ children: React.ReactNode; atrasa: number; cheia?: bool
         fontWeight: 800,
         letterSpacing: -0.4,
         whiteSpace: "nowrap",
-        color: cheia ? COR.brandInk : BRANCO,
-        background: cheia ? COR.brand : "rgba(255,255,255,0.08)",
-        border: cheia ? "none" : "1.5px solid rgba(255,255,255,0.18)",
-        boxShadow: cheia ? "0 18px 50px -12px rgba(249,104,11,0.7)" : "none",
+        color: cheia ? BRANCO : TINTA,
+        background: cheia ? COR.brand : COR.surface,
+        border: cheia ? "none" : `1.5px solid ${COR.line}`,
+        boxShadow: cheia ? "0 18px 40px -14px rgba(249,104,11,0.65)" : "none",
         opacity: Math.min(1, p * 1.4),
         transform: `scale(${0.7 + p * 0.3})`,
       }}
@@ -234,8 +236,8 @@ const Telefone: React.FC<{
         background: "linear-gradient(145deg,#2b2e35,#0b0c0f 55%)",
         boxShadow: [
           "0 0 0 2px rgba(255,255,255,0.10) inset",
-          "0 70px 120px -30px rgba(0,0,0,0.85)",
-          "0 0 140px -10px rgba(249,104,11,0.45)",
+          "0 60px 90px -30px rgba(29,32,38,0.45)",
+          "0 20px 40px -20px rgba(29,32,38,0.25)",
         ].join(","),
         transform: `rotateX(${rx}deg) rotateY(${ry}deg)`,
       }}
@@ -301,7 +303,7 @@ const Caos: React.FC = () => {
         <div style={{ fontSize: 34, fontWeight: 700, color: VELADO, letterSpacing: 0.6 }}>
           sábado à noite
         </div>
-        <div style={{ fontSize: 190, fontWeight: 300, color: BRANCO, letterSpacing: -6, lineHeight: 1 }}>
+        <div style={{ fontSize: 190, fontWeight: 300, color: TINTA, letterSpacing: -6, lineHeight: 1 }}>
           20:41
         </div>
       </div>
@@ -331,8 +333,9 @@ const Caos: React.FC = () => {
                 gap: 22,
                 padding: "22px 26px",
                 borderRadius: 34,
-                background: "rgba(255,255,255,0.10)",
-                border: "1.5px solid rgba(255,255,255,0.14)",
+                background: COR.surface,
+                border: `1.5px solid ${COR.line}`,
+                boxShadow: "0 18px 34px -22px rgba(29,32,38,0.35)",
                 opacity: Math.min(1, p * 1.5),
                 transform: `translateY(${(1 - p) * 46}px) scale(${0.9 + p * 0.1})`,
               }}
@@ -358,10 +361,10 @@ const Caos: React.FC = () => {
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span style={{ fontSize: 31, fontWeight: 800, color: BRANCO }}>{a.quem}</span>
+                  <span style={{ fontSize: 31, fontWeight: 800, color: TINTA }}>{a.quem}</span>
                   <span style={{ fontSize: 24, fontWeight: 600, color: VELADO }}>{a.hora}</span>
                 </div>
-                <div style={{ fontSize: 31, fontWeight: 500, color: "rgba(255,255,255,0.86)" }}>
+                <div style={{ fontSize: 31, fontWeight: 500, color: COR.muted }}>
                   {a.texto}
                 </div>
               </div>
@@ -469,7 +472,7 @@ const Prato: React.FC<{ p: (typeof PRATOS)[number]; atrasa: number; i: number }>
         borderRadius: 30,
         overflow: "hidden",
         background: COR.surface,
-        boxShadow: "0 40px 70px -20px rgba(0,0,0,0.75), 0 0 0 1.5px rgba(255,255,255,0.14)",
+        boxShadow: `0 34px 54px -22px rgba(29,32,38,0.45), 0 0 0 1.5px ${COR.line}`,
         opacity: Math.min(1, m * 1.6),
         transform: `translate(${p.x * m}px, ${p.y * m + boia}px) rotate(${p.gira * m}deg) scale(${0.35 + m * 0.65})`,
       }}
@@ -833,7 +836,7 @@ const CenaLia: React.FC = () => {
               borderRadius: 250,
               padding: 7,
               background: `linear-gradient(140deg, ${COR.brand}, ${COR.brandLine})`,
-              boxShadow: "0 40px 70px -20px rgba(0,0,0,0.8), 0 0 90px -10px rgba(249,104,11,0.7)",
+              boxShadow: "0 30px 50px -20px rgba(29,32,38,0.45)",
               opacity: Math.min(1, rosto * 1.5),
               transform: `scale(${0.4 + rosto * 0.6}) translateY(${Math.sin(t * 1.2) * 8}px)`,
             }}
@@ -929,7 +932,7 @@ const Painel: React.FC = () => {
             overflow: "hidden",
             background: "#1b1e24",
             boxShadow:
-              "0 70px 120px -30px rgba(0,0,0,0.9), 0 0 140px -20px rgba(249,104,11,0.5), 0 0 0 1.5px rgba(255,255,255,0.12)",
+              "0 60px 90px -34px rgba(29,32,38,0.5), 0 0 0 1.5px rgba(29,32,38,0.12)",
             transform: `rotateX(${10 + (1 - chega) * 20}deg) rotateY(${Math.sin(t * 0.7) * 4}deg)`,
           }}
         >
@@ -944,7 +947,7 @@ const Painel: React.FC = () => {
                 height: 26,
                 borderRadius: 13,
                 background: "rgba(255,255,255,0.08)",
-                color: VELADO,
+                color: "rgba(255,255,255,0.62)",
                 fontSize: 15,
                 fontWeight: 600,
                 display: "flex",
@@ -994,7 +997,7 @@ const Painel: React.FC = () => {
             height: 74,
             borderRadius: "22px 22px 12px 12px",
             background: "linear-gradient(180deg,#2c3038,#15181d)",
-            boxShadow: "0 0 0 1.5px rgba(255,255,255,0.10) inset, 0 30px 60px -20px rgba(0,0,0,0.8)",
+            boxShadow: "0 0 0 1.5px rgba(255,255,255,0.10) inset, 0 26px 40px -20px rgba(29,32,38,0.5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -1003,7 +1006,7 @@ const Painel: React.FC = () => {
             zIndex: 2,
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 800, color: VELADO, letterSpacing: 2 }}>COZINHA</span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: "rgba(255,255,255,0.62)", letterSpacing: 2 }}>COZINHA</span>
           <span
             style={{
               width: 14,
@@ -1020,6 +1023,9 @@ const Painel: React.FC = () => {
               height: LINHAS * ALTURA_DA_LINHA,
               marginTop: papel - LINHAS * ALTURA_DA_LINHA,
               background: "#fbfaf6",
+              borderLeft: `1.5px solid ${COR.line}`,
+              borderRight: `1.5px solid ${COR.line}`,
+              borderBottom: `1.5px solid ${COR.line}`,
               padding: `${ALTURA_DA_LINHA * 0.6}px 28px`,
               fontFamily: MONO,
               color: "#1c1c1c",
@@ -1082,10 +1088,10 @@ const Marca: React.FC = () => {
             transform: `translateY(${(1 - nome) * 24}px)`,
           }}
         >
-          <span style={{ color: BRANCO }}>Menu </span>
+          <span style={{ color: TINTA }}>Menu </span>
           <span style={{ color: COR.brand }}>Fácil</span>
         </div>
-        <div style={{ width: 420 * risco, height: 2, background: "rgba(255,255,255,0.22)" }} />
+        <div style={{ width: 420 * risco, height: 2, background: COR.lineForte }} />
         <div style={{ display: "flex", gap: 14 }}>
           <Pilula atrasa={1.5}>Delivery</Pilula>
           <Pilula atrasa={1.7}>Salão</Pilula>
@@ -1131,7 +1137,7 @@ const Trecho: React.FC<{ de: readonly [number, number]; children: React.ReactNod
 );
 
 export const Comercial: React.FC = () => (
-  <AbsoluteFill style={{ background: NOITE }}>
+  <AbsoluteFill style={{ background: COR.bg }}>
     <Fundo />
     <Trecho de={CENA.caos}>
       <Caos />
