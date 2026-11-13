@@ -225,8 +225,8 @@ export async function conhecimentoDoRestaurante(
         );
       }
       linhas.push("  - Se o cliente disser um bairro que não está nesta lista, não anote entrega: diga que ali ainda não há entrega e ofereça a retirada no local.");
-      linhas.push("  - Os nomes entre parênteses depois de \"também:\" valem como o bairro da linha: quem diz um deles está nessa área e paga essa taxa. Ao anotar o pedido, use o nome que o CLIENTE falou -- é ele que o entregador vai ler na porta.");
-      linhas.push("  - Alguns desses nomes são pontos soltos (um hotel, uma fábrica, um posto na estrada), e não bairros. Se o cliente disser só o nome da estrada, sem dizer em qual desses pontos está, pergunte: ali só se entrega nos lugares desta lista, não na estrada inteira.");
+      linhas.push("  - Os nomes entre parênteses depois de \"também:\" são os LUGARES atendidos dentro daquela área, e pagam a taxa dela.");
+      linhas.push("  - Numa área que tem lugares entre parênteses, só se entrega NELES -- não na área inteira. Então o bairro do pedido tem de ser um desses nomes, nunca o nome da área sozinho. Se o cliente disser só o nome da área (\"estou na BR-174\"), pergunte em qual dos lugares ele está antes de anotar.");
     }
   }
   if (r.minOrderCents > 0) linhas.push(`- Pedido mínimo: ${formatCents(r.minOrderCents)}`);

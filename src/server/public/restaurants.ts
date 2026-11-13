@@ -67,33 +67,23 @@ function toCard(r: CardRow): PublicRestaurantCard {
 /**
  * Os bairros que o restaurante atende agora; vazio = atende qualquer um.
  *
- * Cada apelido vira uma opção própria na lista, logo abaixo da área a
- * que pertence e com a mesma taxa. É de propósito: na BR-174 o
- * restaurante atende o Hotel Calleb e a fábrica de gelo, e quem está lá
- * procura o nome do lugar onde está -- não "BR-174 (km 107)", que não
- * diz nada a quem não conhece a quilometragem.
+ * Os apelidos vêm junto da área, e não como linhas soltas na lista. Na
+ * primeira versão cada apelido era uma opção própria -- BR-174, Hotel
+ * Calleb e fábrica de gelo lado a lado --, e ele recusou com razão: a
+ * lista crescia, e nada dizia que ali só se entrega naqueles dois
+ * pontos. Quem morasse na BR fora deles escolheria "BR-174" achando que
+ * estava atendido.
  *
- * O que o cliente escolhe é o que fica guardado no endereço do pedido,
- * e é o que o entregador lê. A taxa vem da área, sempre a mesma para
- * todos os nomes dela.
+ * Agora a área é a escolha, e o ponto é um segundo passo dentro dela.
+ * Quem decide como mostrar isso é a tela; aqui só vai o que ela precisa
+ * saber. A taxa é a da área, igual para todos os pontos.
  */
 export async function areasDeEntrega(restaurantId: string) {
-  const areas = await db.deliveryArea.findMany({
+  return db.deliveryArea.findMany({
     where: { restaurantId, active: true },
     orderBy: [{ position: "asc" }, { name: "asc" }],
     select: { id: true, name: true, apelidos: true, feeCents: true },
   });
-
-  return areas.flatMap((a) => [
-    { id: a.id, name: a.name, feeCents: a.feeCents },
-    // o índice entra no id só para o React ter chave única; nada mais
-    // depende dele
-    ...a.apelidos.map((apelido, i) => ({
-      id: `${a.id}:${i}`,
-      name: apelido,
-      feeCents: a.feeCents,
-    })),
-  ]);
 }
 
 export async function listRestaurants(filters: {

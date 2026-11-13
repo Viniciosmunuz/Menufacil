@@ -62,7 +62,7 @@ type RestaurantInfo = {
    * que o restaurante ainda não cadastrou área de entrega: aí o bairro é
    * digitado e a taxa é a única do restaurante, como sempre foi.
    */
-  areas: { id: string; name: string; feeCents: number }[];
+  areas: { id: string; name: string; apelidos: string[]; feeCents: number }[];
   /** produtos que dá para pedir agora e as opções de cada um */
   menu: Record<string, OptionGroupData[]>;
 };
@@ -118,6 +118,8 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   const cart = useCart();
   /** null enquanto ele não mexeu na lista; aí vale o bairro do último pedido */
   const [bairroEscolhido, setBairro] = useState<string | null>(null);
+  /** o ponto dentro da área, quando ela tem mais de um lugar atendido */
+  const [pontoEscolhido, setPonto] = useState<string | null>(null);
   const savedRaw = useSyncExternalStore(noop, readSaved, () => null);
   const saved: Record<string, string> = (() => {
     try {
@@ -196,11 +198,33 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
   // o dono pode ter tirado o bairro da lista desde então, e aí é melhor o
   // campo vir vazio do que mandar a pessoa para um pedido que vai ser
   // recusado no fim.
-  const bairroLembrado = porArea
-    ? (restaurant.areas.find((a) => mesmoBairro(a.name, state.values?.neighborhood ?? saved.neighborhood ?? ""))?.name ?? "")
-    : "";
+  const salvo = state.values?.neighborhood ?? saved.neighborhood ?? "";
+  // O que ficou do último pedido pode ser o nome da área ("BR-174") ou o
+  // de um ponto dentro dela ("Hotel Calleb"): quem volta a pedir escolheu
+  // o ponto, e é ele que foi guardado no endereço.
+  const areaLembrada = porArea
+    ? (restaurant.areas.find(
+        (a) => mesmoBairro(a.name, salvo) || a.apelidos.some((p) => mesmoBairro(p, salvo)),
+      ) ?? null)
+    : null;
+  const bairroLembrado = areaLembrada?.name ?? "";
+  const pontoLembrado = areaLembrada?.apelidos.find((p) => mesmoBairro(p, salvo)) ?? "";
+
   const bairro = bairroEscolhido ?? bairroLembrado;
   const areaEscolhida = restaurant.areas.find((a) => a.name === bairro) ?? null;
+
+  /**
+   * A área tem pontos: aí o bairro sozinho não serve.
+   *
+   * Na BR-174 o restaurante entrega no Hotel Calleb e na fábrica de
+   * gelo, e não na rodovia inteira. Deixar "BR-174" ser uma resposta
+   * completa faria quem mora na estrada, longe dos dois, pedir uma
+   * entrega que ninguém vai fazer -- e descobrir isso depois de pagar.
+   */
+  const pontos = areaEscolhida?.apelidos ?? [];
+  const ponto = pontoEscolhido ?? (areaEscolhida?.name === bairroLembrado ? pontoLembrado : "");
+  /** o que vai no endereço do pedido, e o que o entregador lê na porta */
+  const bairroFinal = pontos.length > 0 ? ponto : bairro;
   const fee =
     type !== "DELIVERY"
       ? 0
@@ -412,22 +436,63 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                     className="sm:col-span-3"
                   >
                     {porArea ? (
-                      <Select
-                        id="neighborhood"
-                        name="neighborhood"
-                        required
-                        value={bairro}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBairro(e.target.value)}
-                        aria-invalid={!!err.neighborhood}
-                      >
-                        <option value="">Escolha o seu bairro</option>
-                        {restaurant.areas.map((a) => (
-                          <option key={a.id} value={a.name}>
-                            {a.name}
-                          </option>
-                        ))}
-                        <option value={FORA}>Meu bairro não está na lista</option>
-                      </Select>
+                      <div className="flex flex-col gap-2">
+                        <Select
+                          id="neighborhood"
+                          // O que o servidor recebe é o campo escondido lá
+                          // embaixo: com pontos, o bairro do pedido é o
+                          // ponto, não a área.
+                          name="area"
+                          required
+                          value={bairro}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            setBairro(e.target.value);
+                            // trocar de bairro zera o ponto: o Hotel Calleb
+                            // não existe dentro do Centro
+                            setPonto(null);
+                          }}
+                          aria-invalid={!!err.neighborhood}
+                        >
+                          <option value="">Escolha o seu bairro</option>
+                          {restaurant.areas.map((a) => (
+                            <option key={a.id} value={a.name}>
+                              {a.name}
+                            </option>
+                          ))}
+                          <option value={FORA}>Meu bairro não está na lista</option>
+                        </Select>
+
+                        {pontos.length > 0 && (
+                          <>
+                            <Select
+                              id="ponto"
+                              name="ponto"
+                              required
+                              value={ponto}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPonto(e.target.value)}
+                              aria-label={`Onde você está em ${bairro}`}
+                              aria-invalid={!!err.neighborhood}
+                            >
+                              <option value="">Escolha o local</option>
+                              {pontos.map((p) => (
+                                <option key={p} value={p}>
+                                  {p}
+                                </option>
+                              ))}
+                            </Select>
+                            {/* Miúdo de propósito: é um limite, não um
+                                aviso de erro. Quem está num dos dois
+                                lugares nem precisa ler; quem não está
+                                descobre aqui, antes de digitar o resto do
+                                endereço, e não depois de pagar. */}
+                            <p className="text-xs text-muted">
+                              Em {bairro} entregamos só nestes lugares.
+                            </p>
+                          </>
+                        )}
+
+                        <input type="hidden" name="neighborhood" value={bairroFinal} />
+                      </div>
                     ) : (
                       <Input id="neighborhood" name="neighborhood" required maxLength={80} defaultValue={v("neighborhood")} aria-invalid={!!err.neighborhood} />
                     )}
