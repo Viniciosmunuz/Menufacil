@@ -398,12 +398,12 @@ async function criarPedido(ctx: ContextoDoPedido): Promise<ResultadoDaFerramenta
         " e quem avisa isso é o sistema, numa mensagem própria. Diga que você avisa assim que sair a confirmação.",
     };
   }
-  const pix = await instrucoesDoPix(ctx, pedido.id, true);
+  const pix = await instrucoesDoPix(ctx, pedido.id);
   return { ...pix, texto: `${base} Diga o número ao cliente. ${pix.texto}` };
 }
 
 /** o Pix de um pedido: o do Mercado Pago no 100% Delivery, a chave do restaurante nos outros */
-async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string, doCliente: boolean): Promise<ResultadoDaFerramenta> {
+async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string): Promise<ResultadoDaFerramenta> {
   const pedido = await db.order.findUnique({
     where: { id: orderId },
     select: { code: true, origin: true, totalCents: true, restaurant: { select: { pixKey: true, pixKeyType: true, pixHolderName: true } } },
@@ -414,7 +414,6 @@ async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string, doCliente
     // "renovar" devolve o QR que ainda vale, ou gera outro se o anterior venceu
     const pix = await pixDoPedido(orderId, { renovar: true });
     if (!pix.ok) return erro(`${pix.erro} Chame alguém da equipe.`);
-    const link = `${appUrl()}/pedido/${pedido.code}`;
     // O QR vai como imagem, antes do código.
     //
     // Quem está no celular não escaneia a própria tela, e para esse o
@@ -428,8 +427,16 @@ async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string, doCliente
         `Pix gerado: ${formatCents(pix.pix.totalCents)}${pix.pix.venceEm ? `, vale até ${formatTime(pix.pix.venceEm)}` : ""}.`,
         qr ? "O QR Code vai como imagem logo depois da sua mensagem, e em seguida o código copia e cola: diga que mandou os dois e que é só usar o que for mais fácil." : "",
         "O código Pix copia e cola vai numa mensagem separada: não repita o código, só diga para copiar e colar no app do banco.",
-        doCliente ? `Mande também o link do pedido, onde ele acompanha a entrega: ${link}` : "",
+        // O link de acompanhamento NÃO vai aqui.
+        //
+        // Nesta mensagem o cliente tem uma coisa para fazer: pagar. O
+        // link abre uma tela que, neste instante, só diz que o pedido
+        // espera pagamento -- e ainda disputa o toque com o QR e o
+        // copia e cola, que é o que resolve. Ele vai depois, no aviso de
+        // que o restaurante aceitou, quando passa a existir o que
+        // acompanhar (ver `textoDoAceite`, em avisar-cliente.ts).
         "O pagamento é confirmado sozinho quando cai; você não confirma nada.",
+        "NÃO mande link nenhum nesta mensagem: o link de acompanhamento sai sozinho quando o restaurante aceitar o pedido.",
       ]
         .filter(Boolean)
         .join(" "),
@@ -448,8 +455,9 @@ async function instrucoesDoPix(ctx: ContextoDoPedido, orderId: string, doCliente
       // recebe não sabe que aquilo é a chave nem o que fazer com ela.
       `Na sua mensagem diga, com estas palavras: o valor (${formatCents(pedido.totalCents)}), que é uma chave${tipo ? ` de ${tipo}` : ""}${r.pixHolderName ? `, em nome de ${r.pixHolderName}` : ""}, e que ela vai na mensagem logo abaixo, para copiar e colar no app do banco.`,
       "A chave em si vai numa mensagem separada, sozinha, logo depois da sua: não repita a chave dentro do seu texto, nem escreva ela de outro jeito.",
-      doCliente ? `Mande também o link do pedido, onde ele acompanha a entrega e tem um botão para copiar a chave: ${appUrl()}/pedido/${pedido.code}` : "",
       "Peça para o cliente mandar o comprovante aqui e diga que o restaurante vai conferir. Você não confirma pagamento.",
+      // mesmo motivo do Pix do 100% Delivery: o link é do depois
+      "NÃO mande link nenhum nesta mensagem: o link de acompanhamento sai sozinho quando o restaurante aceitar o pedido.",
     ]
       .filter(Boolean)
       .join(" "),
@@ -530,8 +538,7 @@ async function mandarPix(ctx: ContextoDoPedido, entrada: Record<string, unknown>
   if (pedido.status === "CANCELED") return erro(`O pedido #${numero} foi cancelado. Chame alguém da equipe.`);
   if (pedido.payment?.status === "CONFIRMED") return { texto: `O pedido #${numero} já está pago.` };
 
-  const doCliente = !!ctx.telefone && variantes(ctx.telefone).includes(pedido.customerWhatsapp);
-  return instrucoesDoPix(ctx, pedido.id, doCliente);
+  return instrucoesDoPix(ctx, pedido.id);
 }
 
 /**
