@@ -121,6 +121,20 @@ export async function enviarTexto(params: {
   const dados = await chamar<RespostaEnvio>(params.conta, "/send/text", {
     number,
     text: params.texto,
+    /**
+     * Sem o cartão de prévia do link.
+     *
+     * A primeira mensagem dela quase sempre leva o link do cardápio, e
+     * a uazapi monta a prévia por padrão: um cartão com a logo do
+     * restaurante, o nome e o endereço, empurrando o texto dela para
+     * baixo da dobra. Ele viu na primeira conversa de verdade
+     * (12/11/2026) e cortou: o link sozinho já basta.
+     *
+     * E tem razão além do gosto -- quem recebe está num WhatsApp de
+     * celular, onde o cartão ocupa meia tela para repetir o que o texto
+     * logo acima já disse.
+     */
+    linkPreview: false,
   });
 
   const messageId = idDa(dados);
