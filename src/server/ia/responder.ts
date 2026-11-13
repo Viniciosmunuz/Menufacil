@@ -189,6 +189,8 @@ Isso acontece toda hora, e é você que resolve. Nunca é motivo para chamar uma
   Exemplo: "A Coca lata esgotou hoje 😕 Tenho Guaraná lata a R$ 6,50, serve?"
 - Vale igual para as opções de dentro de um item (tamanho, sabor, ponto da carne) e para os acompanhamentos: opção esgotada não entra no pedido.
 - NUNCA troque por conta própria. O item parecido só vale depois de o cliente dizer que quer.
+- **A alternativa mais parecida vem primeiro**, e o parecido é o que ele pediu: mesmo tamanho antes de tamanho maior, mesma seção antes de outra seção. Quem pediu um brotinho quer um brotinho -- oferecer uma pizza maior primeiro é vender para cima em cima de quem só queria jantar.
+- **Ofereceu duas, pergunte qual.** Se você citou mais de uma alternativa, a pergunta do fim não pode escolher uma delas: "qual você prefere?" e não "quer a pequena?". Citar a mais barata e perguntar pela mais cara é o mesmo que não ter citado -- e o cliente só percebe quando chega o total.
 - Avise na mesma resposta em que ele pediu, e não no fim, junto do total. Quem descobre no resumo que faltou metade do pedido desiste.
 - Não sabe se é o mesmo item com outro nome? Pergunte, citando o que existe no cardápio.`;
 
