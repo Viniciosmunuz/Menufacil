@@ -89,13 +89,22 @@ function Titulo({
   children,
   destaque,
   sub,
+  lado = "centro",
 }: {
   children: ReactNode;
   destaque?: string;
   sub?: string;
+  /**
+   * Onde o título se apoia. Tudo centralizado, seção após seção, é a
+   * outra metade do molde de página gerada: a página vira uma pilha de
+   * blocos iguais. Algumas seções passam a se apoiar na esquerda, com o
+   * conteúdo ao lado, e o olho ganha um ritmo para seguir.
+   */
+  lado?: "centro" | "esquerda";
 }) {
+  const esquerda = lado === "esquerda";
   return (
-    <div className="mx-auto mb-9 max-w-2xl text-center sm:mb-12">
+    <div className={cn("mb-9 sm:mb-12", esquerda ? "max-w-xl text-left" : "mx-auto max-w-2xl text-center")}>
       <h2 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.6rem]">
         {children}
         {destaque && (
@@ -105,7 +114,9 @@ function Titulo({
           </>
         )}
       </h2>
-      {sub && <p className="mx-auto mt-4 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-muted sm:text-lg">{sub}</p>}
+      {sub && (
+        <p className={cn("mt-4 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-muted sm:text-lg", !esquerda && "mx-auto")}>{sub}</p>
+      )}
     </div>
   );
 }
@@ -302,37 +313,55 @@ export function Filme() {
 // ─── 3. antes e depois ────────────────────────────────────────────────
 
 /**
- * As fotos do alto dos cartões. São de banco de imagens gratuito (Pexels,
- * licença livre para uso comercial, sem crédito obrigatório):
- *  - sem: https://www.pexels.com/photo/man-with-laptop-in-restaurant-5163390/
- *  - com: https://www.pexels.com/photo/exited-ethnic-waitress-working-with-cash-desk-in-cozy-cafeteria-4473496/
+ * O alto de cada cartão: de um lado o WhatsApp do restaurante num sábado,
+ * do outro o painel do sistema.
+ *
+ * Eram duas fotos de banco de imagem -- um homem com as mãos na cabeça e
+ * uma atendente sorrindo para o caixa. Qualquer página de sistema usa as
+ * mesmas duas, e quem já viu uma reconhece o molde na hora. Aqui cada
+ * lado mostra a coisa em si: a conversa sem resposta é desenhada (é o que
+ * o dono vê no próprio celular), e o painel é a tela de verdade do
+ * sistema, sem retoque.
  */
-const FOTOS = {
-  sem: { src: "/venda/sem-menufacil.jpg", alt: "Dono de restaurante com as mãos na cabeça, preocupado, numa mesa cheia de papéis", posicao: "object-[50%_30%]" },
-  com: { src: "/venda/com-menufacil.jpg", alt: "Atendente sorrindo enquanto lança um pedido na tela do caixa", posicao: "object-[60%_35%]" },
-};
+const SEM_RESPOSTA = [
+  { texto: "boa noite, tá aberto?", hora: "19:42" },
+  { texto: "quero 2 x-tudo e 1 coca 2L", hora: "19:44" },
+  { texto: "moço??", hora: "20:05" },
+  { texto: "cadê meu pedido, já faz 1 hora", hora: "20:41" },
+];
 
 function FotoDoCartao({ tipo }: { tipo: "sem" | "com" }) {
-  const foto = FOTOS[tipo];
+  if (tipo === "com") {
+    return (
+      <div className="relative h-60 overflow-hidden border-b border-line bg-surface">
+        <Image
+          src="/venda/painel-computador.webp"
+          alt="Painel do MenuFácil com as vendas do dia, os pedidos em andamento e os mais pedidos do mês"
+          fill
+          sizes="(min-width: 1024px) 30rem, 92vw"
+          className="object-cover object-[0%_0%]"
+        />
+      </div>
+    );
+  }
   return (
-    <div className="relative h-48 overflow-hidden sm:h-56">
-      <Image
-        src={foto.src}
-        alt={foto.alt}
-        fill
-        sizes="(min-width: 1024px) 30rem, 92vw"
-        className={cn("object-cover", foto.posicao)}
-      />
-      {/* um véu por cima, para a etiqueta ler bem em qualquer foto */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-0",
-          tipo === "sem"
-            ? "bg-gradient-to-b from-black/55 via-black/25 to-black/40"
-            : "bg-gradient-to-b from-black/45 via-transparent to-black/20",
-        )}
-      />
+    <div
+      className="relative flex h-60 flex-col justify-end gap-1.5 overflow-hidden bg-[#0b141a] px-4 pb-3"
+      role="img"
+      aria-label="Conversa de WhatsApp com quatro mensagens de um cliente sem resposta"
+    >
+      {SEM_RESPOSTA.map((m) => (
+        <p
+          key={m.hora}
+          className="w-fit max-w-[80%] rounded-lg rounded-tl-none bg-[#202c33] px-2.5 py-1.5 text-[0.82rem] leading-snug text-[#e9edef]"
+        >
+          {m.texto}
+          <span className="ml-2 align-bottom text-[0.62rem] text-[#8696a0]">{m.hora}</span>
+        </p>
+      ))}
+      <span className="absolute right-4 bottom-3 grid h-6 min-w-6 place-items-center rounded-full bg-[#00a884] px-1.5 text-[0.7rem] font-extrabold text-[#0b141a]">
+        37
+      </span>
     </div>
   );
 }
@@ -360,16 +389,16 @@ function CartaoDeContraste({ tipo, itens }: { tipo: "sem" | "com"; itens: Contra
       </div>
 
       <ul className="flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
-        {itens.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="flex items-center gap-4">
-            <span
-              className={cn(
-                "grid size-12 shrink-0 place-items-center rounded-full",
-                sem ? "bg-danger/8 text-danger" : "bg-success/10 text-success",
-              )}
-            >
-              <Icon className="size-5" aria-hidden="true" />
-            </span>
+        {itens.map(({ title, text }) => (
+          <li key={title} className="flex items-start gap-3">
+            {/* Um sinal pequeno, e não um ícone diferente dentro de uma
+                bolinha colorida para cada linha: dez bolinhas em duas
+                colunas eram decoração, e o que se lê aqui é o texto. */}
+            {sem ? (
+              <CircleX className="mt-0.5 size-5 shrink-0 text-danger/70" aria-hidden="true" />
+            ) : (
+              <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+            )}
             <div className="min-w-0">
               <p className="leading-tight font-extrabold">{title}</p>
               <p className="mt-1 text-[0.92rem] leading-snug text-muted">{text}</p>
@@ -385,12 +414,14 @@ export function AntesEDepois() {
   return (
     <section id={SECOES.antes} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
       <Miolo>
-        <Titulo sub={ANTES_DEPOIS.texto}>
-          {ANTES_DEPOIS.titulo}
-        </Titulo>
-        <div className="mx-auto grid max-w-5xl items-center gap-5 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
+        <div className="mx-auto max-w-5xl">
+          <Titulo lado="esquerda" sub={ANTES_DEPOIS.texto}>
+            {ANTES_DEPOIS.titulo}
+          </Titulo>
+        </div>
+        <div className="mx-auto grid max-w-5xl items-stretch gap-5 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
           <CartaoDeContraste tipo="sem" itens={ANTES_DEPOIS.sem} />
-          <span className="mx-auto grid size-12 place-items-center rounded-full bg-brand-soft text-brand">
+          <span className="mx-auto grid size-12 place-items-center self-center rounded-full bg-brand-soft text-brand">
             <ArrowDown className="size-5 lg:-rotate-90" aria-hidden="true" />
           </span>
           <CartaoDeContraste tipo="com" itens={ANTES_DEPOIS.com} />
@@ -421,22 +452,28 @@ export function Segmentos() {
   return (
     <section id={SECOES.segmentos} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
       <Miolo>
-        <Titulo destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
-          {SEGMENTOS_TEXTO.titulo}
-        </Titulo>
-        <ul className="mx-auto grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
-          {SEGMENTOS.map(({ icon: Icon, nome }) => (
-            <li
-              key={nome}
-              className="flex flex-col items-center gap-4 rounded-[1.4rem] border border-line/70 bg-bg px-3 py-7 text-center"
-            >
-              <span className="grid size-16 place-items-center rounded-full bg-bg shadow-[0_6px_20px_-8px_rgb(0_0_0/0.25)] ring-1 ring-line/60">
-                <Icon className="size-7 text-muted" strokeWidth={1.7} aria-hidden="true" />
-              </span>
-              <span className="font-extrabold text-ink/85">{nome}</span>
-            </li>
-          ))}
-        </ul>
+        {/* Título de um lado, os tipos de casa do outro. Eram doze
+            cartões iguais, cada um com um ícone num círculo -- muito
+            espaço para dizer doze palavras. Em linha elas se leem de uma
+            vez, e a seção deixa de ser mais uma grade no meio da página. */}
+        <div className="mx-auto grid max-w-5xl items-center gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
+          <div className="[&>div]:mb-0">
+            <Titulo lado="esquerda" destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
+              {SEGMENTOS_TEXTO.titulo}
+            </Titulo>
+          </div>
+          <ul className="flex flex-wrap gap-2.5">
+            {SEGMENTOS.map(({ icon: Icon, nome }) => (
+              <li
+                key={nome}
+                className="flex items-center gap-2 rounded-full border border-line bg-bg px-4 py-2.5 text-[0.95rem] font-bold text-ink/85"
+              >
+                <Icon className="size-[1.1rem] text-brand" strokeWidth={1.8} aria-hidden="true" />
+                {nome}
+              </li>
+            ))}
+          </ul>
+        </div>
       </Miolo>
     </section>
   );
@@ -683,8 +720,13 @@ export function Duvidas() {
   return (
     <section id={SECOES.duvidas} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo>Perguntas frequentes</Titulo>
-        <div className="mx-auto flex max-w-2xl flex-col gap-2.5">
+        <div className="mx-auto grid max-w-5xl gap-x-14 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <Titulo lado="esquerda" sub="O que os donos de restaurante mais perguntam antes de começar.">
+              Perguntas frequentes
+            </Titulo>
+          </div>
+        <div className="flex flex-col gap-2.5">
           {perguntas.map(({ q, a }) => (
             <details key={q} className="drawer group rounded-[1.2rem] border border-line bg-bg">
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 font-extrabold [&::-webkit-details-marker]:hidden">
@@ -697,6 +739,7 @@ export function Duvidas() {
               <p className="px-5 pb-5 text-[0.95rem] leading-relaxed text-muted">{a}</p>
             </details>
           ))}
+        </div>
         </div>
       </Miolo>
     </section>
