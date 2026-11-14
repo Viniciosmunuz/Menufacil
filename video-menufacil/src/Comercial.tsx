@@ -1547,9 +1547,6 @@ const c = CENA;
 const SONS: { em: number; som: string; vol: number }[] = [
   // as mensagens empilhando na tela de bloqueio
   ...[0, 1, 2, 3, 4, 5].map((i) => ({ em: c.caos[0] + 0.45 + i * 0.38, som: "chega", vol: 0.34 })),
-  // a laranja abrindo e depois subindo
-  { em: c.virada[0], som: "sopro", vol: 0.3 },
-  { em: c.virada[1] - 0.7, som: "sopro", vol: 0.22 },
   // o toque no "+", e os pratos saltando
   { em: c.cardapio[0] + 2.4, som: "toque", vol: 0.4 },
   ...[0, 1, 2, 3].map((i) => ({ em: c.cardapio[0] + 3.3 + i * 0.22, som: "salta", vol: 0.2 })),
@@ -1561,9 +1558,10 @@ const SONS: { em: number; som: string; vol: number }[] = [
   { em: c.lia[0] + 4.9, som: "sai", vol: 0.28 },
   { em: c.lia[0] + 5.7, som: "chega", vol: 0.34 },
   { em: c.lia[0] + 6.3, som: "sai", vol: 0.28 },
-  // o pedido chegando no painel, e a comanda saindo
+  // o pedido chegando no painel. A impressora e o sopro da troca de
+  // cena saíram a pedido dele: eram os dois sons compridos, e viravam
+  // barulho de fundo em vez de marcar um acontecimento.
   { em: c.painel[0] + 1.1, som: "sino", vol: 0.3 },
-  { em: c.painel[0] + 2.2 + 0.05, som: "impressora", vol: 0.3 },
   // o cliente pede uma pessoa, e o aviso sobe
   { em: c.chama[0] + 0.6, som: "chega", vol: 0.34 },
   { em: c.chama[0] + 1.5, som: "sai", vol: 0.28 },
