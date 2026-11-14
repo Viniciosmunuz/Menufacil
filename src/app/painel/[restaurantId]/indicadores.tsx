@@ -92,14 +92,28 @@ function Indicador({
      * número do dia, e a pílula dá o mesmo contexto com uma conta que se
      * lê de relance ("+55% vs ontem") em vez de uma linha que o olho tem
      * de interpretar. O histórico continua inteiro no gráfico de sete
-     * dias logo abaixo, que é maior e tem eixo. */
-    <div className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-4">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className={cn("grid size-12 shrink-0 place-items-center rounded-[1.1rem]", TONS[tom])}>{icone}</span>
+     * dias logo abaixo, que é maior e tem eixo.
+     *
+     * O cartão mede a si mesmo (@container). Os quatro ficam numa linha
+     * só já na janela do Menu Fácil PC, que é mais estreita que um
+     * monitor cheio; ali cada cartão tem uns 170px, e "R$ 1.234,56" ao
+     * lado do selo não cabe. Então, estreito, o selo sobe para cima do
+     * título e o valor diminui um pouco; a partir de 13,5rem volta o
+     * desenho de sempre, com o selo ao lado. */
+    <div className="@container flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 sm:p-4">
+      <div className="flex min-w-0 flex-col items-start gap-2 @[13.5rem]:flex-row @[13.5rem]:items-center @[13.5rem]:gap-3">
+        <span
+          className={cn(
+            "grid size-10 shrink-0 place-items-center rounded-[1rem] @[13.5rem]:size-12 @[13.5rem]:rounded-[1.1rem]",
+            TONS[tom],
+          )}
+        >
+          {icone}
+        </span>
 
-        <div className="min-w-0 flex-1">
+        <div className="w-full min-w-0 flex-1">
           <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
-          <p className="mt-1 text-[1.65rem] leading-none font-extrabold tabular-nums">{valor}</p>
+          <p className="mt-1 text-[1.35rem] leading-none font-extrabold tabular-nums @[13.5rem]:text-[1.65rem]">{valor}</p>
         </div>
       </div>
 
@@ -151,8 +165,11 @@ export function Indicadores({
         : null;
 
   return (
-    <section aria-label="Indicadores de hoje" className="flex flex-col gap-2">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    /* A grade olha a largura da própria seção, e não a da janela: o menu
+     * lateral come espaço, e por isso "xl" só juntava os quatro num
+     * monitor grande. Ele pediu os quatro em linha reta na janela do PC. */
+    <section aria-label="Indicadores de hoje" className="@container flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-3 @[26rem]:grid-cols-2 @[44rem]:grid-cols-4">
         <Indicador
           icone={<Wallet className="size-5" aria-hidden="true" />}
           tom="laranja"
