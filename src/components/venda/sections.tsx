@@ -577,12 +577,6 @@ export function Solucoes() {
         <div className="surge">
           <AbasDeSolucoes />
         </div>
-        <Convite texto="Quer ver isso rodando com o cardápio do seu restaurante?">
-          <BotaoDoForm>
-            Quero usar o Menu Fácil
-            <ArrowRight className="size-5" aria-hidden="true" />
-          </BotaoDoForm>
-        </Convite>
       </Miolo>
     </section>
   );
