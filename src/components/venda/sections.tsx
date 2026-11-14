@@ -971,14 +971,18 @@ function CartaoDoAdicional({ adicional }: { adicional: Adicional }) {
   return (
     <div className="flex h-full flex-col rounded-[1.6rem] border border-line bg-bg p-6 sm:p-7">
       <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-[0.85rem]",
-            tom === "brand" ? "bg-brand-soft text-brand" : "bg-info/12 text-info",
-          )}
-        >
-          <Icone className="size-[1.3rem]" aria-hidden="true" />
-        </span>
+        {adicional.arte ? (
+          <Image src={adicional.arte} alt="" width={112} height={112} className="size-14 shrink-0" />
+        ) : (
+          <span
+            className={cn(
+              "grid size-11 shrink-0 place-items-center rounded-[0.85rem]",
+              tom === "brand" ? "bg-brand-soft text-brand" : "bg-info/12 text-info",
+            )}
+          >
+            <Icone className="size-[1.3rem]" aria-hidden="true" />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <h3 className="text-lg leading-tight font-extrabold">{adicional.nome}</h3>

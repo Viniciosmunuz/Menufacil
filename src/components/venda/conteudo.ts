@@ -403,6 +403,8 @@ export type Adicional = {
   nome: string;
   resumo: string;
   icone: LucideIcon;
+  /** a arte que ele mandou em 14/11/2026; quando existe, entra no lugar do ícone */
+  arte?: string;
   /** 'brand' | 'info': o tom do ícone, para os dois não se confundirem */
   tom: 'brand' | 'info';
   /** vazio quando ainda não há preço definido */
@@ -422,6 +424,7 @@ export const ADICIONAIS: Adicional[] = [
     nome: 'Menu Fácil Totem',
     resumo: 'Autoatendimento presencial no restaurante.',
     icone: Monitor,
+    arte: '/venda/icone-totem.webp',
     tom: 'brand',
     preco: '',
     periodo: '',
@@ -441,6 +444,7 @@ export const ADICIONAIS: Adicional[] = [
     nome: 'Menu Fácil Salão',
     resumo: 'Mesas, comandas e caixa do atendimento presencial.',
     icone: Store,
+    arte: '/venda/icone-salao.webp',
     tom: 'info',
     preco: '',
     periodo: '',
