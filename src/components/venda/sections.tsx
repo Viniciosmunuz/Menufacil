@@ -800,7 +800,6 @@ function ItemDoPlano({ children, escuro }: { children: ReactNode; escuro: boolea
 }
 
 function CartaoDoPlano({ plano }: { plano: Plano }) {
-  const { icone: Icone } = plano;
   // O plano com a Lia é o cartão escuro. A diferença entre os dois planos
   // é uma só -- a inteligência artificial --, e o cartão precisa dizer
   // isso antes de alguém ler a lista. Ele já tinha pedido para tirar o
@@ -830,7 +829,7 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
           </span>
         ) : (
           <span className="grid size-11 shrink-0 place-items-center rounded-[0.85rem] bg-brand-soft text-brand">
-            <Icone className="size-[1.3rem]" aria-hidden="true" />
+            <LogoIcon className="h-[1.15rem]" />
           </span>
         )}
         <div className="min-w-0">
