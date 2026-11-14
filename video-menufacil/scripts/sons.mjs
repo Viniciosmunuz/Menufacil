@@ -81,10 +81,14 @@ grava("salta", gota(420, 760, 0.12, 30));
   );
 }
 
-// a impressora térmica: um tranco por linha, 13 linhas em 2,4 s
+// a impressora térmica: um tranco por linha, 13 linhas. O tempo é o da
+// comanda saindo na tela: 2,4 s de roteiro, esticados pelo RITMO de
+// Comercial.tsx -- mudou lá, muda aqui e gera de novo.
+const RITMO = 0.75;
 {
-  const dura = 2.5;
-  const passo = 2.4 / 13;
+  const total = 2.4 / RITMO;
+  const dura = total + 0.1;
+  const passo = total / 13;
   let y = 0;
   grava(
     "impressora",
@@ -92,7 +96,7 @@ grava("salta", gota(420, 760, 0.12, 30));
       const dentro = t % passo;
       const env = dentro < 0.07 ? Math.exp(-dentro * 55) : 0;
       y += 0.35 * (ruido() - y);
-      const zumbido = Math.sin(2 * Math.PI * 190 * t) * 0.12 * (t < 2.4 ? 1 : 0);
+      const zumbido = Math.sin(2 * Math.PI * 190 * t) * 0.12 * (t < total ? 1 : 0);
       return (y * env * 1.4 + zumbido * env) * 0.8;
     }),
   );

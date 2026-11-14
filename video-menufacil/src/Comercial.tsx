@@ -46,7 +46,25 @@ import { COR, FONTE, seg } from "./marca";
  * volume, e não há trilha.
  */
 
-export const DURACAO_COMERCIAL = 38.4;
+/**
+ * O andamento do vídeo inteiro, num número só.
+ *
+ * Os tempos das cenas (`CENA`) e os atrasos de dentro delas foram
+ * escritos num primeiro corte de 38 segundos, e ele achou acelerado:
+ * sete balões de conversa em sete segundos não dá para ler. Em vez de
+ * reescrever cem números, o relógio de todas as cenas anda mais devagar.
+ * 0,75 quer dizer que cada segundo escrito no roteiro dura 1,33 segundo
+ * na tela -- o vídeo passa de 38 para 51 segundos.
+ *
+ * As molas não entram na conta: o estalo de um balão aparecendo continua
+ * rápido, o que cresce é o tempo de leitura entre um e outro. E os sons
+ * seguem o mesmo relógio, senão descolam da imagem.
+ */
+const RITMO = 0.75;
+
+/** o roteiro, em segundos de roteiro; na tela ele dura isto / RITMO */
+const ROTEIRO = 38.4;
+export const DURACAO_COMERCIAL = ROTEIRO / RITMO;
 
 const SERIFADA = '"Playfair Display", Georgia, serif';
 const MONO = '"JetBrains Mono", Consolas, monospace';
@@ -80,9 +98,9 @@ const vai = (t: number, de: number, dura = 0.6) =>
 const useTempo = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const t = frame / fps;
+  const t = (frame / fps) * RITMO;
   const mola = (de: number, rigidez = 140) =>
-    spring({ frame: frame - de * fps, fps, config: { damping: 15, stiffness: rigidez, mass: 0.8 } });
+    spring({ frame: frame - (de / RITMO) * fps, fps, config: { damping: 15, stiffness: rigidez, mass: 0.8 } });
   return { t, mola, frame, fps };
 };
 
@@ -1545,7 +1563,7 @@ const SONS: { em: number; som: string; vol: number }[] = [
   { em: c.lia[0] + 6.3, som: "sai", vol: 0.28 },
   // o pedido chegando no painel, e a comanda saindo
   { em: c.painel[0] + 1.1, som: "sino", vol: 0.3 },
-  { em: c.painel[0] + 2.2 + 0.06, som: "impressora", vol: 0.3 },
+  { em: c.painel[0] + 2.2 + 0.05, som: "impressora", vol: 0.3 },
   // o cliente pede uma pessoa, e o aviso sobe
   { em: c.chama[0] + 0.6, som: "chega", vol: 0.34 },
   { em: c.chama[0] + 1.5, som: "sai", vol: 0.28 },
@@ -1557,7 +1575,7 @@ const SONS: { em: number; som: string; vol: number }[] = [
 const Sons: React.FC = () => (
   <>
     {SONS.map((s, i) => (
-      <Sequence key={i} from={seg(s.em + ESPERA_DO_SOM)} layout="none">
+      <Sequence key={i} from={seg(s.em / RITMO + ESPERA_DO_SOM)} layout="none">
         <Audio src={staticFile(`sons/${s.som}.wav`)} volume={s.vol * VOLUME_GERAL} />
       </Sequence>
     ))}
@@ -1570,7 +1588,7 @@ const Trecho: React.FC<{ de: readonly [number, number]; children: React.ReactNod
   de,
   children,
 }) => (
-  <Sequence from={seg(de[0])} durationInFrames={seg(de[1] - de[0])}>
+  <Sequence from={seg(de[0] / RITMO)} durationInFrames={seg((de[1] - de[0]) / RITMO)}>
     {children}
   </Sequence>
 );
