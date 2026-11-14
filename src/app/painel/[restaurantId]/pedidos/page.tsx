@@ -1,9 +1,10 @@
-import { Bike, ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, Printer, ReceiptText } from "lucide-react";
+import { Bike, ChevronLeft, ChevronRight, ExternalLink, MessagesSquare, ReceiptText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AvisosDaIa } from "@/components/panel/avisos-da-ia";
 import { AvisosDeMensagem } from "@/components/panel/avisos-de-mensagem";
+import { BotaoImprimir } from "@/components/panel/botao-imprimir";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
@@ -15,7 +16,6 @@ import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SubmitButton } from "@/components/ui/submit-button";
 import type { OrderStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/format";
@@ -313,21 +313,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                       {/* a mesma via do cartão do celular: com o Menu Fácil PC
                           ligado o botão manda imprimir no balcão, senão abre a
                           via para o aparelho de quem tocou */}
-                      {printFacilLigado ? (
-                        <form action={reprintOrder}>
-                          <input type="hidden" name="restaurantId" value={restaurant.id} />
-                          <input type="hidden" name="orderId" value={p.id} />
-                          <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
-                            <Printer className="size-4" aria-hidden="true" />
-                            Imprimir
-                          </SubmitButton>
-                        </form>
-                      ) : (
-                        <a href={`${base}/${p.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                          <Printer className="size-4" aria-hidden="true" />
-                          Imprimir
-                        </a>
-                      )}
+                      <BotaoImprimir
+                        base={base}
+                        restaurantId={restaurant.id}
+                        orderId={p.id}
+                        numero={p.number}
+                        computadorAcordado={printFacilLigado}
+                        reprintAction={reprintOrder}
+                        markPrintedAction={markPrinted}
+                      />
                     </div>
                   </>
                 )}
@@ -401,21 +395,15 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
                                 sai no balcão. Abrir a via aqui só imprimiria
                                 no aparelho de quem tocou -- e quem toca
                                 costuma estar no celular, longe da bobina. */}
-                            {printFacilLigado ? (
-                              <form action={reprintOrder}>
-                                <input type="hidden" name="restaurantId" value={restaurant.id} />
-                                <input type="hidden" name="orderId" value={o.id} />
-                                <SubmitButton variant="ghost" size="sm" pendingText="Mandando...">
-                                  <Printer className="size-4" aria-hidden="true" />
-                                  Imprimir
-                                </SubmitButton>
-                              </form>
-                            ) : (
-                              <a href={`${base}/${o.id}/via`} target="_blank" rel="noopener noreferrer" className={buttonClasses("ghost", "sm")}>
-                                <Printer className="size-4" aria-hidden="true" />
-                                Imprimir
-                              </a>
-                            )}
+                            <BotaoImprimir
+                              base={base}
+                              restaurantId={restaurant.id}
+                              orderId={o.id}
+                              numero={o.number}
+                              computadorAcordado={printFacilLigado}
+                              reprintAction={reprintOrder}
+                              markPrintedAction={markPrinted}
+                            />
                             <Link href={`${base}/${o.id}`} className={buttonClasses("ghost", "sm")}>
                               <ExternalLink className="size-4" aria-hidden="true" />
                               Abrir pedido

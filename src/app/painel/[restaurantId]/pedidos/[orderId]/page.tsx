@@ -1,8 +1,9 @@
-import { ExternalLink, MessagesSquare, Phone, Printer } from "lucide-react";
+import { ExternalLink, MessagesSquare, Phone } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BotaoImprimir } from "@/components/panel/botao-imprimir";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
@@ -19,8 +20,9 @@ import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { FINAL_ORDER_STATUSES, isFullDelivery } from "@/lib/order-flow";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { conversaDoPedido } from "@/server/chat/chat";
+import { algumComputadorAcordado } from "@/server/print/devices";
 
-import { stepRestaurantOrder, updateRestaurantOrder } from "../actions";
+import { markPrinted, reprintOrder, stepRestaurantOrder, updateRestaurantOrder } from "../actions";
 import { ChatDoPedido } from "./chat-card";
 
 export const metadata: Metadata = { title: "Pedido", robots: { index: false, follow: false } };
@@ -34,6 +36,8 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
   const { restaurant } = await requireRestaurantAccess(restaurantId);
   // com a IA ligada ela mesma avisa o cliente: o botao para de abrir o WhatsApp
   const iaAvisa = await iaAvisaOCliente(restaurant.id);
+  // para o botão Imprimir saber se manda a via ao computador do balcão
+  const computadorAcordado = await algumComputadorAcordado(restaurant.id);
 
   const order = await db.order.findFirst({
     where: { id: orderId, restaurantId: restaurant.id },
@@ -155,15 +159,17 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
               <Phone className="size-4" aria-hidden="true" />
             </a>
           )}
-          <a
-            href={`/painel/${restaurant.id}/pedidos/${order.id}/via`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses("secondary", "sm")}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            Imprimir via
-          </a>
+          <BotaoImprimir
+            base={`/painel/${restaurant.id}/pedidos`}
+            restaurantId={restaurant.id}
+            orderId={order.id}
+            numero={order.number}
+            computadorAcordado={computadorAcordado}
+            reprintAction={reprintOrder}
+            markPrintedAction={markPrinted}
+            variante="secondary"
+            rotulo="Imprimir via"
+          />
           <Link href={`/pedido/${order.code}`} target="_blank" className={buttonClasses("ghost", "sm")}>
             <ExternalLink className="size-4" aria-hidden="true" />
             Ver como o cliente vê
