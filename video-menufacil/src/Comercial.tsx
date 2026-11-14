@@ -1514,6 +1514,17 @@ const Marca: React.FC = () => {
  */
 const VOLUME_GERAL = 1;
 
+/**
+ * Quanto cada som espera depois que a coisa começa a aparecer.
+ *
+ * No primeiro corte o som tocava no quadro em que a animação começava,
+ * e ele achou fora de hora -- com razão: nesse quadro o balão ainda está
+ * invisível e pequeno, e só fica cheio uns quatro quadros depois. Som
+ * que chega antes da imagem parece erro; som que chega junto com o
+ * objeto já assentado parece causa dele.
+ */
+const ESPERA_DO_SOM = 0.12;
+
 const c = CENA;
 const SONS: { em: number; som: string; vol: number }[] = [
   // as mensagens empilhando na tela de bloqueio
@@ -1534,7 +1545,7 @@ const SONS: { em: number; som: string; vol: number }[] = [
   { em: c.lia[0] + 6.3, som: "sai", vol: 0.28 },
   // o pedido chegando no painel, e a comanda saindo
   { em: c.painel[0] + 1.1, som: "sino", vol: 0.3 },
-  { em: c.painel[0] + 2.2, som: "impressora", vol: 0.3 },
+  { em: c.painel[0] + 2.2 + 0.06, som: "impressora", vol: 0.3 },
   // o cliente pede uma pessoa, e o aviso sobe
   { em: c.chama[0] + 0.6, som: "chega", vol: 0.34 },
   { em: c.chama[0] + 1.5, som: "sai", vol: 0.28 },
@@ -1546,7 +1557,7 @@ const SONS: { em: number; som: string; vol: number }[] = [
 const Sons: React.FC = () => (
   <>
     {SONS.map((s, i) => (
-      <Sequence key={i} from={seg(s.em)} layout="none">
+      <Sequence key={i} from={seg(s.em + ESPERA_DO_SOM)} layout="none">
         <Audio src={staticFile(`sons/${s.som}.wav`)} volume={s.vol * VOLUME_GERAL} />
       </Sequence>
     ))}
