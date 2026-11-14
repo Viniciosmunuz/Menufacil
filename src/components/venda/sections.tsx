@@ -186,23 +186,6 @@ function Promessas({ className }: { className?: string }) {
   );
 }
 
-/**
- * Um convite no fim de uma seção: uma frase e um botão.
- *
- * A página só chamava para a conversa no topo e no fim. Quem se convencia
- * no meio (vendo as soluções, a Lia ou o preço) tinha de rolar até achar
- * um botão. Agora há um convite depois de cada um desses blocos, discreto
- * o bastante para não virar anúncio no meio do texto.
- */
-function Convite({ children, texto }: { children: ReactNode; texto: string }) {
-  return (
-    <div className="surge mx-auto mt-10 flex max-w-3xl flex-col items-center justify-between gap-4 rounded-[1.6rem] border border-line bg-surface px-6 py-5 text-center sm:mt-12 sm:flex-row sm:text-left">
-      <p className="text-[1.05rem] leading-snug font-extrabold text-balance">{texto}</p>
-      <div className="w-full shrink-0 sm:w-auto [&>a]:w-full sm:[&>a]:w-auto">{children}</div>
-    </div>
-  );
-}
-
 // ─── 1. topo ──────────────────────────────────────────────────────────
 
 /**
@@ -425,16 +408,6 @@ export function Filme() {
             </video>
           </div>
         </figure>
-
-        {/* Depois do vídeo, a prova que vale mais que ele: um cardápio de
-            verdade, no ar, que o dono abre e usa como se fosse cliente. O
-            endereço é o DEMO_URL de conteudo.ts, o mesmo do topo. */}
-        <Convite texto="Prefere mexer a assistir? Abra um cardápio de verdade.">
-          <Link href={DEMO_URL} target="_blank" rel="noopener" className={buttonClasses("primary", "lg")}>
-            Conhecer o sistema
-            <ExternalLink className="size-4" aria-hidden="true" />
-          </Link>
-        </Convite>
       </Miolo>
     </section>
   );
@@ -954,13 +927,6 @@ export function Planos() {
         </div>
 
         <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-pretty text-muted">{PLANOS_TEXTO.nota}</p>
-
-        <Convite texto="Não sabe qual dos dois combina com o seu restaurante?">
-          <BotaoComercial mensagem={PLANOS_TEXTO.mensagemDeDuvida} variante="secondary">
-            <MessageCircle className="size-5" aria-hidden="true" />
-            Falar com a equipe
-          </BotaoComercial>
-        </Convite>
       </Miolo>
     </section>
   );

@@ -477,8 +477,6 @@ export const PLANOS_TEXTO = {
    * ficasse explícito, do jeito que ele fala com o cliente.
    */
   nota: "Sem taxa de adesão e sem comissão nossa por pedido. No pagamento online, a taxa cobrada é a do Mercado Pago. Troque de plano quando quiser.",
-  /** o que abre no WhatsApp pelo botão "Falar com a equipe" dos planos */
-  mensagemDeDuvida: "Olá! Quero ajuda para escolher o plano do Menu Fácil para o meu restaurante.",
 };
 
 // ─── a Lia ────────────────────────────────────────────────────────────
