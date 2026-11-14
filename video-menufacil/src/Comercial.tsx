@@ -36,8 +36,12 @@ import { COR, FONTE, seg } from "./marca";
  * conversa e a comanda foram escritas para bater com ele, e não o
  * contrário.
  *
- * **Não há narração.** Todo texto na tela está ali porque ninguém fala.
- * Se entrar locução por cima, as chamadas de cada cena saem.
+ * **A narração manda nos tempos.** Cada cena abre onde a frase dela
+ * começa, e o que acontece dentro (o toque, o Pix, o aviso) cai na
+ * palavra que fala daquilo. Narração nova obriga a medir de novo. Os
+ * títulos grandes de cada cena saíram quando a voz entrou: ele não quer
+ * na tela o que já está sendo dito. Ficaram só as pílulas pequenas, que
+ * entram junto com a palavra, e a frase da cena laranja.
  *
  * **Os sons são pequenos de propósito.** Estalo de mensagem, toque,
  * impressora, o sino do painel. Todos curtos e baixos (`SONS`, no fim
@@ -60,10 +64,10 @@ import { COR, FONTE, seg } from "./marca";
  * rápido, o que cresce é o tempo de leitura entre um e outro. E os sons
  * seguem o mesmo relógio, senão descolam da imagem.
  */
-const RITMO = 0.75;
+const RITMO = 1;
 
 /** o roteiro, em segundos de roteiro; na tela ele dura isto / RITMO */
-const ROTEIRO = 38.4;
+const ROTEIRO = 36.6;
 export const DURACAO_COMERCIAL = ROTEIRO / RITMO;
 
 const SERIFADA = '"Playfair Display", Georgia, serif';
@@ -76,13 +80,20 @@ const VELADO = COR.muted;
 /** Onde cada cena entra e sai, em segundos. As vizinhas se sobrepõem
     três décimos: é o fundido de uma na outra. */
 const CENA = {
-  caos: [0, 4.3],
-  virada: [3.7, 6.6],
-  cardapio: [6.0, 13.4],
-  lia: [13.1, 20.6],
-  painel: [20.3, 26.8],
-  chama: [26.5, 33.2],
-  marca: [32.9, 38.4],
+  // Os tempos saem da narração (public/narracao-comercial.mp3), medidos
+  // palavra por palavra. Cada cena abre uns três décimos antes da frase
+  // dela, para a imagem assentar antes da voz chegar:
+  //   0,05 "Sábado à noite..."        5,20 "Tem um jeito melhor."
+  //   6,66 "Com o Menu Fácil..."     16,08 "E a Lia atende..."
+  //  22,12 "O pedido chega pronto..." 26,68 "E se o cliente quiser..."
+  //  31,12 "Menu Fácil. Delivery..."
+  caos: [0, 4.95],
+  virada: [4.6, 7.0],
+  cardapio: [6.4, 15.95],
+  lia: [15.8, 22.35],
+  painel: [22.0, 26.8],
+  chama: [26.45, 31.3],
+  marca: [31.0, 36.6],
 } as const;
 
 // ─── movimento ────────────────────────────────────────────────────────
@@ -105,10 +116,18 @@ const useTempo = () => {
 };
 
 /** O envelope de uma cena: entra subindo, sai encolhendo. */
-const Cena: React.FC<{ children: React.ReactNode; dura: number; semSaida?: boolean }> = ({
+const Cena: React.FC<{
+  children: React.ReactNode;
+  dura: number;
+  semSaida?: boolean;
+  /** quanto o miolo sobe: as cenas foram desenhadas com um título no
+      alto, e sem ele o conteúdo ficava caído para o pé da tela */
+  sobe?: number;
+}> = ({
   children,
   dura,
   semSaida,
+  sobe = 0,
 }) => {
   const { t } = useTempo();
   const entra = vai(t, 0, 0.5);
@@ -118,7 +137,7 @@ const Cena: React.FC<{ children: React.ReactNode; dura: number; semSaida?: boole
       style={{
         fontFamily: FONTE,
         opacity: entra * (1 - sai),
-        transform: `translateY(${(1 - entra) * 50}px) scale(${1 - sai * 0.06})`,
+        transform: `translateY(${(1 - entra) * 50 - sobe}px) scale(${1 - sai * 0.06})`,
       }}
     >
       {children}
@@ -154,57 +173,7 @@ const Fundo: React.FC = () => {
   );
 };
 
-// ─── a chamada de cada cena ───────────────────────────────────────────
-
-/**
- * Duas linhas: a primeira firme e branca, a segunda serifada, itálica e
- * laranja. É o mesmo título de duas vozes dos outros vídeos do canal,
- * só que no escuro -- é o que mantém este comercial na mesma família.
- */
-const Chamada: React.FC<{
-  a: string;
-  b?: string;
-  atrasa?: number;
-  topo?: number;
-  tamanho?: number;
-}> = ({ a, b, atrasa = 0.2, topo = 150, tamanho = 84 }) => {
-  const { t } = useTempo();
-  const p1 = vai(t, atrasa);
-  const p2 = vai(t, atrasa + 0.25);
-  return (
-    <div style={{ position: "absolute", top: topo, left: 60, right: 60, textAlign: "center" }}>
-      <div
-        style={{
-          fontSize: tamanho,
-          fontWeight: 800,
-          letterSpacing: -2.4,
-          lineHeight: 1.06,
-          color: TINTA,
-          opacity: p1,
-          transform: `translateY(${(1 - p1) * 26}px)`,
-        }}
-      >
-        {a}
-      </div>
-      {b ? (
-        <div
-          style={{
-            fontFamily: SERIFADA,
-            fontStyle: "italic",
-            fontWeight: 500,
-            fontSize: tamanho * 1.02,
-            lineHeight: 1.14,
-            color: COR.brand,
-            opacity: p2,
-            transform: `translateY(${(1 - p2) * 26}px)`,
-          }}
-        >
-          {b}
-        </div>
-      ) : null}
-    </div>
-  );
-};
+// ─── a pílula ─────────────────────────────────────────────────────────
 
 /** A pílula de vidro que fecha uma cena com um argumento só. */
 const Pilula: React.FC<{ children: React.ReactNode; atrasa: number; cheia?: boolean }> = ({
@@ -469,7 +438,7 @@ const Caos: React.FC = () => {
   const dura = CENA.caos[1] - CENA.caos[0];
   const treme = t > 2.9 ? Math.sin(t * 60) * 3 * vai(t, 2.9, 0.3) : 0;
   return (
-    <Cena dura={dura}>
+    <Cena dura={dura} sobe={-110}>
       <div
         style={{
           position: "absolute",
@@ -553,7 +522,6 @@ const Caos: React.FC = () => {
         })}
       </div>
 
-      <Chamada a="37 conversas." b="nenhuma resposta." atrasa={2.2} topo={1500} tamanho={80} />
     </Cena>
   );
 };
@@ -685,13 +653,12 @@ const Cardapio: React.FC = () => {
   const rx = (1 - chega) * 26 + 4;
 
   // o toque no "+" da batata frita, nas coordenadas da captura
-  const TOQUE = 2.4;
+  const TOQUE = 5.45;
   const onda = vai(t, TOQUE, 0.55);
-  const barra = mola(TOQUE + 0.35, 150);
+  const barra = mola(TOQUE + 0.9, 150);
 
   return (
-    <Cena dura={dura}>
-      <Chamada a="O seu cardápio." b="no seu link." />
+    <Cena dura={dura} sobe={90}>
 
       <div
         style={{
@@ -758,13 +725,13 @@ const Cardapio: React.FC = () => {
           </Telefone>
 
           {PRATOS.map((p, i) => (
-            <Prato key={p.nome} p={p} i={i} atrasa={3.3 + i * 0.22} />
+            <Prato key={p.nome} p={p} i={i} atrasa={2.7 + i * 0.22} />
           ))}
         </div>
       </div>
 
       <div style={{ position: "absolute", left: 0, right: 0, top: 1630, textAlign: "center" }}>
-        <Pilula atrasa={4.9} cheia>
+        <Pilula atrasa={8.45} cheia>
           Sem comissão por pedido
         </Pilula>
       </div>
@@ -905,11 +872,10 @@ const CenaLia: React.FC = () => {
   const dura = CENA.lia[1] - CENA.lia[0];
   const chega = vai(t, 0.15, 1);
   const ry = (1 - chega) * 30 + 7 + Math.sin(t * 0.8) * 4;
-  const rosto = mola(0.7, 120);
-  const digita = t > 1.25 && t < 1.85;
+  const rosto = mola(0.5, 120);
+  const digita = t > 1.1 && t < 1.7;
   return (
-    <Cena dura={dura}>
-      <Chamada a="A Lia atende" b="o WhatsApp por você." />
+    <Cena dura={dura} sobe={90}>
 
       <div
         style={{
@@ -961,7 +927,7 @@ const CenaLia: React.FC = () => {
                   gap: 11,
                 }}
               >
-                <Balao de="cliente" atrasa={0.8} hora="20:41">
+                <Balao de="cliente" atrasa={0.6} hora="20:41">
                   Boa noite! Quero uma picanha e um refri 2L
                 </Balao>
                 {digita ? (
@@ -989,23 +955,17 @@ const CenaLia: React.FC = () => {
                     ))}
                   </div>
                 ) : null}
-                <Balao de="lia" atrasa={1.85} hora="20:41">
+                <Balao de="lia" atrasa={1.7} hora="20:41">
                   Boa noite, Marina! Anotado. É entrega ou retirada?
                 </Balao>
-                <Balao de="cliente" atrasa={2.8} hora="20:42">
-                  <OAudio atrasa={2.8} />
+                <Balao de="cliente" atrasa={3.7} hora="20:42">
+                  <OAudio atrasa={3.7} />
                 </Balao>
-                <Balao de="lia" atrasa={4.3} hora="20:42">
+                <Balao de="lia" atrasa={4.75} hora="20:42">
                   Retirada, combinado! Deu R$ 53,00. Segue o Pix:
                 </Balao>
-                <Balao de="lia" atrasa={4.9} hora="20:42">
+                <Balao de="lia" atrasa={5.25} hora="20:42">
                   <Pix />
-                </Balao>
-                <Balao de="cliente" atrasa={5.7} hora="20:43">
-                  Paguei!
-                </Balao>
-                <Balao de="lia" atrasa={6.3} hora="20:43">
-                  Recebido! Seu pedido já está na cozinha.
                 </Balao>
               </div>
             </div>
@@ -1028,7 +988,7 @@ const CenaLia: React.FC = () => {
             }}
           >
             <Img
-              src={staticFile(t > 4.3 ? "lia-joia.webp" : "lia-mao.webp")}
+              src={staticFile(t > 4.75 ? "lia-joia.webp" : "lia-mao.webp")}
               style={{
                 width: "100%",
                 height: "100%",
@@ -1052,9 +1012,9 @@ const CenaLia: React.FC = () => {
           gap: 14,
         }}
       >
-        <Pilula atrasa={2.2}>Anota o pedido</Pilula>
-        <Pilula atrasa={3.4}>Entende áudio</Pilula>
-        <Pilula atrasa={5.2} cheia>
+        <Pilula atrasa={2.95}>Anota o pedido</Pilula>
+        <Pilula atrasa={4.15}>Entende áudio</Pilula>
+        <Pilula atrasa={5.3} cheia>
           Manda o Pix
         </Pilula>
       </div>
@@ -1081,13 +1041,13 @@ const COMANDA = [
 const Painel: React.FC = () => {
   const { t, mola } = useTempo();
   const dura = CENA.painel[1] - CENA.painel[0];
-  const chega = vai(t, 0.15, 1);
+  const chega = vai(t, 0.05, 0.8);
   const pulso = 0.5 + Math.sin(t * 6) * 0.5;
-  const aviso = mola(1.1, 150);
+  const aviso = mola(0.7, 150);
   // A comanda sai aos trancos, linha por linha, que é como impressora
   // térmica anda. Subindo liso ela parece um papel sendo puxado.
   const LINHAS = COMANDA.length + 2;
-  const saiu = Math.floor(interpolate(t, [2.2, 4.6], [0, LINHAS], PRESO));
+  const saiu = Math.floor(interpolate(t, [2.15, 4.1], [0, LINHAS], PRESO));
   const ALTURA_DA_LINHA = 38;
   const papel = saiu * ALTURA_DA_LINHA;
 
@@ -1096,8 +1056,7 @@ const Painel: React.FC = () => {
   const k = L / 800;
 
   return (
-    <Cena dura={dura}>
-      <Chamada a="O pedido chega pronto." b="e sai impresso na cozinha." tamanho={76} />
+    <Cena dura={dura} sobe={70}>
 
       <div
         style={{
@@ -1188,7 +1147,7 @@ const Painel: React.FC = () => {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 28px",
-            opacity: vai(t, 1.4),
+            opacity: vai(t, 1.2),
             zIndex: 2,
           }}
         >
@@ -1198,7 +1157,7 @@ const Painel: React.FC = () => {
               width: 14,
               height: 14,
               borderRadius: 14,
-              background: t > 2.1 && t < 4.7 && pulso < 0.5 ? "#0f5a2a" : COR.success,
+              background: t > 2.1 && t < 4.2 && pulso < 0.5 ? "#0f5a2a" : COR.success,
               boxShadow: `0 0 16px ${COR.success}`,
             }}
           />
@@ -1263,9 +1222,9 @@ const Painel: React.FC = () => {
 const Chama: React.FC = () => {
   const { t, mola } = useTempo();
   const dura = CENA.chama[1] - CENA.chama[0];
-  const conversa = vai(t, 0.3, 0.7);
-  const painel = vai(t, 1.6, 0.9);
-  const AVISO = 3.3;
+  const conversa = vai(t, 0.1, 0.6);
+  const painel = vai(t, 1.5, 0.8);
+  const AVISO = 2.85;
   const aviso = mola(AVISO, 130);
   // o sino: três ondas saindo do ícone logo que o aviso sobe
   const onda = (i: number) =>
@@ -1275,8 +1234,7 @@ const Chama: React.FC = () => {
   const A = (L * 556) / 800;
 
   return (
-    <Cena dura={dura}>
-      <Chamada a="Pediu uma pessoa?" b="a Lia te chama na hora." tamanho={78} />
+    <Cena dura={dura} sobe={120}>
 
       {/* a conversa, solta do aparelho: aqui o assunto é o que acontece
           do outro lado, no painel */}
@@ -1308,10 +1266,10 @@ const Chama: React.FC = () => {
             transformOrigin: "50% 0%",
           }}
         >
-          <Balao de="cliente" atrasa={0.6} hora="20:47">
+          <Balao de="cliente" atrasa={0.35} hora="20:47">
             Dá pra trocar a macaxeira por batata frita?
           </Balao>
-          <Balao de="lia" atrasa={1.5} hora="20:47">
+          <Balao de="lia" atrasa={1.35} hora="20:47">
             Vou chamar uma pessoa do restaurante pra ver isso com você. Só um instante!
           </Balao>
         </div>
@@ -1443,7 +1401,7 @@ const Chama: React.FC = () => {
       </div>
 
       <div style={{ position: "absolute", left: 0, right: 0, top: 1745, textAlign: "center" }}>
-        <Pilula atrasa={4.6} cheia>
+        <Pilula atrasa={3.75} cheia>
           Aviso no painel e no celular
         </Pilula>
       </div>
@@ -1457,8 +1415,8 @@ const Marca: React.FC = () => {
   const { t, mola } = useTempo();
   const dura = CENA.marca[1] - CENA.marca[0];
   const logo = mola(0.05, 90);
-  const nome = vai(t, 0.5);
-  const risco = vai(t, 1.0, 0.7);
+  const nome = vai(t, 0.15);
+  const risco = vai(t, 0.8, 0.7);
   return (
     <Cena dura={dura} semSaida>
       <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", gap: 34 }}>
@@ -1485,9 +1443,9 @@ const Marca: React.FC = () => {
         </div>
         <div style={{ width: 420 * risco, height: 2, background: COR.lineForte }} />
         <div style={{ display: "flex", gap: 14 }}>
-          <Pilula atrasa={1.5}>Delivery</Pilula>
-          <Pilula atrasa={1.7}>Salão</Pilula>
-          <Pilula atrasa={1.9}>Balcão</Pilula>
+          <Pilula atrasa={1.3}>Delivery</Pilula>
+          <Pilula atrasa={2.03}>Salão</Pilula>
+          <Pilula atrasa={2.5}>Balcão</Pilula>
         </div>
         <div
           style={{
@@ -1495,7 +1453,7 @@ const Marca: React.FC = () => {
             fontStyle: "italic",
             fontSize: 58,
             color: COR.brand,
-            opacity: vai(t, 2.3),
+            opacity: vai(t, 3.2),
           }}
         >
           sem comissão por pedido.
@@ -1507,7 +1465,7 @@ const Marca: React.FC = () => {
             fontWeight: 700,
             color: VELADO,
             letterSpacing: 0.4,
-            opacity: vai(t, 2.9),
+            opacity: vai(t, 4.4),
           }}
         >
           menufacildelivery.com.br
@@ -1530,7 +1488,34 @@ const Marca: React.FC = () => {
  * O sino é o `som-sino.wav` do próprio painel: é o que toca de verdade
  * no balcão quando chega pedido ou quando a Lia chama alguém.
  */
-const VOLUME_GERAL = 1;
+// Com a voz por cima, os sons descem para pouco mais da metade: eles
+// continuam marcando o que acontece, mas atrás da fala, e não ao lado.
+const VOLUME_GERAL = 0.55;
+
+/**
+ * A narração, e onde ela é cortada.
+ *
+ * O arquivo que ele gerou tem 55 segundos, mas o roteiro do comercial
+ * acaba em "sem comissão por pedido", aos 35,9. O que vem depois é o
+ * texto de outro vídeo (o técnico, do LinkedIn), que ficou na caixa do
+ * gerador de voz e foi junto. Ele entra aqui cortado, com um fundido
+ * curto no fim para o corte não estalar.
+ */
+const FIM_DA_FALA = 35.95;
+
+const Narracao: React.FC = () => {
+  const { fps } = useVideoConfig();
+  return (
+    <Sequence durationInFrames={seg(FIM_DA_FALA)} layout="none">
+      <Audio
+        src={staticFile("narracao-comercial.mp3")}
+        volume={(f) =>
+          interpolate(f / fps, [FIM_DA_FALA - 0.12, FIM_DA_FALA], [1, 0], PRESO)
+        }
+      />
+    </Sequence>
+  );
+};
 
 /**
  * Quanto cada som espera depois que a coisa começa a aparecer.
@@ -1548,26 +1533,22 @@ const SONS: { em: number; som: string; vol: number }[] = [
   // as mensagens empilhando na tela de bloqueio
   ...[0, 1, 2, 3, 4, 5].map((i) => ({ em: c.caos[0] + 0.45 + i * 0.38, som: "chega", vol: 0.34 })),
   // o toque no "+", e os pratos saltando
-  { em: c.cardapio[0] + 2.4, som: "toque", vol: 0.4 },
-  ...[0, 1, 2, 3].map((i) => ({ em: c.cardapio[0] + 3.3 + i * 0.22, som: "salta", vol: 0.2 })),
+  { em: c.cardapio[0] + 5.45, som: "toque", vol: 0.4 },
+  ...[0, 1, 2, 3].map((i) => ({ em: c.cardapio[0] + 2.7 + i * 0.22, som: "salta", vol: 0.2 })),
   // a conversa com a Lia: o cliente chega, ela sai
-  { em: c.lia[0] + 0.8, som: "chega", vol: 0.34 },
-  { em: c.lia[0] + 1.85, som: "sai", vol: 0.28 },
-  { em: c.lia[0] + 2.8, som: "chega", vol: 0.34 },
-  { em: c.lia[0] + 4.3, som: "sai", vol: 0.28 },
-  { em: c.lia[0] + 4.9, som: "sai", vol: 0.28 },
-  { em: c.lia[0] + 5.7, som: "chega", vol: 0.34 },
-  { em: c.lia[0] + 6.3, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 0.6, som: "chega", vol: 0.34 },
+  { em: c.lia[0] + 1.7, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 3.7, som: "chega", vol: 0.34 },
+  { em: c.lia[0] + 4.75, som: "sai", vol: 0.28 },
+  { em: c.lia[0] + 5.25, som: "sai", vol: 0.28 },
   // o pedido chegando no painel. A impressora e o sopro da troca de
   // cena saíram a pedido dele: eram os dois sons compridos, e viravam
   // barulho de fundo em vez de marcar um acontecimento.
-  { em: c.painel[0] + 1.1, som: "sino", vol: 0.3 },
+  { em: c.painel[0] + 0.7, som: "sino", vol: 0.3 },
   // o cliente pede uma pessoa, e o aviso sobe
-  { em: c.chama[0] + 0.6, som: "chega", vol: 0.34 },
-  { em: c.chama[0] + 1.5, som: "sai", vol: 0.28 },
-  { em: c.chama[0] + 3.3, som: "sino", vol: 0.32 },
-  // o logo
-  { em: c.marca[0] + 0.1, som: "fecho", vol: 0.3 },
+  { em: c.chama[0] + 0.35, som: "chega", vol: 0.34 },
+  { em: c.chama[0] + 1.35, som: "sai", vol: 0.28 },
+  { em: c.chama[0] + 2.85, som: "sino", vol: 0.32 },
 ];
 
 const Sons: React.FC = () => (
@@ -1618,5 +1599,6 @@ export const Comercial: React.FC = () => (
       <Virada />
     </Trecho>
     <Sons />
+    <Narracao />
   </AbsoluteFill>
 );
