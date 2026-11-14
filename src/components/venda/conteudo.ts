@@ -51,9 +51,6 @@ export const DEMO_URL = "/restaurante/papaleguas";
  */
 export const VITRINE = ["papaleguas"];
 
-/** de onde o MenuFácil atende: aparece no rodapé */
-export const PRACA = "Presidente Figueiredo · AM";
-
 /**
  * WhatsApp da equipe MenuFácil. Aceita duas formas:
  *
