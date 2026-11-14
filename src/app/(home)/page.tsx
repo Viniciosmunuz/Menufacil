@@ -12,7 +12,6 @@ import {
   Lia,
   Planos,
   QuemJaUsa,
-  Segmentos,
   Solucoes,
   Topo,
 } from "@/components/venda/sections";
@@ -70,7 +69,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <Filme />
       <Lia />
       <AntesEDepois />
-      <Segmentos />
       <Planos />
       <Adicionais />
       <Depoimentos />

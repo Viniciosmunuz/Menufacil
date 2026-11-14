@@ -2,21 +2,10 @@ import { WHATSAPP_MENUFACIL, linkWhatsappMenuFacil } from "@/lib/contato";
 
 import {
   BadgePercent,
-  Beer,
-  Building2,
   CalendarClock,
-  Cherry,
-  Coffee,
-  CookingPot,
-  Croissant,
   FileX,
-  Hamburger,
-  IceCreamCone,
   MessageSquareWarning,
   PackageX,
-  Pizza,
-  Sandwich,
-  Truck,
   Bot,
   BookOpen,
   Bike,
@@ -34,7 +23,6 @@ import {
   ShieldCheck,
   Split,
   Store,
-  UtensilsCrossed,
   ToggleLeft,
   Wallet,
   type LucideIcon,
@@ -91,7 +79,6 @@ export const SECOES = {
   lia: "lia",
   antes: "antes-e-depois",
   recursos: "recursos",
-  segmentos: "segmentos",
   planos: "planos",
   adicionais: "adicionais",
   totem: "totem",
@@ -243,28 +230,6 @@ export const SOLUCOES: Solucao[] = [
 ];
 
 // ─── tipos de negócio ─────────────────────────────────────────────────
-
-export const SEGMENTOS_TEXTO = {
-  etiqueta: "Para todo tipo de cardápio",
-  titulo: "O cardápio do jeito que você vende",
-  tituloDestaque: "",
-  texto: "Pizza meio a meio, açaí montado, marmita do dia.",
-};
-
-export const SEGMENTOS: { icon: LucideIcon; nome: string }[] = [
-  { icon: UtensilsCrossed, nome: "Restaurante" },
-  { icon: Pizza, nome: "Pizzaria" },
-  { icon: Hamburger, nome: "Hamburgueria" },
-  { icon: Sandwich, nome: "Lanchonete" },
-  { icon: Cherry, nome: "Açaiteria" },
-  { icon: IceCreamCone, nome: "Sorveteria" },
-  { icon: Coffee, nome: "Cafeteria" },
-  { icon: Croissant, nome: "Padaria" },
-  { icon: Beer, nome: "Bar" },
-  { icon: CookingPot, nome: "Marmitaria" },
-  { icon: Truck, nome: "Food truck" },
-  { icon: Building2, nome: "Dark kitchen" },
-];
 
 // ─── o delivery, em detalhe ───────────────────────────────────────────
 

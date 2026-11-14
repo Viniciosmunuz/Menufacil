@@ -34,8 +34,6 @@ import {
   PLANOS_TEXTO,
   PROMESSAS,
   SECOES,
-  SEGMENTOS,
-  SEGMENTOS_TEXTO,
   SOLUCOES_TEXTO,
   TOPO,
   type Adicional,
@@ -750,39 +748,6 @@ export function Lia() {
               </Celular>
             </div>
           </div>
-        </div>
-      </Miolo>
-    </section>
-  );
-}
-
-// ─── 5. tipos de negócio ──────────────────────────────────────────────
-
-export function Segmentos() {
-  return (
-    <section id={SECOES.segmentos} className="scroll-mt-20 bg-surface/60 py-16 sm:py-24">
-      <Miolo>
-        {/* Título de um lado, os tipos de casa do outro. Eram doze
-            cartões iguais, cada um com um ícone num círculo -- muito
-            espaço para dizer doze palavras. Em linha elas se leem de uma
-            vez, e a seção deixa de ser mais uma grade no meio da página. */}
-        <div className="mx-auto grid max-w-5xl items-center gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
-          <div className="[&>div]:mb-0">
-            <Titulo lado="esquerda" destaque={SEGMENTOS_TEXTO.tituloDestaque} sub={SEGMENTOS_TEXTO.texto}>
-              {SEGMENTOS_TEXTO.titulo}
-            </Titulo>
-          </div>
-          <ul className="flex flex-wrap gap-2.5">
-            {SEGMENTOS.map(({ icon: Icon, nome }) => (
-              <li
-                key={nome}
-                className="flex items-center gap-2 rounded-full border border-line bg-bg px-4 py-2.5 text-[0.95rem] font-bold text-ink/85"
-              >
-                <Icon className="size-[1.1rem] text-brand" strokeWidth={1.8} aria-hidden="true" />
-                {nome}
-              </li>
-            ))}
-          </ul>
         </div>
       </Miolo>
     </section>
