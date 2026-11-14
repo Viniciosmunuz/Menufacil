@@ -144,13 +144,6 @@
   }
 }
 
-/* os aparelhos da página de venda, boiando devagar */
-@keyframes flutua {
-  50% {
-    transform: translateY(-9px);
-  }
-}
-
 /* A entrada das seções da página de venda durante a rolagem.
  *
  * É feita só em CSS, amarrada à rolagem (animation-timeline: view()), sem

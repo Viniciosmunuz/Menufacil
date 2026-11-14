@@ -89,21 +89,30 @@ export function Celular({
   priority?: boolean;
   sizes?: string;
 }) {
-  const botao = "absolute w-[1.6%] min-w-[2px] bg-gradient-to-b from-[#5b5e66] to-[#34363c]";
+  // Refeito a pedido dele ("deixa o celular mais bonito"): o aro era
+  // escuro e a moldura preta grossa, e pequeno o aparelho virava um bloco
+  // preto. Agora o aro é titânio claro, com um filete de luz por dentro, a
+  // moldura preta é fina e o vidro tem um reflexo leve na diagonal.
+  const botao = "absolute w-[1.5%] min-w-[2px] bg-gradient-to-b from-[#d4d5da] via-[#9b9da5] to-[#c4c5cb]";
   return (
-    <div className={cn("relative drop-shadow-[0_28px_40px_rgb(0_0_0/0.4)]", className)}>
+    <div
+      className={cn(
+        "relative drop-shadow-[0_3px_5px_rgb(29_32_38/0.22)] [filter:drop-shadow(0_3px_5px_rgb(29_32_38/0.2))_drop-shadow(0_26px_34px_rgb(29_32_38/0.28))]",
+        className,
+      )}
+    >
       {/* os botões: ação e volume à esquerda, o de ligar à direita */}
-      <span aria-hidden="true" className={cn(botao, "top-[16%] -left-[1.2%] h-[4%] rounded-l-sm")} />
-      <span aria-hidden="true" className={cn(botao, "top-[23%] -left-[1.2%] h-[7.5%] rounded-l-sm")} />
-      <span aria-hidden="true" className={cn(botao, "top-[32%] -left-[1.2%] h-[7.5%] rounded-l-sm")} />
-      <span aria-hidden="true" className={cn(botao, "top-[26%] -right-[1.2%] h-[11%] rounded-r-sm")} />
+      <span aria-hidden="true" className={cn(botao, "top-[16%] -left-[1%] h-[4%] rounded-l-full")} />
+      <span aria-hidden="true" className={cn(botao, "top-[23%] -left-[1%] h-[7.5%] rounded-l-full")} />
+      <span aria-hidden="true" className={cn(botao, "top-[32%] -left-[1%] h-[7.5%] rounded-l-full")} />
+      <span aria-hidden="true" className={cn(botao, "top-[26%] -right-[1%] h-[11%] rounded-r-full")} />
 
-      {/* a borda de titânio */}
-      <div className="rounded-[17%/7.9%] bg-gradient-to-br from-[#6b6e76] via-[#2e3036] to-[#5a5d65] p-[1.3%]">
-        {/* a moldura preta */}
-        <div className="rounded-[16%/7.4%] bg-black p-[3.4%]">
+      {/* o aro de titânio claro */}
+      <div className="relative rounded-[17%/7.9%] bg-gradient-to-br from-[#f1f1f4] via-[#a3a5ad] to-[#dcdde2] p-[1.5%] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.55)]">
+        {/* a moldura preta, fina */}
+        <div className="rounded-[15.8%/7.3%] bg-[#0b0c0f] p-[2.3%]">
           {/* a tela */}
-          <div className="@container relative overflow-hidden rounded-[12.5%/5.8%] bg-bg">
+          <div className="@container relative overflow-hidden rounded-[13.6%/6.3%] bg-bg">
             {/* barra de status: a hora, o sinal e a bateria */}
             <div
               aria-hidden="true"
@@ -139,6 +148,11 @@ export function Celular({
             ) : (
               children
             )}
+            {/* o reflexo do vidro */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgb(255_255_255/0.16)_0%,rgb(255_255_255/0.04)_22%,transparent_38%)]"
+            />
           </div>
         </div>
       </div>

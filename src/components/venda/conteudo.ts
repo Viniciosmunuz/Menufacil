@@ -535,6 +535,7 @@ export const LIA: {
   foto: string;
   /** ela de corpo inteiro, apresentando o celular */
   corpo: string;
+  recorte: string;
   /** o que vai no balão ao lado dela */
   fala: string;
   titulo: string;
@@ -548,6 +549,8 @@ export const LIA: {
   papel: "assistente virtual do Menu Fácil",
   foto: "/atendente-ia.webp",
   corpo: "/venda/lia-corpo.webp",
+  /** a mesma arte, sem o fundo branco, para ficar em pé sobre o topo */
+  recorte: "/venda/lia-recorte.webp",
   fala: "Oi, eu sou a Lia! Pode deixar o WhatsApp comigo.",
   titulo: "Ela atende o WhatsApp.",
   tituloDestaque: "Você cuida da cozinha.",

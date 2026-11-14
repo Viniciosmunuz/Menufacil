@@ -184,22 +184,36 @@ function Convite({ children, texto }: { children: ReactNode; texto: string }) {
  */
 function Aparelhos() {
   return (
-    // As larguras são casadas: com o notebook em 88% e o celular em 24%, o
-    // celular fica com uns quatro quintos da altura do notebook, que é a
-    // proporção de verdade entre os dois aparelhos. Mais largo que isso e
-    // o celular (que é bem mais alto do que largo) passa do notebook.
-    <div className="relative mx-auto w-full max-w-[32rem] pb-[8%] lg:max-w-none" aria-hidden="true">
-      <div className="ml-[3%] w-[88%]">
-        <Notebook tela={TELAS.computador} priority sizes="(min-width: 1024px) 34rem, 88vw" />
+    // Tudo parado: os aparelhos e o aviso flutuavam, e ele pediu para tirar
+    // o movimento. A Lia entra em pé à esquerda, recortada, com a mão
+    // apontando para o painel; o notebook foi um pouco para a direita para
+    // dar lugar a ela, e o aviso subiu para o canto de cima.
+    //
+    // As larguras são casadas: o notebook em 78% tem de altura mais ou
+    // menos metade da largura do conjunto, e a Lia em 27% e o celular em
+    // 21% ficam um pouco acima e um pouco abaixo disso.
+    <div className="relative mx-auto w-full max-w-[32rem] pt-[7%] pb-[6%] lg:max-w-none" aria-hidden="true">
+      <div className="ml-[15%] w-[78%]">
+        <Notebook tela={TELAS.computador} priority sizes="(min-width: 1024px) 31rem, 78vw" />
       </div>
+
+      <Image
+        src={LIA.recorte}
+        alt=""
+        width={533}
+        height={1071}
+        priority
+        sizes="(min-width: 1024px) 11rem, 27vw"
+        className="absolute bottom-0 -left-[2%] h-auto w-[27%] drop-shadow-[0_18px_18px_rgb(29_32_38/0.22)]"
+      />
 
       {/* a posição fica num invólucro: a moldura do celular já é
           `relative`, e as duas classes juntas brigam */}
-      <div className="absolute right-0 bottom-0 w-[24%] motion-safe:animate-[flutua_7s_ease-in-out_infinite]">
-        <Celular tela={TELAS.cardapioReal} priority sizes="(min-width: 1024px) 9rem, 24vw" />
+      <div className="absolute right-0 bottom-0 w-[21%]">
+        <Celular tela={TELAS.cardapioReal} priority sizes="(min-width: 1024px) 8rem, 21vw" />
       </div>
 
-      <div className="absolute bottom-[4%] left-0 flex items-center gap-2.5 rounded-2xl border border-line bg-bg py-2 pr-3.5 pl-2 shadow-[0_22px_36px_-20px_rgb(29_32_38/0.5)] motion-safe:animate-[flutua_7s_ease-in-out_-3.5s_infinite] sm:gap-3 sm:py-2.5 sm:pr-4 sm:pl-2.5">
+      <div className="absolute top-0 right-[2%] flex items-center gap-2.5 rounded-2xl border border-line bg-bg py-2 pr-3.5 pl-2 shadow-[0_22px_36px_-20px_rgb(29_32_38/0.5)] sm:gap-3 sm:py-2.5 sm:pr-4 sm:pl-2.5">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-brand sm:size-9">
           <BellRing className="size-4" />
         </span>
