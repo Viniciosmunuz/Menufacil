@@ -239,7 +239,7 @@ function Aparelhos() {
         height={1071}
         priority
         sizes="(min-width: 1024px) 11rem, 27vw"
-        className="absolute bottom-0 -left-[2%] h-auto w-[27%] drop-shadow-[0_18px_18px_rgb(29_32_38/0.22)]"
+        className="absolute bottom-0 -left-[2%] h-auto w-[27%] lg:left-[3%] lg:w-[25%] drop-shadow-[0_18px_18px_rgb(29_32_38/0.22)]"
       />
 
       {/* a posição fica num invólucro: a moldura do celular já é
