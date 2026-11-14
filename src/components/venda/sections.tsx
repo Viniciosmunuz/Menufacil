@@ -136,17 +136,53 @@ function Titulo({
   );
 }
 
-/** os quatro "sem" e "com", com o visto verde */
+/**
+ * As quatro promessas do topo, numa linha só que anda devagar.
+ *
+ * Eram uma lista quebrada em três linhas no celular. Ele pediu no mesmo
+ * jeito da faixa dos restaurantes: uma do lado da outra, correndo, uma em
+ * cor e a seguinte em cinza. Cada volta leva as quatro duas vezes, para
+ * ser mais larga que a coluna e para a alternância não quebrar na emenda.
+ *
+ * Quem usa leitor de tela recebe a lista uma vez, parada; e quem pediu
+ * menos movimento ao sistema vê a lista antiga, sem esteira.
+ */
 function Promessas({ className }: { className?: string }) {
+  const volta = [...PROMESSAS, ...PROMESSAS];
+  const item = (title: string, mono: boolean) => (
+    <>
+      <CircleCheck className={cn("size-4 shrink-0", mono ? "text-faint" : "text-brand")} aria-hidden="true" />
+      <span className={cn("text-[0.88rem] leading-snug font-bold whitespace-nowrap", mono ? "text-faint" : "text-ink/85")}>
+        {title}
+      </span>
+    </>
+  );
   return (
-    <ul className={cn("flex flex-wrap gap-x-5 gap-y-2.5", className)}>
-      {PROMESSAS.map(({ title }) => (
-        <li key={title} className="flex items-center gap-2">
-          <CircleCheck className="size-4 shrink-0 text-brand" aria-hidden="true" />
-          <span className="text-[0.9rem] leading-snug font-bold text-muted">{title}</span>
-        </li>
-      ))}
-    </ul>
+    <div className={className}>
+      <div
+        aria-hidden="true"
+        className="overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_9%,#000_91%,transparent)] motion-reduce:hidden"
+      >
+        <div className="flex w-max animate-[esteira_60s_linear_infinite]">
+          {[0, 1].map((copia) => (
+            <div key={copia} className="flex gap-7 pr-7">
+              {volta.map(({ title }, i) => (
+                <span key={i} className="flex items-center gap-2">
+                  {item(title, i % 2 === 1)}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <ul className="sr-only motion-reduce:not-sr-only motion-reduce:flex motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:gap-x-5 motion-reduce:gap-y-2.5 lg:motion-reduce:justify-start">
+        {PROMESSAS.map(({ title }, i) => (
+          <li key={title} className="flex items-center gap-2">
+            {item(title, i % 2 === 1)}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -256,7 +292,7 @@ export function Topo() {
             </Link>
           </div>
 
-          <Promessas className="mt-7 justify-center lg:justify-start" />
+          <Promessas className="mt-7" />
         </div>
 
         <Aparelhos />
