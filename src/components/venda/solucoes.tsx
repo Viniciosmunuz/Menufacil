@@ -18,7 +18,8 @@ import { Celular, Notebook, TELAS, TotemAparelho, ViaImpressa } from "./mockups"
 
 const INTERVALO_MS = 5000;
 
-type Foto = { src: string; alt: string };
+/** `pos` desloca o recorte quando o assunto não está no meio da foto */
+type Foto = { src: string; alt: string; pos?: string };
 
 /**
  * As fotos das frases 2 em diante de cada aba, na ordem das frases em
@@ -27,38 +28,42 @@ type Foto = { src: string; alt: string };
  *
  * Todas do Pexels, licença livre para uso comercial, sem crédito
  * obrigatório. O número é o da foto: pexels.com/photo/<número>.
+ *
+ * Em 14/11/2026 ele pediu fotos mais bonitas, e onze das dezesseis foram
+ * trocadas (as de nome terminado em "b"): saíram as de aparelho solto e
+ * de gente de costas, entraram as de comida, de rosto e de luz quente.
  */
 const FOTOS: Record<Solucao["id"], Foto[]> = {
   delivery: [
-    // 4008580, 6605251, 6925809, 12203654
+    // 4008580, 6684773, 12935093, 13311393
     { src: "/venda/solucoes/delivery-2.jpg", alt: "Cliente escolhendo lanches num cardápio aberto no celular" },
-    { src: "/venda/solucoes/delivery-3.jpg", alt: "Pizzaiolo sorrindo ao entregar as caixas de pizza ao cliente" },
-    { src: "/venda/solucoes/delivery-4.jpg", alt: "Cliente pagando com o celular no balcão" },
-    { src: "/venda/solucoes/delivery-5.jpg", alt: "Entregador de moto levando o pedido na bolsa térmica" },
+    { src: "/venda/solucoes/delivery-3b.jpg", alt: "Atendente sorrindo ao entregar a sacola do pedido ao cliente" },
+    { src: "/venda/solucoes/delivery-4b.jpg", alt: "Cliente pagando pelo celular na maquininha que a atendente segura" },
+    { src: "/venda/solucoes/delivery-5b.jpg", alt: "Entregador de moto com a bolsa térmica, passando rápido pela rua", pos: "object-[72%_50%]" },
   ],
   salao: [
-    // 37594386, 6816417, 37594404, 36729739
+    // 37594386, 33312298, 12935066, 36729739
     { src: "/venda/solucoes/salao-2.jpg", alt: "Garçom anotando o pedido da mesa num aparelho de mão" },
-    { src: "/venda/solucoes/salao-3.jpg", alt: "Garçom com a maquininha na mesa para os clientes pagarem a conta" },
-    { src: "/venda/solucoes/salao-4.jpg", alt: "Atendente fechando o caixa na tela do balcão" },
+    { src: "/venda/solucoes/salao-3b.jpg", alt: "Amigos brindando sobre a mesa cheia de pratos" },
+    { src: "/venda/solucoes/salao-4b.jpg", alt: "Atendente sorrindo no caixa, com a tela do pedido virada para o cliente" },
     { src: "/venda/solucoes/salao-5.jpg", alt: "Dona do restaurante de braços cruzados no balcão" },
   ],
   impressao: [
-    // 38181070, 15646686
+    // 38181070, 4253300
     { src: "/venda/solucoes/impressao-2.jpg", alt: "Comanda impressa com os itens do pedido saindo na cozinha" },
-    { src: "/venda/solucoes/impressao-3.jpg", alt: "Cozinheiros preparando os pedidos na chapa" },
+    { src: "/venda/solucoes/impressao-3b.jpg", alt: "Dois cozinheiros montando os pratos na cozinha aberta" },
   ],
   painel: [
-    // 12935057, 6612691, 4921260
+    // 12935057, 8475171, 36430088
     { src: "/venda/solucoes/painel-2.jpg", alt: "Cozinheiro olhando os pedidos numa tela" },
-    { src: "/venda/solucoes/painel-3.jpg", alt: "Atendente cuidando dos pedidos pelo tablet e pelo celular" },
-    { src: "/venda/solucoes/painel-4.jpg", alt: "Dedo tocando num prato do cardápio na tela" },
+    { src: "/venda/solucoes/painel-3b.jpg", alt: "Dono do restaurante virando a placa da porta" },
+    { src: "/venda/solucoes/painel-4b.jpg", alt: "Cozinheiro finalizando um prato na bancada" },
   ],
   totem: [
-    // 11344562, 29179404, 12935078
-    { src: "/venda/solucoes/totem-2.jpg", alt: "Maquininha de cartão no balcão, ao lado de um café" },
-    { src: "/venda/solucoes/totem-3.jpg", alt: "Cliente esperando o pedido no balcão de retirada" },
-    { src: "/venda/solucoes/totem-4.jpg", alt: "Tela de autoatendimento com o cardápio num restaurante" },
+    // 37594419, 39468953, 37594413
+    { src: "/venda/solucoes/totem-2b.jpg", alt: "Maquininha no balcão ao lado do lanche pronto" },
+    { src: "/venda/solucoes/totem-3b.jpg", alt: "Cliente pegando a bandeja com os lanches no balcão" },
+    { src: "/venda/solucoes/totem-4b.jpg", alt: "Clientes escolhendo o pedido na tela do balcão" },
   ],
 };
 
@@ -136,7 +141,7 @@ export function Solucoes() {
 
   return (
     <div>
-      <div role="tablist" aria-label="Partes do sistema" className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
+      <div role="tablist" aria-label="Partes do sistema" className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
         {SOLUCOES.map((s, i) => {
           const Icon = s.icon;
           const ativa = i === aba;
@@ -149,13 +154,14 @@ export function Solucoes() {
               aria-controls="solucao-painel"
               onClick={() => escolherAba(i)}
               className={cn(
-                "flex h-11 items-center gap-2 rounded-full border px-4 text-[0.92rem] font-extrabold transition-colors sm:h-12 sm:px-5",
+                // finas e discretas, a pedido dele: eram de 44px, com sombra
+                "flex h-8 items-center gap-1.5 rounded-full border px-3 text-[0.8rem] font-bold transition-colors sm:h-9 sm:px-3.5 sm:text-[0.84rem]",
                 ativa
-                  ? "border-brand/30 bg-brand-soft text-brand shadow-[0_8px_20px_-12px_rgb(249_104_11/0.7)]"
+                  ? "border-brand/30 bg-brand-soft text-brand"
                   : "border-line bg-bg text-muted hover:border-line-strong hover:text-ink",
               )}
             >
-              <Icon className="size-[1.1rem]" aria-hidden="true" />
+              <Icon className="size-3.5" aria-hidden="true" />
               {s.nome}
             </button>
           );
@@ -165,7 +171,7 @@ export function Solucoes() {
       <div
         id="solucao-painel"
         role="tabpanel"
-        className="mx-auto mt-8 max-w-3xl rounded-[1.75rem] border border-line bg-bg p-3.5 shadow-[0_30px_60px_-40px_rgb(0_0_0/0.35)] sm:mt-10 sm:p-5"
+        className="mx-auto mt-6 max-w-3xl rounded-[1.75rem] border border-line bg-bg p-3.5 shadow-[0_30px_60px_-40px_rgb(0_0_0/0.35)] sm:mt-10 sm:p-5"
       >
         <div className="flex items-center gap-3 px-2 pt-1 pb-3.5 sm:pb-4">
           <Icone className="size-5 text-brand" aria-hidden="true" />
@@ -200,7 +206,7 @@ export function Solucoes() {
                 frase === i + 1 ? "opacity-100" : "opacity-0",
               )}
             >
-              <Image src={foto.src} alt={foto.alt} fill sizes="(min-width: 768px) 46rem, 92vw" className="object-cover" />
+              <Image src={foto.src} alt={foto.alt} fill sizes="(min-width: 768px) 46rem, 92vw" className={cn("object-cover", foto.pos)} />
             </div>
           ))}
 
