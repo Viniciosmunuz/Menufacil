@@ -58,6 +58,12 @@ import { Solucoes as AbasDeSolucoes } from "./solucoes";
 //  - a Lia ganhou uma seção só dela, com a conversa dentro de um celular;
 //  - depois das soluções, do vídeo, da Lia e dos planos há um convite.
 //
+// Depois de publicada, ele achou a página "com muita coisa para ler". A
+// rodada seguinte não tirou seção nenhuma: tirou o detalhe da frente. A
+// regra passou a ser uma frase por bloco à vista, e o resto atrás de um
+// "ver tudo" (a lista completa do plano, os itens do salão e do totem).
+// Quem quer o detalhe abre; quem só está passando o olho não tropeça nele.
+//
 // Nada foi inventado para encher: nenhum cliente, número ou depoimento
 // aparece sem existir, e o que a Lia promete é o que ela já faz.
 //
@@ -348,7 +354,7 @@ export function Filme() {
   return (
     <section id={SECOES.filme} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
-        <Titulo sub="Em 55 segundos: do pedido do cliente à comanda na cozinha, com o sistema rodando de verdade.">
+        <Titulo sub="Em 55 segundos, do pedido à comanda na cozinha.">
           Veja o Menu Fácil funcionando na prática
         </Titulo>
         <figure className="surge mx-auto max-w-4xl">
@@ -364,15 +370,12 @@ export function Filme() {
               O seu navegador não abre vídeo. Fale com a gente no WhatsApp que mostramos o sistema por chamada.
             </video>
           </div>
-          <figcaption className="mt-4 text-center text-sm text-muted">
-            As telas do vídeo são as do sistema, gravadas como ele funciona hoje.
-          </figcaption>
         </figure>
 
         {/* Depois do vídeo, a prova que vale mais que ele: um cardápio de
             verdade, no ar, que o dono abre e usa como se fosse cliente. O
             endereço é o DEMO_URL de conteudo.ts, o mesmo do topo. */}
-        <Convite texto="Prefere mexer a assistir? Abra um cardápio de verdade e faça um pedido de teste.">
+        <Convite texto="Prefere mexer a assistir? Abra um cardápio de verdade.">
           <Link href={DEMO_URL} target="_blank" rel="noopener" className={buttonClasses("primary", "lg")}>
             Conhecer o sistema
             <ExternalLink className="size-4" aria-hidden="true" />
@@ -461,7 +464,7 @@ function CartaoDeContraste({ tipo, itens }: { tipo: "sem" | "com"; itens: Contra
         </span>
       </div>
 
-      <ul className="flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
+      <ul className="flex flex-col gap-3.5 px-5 py-6 sm:px-7 sm:py-7">
         {itens.map(({ title, text }) => (
           <li key={title} className="flex items-start gap-3">
             {/* Um sinal pequeno, e não um ícone diferente dentro de uma
@@ -472,10 +475,14 @@ function CartaoDeContraste({ tipo, itens }: { tipo: "sem" | "com"; itens: Contra
             ) : (
               <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
             )}
-            <div className="min-w-0">
-              <p className="leading-tight font-extrabold">{title}</p>
-              <p className="mt-1 text-[0.92rem] leading-snug text-muted">{text}</p>
-            </div>
+            {/* só o título de cada linha. A frase de explicação que
+                vinha embaixo dobrava a leitura das duas colunas, e o
+                título já diz a coisa; o texto continua em conteudo.ts
+                e serve de descrição para leitor de tela. */}
+            <p className="min-w-0 leading-tight font-extrabold">
+              {title}
+              <span className="sr-only">. {text}</span>
+            </p>
           </li>
         ))}
       </ul>
@@ -650,7 +657,6 @@ export function Lia() {
                 <ArrowRight className="size-5" aria-hidden="true" />
               </BotaoComercial>
             )}
-            <p className="mt-3 text-sm text-muted">{LIA.nota}</p>
           </div>
 
           {/* Ela em pé, apresentando o celular com a mão, e o balão da
@@ -762,6 +768,18 @@ function BotaoComercial({
   );
 }
 
+/** quantos itens do plano ficam à vista antes do "ver tudo" */
+const A_VISTA = 4;
+
+function ItemDoPlano({ children, escuro }: { children: ReactNode; escuro: boolean }) {
+  return (
+    <li className="flex items-start gap-2.5 text-[0.88rem] leading-snug">
+      <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={3.2} aria-hidden="true" />
+      <span className={escuro ? "text-white/80" : "text-muted"}>{children}</span>
+    </li>
+  );
+}
+
 function CartaoDoPlano({ plano }: { plano: Plano }) {
   const { icone: Icone } = plano;
   // O plano com a Lia é o cartão escuro. A diferença entre os dois planos
@@ -802,14 +820,6 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
         </div>
       </div>
 
-      {/* A fala dela, como uma mensagem que chegou: é o plano se
-          apresentando na voz de quem vai trabalhar no restaurante. */}
-      {plano.apresenta && (
-        <p className="mt-4 rounded-2xl rounded-tl-md bg-white/10 px-4 py-3 text-[0.9rem] leading-snug text-white/90">
-          {plano.apresenta.fala}
-        </p>
-      )}
-
       <p className="mt-6 flex items-end gap-1.5">
         <span className={cn("text-[2.6rem] leading-none font-extrabold tracking-tight", escuro ? "text-white" : "text-ink")}>
           {plano.preco}
@@ -828,14 +838,36 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
         >
           {plano.tituloDosItens}
         </p>
+        {/* Quatro itens à vista e o resto atrás do "ver tudo": a lista
+            inteira, nos dois cartões lado a lado, era a maior parede de
+            texto da página. Nenhum item saiu do plano. */}
         <ul className="mt-3.5 flex flex-col gap-2.5">
-          {plano.itens.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-[0.88rem] leading-snug">
-              <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={3.2} aria-hidden="true" />
-              <span className={escuro ? "text-white/80" : "text-muted"}>{item}</span>
-            </li>
+          {plano.itens.slice(0, A_VISTA).map((item) => (
+            <ItemDoPlano key={item} escuro={escuro}>
+              {item}
+            </ItemDoPlano>
           ))}
         </ul>
+        {plano.itens.length > A_VISTA && (
+          <details className="drawer group mt-2.5">
+            <summary
+              className={cn(
+                "flex w-fit cursor-pointer list-none items-center gap-1.5 text-[0.86rem] font-extrabold [&::-webkit-details-marker]:hidden",
+                escuro ? "text-white" : "text-ink",
+              )}
+            >
+              Ver tudo o que inclui
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <ul className="mt-2.5 flex flex-col gap-2.5">
+              {plano.itens.slice(A_VISTA).map((item) => (
+                <ItemDoPlano key={item} escuro={escuro}>
+                  {item}
+                </ItemDoPlano>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
 
       {/* o botão desce para o rodapé do cartão: com listas de tamanhos
@@ -919,18 +951,24 @@ function CartaoDoAdicional({ adicional }: { adicional: Adicional }) {
         )}
       </p>
 
-      <ul className="mt-5 flex flex-1 flex-col gap-2.5 border-t border-line pt-5">
-        {adicional.itens.map((item) => (
-          <li key={item} className="flex items-start gap-2.5 text-[0.85rem] leading-snug">
-            <Check
-              className={cn("mt-0.5 size-3.5 shrink-0", tom === "brand" ? "text-brand" : "text-info")}
-              strokeWidth={3.2}
-              aria-hidden="true"
-            />
-            <span className="text-muted">{item}</span>
-          </li>
-        ))}
-      </ul>
+      <details className="drawer group mt-5 flex-1 border-t border-line pt-4">
+        <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-[0.86rem] font-extrabold [&::-webkit-details-marker]:hidden">
+          Ver o que inclui
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <ul className="mt-3 flex flex-col gap-2.5">
+          {adicional.itens.map((item) => (
+            <li key={item} className="flex items-start gap-2.5 text-[0.85rem] leading-snug">
+              <Check
+                className={cn("mt-0.5 size-3.5 shrink-0", tom === "brand" ? "text-brand" : "text-info")}
+                strokeWidth={3.2}
+                aria-hidden="true"
+              />
+              <span className="text-muted">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       <BotaoComercial mensagem={adicional.mensagem} variante="secondary" className="mt-7 w-full">
         {adicional.botao}
@@ -953,7 +991,9 @@ export function Adicionais() {
           ))}
         </div>
 
-        <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-muted">{ADICIONAIS_TEXTO.nota}</p>
+        {ADICIONAIS_TEXTO.nota && (
+          <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-muted">{ADICIONAIS_TEXTO.nota}</p>
+        )}
       </Miolo>
     </section>
   );
@@ -997,7 +1037,7 @@ export function Duvidas() {
       <Miolo>
         <div className="mx-auto grid max-w-5xl gap-x-14 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="lg:sticky lg:top-28 lg:self-start">
-            <Titulo lado="esquerda" sub="O que os donos de restaurante mais perguntam antes de começar.">
+            <Titulo lado="esquerda">
               Perguntas frequentes
             </Titulo>
           </div>
@@ -1059,14 +1099,6 @@ export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
               </a>
             )}
 
-            <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2.5 lg:justify-start">
-              {FINAL.garantias.map((g) => (
-                <li key={g} className="flex items-center gap-2 text-[0.92rem] font-bold text-white/90">
-                  <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-                  {g}
-                </li>
-              ))}
-            </ul>
           </div>
 
           <div className="surge min-w-0">

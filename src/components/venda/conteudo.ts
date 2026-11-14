@@ -142,7 +142,7 @@ export const ANTES_DEPOIS: {
 } = {
   etiqueta: "Antes e depois",
   titulo: "O mesmo sábado à noite, de dois jeitos",
-  texto: "De um lado, o WhatsApp lotado e o caderno. Do outro, o pedido saindo pronto na impressora.",
+  texto: "",
   sem: [
     { icon: MessageSquareWarning, title: "Pedido perdido no WhatsApp", text: "Conversa misturada, pedido esquecido e cliente cobrando." },
     { icon: FileX, title: "Anotando tudo à mão", text: "Item trocado, observação esquecida e letra que a cozinha não entende." },
@@ -174,7 +174,8 @@ export const SOLUCOES_TEXTO = {
   etiqueta: "Soluções",
   titulo: "Delivery, salão e balcão no mesmo cardápio",
   tituloDestaque: "",
-  texto: "Delivery, salão, impressão e totem no mesmo cadastro de produtos. Mudou num lugar, mudou em todos.",
+  // sem frase de apoio: as abas logo abaixo já dizem o que há
+  texto: "",
 };
 
 export const SOLUCOES: Solucao[] = [
@@ -247,7 +248,7 @@ export const SEGMENTOS_TEXTO = {
   etiqueta: "Para todo tipo de cardápio",
   titulo: "O cardápio do jeito que você vende",
   tituloDestaque: "",
-  texto: "Pizza meio a meio, açaí montado, marmita do dia: o cardápio se monta do jeito que você vende.",
+  texto: "Pizza meio a meio, açaí montado, marmita do dia.",
 };
 
 export const SEGMENTOS: { icon: LucideIcon; nome: string }[] = [
@@ -495,13 +496,13 @@ export const ADICIONAIS: Adicional[] = [
 export const ADICIONAIS_TEXTO = {
   etiqueta: 'Sob consulta',
   titulo: 'Soluções para o atendimento presencial.',
-  texto: 'O Salão e o Totem dependem do tamanho da casa e do equipamento, então o preço sai depois da conversa.',
-  nota: 'Ligados à parte da mensalidade, a qualquer momento, sem mexer no que já está funcionando.',
+  texto: 'O preço depende do tamanho da casa e do equipamento.',
+  nota: '',
 };
 
 export const PLANOS_TEXTO = {
   titulo: "Quanto custa",
-  texto: "Mensalidade fixa e sem taxa de adesão. O plano com a Lia tem tudo do Delivery e mais o atendimento no WhatsApp.",
+  texto: "Mensalidade fixa, sem taxa de adesão.",
   /**
    * A linha embaixo dos dois cartões.
    *
@@ -550,14 +551,14 @@ export const LIA: {
   fala: "Oi, eu sou a Lia! Pode deixar o WhatsApp comigo.",
   titulo: "Ela atende o WhatsApp.",
   tituloDestaque: "Você cuida da cozinha.",
-  texto:
-    "A Lia responde quem chama no WhatsApp do restaurante, apresenta o cardápio e acompanha o cliente até o pedido fechar.",
+  texto: "Ela apresenta o cardápio e acompanha o cliente até o pedido fechar.",
+  // Quatro linhas, e não a lista inteira: o resto do que ela faz está no
+  // cartão do plano Menu Fácil IA, para quem quiser o detalhe.
   pontos: [
-    "Responde sobre o cardápio, os preços e o horário",
-    "Anota o pedido pela conversa e manda o Pix",
+    "Responde sobre cardápio, preço e horário",
+    "Anota o pedido e manda o Pix",
     "Entende mensagem de áudio",
-    "Avisa o cliente quando o pedido é aceito e quando sai",
-    "Chama você quando o cliente pede uma pessoa",
+    "Chama você quando pedem uma pessoa",
   ],
   nota: "Disponível no plano Menu Fácil IA.",
   conversa: [
@@ -657,7 +658,7 @@ export const DUVIDAS = [
 export const FINAL = {
   titulo: "Quer ver funcionando",
   tituloDestaque: "com o seu cardápio",
-  texto: "Chama a gente no WhatsApp: tiramos as suas dúvidas e mostramos o sistema rodando com os seus pratos.",
+  texto: "A gente mostra o sistema rodando com os seus pratos.",
   botao: "Falar no WhatsApp",
   /** o que vem embaixo do botão: só o que já é verdade em todos os planos */
   garantias: ["Mensalidade fixa", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
