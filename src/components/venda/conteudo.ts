@@ -570,6 +570,11 @@ export const LIA: {
     { de: "cliente", hora: "20:42", tipo: "audio" },
     { de: "lia", hora: "20:42", texto: "Retirada, combinado! Segue o Pix do pedido:" },
     { de: "lia", hora: "20:42", tipo: "pix" },
+    // Os dois avisos que ela manda sozinha depois do Pix: são os textos de
+    // src/server/ia/avisar-cliente.ts, encurtados. Entraram para a conversa
+    // ocupar a tela inteira do aparelho, que ficava com a metade vazia.
+    { de: "lia", hora: "20:43", texto: "Pagamento confirmado! ✅ Seu pedido já está em preparo." },
+    { de: "lia", hora: "21:04", texto: "Seu pedido está pronto!" },
   ],
 };
 

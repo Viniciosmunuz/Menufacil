@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ExternalLink,
   MessageCircle,
+  Mic,
   Store,
 } from "lucide-react";
 import Image from "next/image";
@@ -581,7 +582,7 @@ function ConversaDaLia() {
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-[2.2cqw] px-[3.6cqw] py-[4cqw]">
+      <div className="flex min-h-0 flex-1 flex-col justify-end gap-[2.2cqw] overflow-hidden px-[3.6cqw] py-[3.4cqw]">
         {LIA.conversa.map((m, i) => {
           const dela = m.de === "lia";
           return (
@@ -600,9 +601,7 @@ function ConversaDaLia() {
                 </span>
               ) : m.tipo === "pix" ? (
                 <span className="flex items-center gap-[3cqw]">
-                  <span className="grid size-[16cqw] shrink-0 place-items-center rounded-[2cqw] border border-[#e3ded6] bg-white text-[2.6cqw] font-extrabold text-[#667781]">
-                    QR
-                  </span>
+                  <QrDeEnfeite />
                   <span>
                     <span className="block text-[3cqw] font-bold text-[#667781]">Pix do pedido</span>
                     <span className="mt-[1.4cqw] inline-block rounded-full bg-brand px-[3cqw] py-[0.9cqw] text-[2.9cqw] font-extrabold text-white">
@@ -618,7 +617,50 @@ function ConversaDaLia() {
           );
         })}
       </div>
+
+      {/* o campo de escrever, como no aplicativo: fecha o pé da tela */}
+      <div className="flex items-center gap-[2cqw] bg-[#f7f5f3] px-[3.2cqw] pt-[2.4cqw] pb-[4.6cqw]">
+        <span className="flex h-[9.4cqw] flex-1 items-center rounded-full border border-[#e3ded6] bg-white px-[4cqw] text-[3.6cqw] text-[#8696a0]">
+          Mensagem
+        </span>
+        <span className="grid size-[9.4cqw] shrink-0 place-items-center rounded-full bg-[#1daa61] text-white">
+          <Mic className="size-[4.6cqw]" />
+        </span>
+      </div>
     </div>
+  );
+}
+
+/**
+ * Um QR de enfeite para o cartão do Pix.
+ *
+ * Tem os três cantos e o miolo pontilhado de um QR, mas não é um código de
+ * verdade e não leva a lugar nenhum: desenho fixo, calculado uma vez. Antes
+ * era um quadrado com "QR" escrito, e ele marcou como coisa por acabar.
+ */
+function QrDeEnfeite() {
+  const N = 21;
+  const canto = (x: number, y: number) => {
+    const d = Math.max(Math.abs(x - 3), Math.abs(y - 3));
+    return d === 3 || d <= 1;
+  };
+  const cheio = (x: number, y: number) => {
+    if (x < 7 && y < 7) return canto(x, y);
+    if (x >= N - 7 && y < 7) return canto(x - (N - 7), y);
+    if (x < 7 && y >= N - 7) return canto(x, y - (N - 7));
+    if (x < 8 && y < 8) return false;
+    if (x >= N - 8 && y < 8) return false;
+    if (x < 8 && y >= N - 8) return false;
+    return ((x * 7 + y * 13 + ((x * y) % 5) * 3 + (x ^ y)) % 7) < 3;
+  };
+  const d: string[] = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (cheio(x, y)) d.push(`M${x} ${y}h1v1h-1z`);
+  return (
+    <span className="block size-[17cqw] shrink-0 rounded-[1.6cqw] border border-[#e3ded6] bg-white p-[1.4cqw]">
+      <svg viewBox={`0 0 ${N} ${N}`} className="block size-full" shapeRendering="crispEdges">
+        <path d={d.join("")} fill="#111b21" />
+      </svg>
+    </span>
   );
 }
 
@@ -702,7 +744,8 @@ export function Lia() {
               </p>
             </div>
             <div className="mx-auto w-full max-w-[17.5rem] sm:mx-0 sm:w-[46%] sm:max-w-none sm:shrink-0">
-              <Celular className="motion-safe:animate-[flutua_8s_ease-in-out_infinite]">
+              {/* parado: ele pediu para tirar o movimento dos aparelhos */}
+              <Celular>
                 <ConversaDaLia />
               </Celular>
             </div>
