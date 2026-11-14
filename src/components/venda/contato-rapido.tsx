@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, CircleCheck, Lock, MessageCircle, ShieldCheck } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { cn } from "@/lib/cn";
@@ -11,10 +11,9 @@ import { SECOES } from "./conteudo";
 
 // O cadastro de um campo só: o WhatsApp.
 //
-// Aparece em dois lugares, os dois com o mesmo envio: o cartão do topo, que
-// é o primeiro convite da página, e a barra presa no pé da tela, que segue a
-// pessoa enquanto ela lê. A barra some enquanto o cartão está à vista --
-// dois formulários iguais na mesma tela parecem erro.
+// Mora na chamada final da página. Já existiu também uma barra presa no pé
+// da tela, que seguia a pessoa enquanto ela lia; ele pediu para tirar, porque
+// tapava o conteúdo no celular.
 
 /** a armadilha para robôs, igual à do formulário completo */
 function Armadilha() {
@@ -97,87 +96,6 @@ export function CadastroRapido() {
           </p>
         </form>
       )}
-    </div>
-  );
-}
-
-/** a barra presa no pé da tela */
-export function BarraDeContato() {
-  const [state, action] = useActionState<LeadRapidoState, FormData>(createLeadRapido, {});
-  const [cartaoVisivel, setCartaoVisivel] = useState(true);
-
-  // A barra some enquanto o cartão do cadastro está à vista (dois
-  // formulários iguais na mesma tela parecem erro) e também enquanto o
-  // topo está à vista. O cartão morava no topo; quando ele desceu para a
-  // chamada final, a barra passou a nascer já na abertura da página, em
-  // cima dos botões e dos aparelhos. Agora ela só aparece depois que a
-  // pessoa passou do topo.
-  useEffect(() => {
-    const alvos = [SECOES.cadastro, SECOES.topo]
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => el !== null);
-    if (alvos.length === 0) return;
-    const aVista = new Set<Element>();
-    const observador = new IntersectionObserver(
-      (entradas) => {
-        for (const e of entradas) {
-          if (e.isIntersecting) aVista.add(e.target);
-          else aVista.delete(e.target);
-        }
-        setCartaoVisivel(aVista.size > 0);
-      },
-      { threshold: 0 },
-    );
-    for (const el of alvos) observador.observe(el);
-    return () => observador.disconnect();
-  }, []);
-
-  return (
-    <div
-      className={cn(
-        // No celular ela ocupa o pé inteiro, que é onde o polegar está.
-        // No computador ela ia de ponta a ponta no meio da tela e tapava o
-        // texto que a pessoa estava lendo; lá ela vira um cartão no canto.
-        "fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 lg:hidden 2xl:block 2xl:inset-x-auto 2xl:right-6 2xl:bottom-6 2xl:w-[22rem]",
-        // Entre o notebook e o monitor grande ela some: nessa largura o
-        // canto direito ainda e conteudo (ela tapava o cartao do plano),
-        // e o botao "Quero conhecer" do topo ja esta sempre a vista.
-        cartaoVisivel ? "translate-y-full 2xl:translate-y-[calc(100%+2rem)]" : "translate-y-0",
-      )}
-      aria-hidden={cartaoVisivel}
-      inert={cartaoVisivel}
-    >
-      <div className="mx-auto max-w-3xl rounded-t-[1.6rem] bg-[#18120e]/96 px-4 pt-3 2xl:rounded-[1.4rem] 2xl:pb-4 pb-[max(0.9rem,env(safe-area-inset-bottom))] text-white shadow-[0_-18px_40px_-20px_rgb(0_0_0/0.6)] backdrop-blur sm:px-6">
-        {state.ok ? (
-          <p className="flex items-center justify-center gap-2 py-3 text-sm font-bold">
-            <CircleCheck className="size-5 text-success" aria-hidden="true" />
-            Recebemos! Vamos te chamar no WhatsApp.
-          </p>
-        ) : (
-          <form action={action}>
-            <p className="mb-2 text-center text-sm font-bold text-white/90">
-              {state.error ?? "Fale com a equipe MenuFácil"}
-            </p>
-            <Armadilha />
-            <div className="flex items-center gap-2.5">
-              <input
-                name="whatsapp"
-                type="tel"
-                inputMode="tel"
-                required
-                autoComplete="tel-national"
-                placeholder="Seu WhatsApp"
-                aria-label="Seu WhatsApp"
-                defaultValue={state.whatsapp}
-                className={cn(CAMPO, "h-12 border-white/20 bg-white/8 text-white placeholder:text-white/50")}
-              />
-              <Enviar className="grid size-12 shrink-0 place-items-center rounded-full bg-brand text-brand-ink shadow-[0_8px_24px_-6px_rgb(249_104_11/0.9)] transition-colors hover:bg-brand-hover">
-                <ArrowRight className="size-5" aria-label="Enviar" />
-              </Enviar>
-            </div>
-          </form>
-        )}
-      </div>
     </div>
   );
 }

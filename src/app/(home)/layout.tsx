@@ -74,9 +74,8 @@ export default function HomeLayout({ children }: LayoutProps<"/">) {
 
       <main className="flex-1">{children}</main>
 
-      {/* embaixo sobra espaço para a barra de contato presa no pé da tela */}
       <footer className="bg-[#0f0b08] text-white">
-        <div className="mx-auto grid max-w-6xl gap-12 px-5 pt-16 pb-40 sm:px-6 lg:grid-cols-[1.4fr_1fr] lg:pb-36">
+        <div className="mx-auto grid max-w-6xl gap-12 px-5 pt-16 pb-16 sm:px-6 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <Link href="/" className="flex w-fit items-center gap-2.5">
               <LogoIcon className="h-11 shrink-0" />

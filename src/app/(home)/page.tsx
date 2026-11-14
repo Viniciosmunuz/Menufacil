@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { linkDoWhatsapp, PLANOS, VITRINE } from "@/components/venda/conteudo";
-import { BarraDeContato } from "@/components/venda/contato-rapido";
 import {
   Adicionais,
   AntesEDepois,
@@ -77,8 +76,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <Depoimentos />
       <Duvidas />
       <ChamadaFinal whatsapp={whatsapp} />
-
-      <BarraDeContato />
     </>
   );
 }

@@ -217,7 +217,8 @@ export function Topo() {
     <section id={SECOES.topo} className="palco-claro scroll-mt-20">
       <Miolo className="grid items-center gap-10 pt-9 pb-12 sm:pt-12 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:pt-16 lg:pb-24">
         <div className="min-w-0 text-center lg:text-left">
-          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-bg px-3.5 py-1.5 text-[0.82rem] font-bold text-muted lg:mx-0">
+          {/* texto solto, sem a pílula em volta: ele pediu para tirar */}
+          <p className="flex items-center justify-center gap-2 text-[0.82rem] font-bold text-muted lg:justify-start">
             <Store className="size-4 text-brand" aria-hidden="true" />
             {TOPO.etiqueta}
           </p>
@@ -255,35 +256,31 @@ export function Topo() {
 export type NaVitrine = { slug: string; name: string; logoUrl: string | null };
 
 /**
- * Um restaurante na esteira: um cartão com a logo, o nome e o convite para
- * abrir o cardápio dele.
+ * Um restaurante na esteira: a logo e o nome, soltos, sem cartão em volta.
  *
- * Era a logo e o nome soltos, pequenos, com uma versão "apagada" a cada
- * dois para disfarçar a repetição. O cartão diz mais com menos truque: é
- * um cliente de verdade, e dá para clicar e ver o cardápio dele no ar.
+ * Já foi um cartão com borda e um "Ver o cardápio"; ele pediu para tirar a
+ * moldura e deixar a marca correndo sozinha, uma em cor e a seguinte em
+ * preto e branco, alternando. Continua sendo um link para o cardápio.
  */
-function CartaoDoRestaurante({ r, escondido }: { r: NaVitrine; escondido: boolean }) {
+function CartaoDoRestaurante({ r, escondido, mono }: { r: NaVitrine; escondido: boolean; mono: boolean }) {
   return (
     <Link
       href={`/restaurante/${r.slug}`}
       tabIndex={escondido ? -1 : undefined}
       aria-hidden={escondido || undefined}
-      className="group/cartao flex shrink-0 items-center gap-3.5 rounded-2xl border border-line bg-bg py-3 pr-6 pl-3 shadow-[0_14px_28px_-22px_rgb(29_32_38/0.45)] transition duration-300 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-[0_20px_34px_-20px_rgb(249_104_11/0.45)]"
+      className={cn(
+        "flex shrink-0 items-center gap-3 transition duration-300 hover:opacity-100 hover:grayscale-0",
+        mono && "opacity-55 grayscale",
+      )}
     >
-      <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-surface">
+      <span className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-surface">
         {r.logoUrl ? (
-          <Image src={r.logoUrl} alt="" fill sizes="48px" className="object-cover" />
+          <Image src={r.logoUrl} alt="" fill sizes="44px" className="object-cover" />
         ) : (
           <LogoIcon className="h-6 opacity-60" />
         )}
       </span>
-      <span className="min-w-0">
-        <span className="block text-[0.98rem] leading-tight font-extrabold whitespace-nowrap">{r.name}</span>
-        <span className="mt-0.5 flex items-center gap-1 text-[0.78rem] font-bold whitespace-nowrap text-muted transition-colors group-hover/cartao:text-brand">
-          Ver o cardápio
-          <ArrowRight className="size-3.5" aria-hidden="true" />
-        </span>
-      </span>
+      <span className="text-[1.05rem] leading-tight font-extrabold whitespace-nowrap">{r.name}</span>
     </Link>
   );
 }
@@ -306,8 +303,9 @@ function CartaoDoRestaurante({ r, escondido }: { r: NaVitrine; escondido: boolea
 export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
   if (restaurantes.length === 0) return null;
   // Uma volta precisa ser mais larga que a tela, senão abre um buraco
-  // antes de recomeçar: doze cartões dão uns 2.900px.
-  const volta = Array.from({ length: 12 }, (_, i) => restaurantes[i % restaurantes.length]);
+  // antes de recomeçar: dezesseis marcas dão uns 3.600px. O número é par
+  // para a alternância cor / preto e branco não quebrar na emenda.
+  const volta = Array.from({ length: 16 }, (_, i) => restaurantes[i % restaurantes.length]);
   return (
     <section className="border-y border-line bg-surface/50 py-9 sm:py-11">
       <p className="surge px-5 text-center text-[0.74rem] font-extrabold tracking-[0.16em] text-muted uppercase">
@@ -315,13 +313,18 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
       </p>
 
       <div className="group mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)] motion-reduce:hidden">
-        <div className="flex w-max animate-[esteira_48s_linear_infinite] py-2 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
+        <div className="flex w-max animate-[esteira_140s_linear_infinite] items-center py-2 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
           {[0, 1].map((copia) => (
-            <div key={copia} className="flex gap-4 pr-4" aria-hidden={copia === 1 || undefined}>
+            <div key={copia} className="flex items-center gap-14 pr-14" aria-hidden={copia === 1 || undefined}>
               {volta.map((r, i) => (
                 // só a primeira aparição de cada restaurante é alcançável
                 // pelo teclado e lida pelo leitor de tela
-                <CartaoDoRestaurante key={i} r={r} escondido={copia === 1 || i >= restaurantes.length} />
+                <CartaoDoRestaurante
+                  key={i}
+                  r={r}
+                  mono={i % 2 === 1}
+                  escondido={copia === 1 || i >= restaurantes.length}
+                />
               ))}
             </div>
           ))}
@@ -329,9 +332,9 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
       </div>
 
       {/* sem movimento: cada restaurante uma vez, parado */}
-      <div className="mt-6 hidden flex-wrap justify-center gap-4 px-5 motion-reduce:flex">
-        {restaurantes.map((r) => (
-          <CartaoDoRestaurante key={r.slug} r={r} escondido={false} />
+      <div className="mt-6 hidden flex-wrap justify-center gap-x-12 gap-y-5 px-5 motion-reduce:flex">
+        {restaurantes.map((r, i) => (
+          <CartaoDoRestaurante key={r.slug} r={r} mono={i % 2 === 1} escondido={false} />
         ))}
       </div>
     </section>
