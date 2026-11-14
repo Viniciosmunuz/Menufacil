@@ -1602,3 +1602,196 @@ export const Comercial: React.FC = () => (
     <Narracao />
   </AbsoluteFill>
 );
+
+// ─── o post de feed ───────────────────────────────────────────────────
+
+/**
+ * A imagem de feed do Instagram (1080 × 1350), sobre o sistema.
+ *
+ * Mora neste arquivo porque é feita das mesmas peças do comercial -- o
+ * iPhone, a tela de verdade do cardápio, as fotos do Papaléguas -- e
+ * assim o post e o vídeo saem com a mesma cara. É uma imagem parada:
+ * renderiza com `remotion still PostSistema`.
+ *
+ * Um argumento por linha, e o principal ("sem comissão") é o único em
+ * laranja cheia. Post de feed é lido em um segundo, no meio da rolagem.
+ */
+const ARGUMENTOS = [
+  "Cardápio no seu link",
+  "A Lia atende o WhatsApp",
+  "Pedido impresso na cozinha",
+];
+
+const PratoParado: React.FC<{
+  foto: string;
+  nome: string;
+  preco: string;
+  x: number;
+  y: number;
+  gira: number;
+}> = ({ foto, nome, preco, x, y, gira }) => (
+  <div
+    style={{
+      position: "absolute",
+      left: x,
+      top: y,
+      width: 210,
+      borderRadius: 28,
+      overflow: "hidden",
+      background: COR.surface,
+      boxShadow: `0 34px 54px -22px rgba(29,32,38,0.5), 0 0 0 1.5px ${COR.line}`,
+      transform: `rotate(${gira}deg)`,
+    }}
+  >
+    <Img
+      src={staticFile(`fotos/${foto}`)}
+      style={{ width: 210, height: 168, objectFit: "cover", display: "block" }}
+    />
+    <div style={{ padding: "12px 16px 16px" }}>
+      <div style={{ fontSize: 23, fontWeight: 800, color: COR.ink }}>{nome}</div>
+      <div style={{ fontSize: 21, fontWeight: 800, color: COR.brand }}>{preco}</div>
+    </div>
+  </div>
+);
+
+export const PostSistema: React.FC = () => (
+  <AbsoluteFill
+    style={{
+      fontFamily: FONTE,
+      background: [
+        "radial-gradient(70% 45% at 82% 70%, rgba(249,104,11,0.16), transparent 70%)",
+        "radial-gradient(80% 40% at 10% 100%, rgba(230,219,202,0.85), transparent 72%)",
+        COR.bg,
+      ].join(","),
+    }}
+  >
+    {/* a marca, no alto */}
+    <div style={{ position: "absolute", top: 64, left: 70, display: "flex", alignItems: "center", gap: 16 }}>
+      <Img src={staticFile("logo-menufacil.svg")} style={{ width: 92 }} />
+      <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: -1.2 }}>
+        <span style={{ color: TINTA }}>Menu </span>
+        <span style={{ color: COR.brand }}>Fácil</span>
+      </div>
+    </div>
+
+    {/* a chamada */}
+    <div style={{ position: "absolute", top: 176, left: 70, right: 70 }}>
+      <div style={{ fontSize: 98, fontWeight: 800, letterSpacing: -3.6, lineHeight: 1.02, color: TINTA }}>
+        Pedidos pelo
+        <br />
+        seu próprio link.
+      </div>
+      <div
+        style={{
+          fontFamily: SERIFADA,
+          fontStyle: "italic",
+          fontWeight: 500,
+          fontSize: 102,
+          lineHeight: 1.12,
+          color: COR.brand,
+        }}
+      >
+        sem comissão.
+      </div>
+    </div>
+
+    {/* os argumentos, um por linha */}
+    <div
+      style={{
+        position: "absolute",
+        top: 610,
+        left: 70,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 18,
+      }}
+    >
+      {ARGUMENTOS.map((a) => (
+        <div
+          key={a}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            padding: "18px 28px 18px 20px",
+            borderRadius: 999,
+            background: COR.surface,
+            border: `1.5px solid ${COR.line}`,
+            fontSize: 31,
+            fontWeight: 800,
+            letterSpacing: -0.4,
+            color: TINTA,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <span
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 38,
+              background: COR.brand,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          </span>
+          {a}
+        </div>
+      ))}
+    </div>
+
+    {/* o aparelho, com a tela de verdade */}
+    <div
+      style={{
+        position: "absolute",
+        left: 606,
+        top: 566,
+        transform: "scale(0.82)",
+        transformOrigin: "0 0",
+      }}
+    >
+      <Telefone rx={3} ry={-11} status="clara">
+        <Img
+          src={staticFile("telas/tela-cardapio-papaleguas.jpg")}
+          style={{ width: 520, height: 1068, objectFit: "cover", objectPosition: "top", display: "block" }}
+        />
+      </Telefone>
+    </div>
+
+    <PratoParado foto="pap-picanha.webp" nome="Picanha" preco="R$ 38,00" x={408} y={930} gira={-6} />
+
+    {/* a Lia, apoiada no canto do aparelho */}
+    <div
+      style={{
+        position: "absolute",
+        left: 872,
+        top: 492,
+        width: 168,
+        height: 168,
+        borderRadius: 168,
+        padding: 6,
+        background: `linear-gradient(140deg, ${COR.brand}, ${COR.brandLine})`,
+        boxShadow: "0 24px 40px -18px rgba(29,32,38,0.5)",
+      }}
+    >
+      <Img
+        src={staticFile("lia-joia.webp")}
+        style={{ width: "100%", height: "100%", borderRadius: 168, objectFit: "cover", display: "block" }}
+      />
+    </div>
+
+    {/* o endereço, no pé */}
+    <div style={{ position: "absolute", left: 70, bottom: 62 }}>
+      <div style={{ fontSize: 30, fontWeight: 700, color: VELADO }}>Delivery · Salão · Balcão</div>
+      <div style={{ fontSize: 36, fontWeight: 800, color: COR.brandPress, letterSpacing: -0.4 }}>
+        menufacildelivery.com.br
+      </div>
+    </div>
+  </AbsoluteFill>
+);

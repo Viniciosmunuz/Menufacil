@@ -1,9 +1,9 @@
 import React from "react";
-import { Composition } from "remotion";
+import { Composition, Still } from "remotion";
 import { loadFont as loadSerif } from "@remotion/google-fonts/PlayfairDisplay";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont } from "@remotion/google-fonts/Nunito";
-import { Comercial, DURACAO_COMERCIAL } from "./Comercial";
+import { Comercial, DURACAO_COMERCIAL, PostSistema } from "./Comercial";
 import { DURACAO_EM_SEGUNDOS, Explicacao } from "./Explicacao";
 import { DURACAO_LIA, Lia } from "./Lia";
 import { DURACAO_LIAFALA, LiaFala } from "./LiaFala";
@@ -29,6 +29,9 @@ loadSerif();
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      {/* A imagem de feed do Instagram sobre o sistema, feita das peças
+          do comercial. Parada: sai com "remotion still PostSistema". */}
+      <Still id="PostSistema" component={PostSistema} width={1080} height={1350} />
       {/* O comercial do sistema: papel claro, um aparelho em cena, sem
           voz. */}
       <Composition
