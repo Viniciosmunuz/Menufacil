@@ -269,18 +269,18 @@ function CartaoDoRestaurante({ r, escondido, mono }: { r: NaVitrine; escondido: 
       tabIndex={escondido ? -1 : undefined}
       aria-hidden={escondido || undefined}
       className={cn(
-        "flex shrink-0 items-center gap-3 transition duration-300 hover:opacity-100 hover:grayscale-0",
+        "flex shrink-0 items-center gap-2.5 transition duration-300 hover:opacity-100 hover:grayscale-0",
         mono && "opacity-55 grayscale",
       )}
     >
-      <span className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-surface">
+      <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-surface">
         {r.logoUrl ? (
-          <Image src={r.logoUrl} alt="" fill sizes="44px" className="object-cover" />
+          <Image src={r.logoUrl} alt="" fill sizes="32px" className="object-cover" />
         ) : (
-          <LogoIcon className="h-6 opacity-60" />
+          <LogoIcon className="h-4 opacity-60" />
         )}
       </span>
-      <span className="text-[1.05rem] leading-tight font-extrabold whitespace-nowrap">{r.name}</span>
+      <span className="text-[0.9rem] leading-tight font-extrabold whitespace-nowrap">{r.name}</span>
     </Link>
   );
 }
@@ -306,14 +306,16 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
   // antes de recomeçar: dezesseis marcas dão uns 3.600px. O número é par
   // para a alternância cor / preto e branco não quebrar na emenda.
   const volta = Array.from({ length: 16 }, (_, i) => restaurantes[i % restaurantes.length]);
+  // Faixa fina e discreta, a pedido dele: sem as linhas em cima e embaixo,
+  // sem fundo próprio, marcas pequenas.
   return (
-    <section className="border-y border-line bg-surface/50 py-9 sm:py-11">
-      <p className="surge px-5 text-center text-[0.74rem] font-extrabold tracking-[0.16em] text-muted uppercase">
+    <section className="py-5 sm:py-6">
+      <p className="px-5 text-center text-[0.64rem] font-extrabold tracking-[0.16em] text-muted/80 uppercase">
         {restaurantes.length === 1 ? "Quem já usa o MenuFácil" : "Restaurantes que já usam o MenuFácil"}
       </p>
 
-      <div className="group mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)] motion-reduce:hidden">
-        <div className="flex w-max animate-[esteira_140s_linear_infinite] items-center py-2 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
+      <div className="group mt-3 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)] motion-reduce:hidden">
+        <div className="flex w-max animate-[esteira_140s_linear_infinite] items-center py-1 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
           {[0, 1].map((copia) => (
             <div key={copia} className="flex items-center gap-14 pr-14" aria-hidden={copia === 1 || undefined}>
               {volta.map((r, i) => (
@@ -332,7 +334,7 @@ export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
       </div>
 
       {/* sem movimento: cada restaurante uma vez, parado */}
-      <div className="mt-6 hidden flex-wrap justify-center gap-x-12 gap-y-5 px-5 motion-reduce:flex">
+      <div className="mt-3 hidden flex-wrap justify-center gap-x-12 gap-y-3 px-5 motion-reduce:flex">
         {restaurantes.map((r, i) => (
           <CartaoDoRestaurante key={r.slug} r={r} mono={i % 2 === 1} escondido={false} />
         ))}
