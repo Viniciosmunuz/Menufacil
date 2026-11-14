@@ -70,12 +70,12 @@ const RITMO = 1;
 const ROTEIRO = 36.6;
 export const DURACAO_COMERCIAL = ROTEIRO / RITMO;
 
-const SERIFADA = '"Playfair Display", Georgia, serif';
-const MONO = '"JetBrains Mono", Consolas, monospace';
+export const SERIFADA = '"Playfair Display", Georgia, serif';
+export const MONO = '"JetBrains Mono", Consolas, monospace';
 
-const BRANCO = "#ffffff";
-const TINTA = COR.ink;
-const VELADO = COR.muted;
+export const BRANCO = "#ffffff";
+export const TINTA = COR.ink;
+export const VELADO = COR.muted;
 
 /** Onde cada cena entra e sai, em segundos. As vizinhas se sobrepõem
     três décimos: é o fundido de uma na outra. */
@@ -289,7 +289,7 @@ const Status: React.FC<{ cor: string }> = ({ cor }) => (
   </div>
 );
 
-const Telefone: React.FC<{
+export const Telefone: React.FC<{
   children: React.ReactNode;
   largura?: number;
   altura?: number;
@@ -741,7 +741,7 @@ const Cardapio: React.FC = () => {
 
 // ─── cena 4: a Lia ────────────────────────────────────────────────────
 
-const ZAP = {
+export const ZAP = {
   fundo: "#efeae2",
   dele: "#d9fdd3",
   dela: "#ffffff",
@@ -749,7 +749,7 @@ const ZAP = {
   cinza: "#667781",
 };
 
-const Balao: React.FC<{
+export const Balao: React.FC<{
   children: React.ReactNode;
   de: "cliente" | "lia";
   atrasa: number;
@@ -785,7 +785,7 @@ const Balao: React.FC<{
 
 /** O áudio do cliente: o botão, a onda e o tempo. A onda vai se
     pintando, que é ela sendo ouvida. */
-const OAudio: React.FC<{ atrasa: number }> = ({ atrasa }) => {
+export const OAudio: React.FC<{ atrasa: number }> = ({ atrasa }) => {
   const { t } = useTempo();
   const ouvido = interpolate(t, [atrasa + 0.3, atrasa + 1.5], [0, 1], PRESO);
   const barras = Array.from(
@@ -816,7 +816,7 @@ const OAudio: React.FC<{ atrasa: number }> = ({ atrasa }) => {
 };
 
 /** O cartão do Pix: um QR desenhado, o valor e o botão de copiar. */
-const Pix: React.FC = () => {
+export const Pix: React.FC = () => {
   const N = 11;
   const canto = (l: number, c: number) =>
     (l < 3 && c < 3) || (l < 3 && c >= N - 3) || (l >= N - 3 && c < 3);
@@ -1024,7 +1024,7 @@ const CenaLia: React.FC = () => {
 
 // ─── cena 5: o painel e a comanda ─────────────────────────────────────
 
-const COMANDA = [
+export const COMANDA = [
   ["PAPALEGUAS", ""],
   ["--------------------------", ""],
   ["PEDIDO #1", "20:42"],
@@ -1622,7 +1622,7 @@ const ARGUMENTOS = [
   "Pedido impresso na cozinha",
 ];
 
-const PratoParado: React.FC<{
+export const PratoParado: React.FC<{
   foto: string;
   nome: string;
   preco: string;

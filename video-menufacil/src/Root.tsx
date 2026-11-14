@@ -3,6 +3,7 @@ import { Composition, Still } from "remotion";
 import { loadFont as loadSerif } from "@remotion/google-fonts/PlayfairDisplay";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont } from "@remotion/google-fonts/Nunito";
+import { Lamina2, Lamina3, Lamina4, Lamina5, Lamina6, QUADRO_DA_LAMINA } from "./Carrossel";
 import { Comercial, DURACAO_COMERCIAL, PostSistema } from "./Comercial";
 import { DURACAO_EM_SEGUNDOS, Explicacao } from "./Explicacao";
 import { DURACAO_LIA, Lia } from "./Lia";
@@ -32,6 +33,20 @@ export const RemotionRoot: React.FC = () => {
       {/* A imagem de feed do Instagram sobre o sistema, feita das peças
           do comercial. Parada: sai com "remotion still PostSistema". */}
       <Still id="PostSistema" component={PostSistema} width={1080} height={1350} />
+      {/* O carrossel: a capa é o PostSistema, e estas são as lâminas 2 a
+          6. São composições porque usam as peças animadas do comercial;
+          a lâmina é o quadro em que tudo já assentou. */}
+      {[Lamina2, Lamina3, Lamina4, Lamina5, Lamina6].map((L, i) => (
+        <Composition
+          key={i}
+          id={`Carrossel${i + 2}`}
+          component={L}
+          durationInFrames={QUADRO_DA_LAMINA + 1}
+          fps={FPS}
+          width={1080}
+          height={1350}
+        />
+      ))}
       {/* O comercial do sistema: papel claro, um aparelho em cena, sem
           voz. */}
       <Composition
