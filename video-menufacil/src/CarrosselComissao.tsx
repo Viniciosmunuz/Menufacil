@@ -32,11 +32,11 @@ import { COR } from "./marca";
  * isto vale só para as peças de divulgação.
  */
 
-const { fontFamily: GROTESCA } = loadBricolage("normal", {
+export const { fontFamily: GROTESCA } = loadBricolage("normal", {
   weights: ["500", "600", "700", "800"],
   subsets: ["latin"],
 });
-const { fontFamily: SERIFA } = loadInstrument("italic", { weights: ["400"], subsets: ["latin"] });
+export const { fontFamily: SERIFA } = loadInstrument("italic", { weights: ["400"], subsets: ["latin"] });
 
 const TOTAL = 6;
 
@@ -52,7 +52,7 @@ const EX = {
 
 // ─── a moldura ────────────────────────────────────────────────────────
 
-const Topo: React.FC<{ n: number; claro?: boolean }> = ({ n, claro }) => (
+export const Topo: React.FC<{ n: number; claro?: boolean }> = ({ n, claro }) => (
   <div
     style={{
       position: "absolute",
@@ -110,7 +110,7 @@ const Pe: React.FC<{ n: number; semSeta?: boolean }> = ({ n, semSeta }) => (
   </div>
 );
 
-const Lamina: React.FC<{ n: number; children: React.ReactNode; semSeta?: boolean }> = ({
+export const Lamina: React.FC<{ n: number; children: React.ReactNode; semSeta?: boolean }> = ({
   n,
   children,
   semSeta,
@@ -123,7 +123,7 @@ const Lamina: React.FC<{ n: number; children: React.ReactNode; semSeta?: boolean
 );
 
 /** o título de duas vozes, na fonte nova */
-const Titulo: React.FC<{ a: React.ReactNode; b: React.ReactNode; topo?: number; tamanho?: number }> = ({
+export const Titulo: React.FC<{ a: React.ReactNode; b: React.ReactNode; topo?: number; tamanho?: number }> = ({
   a,
   b,
   topo = 180,
@@ -147,7 +147,7 @@ const Titulo: React.FC<{ a: React.ReactNode; b: React.ReactNode; topo?: number; 
   </div>
 );
 
-const Rodape: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const Rodape: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div
     style={{
       position: "absolute",
@@ -327,7 +327,7 @@ export const Comissao2: React.FC = () => (
 
 // ─── 3: o cliente ─────────────────────────────────────────────────────
 
-const Ponto: React.FC<{ n: string; a: string; b: string }> = ({ n, a, b }) => (
+export const Ponto: React.FC<{ n: string; a: string; b: string }> = ({ n, a, b }) => (
   <div style={{ display: "flex", gap: 26, alignItems: "flex-start" }}>
     <span
       style={{
@@ -455,7 +455,7 @@ export const Comissao4: React.FC = () => (
 
 // ─── 5: o que você ganha de volta ─────────────────────────────────────
 
-const Tem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const Tem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
     <span
       style={{

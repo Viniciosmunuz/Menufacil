@@ -5,6 +5,7 @@ import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont } from "@remotion/google-fonts/Nunito";
 import { Lamina2, Lamina3, Lamina4, Lamina5, Lamina6, QUADRO_DA_LAMINA } from "./Carrossel";
 import { Comissao1, Comissao2, Comissao3, Comissao4, Comissao5, Comissao6 } from "./CarrosselComissao";
+import { Whats1, Whats2, Whats3, Whats4, Whats5, Whats6 } from "./CarrosselWhatsapp";
 import { Comercial, DURACAO_COMERCIAL, PostSistema } from "./Comercial";
 import { DURACAO_EM_SEGUNDOS, Explicacao } from "./Explicacao";
 import { DURACAO_LIA, Lia } from "./Lia";
@@ -34,6 +35,11 @@ export const RemotionRoot: React.FC = () => {
       {/* A imagem de feed do Instagram sobre o sistema, feita das peças
           do comercial. Parada: sai com "remotion still PostSistema". */}
       <Still id="PostSistema" component={PostSistema} width={1080} height={1350} />
+      {/* O terceiro carrossel: o restaurante que vende pelo WhatsApp, que
+          é o caso de Presidente Figueiredo. Mesmo molde do da comissão. */}
+      {[Whats1, Whats2, Whats3, Whats4, Whats5, Whats6].map((L, i) => (
+        <Still key={i} id={`Whats${i + 1}`} component={L} width={1080} height={1350} />
+      ))}
       {/* O segundo carrossel: a conta da comissão do aplicativo de
           delivery. Outro argumento e outra fonte; nada animado. */}
       {[Comissao1, Comissao2, Comissao3, Comissao4, Comissao5, Comissao6].map((L, i) => (
