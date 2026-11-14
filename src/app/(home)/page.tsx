@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { linkDoWhatsapp, PLANOS, VITRINE } from "@/components/venda/conteudo";
+import { PLANOS, VITRINE } from "@/components/venda/conteudo";
 import {
   Adicionais,
   AntesEDepois,
@@ -53,7 +53,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
   // só os escolhidos (ver VITRINE): restaurante de teste também fica ativo
   const parceiros = await listRestaurants({ slugs: VITRINE });
-  const whatsapp = linkDoWhatsapp();
 
   return (
     <>
@@ -73,7 +72,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <Adicionais />
       <Depoimentos />
       <Duvidas />
-      <ChamadaFinal whatsapp={whatsapp} />
+      <ChamadaFinal />
     </>
   );
 }

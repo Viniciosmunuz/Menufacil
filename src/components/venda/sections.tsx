@@ -7,7 +7,6 @@ import {
   CircleX,
   ChevronDown,
   ExternalLink,
-  MessageCircle,
   Mic,
   Store,
 } from "lucide-react";
@@ -1098,7 +1097,7 @@ export function Duvidas() {
  * para onde apontam os botões "Quero conhecer" da página inteira. Quem
  * prefere conversar agora continua tendo o WhatsApp ao lado.
  */
-export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
+export function ChamadaFinal() {
   return (
     <section id={SECOES.comece} className="scroll-mt-20 px-3 pb-6 sm:px-6 sm:pb-10">
       <div className="palco-laranja mx-auto max-w-6xl overflow-hidden rounded-[2rem] text-white sm:rounded-[2.4rem]">
@@ -1111,19 +1110,6 @@ export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
             <p className="mx-auto mt-5 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-white/90 sm:text-lg lg:mx-0">
               {FINAL.texto}
             </p>
-
-            {whatsapp && (
-              <a
-                href={whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white px-8 text-[1.05rem] font-extrabold text-brand-press transition duration-200 hover:-translate-y-0.5 hover:bg-[#fff3ea] sm:w-auto"
-              >
-                <MessageCircle className="size-5" aria-hidden="true" />
-                {FINAL.botao}
-                <ArrowRight className="size-5" aria-hidden="true" />
-              </a>
-            )}
 
           </div>
 

@@ -631,7 +631,6 @@ export const FINAL = {
   titulo: "Quer ver funcionando",
   tituloDestaque: "com o seu cardápio",
   texto: "A gente mostra o sistema rodando com os seus pratos.",
-  botao: "Falar no WhatsApp",
   /** o que vem embaixo do botão: só o que já é verdade em todos os planos */
   garantias: ["Mensalidade fixa", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
 };
