@@ -1,4 +1,5 @@
 import { Mail, MapPin, MessageCircle } from "lucide-react";
+import { Bricolage_Grotesque } from "next/font/google";
 import Link from "next/link";
 
 import { LogoIcon } from "@/components/brand/logo";
@@ -22,12 +23,22 @@ import { WHATSAPP_MENUFACIL } from "@/lib/contato";
 // (o topo e a chamada final são faixas escuras) e cada uma centraliza o seu
 // conteúdo.
 
+// A fonte dos títulos desta página (ver .venda em globals.css). Carregada
+// aqui, e não na raiz, para o painel e o cardápio não baixarem uma fonte
+// que não usam.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-titulo",
+  subsets: ["latin"],
+  weight: ["700", "800"],
+});
+
 // A barra do topo leva poucos links: quem chega aqui tem uma pergunta só
 // ("isso serve para mim e quanto custa?") e o excesso espalha a atenção. O
 // resto continua na página e no rodapé.
 const LINKS: LinkDoMenu[] = [
   { href: `#${SECOES.topo}`, label: "Início" },
   { href: `#${SECOES.recursos}`, label: "Soluções" },
+  { href: `#${SECOES.lia}`, label: "Lia" },
   { href: `#${SECOES.planos}`, label: "Planos" },
 ];
 
@@ -47,7 +58,7 @@ export default function HomeLayout({ children }: LayoutProps<"/">) {
   const ano = new Date().getFullYear();
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={`venda ${bricolage.variable} flex min-h-dvh flex-col`}>
       <header className="sticky top-0 z-40 border-b border-line bg-bg/92 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6">
           <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">

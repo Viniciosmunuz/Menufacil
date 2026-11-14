@@ -144,6 +144,40 @@
   }
 }
 
+/* os aparelhos da página de venda, boiando devagar */
+@keyframes flutua {
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+/* A entrada das seções da página de venda durante a rolagem.
+ *
+ * É feita só em CSS, amarrada à rolagem (animation-timeline: view()), sem
+ * JavaScript e sem observador: o bloco sobe e aparece conforme entra na
+ * tela. Onde o navegador não conhece a regra, o bloco simplesmente já está
+ * lá -- nada fica invisível esperando um script que pode não rodar. E quem
+ * pediu menos movimento ao sistema não vê animação nenhuma. */
+@keyframes surge-rolando {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .surge {
+      animation: surge-rolando linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 42%;
+    }
+  }
+}
+
 /* <details class="drawer">: abre e fecha deslizando onde o navegador permite */
 details.drawer {
   interpolate-size: allow-keywords;
@@ -176,6 +210,30 @@ details.drawer[open]::details-content {
 [data-cardapio-filtro="esgotados"] li[data-esgotado="nao"],
 [data-cardapio-filtro="sem-foto"] li[data-sem-foto="nao"] {
   display: none;
+}
+
+/* O topo claro da página de venda: branco, com a laranja da marca
+   respirando atrás dos aparelhos e um creme subindo do pé. */
+.palco-claro {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(46% 60% at 84% 42%, rgb(249 104 11 / 0.13), transparent 70%),
+    radial-gradient(60% 46% at 4% 100%, rgb(230 219 202 / 0.7), transparent 72%);
+}
+
+/* a chamada final: a laranja cheia, mais clara no alto */
+.palco-laranja {
+  background-color: var(--color-brand);
+  background-image: radial-gradient(90% 100% at 50% 0%, #ff8a3d, transparent 62%);
+}
+
+/* Os títulos da página de venda usam a Bricolage Grotesque, a mesma das
+   peças de divulgação. Só eles: o texto corrido e o sistema inteiro
+   continuam na Nunito. A fonte é carregada em src/app/(home)/layout.tsx. */
+.venda h1,
+.venda h2 {
+  font-family: var(--font-titulo), var(--font-sans);
+  letter-spacing: -0.035em;
 }
 
 /* o fundo escuro da página de venda: o topo, a chamada final e o rodapé */

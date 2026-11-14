@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowRight,
+  BellRing,
   Check,
   CircleCheck,
   CircleX,
@@ -27,6 +28,7 @@ import {
   DEPOIMENTOS,
   DUVIDAS,
   FINAL,
+  LIA,
   PLANOS,
   PLANOS_TEXTO,
   PROMESSAS,
@@ -39,17 +41,25 @@ import {
   type Contraste,
   type Plano,
 } from "./conteudo";
+import { Celular, Notebook, TELAS } from "./mockups";
 import { Solucoes as AbasDeSolucoes } from "./solucoes";
 
 // A página do MenuFácil: é a home e é a página de venda, porque são a mesma
 // coisa. Quem chega aqui é dono de restaurante, quase sempre pelo Instagram
 // e pelo celular.
 //
-// A estrutura segue a das páginas de sistema para restaurante que ele usou
-// de referência: topo escuro com o cadastro de um campo só, o antes e
-// depois, as soluções em abas, os tipos de negócio e uma chamada final
-// escura. As cores e os textos são do MenuFácil, e nenhum número, cliente
-// ou depoimento aparece sem existir de verdade.
+// Em 14/11/2026 ela foi modernizada a partir de um estudo em imagem que ele
+// aprovou (docs/proposta-site/). O que mudou de lugar ou de cara:
+//
+//  - o topo ficou claro e passou a mostrar os dois aparelhos (notebook e
+//    celular) no lugar do cartão de cadastro, que desceu para a chamada
+//    final -- o formulário é o mesmo, com o mesmo envio;
+//  - os restaurantes viraram uma esteira de cartões que anda sozinha;
+//  - a Lia ganhou uma seção só dela, com a conversa dentro de um celular;
+//  - depois das soluções, do vídeo, da Lia e dos planos há um convite.
+//
+// Nada foi inventado para encher: nenhum cliente, número ou depoimento
+// aparece sem existir, e o que a Lia promete é o que ela já faz.
 //
 // Os textos que mudam com o tempo (preço, plano, links, perguntas) estão em
 // conteudo.ts.
@@ -104,7 +114,7 @@ function Titulo({
 }) {
   const esquerda = lado === "esquerda";
   return (
-    <div className={cn("mb-9 sm:mb-12", esquerda ? "max-w-xl text-left" : "mx-auto max-w-2xl text-center")}>
+    <div className={cn("surge mb-9 sm:mb-12", esquerda ? "max-w-xl text-left" : "mx-auto max-w-2xl text-center")}>
       <h2 className="text-[2rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.6rem]">
         {children}
         {destaque && (
@@ -122,149 +132,202 @@ function Titulo({
 }
 
 /** os quatro "sem" e "com", com o visto verde */
-function Promessas({ className, escuro }: { className?: string; escuro?: boolean }) {
+function Promessas({ className }: { className?: string }) {
   return (
-    <ul className={cn("grid grid-cols-2 gap-x-4 gap-y-3.5", className)}>
+    <ul className={cn("flex flex-wrap gap-x-5 gap-y-2.5", className)}>
       {PROMESSAS.map(({ title }) => (
-        <li key={title} className="flex items-start gap-2">
-          <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-          <span className={cn("text-[0.88rem] leading-snug", escuro ? "text-white/75" : "text-muted")}>{title}</span>
+        <li key={title} className="flex items-center gap-2">
+          <CircleCheck className="size-4 shrink-0 text-brand" aria-hidden="true" />
+          <span className="text-[0.9rem] leading-snug font-bold text-muted">{title}</span>
         </li>
       ))}
     </ul>
   );
 }
 
+/**
+ * Um convite no fim de uma seção: uma frase e um botão.
+ *
+ * A página só chamava para a conversa no topo e no fim. Quem se convencia
+ * no meio (vendo as soluções, a Lia ou o preço) tinha de rolar até achar
+ * um botão. Agora há um convite depois de cada um desses blocos, discreto
+ * o bastante para não virar anúncio no meio do texto.
+ */
+function Convite({ children, texto }: { children: ReactNode; texto: string }) {
+  return (
+    <div className="surge mx-auto mt-10 flex max-w-3xl flex-col items-center justify-between gap-4 rounded-[1.6rem] border border-line bg-surface px-6 py-5 text-center sm:mt-12 sm:flex-row sm:text-left">
+      <p className="text-[1.05rem] leading-snug font-extrabold text-balance">{texto}</p>
+      <div className="w-full shrink-0 sm:w-auto [&>a]:w-full sm:[&>a]:w-auto">{children}</div>
+    </div>
+  );
+}
+
 // ─── 1. topo ──────────────────────────────────────────────────────────
+
+/**
+ * Os dois aparelhos do topo: o painel no notebook e o cardápio no celular.
+ *
+ * As telas são capturas do sistema, e não desenhos: o painel é o do
+ * restaurante de demonstração e o cardápio é o do Papaléguas, que já está
+ * na vitrine da página e é o mesmo que o botão "Ver um cardápio
+ * funcionando" abre. O cartãozinho do pedido novo é o único desenho, e por
+ * isso não traz nome nem valor.
+ *
+ * Tudo aqui é enfeite para quem lê com leitor de tela: o texto ao lado já
+ * diz o que o sistema faz.
+ */
+function Aparelhos() {
+  return (
+    // As larguras são casadas: com o notebook em 88% e o celular em 24%, o
+    // celular fica com uns quatro quintos da altura do notebook, que é a
+    // proporção de verdade entre os dois aparelhos. Mais largo que isso e
+    // o celular (que é bem mais alto do que largo) passa do notebook.
+    <div className="relative mx-auto w-full max-w-[32rem] pb-[8%] lg:max-w-none" aria-hidden="true">
+      <div className="ml-[3%] w-[88%]">
+        <Notebook tela={TELAS.computador} priority sizes="(min-width: 1024px) 34rem, 88vw" />
+      </div>
+
+      {/* a posição fica num invólucro: a moldura do celular já é
+          `relative`, e as duas classes juntas brigam */}
+      <div className="absolute right-0 bottom-0 w-[24%] motion-safe:animate-[flutua_7s_ease-in-out_infinite]">
+        <Celular tela={TELAS.cardapioReal} priority sizes="(min-width: 1024px) 9rem, 24vw" />
+      </div>
+
+      <div className="absolute bottom-[4%] left-0 flex items-center gap-2.5 rounded-2xl border border-line bg-bg py-2 pr-3.5 pl-2 shadow-[0_22px_36px_-20px_rgb(29_32_38/0.5)] motion-safe:animate-[flutua_7s_ease-in-out_-3.5s_infinite] sm:gap-3 sm:py-2.5 sm:pr-4 sm:pl-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-brand sm:size-9">
+          <BellRing className="size-4" />
+        </span>
+        <span className="text-left leading-tight">
+          <span className="block text-[0.78rem] font-extrabold sm:text-[0.85rem]">Pedido novo no painel</span>
+          <span className="block text-[0.68rem] text-muted sm:text-[0.74rem]">Pix pago · comanda impressa</span>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function Topo() {
   return (
-    <section id={SECOES.topo} className="palco-noite scroll-mt-20 text-white">
-      <Miolo className="grid items-center gap-12 pt-12 pb-14 sm:pt-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:py-24">
+    <section id={SECOES.topo} className="palco-claro scroll-mt-20">
+      <Miolo className="grid items-center gap-10 pt-9 pb-12 sm:pt-12 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:pt-16 lg:pb-24">
         <div className="min-w-0 text-center lg:text-left">
-          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm text-white/80 lg:mx-0">
+          <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-line bg-bg px-3.5 py-1.5 text-[0.82rem] font-bold text-muted lg:mx-0">
             <Store className="size-4 text-brand" aria-hidden="true" />
-            <strong className="font-extrabold text-white">{TOPO.etiqueta}</strong>
+            {TOPO.etiqueta}
           </p>
 
-          <h1 className="mt-6 text-[2.35rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-[3.2rem] lg:text-[3.5rem]">
-            {TOPO.titulo} <span className="text-brand">{TOPO.tituloDestaque}</span>
+          <h1 className="mt-5 text-[2.4rem] leading-[1.04] font-extrabold tracking-tight text-balance sm:text-[3.1rem] lg:text-[3.4rem]">
+            {TOPO.titulo} <span className="block text-brand">{TOPO.tituloDestaque}</span>
           </h1>
 
-          <p className="mx-auto mt-5 max-w-lg text-[1.05rem] leading-relaxed text-pretty text-white/70 sm:text-lg lg:mx-0">
+          <p className="mx-auto mt-5 max-w-lg text-[1.05rem] leading-relaxed text-pretty text-muted sm:text-lg lg:mx-0">
             {TOPO.texto}
           </p>
 
-          <Promessas escuro className="mt-9 hidden max-w-md lg:grid" />
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+            <BotaoDoForm>
+              {TOPO.botao}
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </BotaoDoForm>
+            {/* para quem quer ver antes de falar: um cardápio de verdade */}
+            <Link href={DEMO_URL} target="_blank" rel="noopener" className={buttonClasses("secondary", "lg")}>
+              {TOPO.secundario}
+              <ExternalLink className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+
+          <Promessas className="mt-7 justify-center lg:justify-start" />
         </div>
 
-        <div className="min-w-0">
-          <CadastroRapido />
-          {/* para quem quer ver antes de falar: um cardápio de verdade */}
-          <Link
-            href={DEMO_URL}
-            target="_blank"
-            rel="noopener"
-            className="mx-auto mt-5 flex w-fit items-center gap-1.5 text-sm font-bold text-white/70 underline-offset-4 hover:text-white hover:underline"
-          >
-            {TOPO.secundario}
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-          </Link>
-        </div>
+        <Aparelhos />
       </Miolo>
     </section>
   );
 }
 
-/** logo abaixo do topo: os quatro vistos (no celular) e os restaurantes que já usam */
+/** logo abaixo do topo: os restaurantes que já usam, numa esteira que anda sozinha */
 export type NaVitrine = { slug: string; name: string; logoUrl: string | null };
 
 /**
- * Um restaurante na esteira: a logo e o nome soltos, sem moldura em volta
- * (com moldura parecia botão). A cada dois, um vem cheio (logo colorida) e o
- * outro só no traço: contorno na logo, logo apagada, nome em cinza --
- * com um cliente só, é o que faz a faixa andar sem parecer o mesmo
- * adesivo colado várias vezes.
+ * Um restaurante na esteira: um cartão com a logo, o nome e o convite para
+ * abrir o cardápio dele.
+ *
+ * Era a logo e o nome soltos, pequenos, com uma versão "apagada" a cada
+ * dois para disfarçar a repetição. O cartão diz mais com menos truque: é
+ * um cliente de verdade, e dá para clicar e ver o cardápio dele no ar.
  */
-function Selo({ r, traco, escondido }: { r: NaVitrine; traco: boolean; escondido: boolean }) {
+function CartaoDoRestaurante({ r, escondido }: { r: NaVitrine; escondido: boolean }) {
   return (
     <Link
       href={`/restaurante/${r.slug}`}
-      tabIndex={traco || escondido ? -1 : undefined}
-      aria-hidden={traco || escondido || undefined}
-      className={cn(
-        "flex shrink-0 items-center gap-2.5 px-3 py-1.5 text-sm font-extrabold whitespace-nowrap transition-colors",
-        traco ? "text-faint" : "hover:text-brand",
-      )}
+      tabIndex={escondido ? -1 : undefined}
+      aria-hidden={escondido || undefined}
+      className="group/cartao flex shrink-0 items-center gap-3.5 rounded-2xl border border-line bg-bg py-3 pr-6 pl-3 shadow-[0_14px_28px_-22px_rgb(29_32_38/0.45)] transition duration-300 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-[0_20px_34px_-20px_rgb(249_104_11/0.45)]"
     >
-      <span
-        className={cn(
-          "relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-full",
-          traco ? "border border-line-strong" : "bg-surface",
-        )}
-      >
+      <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-surface">
         {r.logoUrl ? (
-          <Image
-            src={r.logoUrl}
-            alt=""
-            fill
-            sizes="32px"
-            className={cn("object-cover", traco && "opacity-35 grayscale")}
-          />
+          <Image src={r.logoUrl} alt="" fill sizes="48px" className="object-cover" />
         ) : (
-          <LogoIcon className={cn("h-5", traco ? "opacity-30 grayscale" : "opacity-60")} />
+          <LogoIcon className="h-6 opacity-60" />
         )}
       </span>
-      {r.name}
+      <span className="min-w-0">
+        <span className="block text-[0.98rem] leading-tight font-extrabold whitespace-nowrap">{r.name}</span>
+        <span className="mt-0.5 flex items-center gap-1 text-[0.78rem] font-bold whitespace-nowrap text-muted transition-colors group-hover/cartao:text-brand">
+          Ver o cardápio
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </span>
+      </span>
     </Link>
   );
 }
 
-/** logo abaixo do topo: os quatro vistos (no celular) e os restaurantes passando */
+/**
+ * Os restaurantes que já usam, passando da direita para a esquerda.
+ *
+ * Ele pediu a esteira de volta, andando sempre -- na rodada anterior ela
+ * ficava parada quando havia menos de seis restaurantes. Com poucos
+ * clientes na lista (ver VITRINE em conteudo.ts) o mesmo cartão se repete
+ * para encher a volta; isso se resolve sozinho conforme a lista cresce, e
+ * nenhum restaurante é inventado para disfarçar.
+ *
+ * Duas voltas iguais ficam lado a lado: quando a primeira sai da tela, a
+ * segunda está no lugar dela e a animação recomeça sem salto. As bordas
+ * somem num degradê para ninguém ver a emenda. O mouse em cima pausa, e
+ * quem pediu menos movimento ao sistema vê os cartões parados, uma vez
+ * cada.
+ */
 export function QuemJaUsa({ restaurantes }: { restaurantes: NaVitrine[] }) {
-  // Uma volta da esteira precisa ser mais larga que a tela, senão abre um
-  // buraco antes de ela recomeçar: os restaurantes se repetem até dar 14 (uns 2.100px, mais que uma tela larga).
-  const volta = Array.from({ length: 14 }, (_, i) => restaurantes[i % Math.max(restaurantes.length, 1)]);
-  // Com poucos restaurantes a faixa não anda: ficam parados, cada um uma
-  // vez. A esteira repetia o mesmo nome catorze vezes para encher a
-  // tela, e um cliente só passando em fila é pior do que um cliente só
-  // -- parece plateia de papelão. Ela volta sozinha quando houver gente
-  // para encher uma volta de verdade.
-  const parada = restaurantes.length < 6;
+  if (restaurantes.length === 0) return null;
+  // Uma volta precisa ser mais larga que a tela, senão abre um buraco
+  // antes de recomeçar: doze cartões dão uns 2.900px.
+  const volta = Array.from({ length: 12 }, (_, i) => restaurantes[i % restaurantes.length]);
   return (
-    <section className="pt-9 sm:pt-12">
-      <Miolo>
-        <Promessas className="mx-auto max-w-md lg:hidden" />
-      </Miolo>
-      {restaurantes.length > 0 && (
-        <div className="mt-10 border-t border-line pt-9 lg:mt-0 lg:border-0 lg:pt-0">
-          <p className="px-5 text-center text-[0.72rem] font-extrabold tracking-[0.16em] text-faint uppercase">
-            {restaurantes.length === 1 ? "Quem já usa o MenuFácil" : "Restaurantes que já usam o MenuFácil"}
-          </p>
-          {/* duas voltas iguais lado a lado: quando a primeira sai, a
-              segunda está no lugar dela, e a animação recomeça sem salto.
-              As bordas somem num degradê para ninguém ver a emenda. */}
-          {parada ? (
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-5">
-              {restaurantes.map((r) => (
-                <Selo key={r.slug} r={r} traco={false} escondido={false} />
+    <section className="border-y border-line bg-surface/50 py-9 sm:py-11">
+      <p className="surge px-5 text-center text-[0.74rem] font-extrabold tracking-[0.16em] text-muted uppercase">
+        {restaurantes.length === 1 ? "Quem já usa o MenuFácil" : "Restaurantes que já usam o MenuFácil"}
+      </p>
+
+      <div className="group mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)] motion-reduce:hidden">
+        <div className="flex w-max animate-[esteira_48s_linear_infinite] py-2 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]">
+          {[0, 1].map((copia) => (
+            <div key={copia} className="flex gap-4 pr-4" aria-hidden={copia === 1 || undefined}>
+              {volta.map((r, i) => (
+                // só a primeira aparição de cada restaurante é alcançável
+                // pelo teclado e lida pelo leitor de tela
+                <CartaoDoRestaurante key={i} r={r} escondido={copia === 1 || i >= restaurantes.length} />
               ))}
             </div>
-          ) : (
-            <div className="group mt-5 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
-              <div className="flex w-max animate-[esteira_45s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none">
-                {[0, 1].map((copia) => (
-                  <div key={copia} className="flex gap-3 pr-3" aria-hidden={copia === 1 || undefined}>
-                    {volta.map((r, i) => (
-                      <Selo key={i} r={r} traco={i % 2 === 1} escondido={copia === 1} />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* sem movimento: cada restaurante uma vez, parado */}
+      <div className="mt-6 hidden flex-wrap justify-center gap-4 px-5 motion-reduce:flex">
+        {restaurantes.map((r) => (
+          <CartaoDoRestaurante key={r.slug} r={r} escondido={false} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -286,9 +349,9 @@ export function Filme() {
     <section id={SECOES.filme} className="scroll-mt-20 py-16 sm:py-24">
       <Miolo>
         <Titulo sub="Em 55 segundos: do pedido do cliente à comanda na cozinha, com o sistema rodando de verdade.">
-          Veja o MenuFácil funcionando
+          Veja o Menu Fácil funcionando na prática
         </Titulo>
-        <figure className="mx-auto max-w-4xl">
+        <figure className="surge mx-auto max-w-4xl">
           <div className="overflow-hidden rounded-[1.6rem] border border-line bg-[#0a0706] shadow-[0_40px_90px_-50px_rgb(0_0_0/0.6)]">
             <video
               className="block aspect-video w-full"
@@ -305,6 +368,16 @@ export function Filme() {
             As telas do vídeo são as do sistema, gravadas como ele funciona hoje.
           </figcaption>
         </figure>
+
+        {/* Depois do vídeo, a prova que vale mais que ele: um cardápio de
+            verdade, no ar, que o dono abre e usa como se fosse cliente. O
+            endereço é o DEMO_URL de conteudo.ts, o mesmo do topo. */}
+        <Convite texto="Prefere mexer a assistir? Abra um cardápio de verdade e faça um pedido de teste.">
+          <Link href={DEMO_URL} target="_blank" rel="noopener" className={buttonClasses("primary", "lg")}>
+            Conhecer o sistema
+            <ExternalLink className="size-4" aria-hidden="true" />
+          </Link>
+        </Convite>
       </Miolo>
     </section>
   );
@@ -440,7 +513,176 @@ export function Solucoes() {
         <Titulo destaque={SOLUCOES_TEXTO.tituloDestaque} sub={SOLUCOES_TEXTO.texto}>
           {SOLUCOES_TEXTO.titulo}
         </Titulo>
-        <AbasDeSolucoes />
+        <div className="surge">
+          <AbasDeSolucoes />
+        </div>
+        <Convite texto="Quer ver isso rodando com o cardápio do seu restaurante?">
+          <BotaoDoForm>
+            Quero usar o Menu Fácil
+            <ArrowRight className="size-5" aria-hidden="true" />
+          </BotaoDoForm>
+        </Convite>
+      </Miolo>
+    </section>
+  );
+}
+
+// ─── a Lia ────────────────────────────────────────────────────────────
+
+/**
+ * A conversa da Lia, dentro do celular.
+ *
+ * É desenhada, e não uma captura: print de WhatsApp de cliente não entra
+ * em página de venda. O que ela diz aqui é o que ela faz no sistema hoje
+ * -- responder, anotar, ouvir áudio, mandar o Pix -- e nada além (ver LIA
+ * em conteudo.ts). As medidas são em cqw porque a tela do aparelho é um
+ * contêiner: a conversa encolhe junto com o celular.
+ */
+function ConversaDaLia() {
+  return (
+    <div className="flex aspect-[9/17.4] flex-col bg-[#efeae2] text-[#111b21]">
+      <div className="flex items-center gap-[3cqw] border-b border-[#e3ded6] bg-[#f7f5f3] px-[4.5cqw] py-[3cqw]">
+        <Image
+          src={LIA.foto}
+          alt=""
+          width={96}
+          height={96}
+          className="size-[11.5cqw] rounded-full border border-brand/50 object-cover"
+        />
+        <span className="leading-tight">
+          <span className="block text-[4.6cqw] font-extrabold">{LIA.nome}</span>
+          <span className="block text-[3.3cqw] font-bold text-success">online</span>
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-[2.2cqw] px-[3.6cqw] py-[4cqw]">
+        {LIA.conversa.map((m, i) => {
+          const dela = m.de === "lia";
+          return (
+            <div
+              key={i}
+              className={cn(
+                "max-w-[82%] rounded-[4cqw] px-[3.4cqw] pt-[2.4cqw] pb-[1.4cqw] text-[4.2cqw] leading-snug shadow-[0_1px_1px_rgb(0_0_0/0.12)]",
+                dela ? "self-start rounded-bl-[1cqw] bg-white" : "self-end rounded-br-[1cqw] bg-[#d9fdd3]",
+              )}
+            >
+              {m.tipo === "audio" ? (
+                <span className="flex h-[7cqw] w-[44cqw] items-center gap-[0.9cqw]">
+                  {ONDA.map((h, k) => (
+                    <span key={k} className="w-[1cqw] rounded-full bg-brand" style={{ height: `${h}%` }} />
+                  ))}
+                </span>
+              ) : m.tipo === "pix" ? (
+                <span className="flex items-center gap-[3cqw]">
+                  <span className="grid size-[16cqw] shrink-0 place-items-center rounded-[2cqw] border border-[#e3ded6] bg-white text-[2.6cqw] font-extrabold text-[#667781]">
+                    QR
+                  </span>
+                  <span>
+                    <span className="block text-[3cqw] font-bold text-[#667781]">Pix do pedido</span>
+                    <span className="mt-[1.4cqw] inline-block rounded-full bg-brand px-[3cqw] py-[0.9cqw] text-[2.9cqw] font-extrabold text-white">
+                      Copiar código
+                    </span>
+                  </span>
+                </span>
+              ) : (
+                m.texto
+              )}
+              <span className="mt-[0.4cqw] block text-right text-[2.6cqw] text-[#667781]">{m.hora}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** a altura de cada barra da onda do áudio, em % */
+const ONDA = [34, 70, 46, 92, 58, 78, 38, 100, 64, 44, 86, 54, 76, 34, 90, 60, 40, 82, 50, 68, 30, 78, 46, 64];
+
+/**
+ * A Lia, numa seção só dela.
+ *
+ * Ela aparecia só dentro do cartão do plano, e é o que mais separa o Menu
+ * Fácil de um cardápio digital comum. A seção diz o que ela faz em quatro
+ * linhas e mostra a conversa acontecendo -- quem vende pelo WhatsApp
+ * reconhece a cena.
+ */
+export function Lia() {
+  const planoIa = PLANOS.find((p) => p.apresenta);
+  return (
+    <section id={SECOES.lia} className="scroll-mt-20 border-y border-line py-16 sm:py-24">
+      <Miolo>
+        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
+          <div className="surge min-w-0">
+            <p className="flex items-center gap-3.5">
+              <Image
+                src={LIA.foto}
+                alt=""
+                width={128}
+                height={128}
+                className="size-16 rounded-full border-2 border-brand object-cover"
+              />
+              <span className="leading-tight">
+                <span className="block text-xl font-extrabold">{LIA.nome}</span>
+                <span className="block text-sm font-bold text-brand">{LIA.papel}</span>
+              </span>
+            </p>
+
+            <h2 className="mt-6 text-[2rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-[2.6rem]">
+              {LIA.titulo} <span className="text-brand">{LIA.tituloDestaque}</span>
+            </h2>
+            <p className="mt-4 max-w-lg text-[1.05rem] leading-relaxed text-pretty text-muted sm:text-lg">
+              {LIA.texto}
+            </p>
+
+            <ul className="mt-7 flex flex-col gap-3.5">
+              {LIA.pontos.map((ponto) => (
+                <li key={ponto} className="flex items-start gap-3">
+                  <CircleCheck className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+                  <span className="text-[1.02rem] leading-snug font-bold">{ponto}</span>
+                </li>
+              ))}
+            </ul>
+
+            {planoIa && (
+              <BotaoComercial mensagem={planoIa.mensagem} className="mt-8 w-full sm:w-auto">
+                Quero automatizar meus pedidos
+                <ArrowRight className="size-5" aria-hidden="true" />
+              </BotaoComercial>
+            )}
+            <p className="mt-3 text-sm text-muted">{LIA.nota}</p>
+          </div>
+
+          {/* Ela em pé, apresentando o celular com a mão, e o balão da
+              fala -- foi ideia dele usar a arte de corpo inteiro. A seção
+              é branca por causa dela: a arte tem fundo branco, e sobre o
+              creme das outras faixas apareceria um retângulo em volta.
+              No celular ela fica pequena ao lado do balão e o aparelho
+              vem embaixo, grande o bastante para a conversa ser lida. */}
+          <div
+            className="surge mx-auto flex w-full max-w-[34rem] flex-col gap-7 sm:flex-row sm:items-end sm:gap-[2%]"
+            aria-hidden="true"
+          >
+            <div className="flex items-end gap-3 sm:w-[52%] sm:shrink-0 sm:flex-col sm:items-stretch sm:gap-4">
+              <Image
+                src={LIA.corpo}
+                alt=""
+                width={720}
+                height={1080}
+                sizes="(min-width: 640px) 18rem, 36vw"
+                className="order-1 h-auto w-[36%] sm:order-2 sm:w-full"
+              />
+              <p className="relative order-2 mb-[22%] flex-1 rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3 text-[0.98rem] leading-snug font-extrabold text-balance shadow-[0_16px_30px_-22px_rgb(29_32_38/0.5)] sm:order-1 sm:mb-0 sm:ml-[8%] sm:flex-none sm:rounded-bl-2xl sm:rounded-br-md">
+                {LIA.fala}
+              </p>
+            </div>
+            <div className="mx-auto w-full max-w-[17.5rem] sm:mx-0 sm:w-[46%] sm:max-w-none sm:shrink-0">
+              <Celular className="motion-safe:animate-[flutua_8s_ease-in-out_infinite]">
+                <ConversaDaLia />
+              </Celular>
+            </div>
+          </div>
+        </div>
       </Miolo>
     </section>
   );
@@ -521,17 +763,21 @@ function BotaoComercial({
 }
 
 function CartaoDoPlano({ plano }: { plano: Plano }) {
-  const { icone: Icone, destaque } = plano;
+  const { icone: Icone } = plano;
+  // O plano com a Lia é o cartão escuro. A diferença entre os dois planos
+  // é uma só -- a inteligência artificial --, e o cartão precisa dizer
+  // isso antes de alguém ler a lista. Ele já tinha pedido para tirar o
+  // contorno laranja e o cartão crescendo para fora da linha, e isso
+  // continua valendo: os dois têm o mesmo tamanho e o mesmo botão cheio.
+  // O que muda é a cor do fundo, que destaca um sem encolher o outro.
+  const escuro = !!plano.apresenta;
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col rounded-[1.6rem] bg-bg p-6 sm:p-7",
-        // Os dois cartões têm a mesma moldura. O destacado tinha um
-        // contorno laranja grosso e crescia para fora da linha, e ele
-        // pediu para tirar: com dois planos só, o contorno não ajudava a
-        // escolher, só fazia um parecer o "certo" e o outro o resto. O
-        // que distingue o plano de entrada agora é o botão cheio.
-        "border border-line",
+        "surge relative flex h-full flex-col rounded-[1.6rem] border p-6 transition duration-300 hover:-translate-y-1 sm:p-7",
+        escuro
+          ? "border-ink bg-ink text-white shadow-[0_34px_60px_-34px_rgb(29_32_38/0.75)]"
+          : "border-line bg-bg shadow-[0_24px_50px_-40px_rgb(29_32_38/0.5)]",
       )}
     >
       {plano.selo ? (
@@ -542,7 +788,7 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
 
       <div className={cn("flex items-start gap-3", plano.selo && "pr-20")}>
         {plano.apresenta ? (
-          <span className="size-12 shrink-0 overflow-hidden rounded-full border border-brand/40 bg-brand-soft">
+          <span className="size-12 shrink-0 overflow-hidden rounded-full border-2 border-brand bg-brand-soft">
             <Image src={plano.apresenta.foto} alt={plano.apresenta.nome} width={96} height={96} className="size-full object-cover" />
           </span>
         ) : (
@@ -552,42 +798,49 @@ function CartaoDoPlano({ plano }: { plano: Plano }) {
         )}
         <div className="min-w-0">
           <h3 className="text-lg leading-tight font-extrabold">{plano.nome}</h3>
-          <p className="mt-1 text-sm leading-snug text-muted">{plano.resumo}</p>
+          <p className={cn("mt-1 text-sm leading-snug", escuro ? "text-white/70" : "text-muted")}>{plano.resumo}</p>
         </div>
       </div>
 
       {/* A fala dela, como uma mensagem que chegou: é o plano se
           apresentando na voz de quem vai trabalhar no restaurante. */}
       {plano.apresenta && (
-        <p className="mt-4 rounded-2xl rounded-tl-md bg-surface px-4 py-3 text-[0.9rem] leading-snug text-ink/90">
+        <p className="mt-4 rounded-2xl rounded-tl-md bg-white/10 px-4 py-3 text-[0.9rem] leading-snug text-white/90">
           {plano.apresenta.fala}
         </p>
       )}
 
       <p className="mt-6 flex items-end gap-1.5">
-        <span className="text-[2.5rem] leading-none font-extrabold tracking-tight text-brand">{plano.preco}</span>
-        <span className="pb-1.5 text-sm font-bold text-muted">{plano.periodo}</span>
+        <span className={cn("text-[2.6rem] leading-none font-extrabold tracking-tight", escuro ? "text-white" : "text-ink")}>
+          {plano.preco}
+        </span>
+        <span className={cn("pb-1.5 text-sm font-bold", escuro ? "text-white/60" : "text-muted")}>{plano.periodo}</span>
       </p>
 
-      <div className="mt-6 flex-1 border-t border-line pt-6">
-        <p className="text-sm font-extrabold">{plano.tituloDosItens}</p>
+      <div className={cn("mt-6 flex-1 border-t pt-6", escuro ? "border-white/15" : "border-line")}>
+        {/* "Tudo do Delivery, mais" vira uma etiqueta no cartão da IA: é a
+            frase que explica a relação entre os dois planos */}
+        <p
+          className={cn(
+            "text-sm font-extrabold",
+            escuro && "w-fit rounded-full bg-brand px-3 py-1 text-[0.8rem] text-brand-ink",
+          )}
+        >
+          {plano.tituloDosItens}
+        </p>
         <ul className="mt-3.5 flex flex-col gap-2.5">
           {plano.itens.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-[0.85rem] leading-snug">
+            <li key={item} className="flex items-start gap-2.5 text-[0.88rem] leading-snug">
               <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={3.2} aria-hidden="true" />
-              <span className="text-muted">{item}</span>
+              <span className={escuro ? "text-white/80" : "text-muted"}>{item}</span>
             </li>
           ))}
         </ul>
       </div>
 
       {/* o botão desce para o rodapé do cartão: com listas de tamanhos
-          diferentes, os três terminam na mesma linha */}
-      <BotaoComercial
-        mensagem={plano.mensagem}
-        variante={destaque ? "primary" : "secondary"}
-        className="mt-7 w-full"
-      >
+          diferentes, os dois terminam na mesma linha */}
+      <BotaoComercial mensagem={plano.mensagem} className="mt-7 w-full">
         {plano.botao}
         <ArrowRight className="size-4" aria-hidden="true" />
       </BotaoComercial>
@@ -612,9 +865,14 @@ export function Planos() {
           ))}
         </div>
 
-        <p className="mt-7 text-center text-sm text-muted">
-          Sem taxa de adesão e sem comissão por pedido. Troque de plano quando quiser.
-        </p>
+        <p className="mx-auto mt-7 max-w-2xl text-center text-sm text-pretty text-muted">{PLANOS_TEXTO.nota}</p>
+
+        <Convite texto="Não sabe qual dos dois combina com o seu restaurante?">
+          <BotaoComercial mensagem={PLANOS_TEXTO.mensagemDeDuvida} variante="secondary">
+            <MessageCircle className="size-5" aria-hidden="true" />
+            Falar com a equipe
+          </BotaoComercial>
+        </Convite>
       </Miolo>
     </section>
   );
@@ -765,42 +1023,57 @@ export function Duvidas() {
 
 // ─── 8. a chamada final ───────────────────────────────────────────────
 
+/**
+ * O fim da página: o convite e o cadastro, lado a lado.
+ *
+ * Era uma faixa escura só com o botão do WhatsApp, e o cadastro de um campo
+ * morava no topo. Com os aparelhos no topo, o cadastro desceu para cá -- é
+ * o mesmo cartão, com o mesmo envio e a mesma âncora (`#cadastro`), que é
+ * para onde apontam os botões "Quero conhecer" da página inteira. Quem
+ * prefere conversar agora continua tendo o WhatsApp ao lado.
+ */
 export function ChamadaFinal({ whatsapp }: { whatsapp: string | null }) {
-  const botao =
-    "flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#ffe3cf] px-8 text-[1.1rem] font-extrabold text-[#8a3300] transition-colors hover:bg-[#ffd5b8] sm:w-auto";
   return (
-    <section className="palco-noite py-20 text-white sm:py-28">
-      <Miolo className="flex flex-col items-center text-center">
-        <LogoIcon className="h-14 opacity-60" />
-        <h2 className="mt-8 max-w-2xl text-[2.1rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.8rem]">
-          {FINAL.titulo} <span className="text-brand">{FINAL.tituloDestaque}</span>?
-        </h2>
-        <p className="mt-5 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-white/70 sm:text-lg">{FINAL.texto}</p>
+    <section id={SECOES.comece} className="scroll-mt-20 px-3 pb-6 sm:px-6 sm:pb-10">
+      <div className="palco-laranja mx-auto max-w-6xl overflow-hidden rounded-[2rem] text-white sm:rounded-[2.4rem]">
+        <div className="grid items-center gap-10 px-5 py-12 sm:px-10 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:px-14">
+          <div className="surge min-w-0 text-center lg:text-left">
+            <LogoIcon className="mx-auto h-12 brightness-0 invert lg:mx-0" />
+            <h2 className="mt-6 text-[2.1rem] leading-[1.06] font-extrabold tracking-tight text-balance sm:text-[2.9rem]">
+              {FINAL.titulo} <span className="text-brand-ink">{FINAL.tituloDestaque}</span>?
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-[1.05rem] leading-relaxed text-pretty text-white/90 sm:text-lg lg:mx-0">
+              {FINAL.texto}
+            </p>
 
-        <div className="mt-10 w-full sm:w-auto">
-          {whatsapp ? (
-            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={botao}>
-              <MessageCircle className="size-5" aria-hidden="true" />
-              {FINAL.botao}
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </a>
-          ) : (
-            <a href={`#${SECOES.cadastro}`} className={botao}>
-              {FINAL.botao}
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </a>
-          )}
+            {whatsapp && (
+              <a
+                href={whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white px-8 text-[1.05rem] font-extrabold text-brand-press transition duration-200 hover:-translate-y-0.5 hover:bg-[#fff3ea] sm:w-auto"
+              >
+                <MessageCircle className="size-5" aria-hidden="true" />
+                {FINAL.botao}
+                <ArrowRight className="size-5" aria-hidden="true" />
+              </a>
+            )}
+
+            <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2.5 lg:justify-start">
+              {FINAL.garantias.map((g) => (
+                <li key={g} className="flex items-center gap-2 text-[0.92rem] font-bold text-white/90">
+                  <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
+                  {g}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="surge min-w-0">
+            <CadastroRapido />
+          </div>
         </div>
-
-        <ul className="mt-9 flex max-w-xl flex-wrap justify-center gap-x-7 gap-y-3">
-          {FINAL.garantias.map((g) => (
-            <li key={g} className="flex items-center gap-2 text-[0.92rem] text-white/65">
-              <span className="size-2 rounded-full bg-success" aria-hidden="true" />
-              {g}
-            </li>
-          ))}
-        </ul>
-      </Miolo>
+      </div>
     </section>
   );
 }

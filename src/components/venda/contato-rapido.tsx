@@ -106,11 +106,29 @@ export function BarraDeContato() {
   const [state, action] = useActionState<LeadRapidoState, FormData>(createLeadRapido, {});
   const [cartaoVisivel, setCartaoVisivel] = useState(true);
 
+  // A barra some enquanto o cartão do cadastro está à vista (dois
+  // formulários iguais na mesma tela parecem erro) e também enquanto o
+  // topo está à vista. O cartão morava no topo; quando ele desceu para a
+  // chamada final, a barra passou a nascer já na abertura da página, em
+  // cima dos botões e dos aparelhos. Agora ela só aparece depois que a
+  // pessoa passou do topo.
   useEffect(() => {
-    const cartao = document.getElementById(SECOES.cadastro);
-    if (!cartao) return;
-    const observador = new IntersectionObserver(([e]) => setCartaoVisivel(e.isIntersecting), { threshold: 0 });
-    observador.observe(cartao);
+    const alvos = [SECOES.cadastro, SECOES.topo]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (alvos.length === 0) return;
+    const aVista = new Set<Element>();
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) {
+          if (e.isIntersecting) aVista.add(e.target);
+          else aVista.delete(e.target);
+        }
+        setCartaoVisivel(aVista.size > 0);
+      },
+      { threshold: 0 },
+    );
+    for (const el of alvos) observador.observe(el);
     return () => observador.disconnect();
   }, []);
 

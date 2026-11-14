@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu Fácil — proposta de site</title>
+<!--
+  PROPOSTA de redesenho da página de venda. Não é o site: é um estudo
+  parado, para virar imagem e ele decidir antes de qualquer mudança no
+  código de src/components/venda/.
+
+  O que muda em relação à página de hoje:
+  - menos texto: uma frase por bloco, e a explicação vai para o desenho;
+  - o topo sempre com os dois aparelhos (computador e celular);
+  - as soluções viram uma grade de cartões de tamanhos diferentes, no
+    lugar das seções empilhadas;
+  - a Lia ganha uma seção só dela;
+  - a taxa do Mercado Pago aparece escrita ao lado do preço.
+
+  O painel dentro do computador é REDESENHADO em HTML a partir da tela de
+  verdade: a captura que existe tem 800 px e ficaria borrada neste
+  tamanho. No site final entra uma captura real em alta.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff; --surface:#f6f1ea; --surface2:#efe7db; --line:#e2d8c8;
+  --ink:#1d2026; --muted:#5b6168; --faint:#8a8f96;
+  --brand:#f9680b; --brand-press:#c94f08; --brand-tint:#fce4d4; --brand-ink:#1a0d03;
+  --success:#16a34a; --success-soft:#d8f8e4;
+  --titulo:"Bricolage Grotesque","Inter",system-ui,sans-serif;
+  --texto:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --s:.47; /* escala do painel dentro do computador */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--texto);color:var(--ink);background:var(--bg);line-height:1.5;overflow-x:hidden}
+img{display:block;max-width:100%}
+.miolo{max-width:1200px;margin:0 auto;padding:0 32px}
+h1,h2,h3{font-family:var(--titulo);font-weight:800;letter-spacing:-.04em;line-height:1.02}
+.laranja{color:var(--brand)}
+.botao{display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:16px;font-weight:700;font-size:17px;text-decoration:none;white-space:nowrap}
+.botao.cheio{background:var(--brand);color:#fff;box-shadow:0 14px 30px -12px rgba(249,104,11,.7)}
+.botao.vazio{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.botao svg{width:20px;height:20px}
+
+/* ── barra do topo ── */
+.topo{position:relative;z-index:5}
+.topo .miolo{display:flex;align-items:center;justify-content:space-between;height:84px}
+.marca{display:flex;align-items:center;gap:12px;font-family:var(--titulo);font-weight:800;font-size:26px;letter-spacing:-.03em}
+.marca img{width:54px}
+.topo nav{display:flex;gap:36px;font-weight:600;font-size:15.5px;color:var(--muted)}
+.topo .botao{height:46px;padding:0 20px;font-size:15px;border-radius:13px}
+
+/* ── a abertura ── */
+.abre{position:relative;padding:44px 0 96px}
+.abre::before{content:"";position:absolute;inset:-84px 0 0;z-index:-1;background:
+  radial-gradient(48% 62% at 82% 44%,rgba(249,104,11,.17),transparent 70%),
+  radial-gradient(60% 50% at 6% 100%,rgba(230,219,202,.8),transparent 72%)}
+.abre .miolo{display:grid;grid-template-columns:.82fr 1.18fr;gap:40px;align-items:center}
+.selo{display:inline-flex;align-items:center;gap:9px;padding:8px 16px 8px 10px;border-radius:999px;background:#fff;border:1.5px solid var(--line);font-size:14px;font-weight:600;color:var(--muted)}
+.selo i{width:9px;height:9px;border-radius:9px;background:var(--success);box-shadow:0 0 0 4px var(--success-soft)}
+.abre h1{font-size:55px;margin-top:24px}
+.abre p.sub{font-size:20px;line-height:1.5;color:var(--muted);margin-top:22px;max-width:470px}
+.abre .acoes{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+.garantias{display:flex;gap:22px;margin-top:30px;flex-wrap:wrap;font-size:14.5px;font-weight:600;color:var(--muted)}
+.garantias span{display:flex;align-items:center;gap:8px}
+.garantias svg{width:18px;height:18px;color:var(--brand)}
+
+/* ── os aparelhos ── */
+.aparelhos{position:relative;height:500px}
+.mac{position:absolute;left:34px;top:20px;width:calc(1280px*var(--s) + 24px)}
+.mac .tampa{padding:12px 12px 14px;border-radius:20px 20px 6px 6px;background:linear-gradient(180deg,#2a2c30,#0d0e10);box-shadow:inset 0 0 0 1.5px #3a3d42,0 50px 80px -34px rgba(29,32,38,.5)}
+.mac .tela{position:relative;width:calc(1280px*var(--s));height:calc(800px*var(--s));border-radius:8px;overflow:hidden;background:#fff}
+.mac .tela::after{content:"";position:absolute;inset:0;background:linear-gradient(118deg,rgba(255,255,255,.14),rgba(255,255,255,0) 26%);pointer-events:none}
+.mac .camera{position:absolute;top:4px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:6px;background:#1c2233}
+.mac .base{position:relative;height:16px;margin:0 -34px;border-radius:2px 2px 16px 16px;background:linear-gradient(180deg,#e9e7e3 0%,#c4c1bb 34%,#a3a09a 100%);box-shadow:0 22px 30px -14px rgba(29,32,38,.45)}
+.mac .base::before{content:"";position:absolute;top:0;left:50%;width:150px;height:7px;margin-left:-75px;border-radius:0 0 9px 9px;background:linear-gradient(180deg,#9c9993,#bdbab4)}
+.painel{width:1280px;height:800px;transform:scale(var(--s));transform-origin:0 0;display:flex;background:#fff;font-family:var(--texto);color:var(--ink)}
+
+.fone{position:absolute;right:-6px;bottom:-34px;width:206px;padding:4px;border-radius:44px;background:linear-gradient(135deg,#f4f1ec,#b9b4ab 18%,#8d8980 38%,#d9d5cd 52%,#7f7b73 70%,#c9c5bd 86%,#eeebe5);box-shadow:0 46px 70px -26px rgba(29,32,38,.55),0 18px 30px -18px rgba(29,32,38,.3)}
+.fone::before,.fone::after{content:"";position:absolute;width:4px;border-radius:3px;background:linear-gradient(180deg,#cfcbc3,#8b877f 50%,#bdbab1)}
+.fone::before{left:-3px;top:112px;height:44px;box-shadow:0 58px 0 #a9a59d}
+.fone::after{right:-3px;top:140px;height:70px}
+.fone .vidro{padding:7px;border-radius:40px;background:#050506}
+.fone .tela{position:relative;border-radius:33px;overflow:hidden;aspect-ratio:520/1068;background:#fff}
+.fone .tela>img{width:100%;height:100%;object-fit:cover;object-position:top}
+.fone .ilha{position:absolute;top:8px;left:50%;width:74px;height:21px;margin-left:-37px;border-radius:12px;background:#000;z-index:2}
+.fone .veu{position:absolute;inset:0 0 auto;height:52px;background:linear-gradient(180deg,rgba(0,0,0,.4),transparent);z-index:1}
+.fone .hora{position:absolute;top:10px;left:24px;font-size:11px;font-weight:700;color:#fff;z-index:2}
+.fone .pe{position:absolute;bottom:5px;left:50%;width:88px;height:4px;margin-left:-44px;border-radius:4px;background:rgba(17,19,22,.85);z-index:2}
+.fone .tela::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.18),rgba(255,255,255,0) 26%);pointer-events:none;z-index:3}
+
+/* o aviso que flutua sobre os aparelhos */
+.aviso{position:absolute;left:0;bottom:30px;display:flex;align-items:center;gap:12px;padding:12px 18px 12px 12px;border-radius:18px;background:#fff;border:1.5px solid var(--line);box-shadow:0 26px 40px -20px rgba(29,32,38,.45);z-index:4}
+.aviso b{display:block;font-size:14.5px;font-weight:700}
+.aviso small{font-size:12.5px;color:var(--muted)}
+.aviso .bola{width:40px;height:40px;border-radius:40px;background:var(--brand-tint);display:grid;place-items:center;color:var(--brand)}
+.aviso .bola svg{width:20px;height:20px}
+
+/* ── o painel desenhado ── */
+.lado{width:232px;border-right:1.5px solid var(--line);padding:26px 18px;background:#fff}
+.lado .casa{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin-bottom:26px}
+.lado .casa i{width:34px;height:34px;border-radius:34px;background:var(--brand);display:block}
+.lado a{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;font-size:15px;font-weight:600;color:var(--muted)}
+.lado a::before{content:"";width:18px;height:18px;border-radius:5px;border:2px solid currentColor;opacity:.7}
+.lado a.aqui{background:var(--brand-tint);color:var(--brand-press)}
+.corpo{flex:1;padding:26px 30px;background:var(--surface)}
+.corpo .alto{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.corpo .alto h4{font-family:var(--titulo);font-size:28px;font-weight:800;letter-spacing:-.03em}
+.aberto{padding:7px 16px;border-radius:999px;background:var(--success);color:#fff;font-size:13.5px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:18px}
+.kpi small{font-size:13px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+.kpi small i{width:26px;height:26px;border-radius:26px;display:block}
+.kpi b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:8px;font-family:var(--titulo)}
+.kpi em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--success)}
+.duas{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-top:14px}
+.caixa{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:20px}
+.caixa h5{font-size:16px;font-weight:700;margin-bottom:4px}
+.caixa p{font-size:12.5px;color:var(--muted)}
+.barras{display:flex;align-items:flex-end;gap:16px;height:206px;margin-top:18px;padding-bottom:26px;border-bottom:1.5px solid var(--line)}
+.barras span{flex:1;border-radius:9px 9px 0 0;background:#fbd3ba;position:relative}
+.barras span.hoje{background:var(--brand)}
+.barras span::after{content:attr(data-d);position:absolute;bottom:-23px;left:0;right:0;text-align:center;font-size:12px;color:var(--faint);font-weight:600}
+.linha{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1.5px solid var(--surface2);font-size:14.5px;font-weight:600}
+.linha:last-child{border:0}
+.linha i{width:24px;height:24px;border-radius:24px;background:var(--surface2);display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;color:var(--muted)}
+.linha:first-of-type i{background:var(--brand);color:#fff}
+.linha b{margin-left:auto;font-weight:700}
+
+/* ── a faixa dos tipos de casa ── */
+.tipos{border-top:1.5px solid var(--surface2);border-bottom:1.5px solid var(--surface2);padding:22px 0}
+.tipos .miolo{display:flex;align-items:center;gap:28px;font-size:15px;font-weight:600;color:var(--faint);white-space:nowrap;overflow:hidden}
+.tipos b{color:var(--ink);font-weight:700}
+
+/* ── seções ── */
+section.bloco{padding:104px 0}
+.cab{max-width:680px;margin-bottom:48px}
+.cab h2{font-size:54px}
+.cab p{font-size:19px;color:var(--muted);margin-top:16px}
+.rotulo{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);margin-bottom:14px}
+
+/* ── a grade de soluções ── */
+.grade{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+.cartao{position:relative;overflow:hidden;border-radius:28px;background:var(--surface);border:1.5px solid var(--line);padding:30px;min-height:340px}
+.cartao h3{font-size:27px;letter-spacing:-.03em}
+.cartao p{font-size:15.5px;color:var(--muted);margin-top:8px;max-width:300px}
+.c1{grid-column:span 4;min-height:420px}
+.c2{grid-column:span 2;min-height:420px}
+.c3,.c4,.c5{grid-column:span 2}
+.c1 .fone{right:150px;bottom:-330px;width:270px}
+.prato{position:absolute;width:150px;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 24px 36px -18px rgba(29,32,38,.45),0 0 0 1.5px var(--line)}
+.prato img{width:150px;height:116px;object-fit:cover}
+.prato b{display:block;padding:9px 12px 0;font-size:14px}
+.prato span{display:block;padding:0 12px 11px;font-size:13.5px;font-weight:700;color:var(--brand)}
+.c1 .p1{right:392px;bottom:54px;transform:rotate(-6deg)}
+.c1 .p2{right:24px;bottom:70px;transform:rotate(5deg)}
+.comanda{position:absolute;right:26px;bottom:-22px;width:210px;padding:16px 16px 34px;background:#fbfaf6;border:1.5px solid var(--line);font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:600;line-height:1.75;box-shadow:0 26px 36px -18px rgba(29,32,38,.45);transform:rotate(4deg)}
+.comanda div{display:flex;justify-content:space-between}
+.comanda .f{font-size:14px;font-weight:800}
+.comanda hr{border:0;border-top:1.5px dashed #9a968d;margin:5px 0}
+.pedidos{position:absolute;left:30px;right:30px;bottom:26px;display:flex;flex-direction:column;gap:8px}
+.ped{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:#fff;border:1.5px solid var(--line);border-left:4px solid var(--brand);font-size:13.5px;font-weight:600}
+.ped:nth-child(2){border-left-color:#2563eb}.ped:nth-child(3){border-left-color:var(--success)}
+.ped b{margin-left:auto}
+.ped em{font-style:normal;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--brand-tint);color:var(--brand-press)}
+.bairros{position:absolute;left:30px;right:30px;bottom:26px;display:flex;flex-wrap:wrap;gap:8px}
+.bairros span{padding:9px 14px;border-radius:999px;background:#fff;border:1.5px solid var(--line);font-size:13.5px;font-weight:600}
+.bairros span b{color:var(--brand);margin-left:6px}
+.c5 .mesas{position:absolute;left:30px;right:30px;bottom:26px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mesa{aspect-ratio:1;border-radius:14px;background:#fff;border:1.5px solid var(--line);display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--muted)}
+.mesa.o{background:var(--brand-tint);border-color:#ec9a65;color:var(--brand-press)}
+.mesa.l{background:var(--success-soft);border-color:#9fe3b8;color:#107937}
+
+/* ── a Lia ── */
+.lia{background:var(--surface);border-top:1.5px solid var(--line);border-bottom:1.5px solid var(--line)}
+.lia .miolo{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.lia .quem{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.lia .quem img{width:76px;height:76px;border-radius:76px;object-fit:cover;border:3px solid var(--brand)}
+.lia .quem b{font-family:var(--titulo);font-size:24px;display:block;letter-spacing:-.02em}
+.lia .quem small{font-size:14px;color:var(--success);font-weight:700}
+.lia h2{font-size:52px}
+.lia ul{list-style:none;margin-top:28px;display:grid;gap:14px}
+.lia li{display:flex;gap:12px;font-size:17.5px;font-weight:600}
+.lia li svg{width:24px;height:24px;flex-shrink:0;color:var(--brand);margin-top:1px}
+.conversa{background:#efeae2;border-radius:30px;padding:26px 22px;display:flex;flex-direction:column;gap:10px;border:1.5px solid var(--line);box-shadow:0 40px 60px -34px rgba(29,32,38,.4)}
+.msg{max-width:78%;padding:11px 15px 7px;border-radius:18px;font-size:15.5px;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.1)}
+.msg small{display:block;text-align:right;font-size:11px;color:#667781}
+.msg.c{align-self:flex-end;background:#d9fdd3;border-bottom-right-radius:4px}
+.msg.l{border-bottom-left-radius:4px}
+.onda{display:flex;align-items:center;gap:3px;height:30px;width:210px}
+.onda i{width:4px;border-radius:3px;background:var(--brand);display:block}
+.pix{display:flex;gap:12px;align-items:center}
+.qr{width:74px;height:74px;border-radius:9px;border:1.5px solid var(--line);background:
+  conic-gradient(#111 25%,#fff 0 50%,#111 0 75%,#fff 0) 0 0/14px 14px,#fff;background-origin:content-box;padding:6px}
+.pix b{font-family:var(--titulo);font-size:22px;display:block}
+.pix em{font-style:normal;font-size:12px;font-weight:700;color:#fff;background:var(--brand);padding:4px 11px;border-radius:999px}
+
+/* ── os três passos ── */
+.passos{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.passo{padding:30px;border-radius:26px;border:1.5px solid var(--line)}
+.passo i{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--ink);color:#fff;font-style:normal;font-weight:800;font-size:19px;font-family:var(--titulo)}
+.passo h3{font-size:23px;margin-top:20px;letter-spacing:-.02em}
+.passo p{font-size:15.5px;color:var(--muted);margin-top:8px}
+
+/* ── planos ── */
+.planos{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px}
+.plano{padding:34px;border-radius:28px;border:1.5px solid var(--line);background:#fff}
+.plano.forte{background:var(--ink);color:#fff;border-color:var(--ink)}
+.plano h3{font-size:22px;letter-spacing:-.02em}
+.plano .preco{font-family:var(--titulo);font-size:58px;font-weight:800;letter-spacing:-.04em;margin-top:14px;line-height:1}
+.plano .preco small{font-size:17px;font-weight:600;opacity:.6;letter-spacing:0}
+.plano ul{list-style:none;margin:24px 0 28px;display:grid;gap:11px;font-size:15.5px;font-weight:500}
+.plano li{display:flex;gap:10px}
+.plano li svg{width:20px;height:20px;color:var(--brand);flex-shrink:0;margin-top:2px}
+.plano .botao{width:100%;justify-content:center}
+.nota{font-size:14px;color:var(--faint);margin-top:22px;max-width:900px}
+
+/* ── dúvidas ── */
+.duvidas{display:grid;gap:10px;max-width:900px}
+.duvida{display:flex;justify-content:space-between;align-items:center;padding:22px 26px;border-radius:18px;border:1.5px solid var(--line);font-weight:600;font-size:17px}
+.duvida::after{content:"+";font-size:26px;font-weight:400;color:var(--brand);line-height:1}
+
+/* ── o convite ── */
+.convite{margin:0 32px 32px;border-radius:36px;padding:84px 40px;text-align:center;color:#fff;background:radial-gradient(90% 100% at 50% 0%,#ff8a3d,var(--brand) 60%)}
+.convite h2{font-size:62px}
+.convite h2 span{color:var(--brand-ink)}
+.convite p{font-size:19px;opacity:.93;margin:16px auto 30px;max-width:520px}
+.convite .botao{background:#fff;color:var(--brand-press)}
+footer{padding:30px 0 40px;font-size:14px;color:var(--faint)}
+footer .miolo{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* ── celular ── */
+@media (max-width:760px){
+  :root{--s:.232}
+  .miolo{padding:0 20px}
+  .topo .miolo{height:68px}
+  .topo nav{display:none}
+  .marca{font-size:19px;gap:8px}.marca img{width:36px}
+  .topo .botao{height:38px;padding:0 13px;font-size:12.5px;gap:7px;border-radius:11px}
+  .topo .botao svg{width:16px;height:16px}
+  .abre{padding:22px 0 60px}
+  .abre .miolo{grid-template-columns:1fr;gap:34px}
+  .abre h1{font-size:44px;margin-top:18px}
+  .abre p.sub{font-size:17px;margin-top:16px}
+  .abre .acoes{margin-top:24px}
+  .abre .acoes .botao{flex:1;justify-content:center;height:52px;padding:0 14px;font-size:15.5px}
+  .garantias{gap:10px 18px;margin-top:22px;font-size:13.5px}
+  .aparelhos{height:300px}
+  .mac{top:6px;left:18px;width:calc(1280px*var(--s) + 14px)}
+  .mac .tampa{padding:7px 7px 8px;border-radius:12px 12px 4px 4px}
+  .mac .tela{border-radius:5px}
+  .mac .base{height:9px;margin:0 -22px;border-radius:2px 2px 10px 10px}
+  .mac .base::before{width:70px;margin-left:-35px;height:4px}
+  .fone{width:118px;right:6px;bottom:-4px;padding:2.5px;border-radius:24px}
+  .fone .vidro{padding:4px;border-radius:22px}.fone .tela{border-radius:18px}
+  .fone .ilha{width:36px;height:10px;margin-left:-18px;top:5px}
+  .fone .hora{display:none}.fone .pe{width:44px;margin-left:-22px;height:3px;bottom:3px}
+  .fone::before,.fone::after{display:none}
+  .aviso{left:0;bottom:-14px;padding:9px 13px 9px 9px;border-radius:14px}
+  .aviso b{font-size:12.5px}.aviso small{font-size:11px}
+  .aviso .bola{width:32px;height:32px}
+  .tipos{padding:16px 0}.tipos .miolo{gap:18px;font-size:13.5px}
+  section.bloco{padding:64px 0}
+  .cab{margin-bottom:30px}.cab h2{font-size:34px}.cab p{font-size:16.5px;margin-top:12px}
+  .grade{grid-template-columns:1fr;gap:14px}
+  .c1,.c2,.c3,.c4,.c5{grid-column:auto}
+  .cartao{padding:24px;border-radius:24px;min-height:320px}
+  .c1{min-height:430px}.c2{min-height:330px}
+  .cartao h3{font-size:24px}
+  .c1 .fone{display:block;width:170px;right:18px;bottom:-180px;padding:3px;border-radius:32px}
+  .c1 .fone .vidro{padding:5px;border-radius:29px}.c1 .fone .tela{border-radius:24px}
+  .c1 .p1{right:auto;left:20px;bottom:70px;width:128px}.c1 .p1 img{width:128px;height:98px}
+  .c1 .p2{display:none}
+  .lia .miolo{grid-template-columns:1fr;gap:34px}
+  .lia h2{font-size:34px}.lia li{font-size:16px}
+  .conversa{padding:20px 16px;border-radius:24px}.msg{font-size:14.5px;max-width:86%}
+  .passos{grid-template-columns:1fr;gap:12px}.passo{padding:24px}
+  .planos{grid-template-columns:1fr}.plano{padding:26px}.plano .preco{font-size:48px}
+  .duvida{padding:18px 20px;font-size:15.5px}
+  .convite{margin:0 14px 20px;padding:56px 24px;border-radius:28px}
+  .convite h2{font-size:36px}.convite p{font-size:16.5px}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.8 2.8L16.2 9.6"/></symbol>
+  <symbol id="zap" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a9.5 9.5 0 0 0-8.1 14.4L2.6 21.5l4.7-1.2A9.5 9.5 0 1 0 12 2.500Zm5.300 13.300c-.2.600-1.300 1.200-1.800 1.200-.500.100-1 .200-3.300-.700-2.800-1.100-4.500-4-4.700-4.200-.100-.200-1.100-1.500-1.100-2.800s.700-2 1-2.300c.200-.200.500-.300.700-.300h.500c.200 0 .400 0 .600.500l.900 2.100c.100.200.100.400 0 .600l-.700.900c-.100.100-.200.300 0 .600.700 1.200 1.700 2.100 3 2.700.300.100.500.100.600-.100l.900-1.100c.200-.200.400-.200.600-.100l2 1c.300.100.400.200.500.300.100.200.100.800-.100 1.400Z"/></symbol>
+  <symbol id="fone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 16a2 2 0 0 1-2 2h-1v-6h3zM3 16a2 2 0 0 0 2 2h1v-6H3z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/></symbol>
+</svg>
+
+<header class="topo">
+  <div class="miolo">
+    <div class="marca"><img src="../../video-menufacil/public/logo-menufacil.svg" alt=""><span>Menu <span class="laranja">Fácil</span></span></div>
+    <nav><span>Soluções</span><span>Lia</span><span>Planos</span><span>Dúvidas</span></nav>
+    <a class="botao cheio"><svg><use href="#zap"/></svg>Falar no WhatsApp</a>
+  </div>
+</header>
+
+<main>
+<div class="abre">
+  <div class="miolo">
+    <div>
+      <span class="selo"><i></i>Delivery, salão e balcão no mesmo sistema</span>
+      <h1>Pedidos chegando prontos.<br><span class="laranja">Sem você digitar nada.</span></h1>
+      <p class="sub">O cliente pede pelo seu link, a Lia atende o WhatsApp e a comanda sai impressa na cozinha.</p>
+      <div class="acoes">
+        <a class="botao cheio"><svg><use href="#zap"/></svg>Quero ver funcionando</a>
+        <a class="botao vazio">Ver planos</a>
+      </div>
+      <div class="garantias">
+        <span><svg><use href="#ok"/></svg>Cardápio montado por nós</span>
+        <span><svg><use href="#ok"/></svg>Mensalidade fixa</span>
+        <span><svg><use href="#ok"/></svg>Suporte no WhatsApp</span>
+      </div>
+    </div>
+
+    <div class="aparelhos">
+      <div class="mac">
+        <div class="tampa">
+          <span class="camera"></span>
+          <div class="tela">
+            <div class="painel">
+              <aside class="lado">
+                <div class="casa"><i></i>Papaléguas</div>
+                <a class="aqui">Início</a><a>Pedidos</a><a>Salão</a><a>Cardápio</a><a>Meu restaurante</a><a>Suporte</a>
+              </aside>
+              <div class="corpo">
+                <div class="alto"><h4>Hoje</h4><span class="aberto">● Aberto</span></div>
+                <div class="kpis">
+                  <div class="kpi"><small><i style="background:#fce4d4"></i>Vendas hoje</small><b>R$ 833,10</b><em>+12% que ontem</em></div>
+                  <div class="kpi"><small><i style="background:#e4e0fb"></i>Ticket médio</small><b>R$ 69,40</b><em>12 pedidos</em></div>
+                  <div class="kpi"><small><i style="background:#d8f8e4"></i>Na cozinha</small><b>2</b><em>em preparo</em></div>
+                  <div class="kpi"><small><i style="background:#d6e1fa"></i>Na entrega</small><b>1</b><em>saiu há 6 min</em></div>
+                </div>
+                <div class="duas">
+                  <div class="caixa">
+                    <h5>Vendas e pedidos</h5><p>Últimos sete dias</p>
+                    <div class="barras">
+                      <span style="height:92%" data-d="sáb"></span><span style="height:74%" data-d="dom"></span><span style="height:48%" data-d="seg"></span><span style="height:52%" data-d="ter"></span><span style="height:60%" data-d="qua"></span><span style="height:71%" data-d="qui"></span><span class="hoje" style="height:84%" data-d="hoje"></span>
+                    </div>
+                  </div>
+                  <div class="caixa">
+                    <h5>Mais pedidos no mês</h5><p>Os campeões dos últimos 30 dias</p>
+                    <div style="margin-top:10px">
+                      <div class="linha"><i>1</i>Picanha<b>48</b></div>
+                      <div class="linha"><i>2</i>Pizza 1 sabor<b>41</b></div>
+                      <div class="linha"><i>3</i>Contra filé<b>37</b></div>
+                      <div class="linha"><i>4</i>Parmegiana de carne<b>29</b></div>
+                      <div class="linha"><i>5</i>Batata frita<b>26</b></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="base"></div>
+      </div>
+
+      <div class="fone">
+        <div class="vidro"><div class="tela">
+          <span class="ilha"></span><span class="veu"></span><span class="hora">20:41</span>
+          <img src="../../video-menufacil/public/telas/tela-cardapio-papaleguas.jpg" alt="">
+          <span class="pe"></span>
+        </div></div>
+      </div>
+
+      <div class="aviso">
+        <span class="bola"><svg><use href="#fone"/></svg></span>
+        <span><b>Pedido #12 chegou agora</b><small>Marina · Pix pago · R$ 53,00</small></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tipos"><div class="miolo">
+  <b>Feito para</b><span>Restaurante</span><span>Pizzaria</span><span>Hamburgueria</span><span>Lanchonete</span><span>Açaiteria</span><span>Marmitaria</span><span>Bar</span><span>Cafeteria</span><span>Padaria</span><span>Food truck</span>
+</div></div>
+
+<section class="bloco">
+  <div class="miolo">
+    <div class="cab">
+      <div class="rotulo">Soluções</div>
+      <h2>Tudo o que o seu restaurante usa, <span class="laranja">num lugar só.</span></h2>
+    </div>
+    <div class="grade">
+      <div class="cartao c1">
+        <h3>Cardápio digital</h3>
+        <p>O cliente abre o seu link, escolhe com foto e preço e paga no Pix.</p>
+        <div class="prato p1"><img src="../../video-menufacil/public/fotos/pap-picanha.webp" alt=""><b>Picanha</b><span>R$ 38,00</span></div>
+        <div class="fone"><div class="vidro"><div class="tela">
+          <span class="ilha"></span><span class="veu"></span>
+          <img src="../../video-menufacil/public/telas/tela-cardapio-papaleguas.jpg" alt="">
+        </div></div></div>
+        <div class="prato p2"><img src="../../video-menufacil/public/fotos/pap-pizza.webp" alt=""><b>Pizza 1 sabor</b><span>R$ 22,00</span></div>
+      </div>
+      <div class="cartao c2">
+        <h3>Comanda impressa</h3>
+        <p>Entrou pedido, saiu na cozinha. Sem ninguém copiar.</p>
+        <div class="comanda">
+          <div class="f"><span>PEDIDO #12</span><span>20:42</span></div>
+          <div><span>Marina Souza</span></div><div><span>RETIRADA</span></div><hr>
+          <div><span>1x Picanha</span><span>38,00</span></div>
+          <div><span>1x Refri 2L</span><span>15,00</span></div><hr>
+          <div class="f"><span>TOTAL</span><span>53,00</span></div>
+          <div><span>PIX</span><span>PAGO</span></div>
+        </div>
+      </div>
+      <div class="cartao c3">
+        <h3>Pedidos em tempo real</h3>
+        <p>Do aceite à entrega, tudo numa tela.</p>
+        <div class="pedidos">
+          <div class="ped">#12 Marina <em>Novo</em><b>R$ 53,00</b></div>
+          <div class="ped">#11 Rafael <em style="background:#d6e1fa;color:#0c2f7e">Em preparo</em><b>R$ 34,00</b></div>
+          <div class="ped">#10 Júlia <em style="background:#d8f8e4;color:#107937">Saiu</em><b>R$ 62,00</b></div>
+        </div>
+      </div>
+      <div class="cartao c4">
+        <h3>Entrega por bairro</h3>
+        <p>Cada bairro com a sua taxa, calculada sozinha.</p>
+        <div class="bairros"><span>Centro<b>R$ 3</b></span><span>Bairro novo<b>R$ 4</b></span><span>Zona rural<b>R$ 8</b></span><span>Retirada<b>grátis</b></span></div>
+      </div>
+      <div class="cartao c5">
+        <h3>Salão e mesas</h3>
+        <p>O garçom lança pelo celular e a conta fecha na mesa.</p>
+        <div class="mesas"><span class="mesa o">1</span><span class="mesa l">2</span><span class="mesa o">3</span><span class="mesa">4</span><span class="mesa l">5</span><span class="mesa">6</span><span class="mesa o">7</span><span class="mesa l">8</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco lia">
+  <div class="miolo">
+    <div>
+      <div class="quem"><img src="../../video-menufacil/public/lia-joia.webp" alt=""><span><b>Lia</b><small>● atendente do Menu Fácil</small></span></div>
+      <h2>Ela atende o WhatsApp. <span class="laranja">Você cuida da cozinha.</span></h2>
+      <ul>
+        <li><svg><use href="#ok"/></svg>Responde cardápio, preço e horário na hora</li>
+        <li><svg><use href="#ok"/></svg>Anota o pedido e manda o Pix</li>
+        <li><svg><use href="#ok"/></svg>Entende mensagem de áudio</li>
+        <li><svg><use href="#ok"/></svg>Te chama quando o cliente quer uma pessoa</li>
+      </ul>
+    </div>
+    <div class="conversa">
+      <div class="msg c">Boa noite! Quero uma picanha e um refri 2L<small>20:41</small></div>
+      <div class="msg l">Boa noite, Marina! Anotado. É entrega ou retirada?<small>20:41</small></div>
+      <div class="msg c"><div class="onda"><i style="height:9px"></i><i style="height:20px"></i><i style="height:13px"></i><i style="height:26px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:10px"></i><i style="height:28px"></i><i style="height:18px"></i><i style="height:12px"></i><i style="height:24px"></i><i style="height:15px"></i><i style="height:21px"></i><i style="height:9px"></i><i style="height:25px"></i><i style="height:17px"></i><i style="height:11px"></i><i style="height:23px"></i><i style="height:14px"></i><i style="height:19px"></i><i style="height:8px"></i><i style="height:22px"></i><i style="height:13px"></i><i style="height:18px"></i></div><small>0:07 · 20:42</small></div>
+      <div class="msg l">Retirada, combinado! Deu R$ 53,00. Segue o Pix:<small>20:42</small></div>
+      <div class="msg l"><div class="pix"><span class="qr"></span><span><small style="text-align:left">Pix · pedido #12</small><b>R$ 53,00</b><em>Copiar código</em></span></div><small>20:42</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="miolo">
+    <div class="cab">
+      <div class="rotulo">Como começar</div>
+      <h2>Em três passos, <span class="laranja">sem dor de cabeça.</span></h2>
+    </div>
+    <div class="passos">
+      <div class="passo"><i>1</i><h3>Você manda o cardápio</h3><p>Pode ser foto, PDF ou a lista do jeito que está.</p></div>
+      <div class="passo"><i>2</i><h3>A gente monta tudo</h3><p>Produtos, fotos, bairros de entrega e impressora.</p></div>
+      <div class="passo"><i>3</i><h3>Você divulga o link</h3><p>No perfil, no status e na mesa. O pedido já chega pronto.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco" style="padding-top:0">
+  <div class="miolo">
+    <div class="cab">
+      <div class="rotulo">Planos</div>
+      <h2>Quanto custa</h2>
+      <p>Mensalidade fixa. O que você vende é seu.</p>
+    </div>
+    <div class="planos">
+      <div class="plano">
+        <h3>Menu Fácil Delivery</h3>
+        <div class="preco">R$ 120<small> /mês</small></div>
+        <ul>
+          <li><svg><use href="#ok"/></svg>Cardápio digital no seu link</li>
+          <li><svg><use href="#ok"/></svg>Painel de pedidos e impressão</li>
+          <li><svg><use href="#ok"/></svg>Entrega por bairro e Pix</li>
+          <li><svg><use href="#ok"/></svg>Salão e mesas</li>
+        </ul>
+        <a class="botao vazio">Quero este plano</a>
+      </div>
+      <div class="plano forte">
+        <h3>Menu Fácil IA</h3>
+        <div class="preco">R$ 199,90<small> /mês</small></div>
+        <ul>
+          <li><svg><use href="#ok"/></svg>Tudo do Delivery</li>
+          <li><svg><use href="#ok"/></svg>A Lia atendendo o seu WhatsApp</li>
+          <li><svg><use href="#ok"/></svg>Pedido anotado e Pix enviado por ela</li>
+          <li><svg><use href="#ok"/></svg>Aviso quando o cliente pede uma pessoa</li>
+        </ul>
+        <a class="botao cheio">Quero a Lia no meu WhatsApp</a>
+      </div>
+    </div>
+    <p class="nota">Sem comissão nossa por pedido e sem taxa de adesão. No pagamento online, a taxa cobrada é a do Mercado Pago.</p>
+  </div>
+</section>
+
+<section class="bloco" style="padding-top:0">
+  <div class="miolo">
+    <div class="cab"><div class="rotulo">Dúvidas</div><h2>Perguntas frequentes</h2></div>
+    <div class="duvidas">
+      <div class="duvida">Preciso de computador para usar?</div>
+      <div class="duvida">Funciona com a minha impressora?</div>
+      <div class="duvida">O cliente precisa baixar algum aplicativo?</div>
+      <div class="duvida">Tem fidelidade ou multa para cancelar?</div>
+    </div>
+  </div>
+</section>
+
+<div class="convite">
+  <h2>Quer ver funcionando<br><span>com o seu cardápio?</span></h2>
+  <p>Chama a gente no WhatsApp. A gente tira as suas dúvidas e mostra o sistema rodando com os seus pratos.</p>
+  <a class="botao"><svg><use href="#zap"/></svg>Falar com a equipe</a>
+</div>
+</main>
+
+<footer><div class="miolo"><span>Menu Fácil · menufacildelivery.com.br</span><span>contato@menufacildelivery.com.br</span></div></footer>
+
+</body>
+</html>

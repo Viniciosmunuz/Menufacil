@@ -10,6 +10,7 @@ import {
   Depoimentos,
   Duvidas,
   Filme,
+  Lia,
   Planos,
   QuemJaUsa,
   Segmentos,
@@ -62,9 +63,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       <QuemJaUsa restaurantes={parceiros} />
 
-      <Filme />
-      <AntesEDepois />
+      {/* O que o sistema faz, o sistema funcionando, e a Lia: nessa
+          ordem, cada bloco termina num convite. O antes e depois desceu
+          para depois deles -- ele reforça, mas não é a primeira coisa
+          que o dono precisa ver. */}
       <Solucoes />
+      <Filme />
+      <Lia />
+      <AntesEDepois />
       <Segmentos />
       <Planos />
       <Adicionais />

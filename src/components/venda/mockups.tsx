@@ -14,7 +14,9 @@ import { cn } from "@/lib/cn";
 // claro e escuro, e não envelhece junto com o modelo de aparelho da moda.
 //
 // As capturas são do restaurante de demonstração, não de cliente real --
-// nenhum dado de quem paga aparece aqui.
+// nenhum dado de quem paga aparece aqui. A exceção é `cardapioReal`, o
+// cardápio público do Papaléguas: ele já está na vitrine da página, e é a
+// mesma tela que o botão "Ver um cardápio funcionando" abre.
 
 // ─── as capturas ──────────────────────────────────────────────────────
 
@@ -26,6 +28,12 @@ export const TELAS = {
     w: 780,
     h: 1688,
     alt: "Cardápio do restaurante aberto no celular do cliente, com fotos e preços dos pratos",
+  },
+  cardapioReal: {
+    src: "/venda/cardapio-papaleguas.webp",
+    w: 780,
+    h: 1602,
+    alt: "Cardápio do Papaléguas aberto no celular, com a capa, os destaques e as fotos dos pratos",
   },
   painel: {
     src: "/venda/painel-celular.webp",
@@ -63,14 +71,20 @@ export const TELAS = {
  * porcentagem da largura (e o texto da barra em cqw), então o desenho é o
  * mesmo com 8rem ou com 14rem -- a moldura anterior tinha medidas fixas e,
  * pequena, ficava com borda grossa e cantos errados.
+ *
+ * Leva uma captura (`tela`) ou um conteúdo desenhado (`children`), como a
+ * conversa da Lia. O conteúdo desenhado mede em cqw, para encolher junto
+ * com o aparelho.
  */
 export function Celular({
   tela,
+  children,
   className,
   priority,
   sizes = "(min-width: 1024px) 20vw, 45vw",
 }: {
-  tela: Captura;
+  tela?: Captura;
+  children?: React.ReactNode;
   className?: string;
   priority?: boolean;
   sizes?: string;
@@ -112,15 +126,19 @@ export function Celular({
               aria-hidden="true"
               className="absolute top-[2.6cqw] left-1/2 h-[8.4cqw] w-[30cqw] -translate-x-1/2 rounded-full bg-black"
             />
-            <Image
-              src={tela.src}
-              alt={tela.alt}
-              width={tela.w}
-              height={tela.h}
-              sizes={sizes}
-              priority={priority}
-              className="block h-auto w-full"
-            />
+            {tela ? (
+              <Image
+                src={tela.src}
+                alt={tela.alt}
+                width={tela.w}
+                height={tela.h}
+                sizes={sizes}
+                priority={priority}
+                className="block h-auto w-full"
+              />
+            ) : (
+              children
+            )}
           </div>
         </div>
       </div>

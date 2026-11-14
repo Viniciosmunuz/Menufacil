@@ -88,6 +88,7 @@ export const SECOES = {
   /** o cartão do cadastro rápido, no topo */
   cadastro: "cadastro",
   filme: "video",
+  lia: "lia",
   antes: "antes-e-depois",
   recursos: "recursos",
   segmentos: "segmentos",
@@ -101,22 +102,28 @@ export const SECOES = {
 
 // ─── topo ─────────────────────────────────────────────────────────────
 
+// O topo de 14/11/2026: mais curto, e sem "Sem comissão" no título. O
+// Menu Fácil não cobra por pedido, mas o pagamento online passa pelo
+// Mercado Pago, que cobra a taxa dele -- e ele explica isso ao cliente
+// pessoalmente. A página não promete mais do que a conversa: a frase da
+// taxa está escrita ao lado do preço (PLANOS_TEXTO.nota).
 export const TOPO = {
-  etiqueta: "Sistema de delivery e salão",
-  titulo: "Receba pedidos pelo seu próprio link.",
-  tituloDestaque: "Sem comissão.",
-  texto:
-    "Delivery, salão e comanda impressa no mesmo sistema. O cliente paga direto para você, e a gente monta o cardápio junto.",
-  /** o link abaixo do cartão, para quem quer ver antes de falar */
+  etiqueta: "Delivery, salão e balcão no mesmo sistema",
+  titulo: "Pedidos chegando prontos.",
+  tituloDestaque: "Sem você digitar nada.",
+  texto: "O cliente pede pelo seu link, a Lia atende o WhatsApp e a comanda sai impressa na cozinha.",
+  /** o botão principal: leva ao cadastro, no fim da página */
+  botao: "Quero conhecer o sistema",
+  /** o segundo botão, para quem quer ver antes de falar */
   secundario: "Ver um cardápio funcionando",
 };
 
 /** os quatro "sem" e "com" que o dono quer ouvir logo de cara */
 export const PROMESSAS: { icon: LucideIcon; title: string }[] = [
-  { icon: Percent, title: "Sem comissão por pedido" },
-  { icon: BadgePercent, title: "Sem taxa de adesão" },
-  { icon: Headset, title: "Suporte incluso" },
   { icon: ChefHat, title: "Cardápio montado por nós" },
+  { icon: Percent, title: "Mensalidade fixa" },
+  { icon: BadgePercent, title: "Sem taxa de adesão" },
+  { icon: Headset, title: "Suporte no WhatsApp" },
 ];
 
 // ─── antes e depois ───────────────────────────────────────────────────
@@ -139,14 +146,12 @@ export const ANTES_DEPOIS: {
   sem: [
     { icon: MessageSquareWarning, title: "Pedido perdido no WhatsApp", text: "Conversa misturada, pedido esquecido e cliente cobrando." },
     { icon: FileX, title: "Anotando tudo à mão", text: "Item trocado, observação esquecida e letra que a cozinha não entende." },
-    { icon: Percent, title: "Comissão em cada pedido", text: "O aplicativo leva uma fatia de toda venda, até da que o cliente já era seu." },
     { icon: PackageX, title: "Cardápio desatualizado", text: "Acabou o prato e o cliente pede mesmo assim. Aí é ligar e pedir desculpa." },
     { icon: CalendarClock, title: "Caixa fechado no chute", text: "No fim da noite, ninguém sabe quanto tinha que ter na gaveta." },
   ],
   com: [
     { icon: ClipboardList, title: "Todo pedido no painel, com aviso", text: "Chegou, apitou. Nada se perde no meio das conversas." },
     { icon: Printer, title: "Comanda impressa sozinha", text: "Itens, observações, endereço e troco calculado, sem ninguém anotar." },
-    { icon: Link2, title: "Seu canal, sem comissão", text: "Cardápio com link próprio, e o cliente paga direto para você." },
     { icon: ToggleLeft, title: "Esgotou? Um toque", text: "O prato some do delivery, do salão e do totem ao mesmo tempo." },
     { icon: Wallet, title: "Caixa fechado certo", text: "Relatório do dia por forma de pagamento e o valor que tem que ter na gaveta." },
   ],
@@ -371,7 +376,7 @@ export const PLANOS: Plano[] = [
     preco: 'R$ 120',
     periodo: '/mês',
     icone: Bike,
-    resumo: 'Para o restaurante que quer vender pelo próprio link, sem comissão por pedido.',
+    resumo: 'Para o restaurante que quer receber pedidos pelo próprio link, com tudo organizado.',
     tituloDosItens: 'Inclui',
     itens: [
       'Cardápio digital com link próprio',
@@ -496,7 +501,72 @@ export const ADICIONAIS_TEXTO = {
 
 export const PLANOS_TEXTO = {
   titulo: "Quanto custa",
-  texto: "Mensalidade fixa, sem comissão por pedido e sem taxa de adesão. O que você vende é seu.",
+  texto: "Mensalidade fixa e sem taxa de adesão. O plano com a Lia tem tudo do Delivery e mais o atendimento no WhatsApp.",
+  /**
+   * A linha embaixo dos dois cartões.
+   *
+   * É aqui que a taxa aparece escrita. O Menu Fácil não cobra por pedido;
+   * quem cobra no pagamento online é o Mercado Pago. Ele pediu que isso
+   * ficasse explícito, do jeito que ele fala com o cliente.
+   */
+  nota: "Sem taxa de adesão e sem comissão nossa por pedido. No pagamento online, a taxa cobrada é a do Mercado Pago. Troque de plano quando quiser.",
+  /** o que abre no WhatsApp pelo botão "Falar com a equipe" dos planos */
+  mensagemDeDuvida: "Olá! Quero ajuda para escolher o plano do Menu Fácil para o meu restaurante.",
+};
+
+// ─── a Lia ────────────────────────────────────────────────────────────
+//
+// A seção dela. Cada linha daqui é uma coisa que ela já faz no sistema
+// hoje -- as mesmas do cartão do plano Menu Fácil IA, mais acima. Recurso
+// novo só entra aqui depois de estar no ar.
+
+export type FalaDaLia = {
+  de: "cliente" | "lia";
+  hora: string;
+  texto?: string;
+  /** áudio do cliente ou o cartão do Pix, no lugar do texto */
+  tipo?: "audio" | "pix";
+};
+
+export const LIA: {
+  nome: string;
+  papel: string;
+  foto: string;
+  /** ela de corpo inteiro, apresentando o celular */
+  corpo: string;
+  /** o que vai no balão ao lado dela */
+  fala: string;
+  titulo: string;
+  tituloDestaque: string;
+  texto: string;
+  pontos: string[];
+  nota: string;
+  conversa: FalaDaLia[];
+} = {
+  nome: "Lia",
+  papel: "assistente virtual do Menu Fácil",
+  foto: "/atendente-ia.webp",
+  corpo: "/venda/lia-corpo.webp",
+  fala: "Oi, eu sou a Lia! Pode deixar o WhatsApp comigo.",
+  titulo: "Ela atende o WhatsApp.",
+  tituloDestaque: "Você cuida da cozinha.",
+  texto:
+    "A Lia responde quem chama no WhatsApp do restaurante, apresenta o cardápio e acompanha o cliente até o pedido fechar.",
+  pontos: [
+    "Responde sobre o cardápio, os preços e o horário",
+    "Anota o pedido pela conversa e manda o Pix",
+    "Entende mensagem de áudio",
+    "Avisa o cliente quando o pedido é aceito e quando sai",
+    "Chama você quando o cliente pede uma pessoa",
+  ],
+  nota: "Disponível no plano Menu Fácil IA.",
+  conversa: [
+    { de: "cliente", hora: "20:41", texto: "Boa noite! Quero uma picanha e um refri 2L" },
+    { de: "lia", hora: "20:41", texto: "Boa noite! Anotado. É entrega ou retirada?" },
+    { de: "cliente", hora: "20:42", tipo: "audio" },
+    { de: "lia", hora: "20:42", texto: "Retirada, combinado! Segue o Pix do pedido:" },
+    { de: "lia", hora: "20:42", tipo: "pix" },
+  ],
 };
 
 // ─── totem ────────────────────────────────────────────────────────────
@@ -590,7 +660,7 @@ export const FINAL = {
   texto: "Chama a gente no WhatsApp: tiramos as suas dúvidas e mostramos o sistema rodando com os seus pratos.",
   botao: "Falar no WhatsApp",
   /** o que vem embaixo do botão: só o que já é verdade em todos os planos */
-  garantias: ["Sem comissão por pedido", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
+  garantias: ["Mensalidade fixa", "Sem taxa de adesão", "Cardápio montado por nós", "Suporte pelo WhatsApp"],
 };
 
 /** o e-mail do rodapé */
