@@ -12,8 +12,8 @@ import { SECOES } from "./conteudo";
 // No computador os links ficam à vista, no meio da barra. No celular eles
 // não cabem: tentando caber, o nome da marca era cortado no meio
 // ("MenuFá...") e o "Entrar" encostava no botão laranja. Então ali eles
-// moram atrás do hambúrguer, e na barra fica só o que importa -- a marca e
-// o botão que leva ao formulário.
+// moram atrás do hambúrguer. O botão "Quero conhecer" também foi para lá,
+// a pedido dele: a barra do celular ficou fina, só com a marca e o menu.
 
 export type LinkDoMenu = { href: string; label: string };
 
@@ -61,7 +61,7 @@ export function MenuDoTopo({ links }: { links: LinkDoMenu[] }) {
           Entrar
         </Link>
 
-        <a href={`#${SECOES.cadastro}`} className={buttonClasses("primary", "sm", "shrink-0")}>
+        <a href={`#${SECOES.cadastro}`} className={buttonClasses("primary", "sm", "shrink-0 max-lg:hidden")}>
           Quero conhecer
         </a>
 
@@ -70,7 +70,7 @@ export function MenuDoTopo({ links }: { links: LinkDoMenu[] }) {
           onClick={() => setAberto(true)}
           aria-label="Abrir o menu"
           aria-expanded={aberto}
-          className="grid size-11 shrink-0 place-items-center rounded-control text-ink transition-colors hover:bg-surface lg:hidden"
+          className="-mr-2 grid size-10 shrink-0 place-items-center rounded-control text-ink transition-colors hover:bg-surface lg:hidden"
         >
           <Menu className="size-6" aria-hidden="true" />
         </button>
@@ -86,15 +86,15 @@ export function MenuDoTopo({ links }: { links: LinkDoMenu[] }) {
             className="absolute inset-0 bg-ink/50"
           />
           <div className="absolute inset-x-0 top-0 flex max-h-dvh flex-col overflow-y-auto rounded-b-card bg-bg pb-5 shadow-[0_20px_40px_-12px_rgb(0_0_0/0.35)]">
-            <div className="flex h-16 items-center justify-between px-4">
-              <span className="text-lg font-extrabold tracking-tight">
+            <div className="flex h-12 items-center justify-between px-4">
+              <span className="text-base font-extrabold tracking-tight">
                 Menu<span className="text-brand">Fácil</span>
               </span>
               <button
                 type="button"
                 onClick={() => setAberto(false)}
                 aria-label="Fechar o menu"
-                className="grid size-11 place-items-center rounded-control text-ink transition-colors hover:bg-surface"
+                className="-mr-2 grid size-10 place-items-center rounded-control text-ink transition-colors hover:bg-surface"
               >
                 <X className="size-6" aria-hidden="true" />
               </button>
@@ -113,7 +113,14 @@ export function MenuDoTopo({ links }: { links: LinkDoMenu[] }) {
               ))}
             </nav>
 
-            <div className="mt-2 border-t border-line px-4 pt-4">
+            <div className="mt-2 flex flex-col gap-2.5 border-t border-line px-4 pt-4">
+              <a
+                href={`#${SECOES.cadastro}`}
+                onClick={() => setAberto(false)}
+                className={buttonClasses("primary", "lg", "w-full")}
+              >
+                Quero conhecer
+              </a>
               <Link
                 href="/entrar"
                 onClick={() => setAberto(false)}

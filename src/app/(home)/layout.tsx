@@ -60,10 +60,10 @@ export default function HomeLayout({ children }: LayoutProps<"/">) {
   return (
     <div className={`venda ${bricolage.variable} flex min-h-dvh flex-col`}>
       <header className="sticky top-0 z-40 border-b border-line bg-bg/92 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6">
+        <div className="mx-auto flex h-12 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:h-14">
           <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
-            <LogoIcon className="h-8 shrink-0 sm:h-9" />
-            <span className="text-lg font-extrabold tracking-tight sm:text-xl">
+            <LogoIcon className="h-6 shrink-0 lg:h-7" />
+            <span className="text-base font-extrabold tracking-tight lg:text-lg">
               Menu<span className="text-brand">Fácil</span>
             </span>
           </Link>
