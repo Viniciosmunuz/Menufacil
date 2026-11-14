@@ -39,7 +39,7 @@ const FOTOS: Record<Solucao["id"], Foto[]> = {
     { src: "/venda/solucoes/delivery-2.jpg", alt: "Cliente escolhendo lanches num cardápio aberto no celular" },
     { src: "/venda/solucoes/delivery-3b.jpg", alt: "Atendente sorrindo ao entregar a sacola do pedido ao cliente" },
     { src: "/venda/solucoes/delivery-4b.jpg", alt: "Cliente pagando pelo celular na maquininha que a atendente segura" },
-    { src: "/venda/solucoes/delivery-5b.jpg", alt: "Entregador de moto com a bolsa térmica, passando rápido pela rua", pos: "object-[72%_50%]" },
+    { src: "/venda/solucoes/delivery-5b.jpg", alt: "Entregador de moto com a bolsa térmica, passando rápido pela rua", pos: "object-[30%_50%]" },
   ],
   salao: [
     // 37594386, 33312298, 12935066, 36729739
@@ -56,7 +56,7 @@ const FOTOS: Record<Solucao["id"], Foto[]> = {
   painel: [
     // 12935057, 8475171, 36430088
     { src: "/venda/solucoes/painel-2.jpg", alt: "Cozinheiro olhando os pedidos numa tela" },
-    { src: "/venda/solucoes/painel-3b.jpg", alt: "Dono do restaurante virando a placa da porta" },
+    { src: "/venda/solucoes/painel-3b.jpg", alt: "Dono do restaurante virando a placa da porta", pos: "object-[72%_50%]" },
     { src: "/venda/solucoes/painel-4b.jpg", alt: "Cozinheiro finalizando um prato na bancada" },
   ],
   totem: [
