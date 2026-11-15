@@ -1,4 +1,4 @@
-import { Bike, CircleCheck, CreditCard, Link2, MessageSquare, Webhook } from "lucide-react";
+import { CircleCheck, CreditCard, MessageSquare, Webhook } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,13 +13,13 @@ import { formatCents, formatDateTime, formatWhen } from "@/lib/format";
 import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { contarNaoLidasDoRestaurante } from "@/server/chat/chat";
-import { prontoParaCobrar, verConta } from "@/server/pagamentos/conta";
+import { verConta } from "@/server/pagamentos/conta";
 import { temAplicativo } from "@/server/pagamentos/oauth";
 import { resumoDoFullDelivery, ultimoAvisoDoMercadoPago } from "@/server/pagamentos/relatorio";
 import { temChaveDePagamento } from "@/server/pagamentos/segredo";
 
 import { conectarMercadoPago } from "./actions";
-import { ConectarForm, DesconectarForm, ModoForm, SegredoDoWebhookForm, TokenColadoForm } from "./forms";
+import { ConectarForm, DesconectarForm, SegredoDoWebhookForm, TokenColadoForm } from "./forms";
 
 export const metadata: Metadata = { title: "Pagamentos" };
 
@@ -42,12 +42,8 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
   const sp = await searchParams;
   const recado = typeof sp.mp === "string" ? RECADOS[sp.mp] : undefined;
 
-  const [conta, pronto, resumo, naoLidas, ultimoAviso] = await Promise.all([
+  const [conta, resumo, naoLidas, ultimoAviso] = await Promise.all([
     verConta(restaurant.id),
-    // dá para cobrar agora? não é a mesma pergunta que "ligou pelo Mercado
-    // Pago": quem já tinha colado o Access Token na seção Totem consegue
-    // cobrar sem ligar nada -- é a conta dele do mesmo jeito
-    prontoParaCobrar(restaurant.id),
     resumoDoFullDelivery(restaurant.id),
     contarNaoLidasDoRestaurante(restaurant.id),
     ultimoAvisoDoMercadoPago(restaurant.id),
@@ -56,15 +52,11 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
 
   const podeLigar = temAplicativo();
   const temChave = temChaveDePagamento();
-  const ligado = restaurant.deliveryMode === "FULL_DELIVERY";
   const enderecoDoWebhook = `${appUrl()}/api/pagamento/webhook?r=${restaurant.id}`;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Pagamentos"
-        description="Como o cliente fecha e paga o pedido. Dá para trocar quando quiser: o que já está em pé não muda."
-      />
+      <PageHeader title="Pagamentos" />
 
       {recado && <Alert tone={recado.tom}>{recado.texto}</Alert>}
 
@@ -75,21 +67,9 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
         </Alert>
       )}
 
-      {/* ---- a escolha ---- */}
-      <Card className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-lg font-extrabold">
-            <Bike className="size-5 text-brand" aria-hidden="true" />
-            Como você recebe os pedidos
-          </h2>
-          {ligado && <Badge tone="success">100% Delivery ligado</Badge>}
-        </div>
-        <ModoForm
-          restaurantId={restaurant.id}
-          modo={restaurant.deliveryMode}
-          contaPronta={pronto}
-        />
-      </Card>
+      {/* A escolha do modo (WhatsApp ou 100% Delivery) morava aqui. Desde
+          15/11/2026 fica em Configurações, na gaveta Modos, a pedido dele:
+          esta tela é só do dinheiro -- a conta e o que entrou nela. */}
 
       {/* ---- a conta do Mercado Pago ---- */}
       <Card className="flex flex-col gap-4">
@@ -306,33 +286,6 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
         </details>
       </Gaveta>
 
-      {/* ---- o que o cliente vê ---- */}
-      <Gaveta titulo="O que muda para o seu cliente" resumo="O caminho do pedido, do cardápio até a entrega" icone={<Link2 />}>
-        <ol className="flex flex-col gap-3 text-sm">
-          {[
-            ["Monta o pedido", "No mesmo cardápio de sempre, pelo seu link."],
-            ["Escolhe entrega ou retirada", "Entrega pede o endereço; retirada não pede nada disso."],
-            ["Paga por Pix", "QR e copia e cola na tela. O valor vai para a sua conta do Mercado Pago."],
-            ["O pedido aparece aqui", "Só depois de o Mercado Pago confirmar. Aí a comanda sai e o sino toca."],
-            ["Acompanha cada passo", "A tela dele muda sozinha: recebido, em preparo, pronto, saiu para entrega."],
-            ["Conversa com você", "Pela mesma tela, amarrada ao pedido dele. Você responde na aba Pedidos."],
-          ].map(([titulo, texto], i) => (
-            <li key={titulo} className="flex gap-3">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-extrabold text-brand">
-                {i + 1}
-              </span>
-              <span>
-                <strong className="block">{titulo}</strong>
-                <span className="text-muted">{texto}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-        <p className="rounded-control bg-surface-2 p-3 text-sm text-muted">
-          Cartão e dinheiro continuam valendo, do jeito que estão em <strong className="text-ink">Meu restaurante</strong>:
-          quem escolher uma dessas paga na entrega ou na retirada, como sempre.
-        </p>
-      </Gaveta>
     </div>
   );
 }

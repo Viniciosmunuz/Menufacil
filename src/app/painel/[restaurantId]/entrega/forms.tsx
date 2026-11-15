@@ -121,7 +121,7 @@ export function ModoForm({
                   </li>
                 ))}
               </ul>
-              {bloqueada && <span className="text-sm font-bold text-warning">Conecte a conta do Mercado Pago aqui embaixo para liberar.</span>}
+              {bloqueada && <span className="text-sm font-bold text-warning">Conecte a conta do Mercado Pago em Pagamentos para liberar.</span>}
             </label>
           );
         })}

@@ -42,7 +42,7 @@ export async function escolherModo(_prev: EntregaState, formData: FormData): Pro
   if (escolha !== "WHATSAPP" && escolha !== "FULL_DELIVERY") return { error: "Escolha uma das duas formas." };
 
   if (escolha === "FULL_DELIVERY" && !(await prontoParaCobrar(access.restaurant.id))) {
-    return { error: "Antes de ligar o 100% Delivery, conecte a sua conta do Mercado Pago aqui embaixo." };
+    return { error: "Antes de ligar o 100% Delivery, conecte a sua conta do Mercado Pago em Pagamentos." };
   }
 
   await db.restaurant.update({ where: { id: access.restaurant.id }, data: { deliveryMode: escolha }, select: { id: true } });

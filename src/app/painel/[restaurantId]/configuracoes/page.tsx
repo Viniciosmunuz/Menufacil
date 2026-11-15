@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Download, LogOut, Printer, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
+import { Bell, ChevronRight, Download, LogOut, Printer, Repeat, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,11 +6,16 @@ import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { buttonClasses } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Gaveta } from "@/components/ui/gaveta";
 import { APP_SETUP_PATH, APP_VERSION } from "@/lib/app-release";
 import { noAr } from "@/lib/features";
 import { logout } from "@/server/auth/actions";
 import { requireDono } from "@/server/auth/dal";
+import { prontoParaCobrar } from "@/server/pagamentos/conta";
+
+import { ModoForm } from "../entrega/forms";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -38,6 +43,9 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
   const salao = noAr("salaoEnabled") && restaurant.salaoEnabled;
   const entregadores = noAr("entregadorEnabled") && restaurant.entregadorEnabled;
   const ia = noAr("iaEnabled") && restaurant.iaEnabled;
+  // dá para ligar o 100% Delivery? Quem já colou o Access Token no Totem
+  // também pode: é a conta dele do mesmo jeito
+  const contaPronta = restaurant.fullDeliveryEnabled ? await prontoParaCobrar(restaurant.id) : false;
 
   const categorias: Categoria[] = [
     {
@@ -143,6 +151,47 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
       {/* Duas colunas que se encaixam: cada cartão tem a altura do que
           contém, e numa grade comum o mais curto deixava um buraco ao lado
           do mais alto. Em colunas, o de baixo sobe e encosta. */}
+      {/* Os dois modos de receber pedido, numa gaveta: é decisão de uma
+          vez, que não precisa ficar aberta na frente de ninguém. Veio da
+          tela de Pagamentos em 15/11/2026, a pedido dele. */}
+      {restaurant.fullDeliveryEnabled && (
+        <Gaveta
+          titulo="Modos"
+          resumo={restaurant.deliveryMode === "FULL_DELIVERY" ? "100% Delivery" : "Pedido pelo WhatsApp"}
+          icone={<Repeat />}
+          selo={<Badge tone="success">Em uso</Badge>}
+        >
+          <ModoForm restaurantId={restaurant.id} modo={restaurant.deliveryMode} contaPronta={contaPronta} />
+          <div className="flex flex-col gap-3 border-t border-line pt-4">
+            <p className="font-extrabold">No 100% Delivery, o caminho do cliente</p>
+            <ol className="flex flex-col gap-3 text-sm">
+              {[
+                ["Monta o pedido", "No mesmo cardápio de sempre, pelo seu link."],
+                ["Escolhe entrega ou retirada", "Entrega pede o endereço; retirada não pede nada disso."],
+                ["Paga por Pix", "QR e copia e cola na tela. O valor vai para a sua conta do Mercado Pago."],
+                ["O pedido aparece aqui", "Só depois de o Mercado Pago confirmar. Aí a comanda sai e o sino toca."],
+                ["Acompanha cada passo", "A tela dele muda sozinha: recebido, em preparo, pronto, saiu para entrega."],
+                ["Conversa com você", "Pela mesma tela, amarrada ao pedido dele. Você responde na aba Pedidos."],
+              ].map(([titulo, texto], i) => (
+                <li key={titulo} className="flex gap-3">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-extrabold text-brand">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <strong className="block">{titulo}</strong>
+                    <span className="text-muted">{texto}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="rounded-control bg-surface-2 p-3 text-sm text-muted">
+              Cartão e dinheiro continuam valendo, do jeito que estão em <strong className="text-ink">Restaurante</strong>:
+              quem escolher uma dessas paga na entrega ou na retirada, como sempre.
+            </p>
+          </div>
+        </Gaveta>
+      )}
+
       <div className="gap-4 lg:columns-2">
         {categorias.map((c) => (
           <Card key={c.titulo} className="mb-4 flex break-inside-avoid flex-col gap-3 p-4 sm:p-5">
