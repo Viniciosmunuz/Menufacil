@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 
 import { Logo, LogoIcon } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
@@ -12,6 +12,28 @@ import { logout } from "@/server/auth/actions";
 
 import { BarraDeBaixo } from "./barra-de-baixo";
 import { SidebarNav, TabsNav, type NavItem } from "./nav-link";
+
+// A escolha do dono: menu aberto ou recolhido, guardada neste aparelho.
+// Sem escolha, vale o automático (recolhe só onde a tela pede largura).
+const PREF_MENU = "mf_menu";
+const EVENTO_MENU = "mf-menu";
+
+function lerMenu() {
+  try {
+    return localStorage.getItem(PREF_MENU);
+  } catch {
+    return null;
+  }
+}
+
+function assinarMenu(avisar: () => void) {
+  window.addEventListener(EVENTO_MENU, avisar);
+  window.addEventListener("storage", avisar);
+  return () => {
+    window.removeEventListener(EVENTO_MENU, avisar);
+    window.removeEventListener("storage", avisar);
+  };
+}
 
 // Casca dos dois painéis (admin e restaurante): menu lateral no
 // computador, cabeçalho com abas no celular.
@@ -104,7 +126,37 @@ export function PanelShell({
   contaHref?: string;
 }) {
   const pathname = usePathname();
-  const compacto = (menuEncolhe ?? []).some((t) => pathname.includes(t));
+  // O automático recolhe nas telas largas (Pedidos, salão). Desde
+  // 15/11/2026 o dono pode decidir: o botão no pé do menu grava a escolha
+  // neste aparelho, e ela vale em todas as telas até ele trocar de novo.
+  const escolha = useSyncExternalStore(assinarMenu, lerMenu, () => null);
+  const automatico = (menuEncolhe ?? []).some((t) => pathname.includes(t));
+  const compacto = escolha === "fechado" ? true : escolha === "aberto" ? false : automatico;
+
+  function alternarMenu() {
+    try {
+      localStorage.setItem(PREF_MENU, compacto ? "aberto" : "fechado");
+    } catch {
+      // sem armazenamento: não há onde guardar a escolha
+    }
+    window.dispatchEvent(new Event(EVENTO_MENU));
+  }
+
+  const botaoMenu = (
+    <button
+      type="button"
+      onClick={alternarMenu}
+      title={compacto ? "Abrir o menu" : "Recolher o menu"}
+      aria-label={compacto ? "Abrir o menu" : "Recolher o menu"}
+      className={cn(
+        "flex h-10 items-center gap-2 rounded-control text-sm font-bold text-muted transition-colors hover:bg-surface-2 hover:text-ink [&_svg]:size-5",
+        compacto ? "justify-center" : "px-3.5",
+      )}
+    >
+      {compacto ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+      {!compacto && "Recolher menu"}
+    </button>
+  );
   // O menu em ícones devolve largura para o conteúdo, mas nem toda tela
   // quer: num formulário, linha de 1600px não se lê. Quem usa a tela
   // inteira é quem tem tabela -- o salão e os pedidos.
@@ -203,14 +255,26 @@ export function PanelShell({
           compacto ? "items-stretch px-3" : "px-4",
         )}
       >
-        {restaurante && !compacto ? (
+        {restaurante && compacto ? (
+          // Recolhido, o topo guarda a mesma altura do aberto: a cúpula no
+          // lugar do logo e a foto no lugar do cartão. Sem isso os ícones
+          // subiam, e trocar de tela parecia mexer o menu inteiro.
+          <div className="flex h-44 shrink-0 flex-col items-center">
+            <Link href={homeHref} className="mb-5 grid h-8 place-items-center" aria-label="Início">
+              <LogoIcon className="h-6 w-auto text-brand" />
+            </Link>
+            <span className="grid h-[4.5rem] place-items-center" title={restaurante.nome}>
+              {marca}
+            </span>
+          </div>
+        ) : restaurante ? (
           // O logo do Menu Fácil em cima e, logo abaixo, o cartão de quem é
           // o painel: a foto, o nome e se a loja está ativa na plataforma.
-          <>
-            <Link href={homeHref} className="mb-5 px-2" aria-label="Início">
+          <div className="flex h-44 shrink-0 flex-col">
+            <Link href={homeHref} className="mb-5 flex h-8 items-center px-2" aria-label="Início">
               <Logo />
             </Link>
-            <div className="mb-5 flex items-center gap-3 rounded-card border border-line p-2.5">
+            <div className="mb-3 flex h-[4.5rem] items-center gap-3 rounded-card border border-line p-2.5">
               <span className="relative block size-12 shrink-0 overflow-hidden rounded-full border border-line bg-surface-2">
                 {foto ? (
                   <Image src={foto} alt="" fill sizes="48px" className="object-cover" />
@@ -241,13 +305,13 @@ export function PanelShell({
             {restaurante.voltar && (
               <Link
                 href={restaurante.voltar.href}
-                className="-mt-2 mb-4 flex items-center gap-1.5 px-2 text-xs font-bold text-brand underline-offset-4 hover:underline"
+                className="flex items-center gap-1.5 px-2 text-xs font-bold text-brand underline-offset-4 hover:underline"
               >
                 <ArrowLeft className="size-3.5" aria-hidden="true" />
                 {restaurante.voltar.label}
               </Link>
             )}
-          </>
+          </div>
         ) : foto && !compacto ? (
           // com foto, ela e o nome lado a lado tomam o lugar do logo
           <div className="mb-6 flex items-center gap-3 px-2">
@@ -266,14 +330,17 @@ export function PanelShell({
           </>
         )}
         <SidebarNav items={nav} compacto={compacto} />
-        <div className={cn("mt-auto shrink-0 flex-col gap-2 border-t border-line pt-4", semRodape ? "hidden" : "flex")}>
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-line pt-4">
+          {botaoMenu}
           {/* o cartão da conta só aparece para quem passa `papel`; no painel
               do restaurante ele saiu em 15/11/2026, a pedido dele */}
-          {papel && conta}
-          <div className={cn("flex items-center gap-1", compacto && "flex-col")}>
-            {sairDoMenu}
-            {atalhoButton}
-          </div>
+          {!semRodape && papel && conta}
+          {!semRodape && (
+            <div className={cn("flex items-center gap-1", compacto && "flex-col")}>
+              {sairDoMenu}
+              {atalhoButton}
+            </div>
+          )}
         </div>
       </aside>
 
