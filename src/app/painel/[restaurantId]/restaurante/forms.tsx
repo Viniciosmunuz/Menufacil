@@ -63,18 +63,17 @@ export function InfoSection({ r }: { r: RestaurantFormData }) {
     <SectionForm id="informacoes" icone={<Store />} title="Informações e fotos" action={saveInfo} restaurantId={r.id}>
       {(s) => (
         <>
-          <Field label="Nome do restaurante" htmlFor="name" error={s.fieldErrors?.name}>
-            <Input id="name" name="name" required maxLength={80} defaultValue={pick(s.values, "name", r.name)} aria-invalid={!!s.fieldErrors?.name} />
-          </Field>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-[auto_1fr]">
-            <ImageField name="logo" removeName="removeLogo" label="Logo" currentUrl={r.logoUrl} shape="round" maxSide={800} />
-            <ImageField
-              name="cover"
-              removeName="removeCover"
-              label="Foto de capa"
-              currentUrl={r.coverUrl}
-              hint="Uma foto bonita da fachada ou de um prato. Deitada fica melhor."
-            />
+          {/* duas colunas: de um lado quem é o restaurante (nome e logo),
+              do outro a foto grande. Antes o nome ocupava a largura toda e
+              as duas fotos se espremiam embaixo, cada uma de um tamanho. */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="flex flex-col gap-5">
+              <Field label="Nome do restaurante" htmlFor="name" error={s.fieldErrors?.name}>
+                <Input id="name" name="name" required maxLength={80} defaultValue={pick(s.values, "name", r.name)} aria-invalid={!!s.fieldErrors?.name} />
+              </Field>
+              <ImageField name="logo" removeName="removeLogo" label="Logo" currentUrl={r.logoUrl} shape="round" maxSide={800} />
+            </div>
+            <ImageField name="cover" removeName="removeCover" label="Foto de capa" currentUrl={r.coverUrl} />
           </div>
         </>
       )}
@@ -87,7 +86,6 @@ export function ContactSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="contato" icone={<Phone />}
       title="Contato"
-      description="O WhatsApp dos pedidos é onde o restaurante recebe cada pedido novo."
       action={saveContact}
       restaurantId={r.id}
     >
@@ -98,13 +96,13 @@ export function ContactSection({ r }: { r: RestaurantFormData }) {
           <Field label="WhatsApp dos pedidos" htmlFor="whatsapp" error={s.fieldErrors?.whatsapp}>
             <Input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" defaultValue={pick(s.values, "whatsapp", formatPhone(r.whatsapp))} placeholder="(92) 99999-0000" aria-invalid={!!s.fieldErrors?.whatsapp} />
           </Field>
-          <Field label="Telefone fixo" htmlFor="phone" error={s.fieldErrors?.phone} hint="Opcional.">
+          <Field label="Telefone fixo" htmlFor="phone" error={s.fieldErrors?.phone}>
             <Input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={pick(s.values, "phone", formatPhone(r.phone))} placeholder="(92) 3000-0000" aria-invalid={!!s.fieldErrors?.phone} />
           </Field>
-          <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} hint="Opcional." className="col-span-2 sm:col-span-1">
+          <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} className="col-span-2 sm:col-span-1">
             <Input id="email" name="email" type="email" inputMode="email" defaultValue={pick(s.values, "email", r.email)} aria-invalid={!!s.fieldErrors?.email} />
           </Field>
-          <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} hint="Opcional." className="col-span-2 sm:col-span-1">
+          <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} className="col-span-2 sm:col-span-1">
             <Input id="instagram" name="instagram" defaultValue={pick(s.values, "instagram", r.instagram ? `@${r.instagram}` : "")} placeholder="@seurestaurante" aria-invalid={!!s.fieldErrors?.instagram} />
           </Field>
         </div>
@@ -128,7 +126,7 @@ export function AddressSection({ r }: { r: RestaurantFormData }) {
           <Field label="Número" htmlFor="number" error={s.fieldErrors?.number} className="col-span-2">
             <Input id="number" name="number" maxLength={20} defaultValue={pick(s.values, "number", r.number)} />
           </Field>
-          <Field label="Complemento" htmlFor="complement" error={s.fieldErrors?.complement} hint="Opcional." className="col-span-4 sm:col-span-3">
+          <Field label="Complemento" htmlFor="complement" error={s.fieldErrors?.complement} className="col-span-4 sm:col-span-3">
             <Input id="complement" name="complement" maxLength={80} defaultValue={pick(s.values, "complement", r.complement)} />
           </Field>
           <Field label="Bairro" htmlFor="neighborhood" error={s.fieldErrors?.neighborhood} className="col-span-6 sm:col-span-3">
@@ -140,7 +138,7 @@ export function AddressSection({ r }: { r: RestaurantFormData }) {
           <Field label="Estado" htmlFor="state" error={s.fieldErrors?.state} className="col-span-2 sm:col-span-1">
             <Input id="state" name="state" maxLength={2} defaultValue={pick(s.values, "state", r.state)} className="uppercase" aria-invalid={!!s.fieldErrors?.state} />
           </Field>
-          <Field label="CEP" htmlFor="zipCode" error={s.fieldErrors?.zipCode} hint="Opcional." className="col-span-4 sm:col-span-2">
+          <Field label="CEP" htmlFor="zipCode" error={s.fieldErrors?.zipCode} className="col-span-4 sm:col-span-2">
             <Input id="zipCode" name="zipCode" inputMode="numeric" maxLength={9} defaultValue={pick(s.values, "zipCode", r.zipCode)} aria-invalid={!!s.fieldErrors?.zipCode} />
           </Field>
         </div>
@@ -213,7 +211,6 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="horarios" icone={<Clock />}
       title="Horário de funcionamento"
-      description="Se fechar depois da meia-noite, é só colocar, por exemplo, 18:00 às 02:00."
       action={saveHours}
       restaurantId={r.id}
     >
@@ -238,7 +235,6 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
                 />
                 <span>
                   <span className="block font-bold">{m.title}</span>
-                  <span className="block text-sm text-muted">{m.text}</span>
                 </span>
               </label>
             ))}
@@ -339,14 +335,10 @@ const LinhaDeBairro = memo(function LinhaDeBairro({
           <Input
             name="areaApelidos"
             aria-label={`Outros nomes do bairro ${numero}`}
-            placeholder="Ex.: Hotel Calleb, fábrica de gelo"
+            placeholder="Outros nomes do bairro (ex.: Hotel Calleb)"
             value={linha.apelidos}
             onChange={(e) => mexer(linha.chave, "apelidos", e.target.value)}
           />
-          <p className="text-xs text-muted">
-            Outros nomes para o mesmo lugar, separados por vírgula. Cada um aparece como uma opção no
-            cardápio e cobra esta mesma taxa.
-          </p>
         </div>
       ) : (
         <>
@@ -450,7 +442,6 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
               <Field
                 label="Cole a lista de bairros"
                 htmlFor="colar-bairros"
-                hint={`Um por linha, ou separados por vírgula. Todos entram com a taxa de ${taxaPadrao}, e dá para mudar depois.`}
               >
                 <Textarea
                   id="colar-bairros"
@@ -493,15 +484,15 @@ export function DeliverySection({ r }: { r: RestaurantFormData }) {
       {(s) => (
         <>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <Checkbox name="deliveryEnabled" defaultChecked={s.values ? s.values.deliveryEnabled === "on" : r.deliveryEnabled} label="Faz entrega" hint="O cliente informa o endereço." />
-            <Checkbox name="pickupEnabled" defaultChecked={s.values ? s.values.pickupEnabled === "on" : r.pickupEnabled} label="Retirada no local" hint="O cliente busca no restaurante." />
+            <Checkbox name="deliveryEnabled" defaultChecked={s.values ? s.values.deliveryEnabled === "on" : r.deliveryEnabled} label="Faz entrega" />
+            <Checkbox name="pickupEnabled" defaultChecked={s.values ? s.values.pickupEnabled === "on" : r.pickupEnabled} label="Retirada no local" />
           </div>
           {s.fieldErrors?.pickupEnabled && <p className="text-sm text-danger">{s.fieldErrors.pickupEnabled}</p>}
           <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
-            <Field label="Taxa de entrega" htmlFor="deliveryFee" error={s.fieldErrors?.deliveryFee} hint="Deixe 0,00 para entrega grátis.">
+            <Field label="Taxa de entrega" htmlFor="deliveryFee" error={s.fieldErrors?.deliveryFee}>
               <MoneyInput id="deliveryFee" name="deliveryFee" defaultValue={pick(s.values, "deliveryFee", centsToInput(r.deliveryFeeCents))} aria-invalid={!!s.fieldErrors?.deliveryFee} />
             </Field>
-            <Field label="Pedido mínimo" htmlFor="minOrder" error={s.fieldErrors?.minOrder} hint="Opcional. 0,00 = sem mínimo.">
+            <Field label="Pedido mínimo" htmlFor="minOrder" error={s.fieldErrors?.minOrder}>
               <MoneyInput id="minOrder" name="minOrder" defaultValue={pick(s.values, "minOrder", centsToInput(r.minOrderCents))} aria-invalid={!!s.fieldErrors?.minOrder} />
             </Field>
             <Field label="Tempo de entrega: de (minutos)" htmlFor="deliveryTimeMin" error={s.fieldErrors?.deliveryTimeMin} className="self-end">
@@ -522,7 +513,6 @@ export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="formas-de-pagamento" icone={<CreditCard />}
       title="Cartão e dinheiro"
-      description="Pagos na entrega (o entregador leva a maquininha e o troco) ou no balcão, na retirada."
       action={savePaymentMethods}
       restaurantId={r.id}
     >
@@ -532,13 +522,11 @@ export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
             name="acceptsCard"
             defaultChecked={s.values ? s.values.acceptsCard === "on" : r.acceptsCard}
             label="Aceita cartão"
-            hint="Crédito e débito. O cliente diz qual vai usar."
           />
           <Checkbox
             name="acceptsCash"
             defaultChecked={s.values ? s.values.acceptsCash === "on" : r.acceptsCash}
             label="Aceita dinheiro"
-            hint="O cliente diz se precisa de troco e para quanto."
           />
         </div>
       )}
@@ -551,7 +539,6 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="pagamento" icone={<QrCode />}
       title="Pagamento por Pix"
-      description="Depois do pedido, o cliente vê esta chave para pagar e manda o comprovante pelo WhatsApp."
       action={savePayment}
       restaurantId={r.id}
     >
@@ -584,7 +571,6 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
             label="Nome de quem recebe"
             htmlFor="pixHolderName"
             error={s.fieldErrors?.pixHolderName}
-            hint="Como aparece no app do banco. O cliente confere antes de pagar."
             className="sm:col-span-2"
           >
             <Input id="pixHolderName" name="pixHolderName" required maxLength={80} defaultValue={pick(s.values, "pixHolderName", r.pixHolderName)} aria-invalid={!!s.fieldErrors?.pixHolderName} />
@@ -593,10 +579,9 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
             label="Recado para o cliente"
             htmlFor="paymentInstructions"
             error={s.fieldErrors?.paymentInstructions}
-            hint="Opcional. Ex.: Confirmamos o pagamento em até 5 minutos."
             className="sm:col-span-2"
           >
-            <Textarea id="paymentInstructions" name="paymentInstructions" maxLength={300} rows={2} defaultValue={pick(s.values, "paymentInstructions", r.paymentInstructions)} />
+            <Textarea id="paymentInstructions" name="paymentInstructions" maxLength={300} rows={2} placeholder="Ex.: Confirmamos o pagamento em até 5 minutos." defaultValue={pick(s.values, "paymentInstructions", r.paymentInstructions)} />
           </Field>
         </div>
       )}
@@ -614,7 +599,6 @@ export function PizzaSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="pizza" icone={<Pizza />}
       title="Pizza"
-      description="Para pizzaria: o cliente escolhe os sabores e paga o preço do mais caro."
       action={savePizza}
       restaurantId={r.id}
     >
@@ -624,7 +608,6 @@ export function PizzaSection({ r }: { r: RestaurantFormData }) {
             label="Máximo de sabores numa pizza"
             htmlFor="pizzaMaxFlavors"
             error={s.fieldErrors?.pizzaMaxFlavors}
-            hint="0 = este restaurante não trabalha com pizza."
           >
             <Select
               id="pizzaMaxFlavors"
@@ -644,8 +627,7 @@ export function PizzaSection({ r }: { r: RestaurantFormData }) {
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 font-bold">Categorias de sabores</legend>
             <p className="mb-2 text-sm text-muted">
-              Marque as categorias do seu cardápio que são sabores de pizza (por exemplo, Pizzas especiais e Pizzas tradicionais). Os produtos
-              delas deixam de aparecer soltos e viram os sabores que o cliente escolhe dentro da pizza — com a descrição e o preço de cada um.
+              Os itens das categorias marcadas deixam de aparecer soltos e viram sabores dentro da pizza.
             </p>
             {r.menuCategories.length === 0 ? (
               <p className="text-sm text-muted">Você ainda não tem categorias no cardápio.</p>

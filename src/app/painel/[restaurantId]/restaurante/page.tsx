@@ -8,7 +8,7 @@ import { requireRestaurantAccess } from "@/server/auth/dal";
 
 import { AddressSection, ContactSection, DeliveryAreasSection, DeliverySection, HoursSection, InfoSection, PaymentMethodsSection, PaymentSection, PizzaSection } from "./forms";
 
-export const metadata: Metadata = { title: "Meu restaurante" };
+export const metadata: Metadata = { title: "Restaurante" };
 
 const sections = [
   { href: "#informacoes", label: "Informações" },
@@ -44,7 +44,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Meu restaurante" description="O que você preencher aqui aparece para os clientes no site." />
+      <PageHeader title="Restaurante" />
 
       {/* Os atalhos acompanham a rolagem: a página é comprida, e sem isso
           trocar de seção era subir tudo de novo. Ficam logo abaixo da
@@ -87,7 +87,6 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
               }}
             />
           </div>
-          <p className="text-xs text-faint">A prévia muda depois que você salva.</p>
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
