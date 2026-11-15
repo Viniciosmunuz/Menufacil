@@ -201,8 +201,16 @@ export async function setOpenMode(formData: FormData) {
   const acc = await access(formData);
   const openMode = String(formData.get("openMode") ?? "") as OpenMode;
   if (!OPEN_MODES.includes(openMode)) return;
-  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { openMode } });
-  await panelAudit(acc, "restaurant.open_mode", { openMode });
+  // Abrir ou fechar no botão limpa as conversas da IA, igual ao botão de
+  // esquecer conversas da tela dela -- pedido dele em 15/11/2026: cada
+  // expediente começa do zero, sem histórico, sem rascunho de pedido e sem
+  // o silêncio de depois de chamar alguém. Pedido criado não é tocado.
+  const [, conversa, rascunhos] = await db.$transaction([
+    db.restaurant.update({ where: { id: acc.restaurant.id }, data: { openMode } }),
+    db.iaMensagem.deleteMany({ where: { restaurantId: acc.restaurant.id } }),
+    db.iaRascunho.deleteMany({ where: { restaurantId: acc.restaurant.id } }),
+  ]);
+  await panelAudit(acc, "restaurant.open_mode", { openMode, conversasApagadas: conversa.count, rascunhosApagados: rascunhos.count });
   refresh();
 }
 
