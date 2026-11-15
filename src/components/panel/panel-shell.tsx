@@ -290,9 +290,9 @@ export function PanelShell({
             </span>
           </Link>
           <Trilho items={nav} />
-          {/* a marca, logo abaixo de Suporte, no mesmo desenho dos itens */}
-          <span className="mt-1 grid h-9 w-12 shrink-0 place-items-center" title="MenuFácil" aria-hidden="true">
-            <LogoIcon className="h-5 w-auto text-brand" />
+          {/* a marca no pé do trilho, encostada embaixo, como ele pediu */}
+          <span className="mt-auto grid h-12 w-12 shrink-0 place-items-center pt-4" title="MenuFácil" aria-hidden="true">
+            <LogoIcon className="h-6 w-auto text-brand" />
           </span>
         </aside>
       ) : (
