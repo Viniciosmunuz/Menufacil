@@ -118,17 +118,10 @@ export function PanelShell({
   );
 
   return (
-    // Dentro do painel o creme e o branco trocam de lugar.
-    //
-    // No site, o cartão creme sobre papel branco é a marca. No painel isso
-    // se vira contra ele: a tela é quase toda cartão, e o branco sumia em
-    // tiras finas entre blocos cremes -- lido de relance, vira uma parede
-    // só. Aqui o fundo é o creme, o cartão é o papel branco, e as linhas
-    // são o creme mais fechado separando um do outro.
-    //
-    // Os valores vivem em `.tema-painel`, no globals.css, e são os mesmos
-    // da paleta -- só trocados de papel. Só aqui dentro: o site público
-    // continua como está.
+    // O painel usa a mesma paleta do cardápio: fundo branco, cartão branco
+    // com borda e o creme só no miúdo. Até 15/11/2026 o fundo daqui era
+    // creme; ele pediu o branco predominando. A classe `.tema-painel`
+    // continua no globals.css, mas não inverte mais nada.
     <div
       className={cn(
         "tema-painel min-h-dvh bg-bg lg:grid",

@@ -8,16 +8,16 @@
    sistema. (Até 25/10/2026 o sistema inteiro era preto.)
    ============================================================ */
 @theme {
-  /* Branco no fundo, creme nos cartões -- o contrário do que era até
-     26/10/2026.
-     O creme deixou de ser o fundo de tudo e virou a terceira cor da marca,
-     ao lado do laranja: é ele que desenha o cartão, o campo e a barra, e o
-     branco por baixo é o papel. Cada camada acima do fundo fecha um pouco
-     mais, em vez de clarear. */
+  /* A hierarquia, do jeito que ele definiu em 15/11/2026: branco manda,
+     laranja vem em segundo, e o creme aparece pouco.
+     Até aqui o creme era a cor do cartão -- e como quase tudo na tela é
+     cartão, ele acabava cobrindo mais área do que o branco e do que o
+     laranja. Agora o cartão é branco como o fundo e se desenha pela borda;
+     o creme ficou só no miúdo: campo, botão secundário, etiqueta, trilho. */
   --color-bg: #ffffff;
-  --color-surface: #f6f1ea;
-  --color-surface-2: #efe7db;
-  --color-surface-3: #e6dbca;
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f1ea;
+  --color-surface-3: #efe7db;
   --color-line: #e2d8c8;
   --color-line-strong: #cbbda8;
 
@@ -270,25 +270,25 @@ details.drawer[open]::details-content {
   color: rgb(255 255 255 / 0.9);
 }
 
-/* O painel do dono: a mesma paleta, de cabeça para baixo.
+/* O painel do dono usa a mesma paleta do cardápio, sem inversão.
  *
- * No cardápio do cliente o papel é branco e o cartão é creme. No painel é
- * o contrário: o fundo é creme e o cartão é branco. É de propósito -- a
- * tela do dono é densa, com tabela e lista coladas uma na outra, e cartão
- * creme sobre fundo creme vira uma parede só.
+ * Até 15/11/2026 o fundo daqui era creme e o cartão branco, e o creme
+ * dominava a tela inteira. A pedido dele o painel voltou ao branco: fundo
+ * branco, cartão branco com borda, creme só no miúdo. A classe continua
+ * existindo porque o panel-shell a aplica; ela só não muda mais nada.
  *
- * O que mudou no rebrand de 03/11/2026: antes esta inversão usava cremes
- * próprios, vizinhos dos oficiais mas não iguais (#faf8f4, #ece7df,
- * #d9d2c6...). Eram cores novas sem motivo. Agora são exatamente os tons
- * da paleta, só trocados de papel -- nenhum valor daqui existe fora do
- * `@theme` lá de cima. */
+ * A página de venda ficou como estava, a pedido dele: é ela que guarda os
+ * tons antigos, logo abaixo. */
 .tema-painel {
-  --color-bg: #f6f1ea;
-  --color-surface: #ffffff;
+  --color-bg: #ffffff;
+}
+
+/* A página de venda não entrou na mudança de 15/11/2026: ele disse que lá
+   já está bom. Estes são os valores que o tema tinha até aquele dia. */
+.venda {
+  --color-surface: #f6f1ea;
   --color-surface-2: #efe7db;
   --color-surface-3: #e6dbca;
-  --color-line: #e2d8c8;
-  --color-line-strong: #cbbda8;
 }
 
 /* O aplicativo do entregador, no escuro.
