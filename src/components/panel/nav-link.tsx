@@ -56,7 +56,7 @@ export function SidebarNav({ items, compacto = false }: { items: NavItem[]; comp
         <div
           key={grupo.titulo ?? n}
           // do segundo grupo em diante, uma linha fina separa um do outro
-          className={cn("flex flex-col gap-1", n > 0 && "mt-4 border-t border-line pt-4")}
+          className={cn("flex flex-col gap-1.5", n > 0 && "mt-4 border-t border-line pt-4")}
         >
           {/* O título do grupo ("Menu principal", "Gestão") saía escrito
               aqui. Saiu em 15/11/2026, a pedido dele: a linha entre um
@@ -71,12 +71,12 @@ export function SidebarNav({ items, compacto = false }: { items: NavItem[]; comp
                 title={compacto ? item.label : undefined}
                 className={cn(
                   "relative flex h-11 shrink-0 items-center rounded-control transition-colors duration-200 [&_svg]:size-5 [&_svg]:shrink-0",
-                  compacto ? "justify-center px-0" : "gap-3 px-3.5",
+                  compacto ? "justify-center px-0" : "gap-3.5 px-3.5 text-[0.95rem] leading-none",
                   active
                     ? // o item da tela em que se está: fundo laranja bem suave,
                       // ícone e texto no laranja, e o filete na borda esquerda
                       "bg-brand-soft font-bold text-brand before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-brand"
-                    : "font-semibold text-muted hover:bg-surface-2 hover:text-ink",
+                    : "font-medium text-muted hover:bg-surface-2 hover:text-ink",
                 )}
               >
                 {item.icon}
