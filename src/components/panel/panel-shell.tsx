@@ -28,7 +28,7 @@ export function PanelShell({
   userName,
   banner,
   children,
-  menuAberto,
+  menuEncolhe,
   larga,
   atalho,
   barraDeBaixo,
@@ -63,14 +63,14 @@ export function PanelShell({
    */
   barraDeBaixo?: { fixos: string[]; nome: string; topo?: ReactNode; selos?: Record<string, ReactNode> };
   /**
-   * A tela em que o menu fica aberto, com os nomes das seções.
+   * Trechos do endereço em que o menu encolhe para só os ícones.
    *
-   * É a inicial, e só ela: ali a pessoa está escolhendo para onde ir. Nas
-   * outras ela já está trabalhando naquilo, e o menu de 17rem levava um
-   * terço da tela do balcão -- no salão, uma coluna inteira de mesas.
-   * Passando nada, o menu fica aberto em todas, como era antes.
+   * São as telas de trabalho largo: os pedidos e o salão, onde o menu de
+   * 17rem custava uma coluna inteira. Em todas as outras ele fica aberto,
+   * com os nomes. Até 15/11/2026 era o contrário -- aberto só na tela
+   * inicial --, e ele estranhou o menu encolhendo a cada clique.
    */
-  menuAberto?: string;
+  menuEncolhe?: string[];
   /** trechos do endereço em que o conteúdo usa a largura toda */
   larga?: string | string[];
   /**
@@ -104,7 +104,7 @@ export function PanelShell({
   contaHref?: string;
 }) {
   const pathname = usePathname();
-  const compacto = !!menuAberto && pathname !== menuAberto;
+  const compacto = (menuEncolhe ?? []).some((t) => pathname.includes(t));
   // O menu em ícones devolve largura para o conteúdo, mas nem toda tela
   // quer: num formulário, linha de 1600px não se lê. Quem usa a tela
   // inteira é quem tem tabela -- o salão e os pedidos.

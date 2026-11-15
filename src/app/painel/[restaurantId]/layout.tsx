@@ -65,9 +65,9 @@ export default async function RestaurantPanelLayout({
 
   return (
     <PanelShell
-      // o menu com os nomes fica na tela inicial; das outras em diante ele
-      // vira ícones e devolve a largura para o trabalho
-      menuAberto={base}
+      // o menu fica aberto, com os nomes; só encolhe para ícones onde a
+      // tela precisa da largura toda
+      menuEncolhe={["/pedidos", "/salao"]}
       // o salão é o único que usa a tela inteira: ali o mapa e o cardápio
       // disputam cada centímetro
       larga={["/salao", "/pedidos"]}
