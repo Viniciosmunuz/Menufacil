@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { ChevronRight, ChevronsLeft, ChevronsRight, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -302,28 +302,20 @@ export function PanelShell({
           <div className="mt-4 border-t border-line pt-4">
             <SidebarNav items={nav} compacto={!trilhoAberto} />
           </div>
-          {/* no pé: a marca do MenuFácil e o botão de abrir e recolher */}
-          <div className="mt-auto flex shrink-0 flex-col gap-1 pt-4">
-            <span
-              className={cn("flex h-10 items-center text-brand", trilhoAberto ? "px-3.5" : "justify-center")}
-              title="MenuFácil"
-              aria-hidden="true"
-            >
-              <LogoIcon className="h-6 w-auto" />
-            </span>
+          {/* No pé: o ícone do aplicativo do MenuFácil, o mesmo da tela
+              inicial do celular, só de enfeite; e embaixo dele a setinha
+              que abre e recolhe, pequena, como ele pediu. */}
+          <div className={cn("mt-auto flex shrink-0 flex-col gap-2 pt-4", trilhoAberto ? "items-start px-2" : "items-center")}>
+            <Image src="/icone-192.png" alt="" width={40} height={40} className="size-10 rounded-xl" aria-hidden="true" />
             <button
               type="button"
               onClick={() => gravarMenu(trilhoAberto ? "fechado" : "aberto")}
               title={trilhoAberto ? "Recolher o menu" : "Mostrar os nomes do menu"}
               aria-label={trilhoAberto ? "Recolher o menu" : "Mostrar os nomes do menu"}
               aria-expanded={trilhoAberto}
-              className={cn(
-                "flex h-10 items-center gap-2 rounded-control text-sm font-bold text-muted transition-colors hover:bg-surface-2 hover:text-ink [&_svg]:size-5",
-                trilhoAberto ? "px-3.5" : "justify-center",
-              )}
+              className="grid size-8 place-items-center rounded-full text-faint transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              {trilhoAberto ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
-              {trilhoAberto && "Recolher menu"}
+              {trilhoAberto ? <ChevronsLeft className="size-4" aria-hidden="true" /> : <ChevronsRight className="size-4" aria-hidden="true" />}
             </button>
           </div>
         </aside>
