@@ -90,53 +90,6 @@ export function SidebarNav({ items, compacto = false }: { items: NavItem[]; comp
   );
 }
 
-/**
- * O trilho fino do painel do restaurante: ícone em cima, nome embaixo.
- *
- * Os grupos continuam separados por uma linha curta, como no menu largo.
- * O nome usa o `curto` quando houver: nesta largura cabe pouco.
- */
-export function Trilho({ items }: { items: NavItem[] }) {
-  const pathname = usePathname();
-  return (
-    <nav className="mt-3 flex w-full flex-col items-center border-t border-line pt-2" aria-label="Menu do painel">
-      {emGrupos(items).map((grupo, n) => (
-        <div key={grupo.titulo ?? n} className="flex w-full flex-col items-center">
-          {n > 0 && <span className="my-2 w-10 border-t border-line" aria-hidden="true" />}
-          {grupo.itens.map((item) => {
-            const active = isActive(pathname, item);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className="group flex w-full flex-col items-center gap-1 py-1.5"
-              >
-                <span
-                  className={cn(
-                    "grid h-9 w-12 place-items-center rounded-full transition-colors duration-200 [&_svg]:size-5",
-                    active ? "bg-brand-soft text-brand" : "text-muted group-hover:bg-surface-2 group-hover:text-ink",
-                  )}
-                >
-                  {item.icon}
-                </span>
-                <span
-                  className={cn(
-                    "max-w-full truncate px-1 text-[0.68rem] leading-none tracking-tight",
-                    active ? "font-extrabold text-brand" : "font-semibold text-muted group-hover:text-ink",
-                  )}
-                >
-                  {item.curto ?? item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
-}
-
 // No celular o menu vira uma faixa de abas que rola para o lado.
 export function TabsNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();

@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { logout } from "@/server/auth/actions";
 
 import { BarraDeBaixo } from "./barra-de-baixo";
-import { SidebarNav, TabsNav, Trilho, type NavItem } from "./nav-link";
+import { SidebarNav, TabsNav, type NavItem } from "./nav-link";
 
 // A escolha do dono: menu aberto ou recolhido, guardada neste aparelho.
 // Sem escolha, vale o automático (recolhe só onde a tela pede largura).
@@ -130,19 +130,22 @@ export function PanelShell({
   // 15/11/2026 o dono pode decidir: o botão no pé do menu grava a escolha
   // neste aparelho, e ela vale em todas as telas até ele trocar de novo.
   const escolha = useSyncExternalStore(assinarMenu, lerMenu, () => null);
-  // o painel do restaurante usa o trilho fino, que não abre nem fecha
+  // o painel do restaurante usa o trilho: recolhido até o dono abrir
   const trilho = !!restaurante;
+  const trilhoAberto = trilho && escolha === "aberto";
+  const perfilAtivo = !!contaHref && pathname.startsWith(contaHref);
   const automatico = (menuEncolhe ?? []).some((t) => pathname.includes(t));
   const compacto = escolha === "fechado" ? true : escolha === "aberto" ? false : automatico;
 
-  function alternarMenu() {
+  function gravarMenu(valor: "aberto" | "fechado") {
     try {
-      localStorage.setItem(PREF_MENU, compacto ? "aberto" : "fechado");
+      localStorage.setItem(PREF_MENU, valor);
     } catch {
       // sem armazenamento: não há onde guardar a escolha
     }
     window.dispatchEvent(new Event(EVENTO_MENU));
   }
+  const alternarMenu = () => gravarMenu(compacto ? "aberto" : "fechado");
 
   const botaoMenu = (
     <button
@@ -249,51 +252,80 @@ export function PanelShell({
       className={cn(
         "tema-painel min-h-dvh bg-bg lg:grid",
         trilho
-          ? "lg:grid-cols-[5.5rem_minmax(0,1fr)]"
+          ? trilhoAberto
+            ? "lg:grid-cols-[15rem_minmax(0,1fr)]"
+            : "lg:grid-cols-[4.75rem_minmax(0,1fr)]"
           : compacto
             ? "lg:grid-cols-[5rem_minmax(0,1fr)]"
             : "lg:grid-cols-[17rem_minmax(0,1fr)]",
       )}
     >
       {trilho ? (
-        // O painel do restaurante: um trilho fino, com o ícone e o nome
-        // embaixo, no jeito do Yooga. Escolhido por ele em 15/11/2026 no
-        // lugar do menu largo que abria e fechava: com largura fixa, nada
-        // pula ao trocar de tela, e Pedidos ganha a largura sem precisar
-        // encolher nada.
-        <aside className="sticky top-0 hidden h-dvh flex-col items-center overflow-y-auto border-r border-line bg-surface py-4 [scrollbar-width:none] lg:flex">
+        // O painel do restaurante. Começa recolhido, só com os ícones, e o
+        // botão no pé abre com os nomes ao lado -- como ele pediu em
+        // 15/11/2026, depois de ver o trilho com o nome embaixo de cada
+        // ícone. A escolha fica guardada neste aparelho.
+        <aside
+          className={cn(
+            "sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-surface py-4 [scrollbar-width:none] lg:flex",
+            trilhoAberto ? "px-4" : "items-stretch px-3",
+          )}
+        >
           <Link
             href={contaHref ?? homeHref}
-            aria-current={contaHref && pathname.startsWith(contaHref) ? "page" : undefined}
-            title={restaurante?.nome}
-            className="group flex shrink-0 flex-col items-center gap-1.5"
+            aria-current={perfilAtivo ? "page" : undefined}
+            title={trilhoAberto ? undefined : `Perfil · ${restaurante?.nome ?? ""}`}
+            className={cn(
+              "group flex shrink-0 items-center gap-3 rounded-card",
+              trilhoAberto ? "border border-line p-2 hover:bg-surface-2" : "justify-center",
+            )}
           >
             <span
               className={cn(
-                "relative grid size-12 place-items-center overflow-hidden rounded-full border-2 bg-surface-2 transition-colors",
-                contaHref && pathname.startsWith(contaHref) ? "border-brand" : "border-line group-hover:border-line-strong",
+                "relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-surface-2 transition-colors",
+                perfilAtivo ? "border-brand" : "border-line group-hover:border-line-strong",
               )}
             >
               {foto ? (
-                <Image src={foto} alt="" fill sizes="48px" className="object-cover" />
+                <Image src={foto} alt="" fill sizes="44px" className="object-cover" />
               ) : (
                 <LogoIcon className="h-5 w-auto text-brand" />
               )}
             </span>
+            {trilhoAberto && (
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-extrabold">{restaurante?.nome}</span>
+                <span className={cn("block text-xs font-bold", perfilAtivo ? "text-brand" : "text-faint")}>Perfil</span>
+              </span>
+            )}
+          </Link>
+          <div className="mt-4 border-t border-line pt-4">
+            <SidebarNav items={nav} compacto={!trilhoAberto} />
+          </div>
+          {/* no pé: a marca do MenuFácil e o botão de abrir e recolher */}
+          <div className="mt-auto flex shrink-0 flex-col gap-1 pt-4">
             <span
+              className={cn("flex h-10 items-center text-brand", trilhoAberto ? "px-3.5" : "justify-center")}
+              title="MenuFácil"
+              aria-hidden="true"
+            >
+              <LogoIcon className="h-6 w-auto" />
+            </span>
+            <button
+              type="button"
+              onClick={() => gravarMenu(trilhoAberto ? "fechado" : "aberto")}
+              title={trilhoAberto ? "Recolher o menu" : "Mostrar os nomes do menu"}
+              aria-label={trilhoAberto ? "Recolher o menu" : "Mostrar os nomes do menu"}
+              aria-expanded={trilhoAberto}
               className={cn(
-                "text-[0.68rem] leading-none font-extrabold",
-                contaHref && pathname.startsWith(contaHref) ? "text-brand" : "text-ink",
+                "flex h-10 items-center gap-2 rounded-control text-sm font-bold text-muted transition-colors hover:bg-surface-2 hover:text-ink [&_svg]:size-5",
+                trilhoAberto ? "px-3.5" : "justify-center",
               )}
             >
-              Perfil
-            </span>
-          </Link>
-          <Trilho items={nav} />
-          {/* a marca no pé do trilho, encostada embaixo, como ele pediu */}
-          <span className="mt-auto grid h-12 w-12 shrink-0 place-items-center pt-4" title="MenuFácil" aria-hidden="true">
-            <LogoIcon className="h-6 w-auto text-brand" />
-          </span>
+              {trilhoAberto ? <PanelLeftClose aria-hidden="true" /> : <PanelLeftOpen aria-hidden="true" />}
+              {trilhoAberto && "Recolher menu"}
+            </button>
+          </div>
         </aside>
       ) : (
       <aside
