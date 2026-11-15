@@ -16,7 +16,7 @@ import { ListasDaIa } from "./ignorados";
 import { ConectarWhatsapp } from "./conectar";
 import { LigarIa } from "./ligar";
 
-export const metadata: Metadata = { title: "Menu Fácil IA" };
+export const metadata: Metadata = { title: "WhatsApp IA" };
 
 // A IA do restaurante, do lado do dono -- que é onde ela se usa.
 //
@@ -98,7 +98,7 @@ export default async function IaPage({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Menu Fácil IA"
+        title="WhatsApp IA"
         description="O atendente que responde os seus clientes. Você decide o que ele faz."
       />
 

@@ -12,7 +12,29 @@ export type NavItem = {
   icon: ReactNode;
   /** marca ativo só na rota exata (usado no "Início" do painel) */
   exact?: boolean;
+  /**
+   * O título do grupo a que o item pertence no menu lateral ("Menu
+   * principal", "Gestão"). Itens seguidos com o mesmo grupo ficam juntos
+   * sob um título só; sem grupo, o menu é uma lista corrida, como no admin.
+   */
+  grupo?: string;
+  /**
+   * O nome curto, para a barra de baixo do celular: "Visão geral" e
+   * "Cardápio digital" não cabem embaixo de um ícone.
+   */
+  curto?: string;
 };
+
+/** junta os itens seguidos do mesmo grupo, na ordem em que aparecem */
+function emGrupos(items: NavItem[]) {
+  const grupos: { titulo?: string; itens: NavItem[] }[] = [];
+  for (const item of items) {
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.titulo === item.grupo) ultimo.itens.push(item);
+    else grupos.push({ titulo: item.grupo, itens: [item] });
+  }
+  return grupos;
+}
 
 function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -29,26 +51,41 @@ function isActive(pathname: string, item: NavItem) {
 export function SidebarNav({ items, compacto = false }: { items: NavItem[]; compacto?: boolean }) {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-col gap-1" aria-label="Menu do painel">
-      {items.map((item) => {
-        const active = isActive(pathname, item);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            title={compacto ? item.label : undefined}
-            className={cn(
-              "flex h-11 items-center rounded-control font-semibold transition-colors [&_svg]:size-5",
-              compacto ? "justify-center px-0" : "gap-3 px-3.5",
-              active ? "bg-brand-soft text-brand" : "text-muted hover:bg-surface-2 hover:text-ink",
-            )}
-          >
-            {item.icon}
-            {compacto ? <span className="sr-only">{item.label}</span> : item.label}
-          </Link>
-        );
-      })}
+    <nav className="flex min-h-0 flex-col overflow-y-auto [scrollbar-width:thin]" aria-label="Menu do painel">
+      {emGrupos(items).map((grupo, n) => (
+        <div
+          key={grupo.titulo ?? n}
+          // do segundo grupo em diante, uma linha fina separa um do outro
+          className={cn("flex flex-col gap-1", n > 0 && "mt-4 border-t border-line pt-4")}
+        >
+          {grupo.titulo && !compacto && (
+            <p className="px-3.5 pb-1.5 text-[0.7rem] font-extrabold tracking-[0.08em] text-faint uppercase">{grupo.titulo}</p>
+          )}
+          {grupo.itens.map((item) => {
+            const active = isActive(pathname, item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                title={compacto ? item.label : undefined}
+                className={cn(
+                  "relative flex h-11 shrink-0 items-center rounded-control transition-colors duration-200 [&_svg]:size-5 [&_svg]:shrink-0",
+                  compacto ? "justify-center px-0" : "gap-3 px-3.5",
+                  active
+                    ? // o item da tela em que se está: fundo laranja bem suave,
+                      // ícone e texto no laranja, e o filete na borda esquerda
+                      "bg-brand-soft font-bold text-brand before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-brand"
+                    : "font-semibold text-muted hover:bg-surface-2 hover:text-ink",
+                )}
+              >
+                {item.icon}
+                {compacto ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }

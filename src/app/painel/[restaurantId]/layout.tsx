@@ -1,4 +1,4 @@
-import { Bike, BookOpen, Bot, Download, Handshake, LayoutDashboard, LifeBuoy, MonitorCheck, ReceiptText, Store, UtensilsCrossed } from "lucide-react";
+import { Bike, BookOpen, ClipboardList, Download, Headset, LayoutDashboard, MessageCircle, MonitorCheck, Settings, Store, UtensilsCrossed, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -11,6 +11,10 @@ import { noAr } from "@/lib/features";
 import { isOpenNow, soRetirada } from "@/lib/opening-hours";
 import { requireDono } from "@/server/auth/dal";
 import { pedidosEsperando } from "@/server/stats";
+
+// os dois grupos do menu lateral
+const PRINCIPAL = "Menu principal";
+const GESTAO = "Gestão";
 
 // salvo na tela inicial do celular, o atalho do painel abre no painel
 export const metadata: Metadata = { manifest: "/painel/manifest" };
@@ -72,28 +76,44 @@ export default async function RestaurantPanelLayout({
       // a foto de perfil do restaurante no lugar do logo do Menu Fácil
       foto={horario?.logoUrl}
       userName={user.name}
+      // o cartão no alto do menu: de quem é o painel e se a loja está no ar
+      restaurante={{
+        nome: restaurant.name,
+        status: { label: restaurant.status === "ACTIVE" ? "Ativo" : "Inativo", ok: restaurant.status === "ACTIVE" },
+        voltar: viaAdmin ? { href: `/admin/restaurantes/${restaurant.id}`, label: "Voltar ao admin" } : undefined,
+      }}
+      papel={viaAdmin ? "Administrador MenuFácil" : "Conta do restaurante"}
+      // o que existe hoje de "perfil" é a troca de senha
+      contaHref="/conta/senha"
+      // Dois grupos: o que é o trabalho do dia fica em cima, e o que se
+      // acerta de vez em quando fica em Gestão. Os módulos que o admin
+      // libera (salão, entregadores, totem) entram no primeiro, porque são
+      // movimento, e não cadastro.
       nav={[
-        { href: base, label: "Início", icon: <LayoutDashboard />, exact: true },
-        { href: `${base}/pedidos`, label: "Pedidos", icon: <ReceiptText /> },
+        { href: base, label: "Visão geral", curto: "Início", icon: <LayoutDashboard />, exact: true, grupo: PRINCIPAL },
+        { href: `${base}/pedidos`, label: "Pedidos", icon: <ClipboardList />, grupo: PRINCIPAL },
         // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
         // acontecendo agora --, só que nas mesas em vez da entrega
-        ...(noAr("salaoEnabled") && restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed /> }] : []),
+        ...(noAr("salaoEnabled") && restaurant.salaoEnabled ? [{ href: `${base}/salao`, label: "Salão", icon: <UtensilsCrossed />, grupo: PRINCIPAL }] : []),
         // Entregadores logo depois do que acontece agora: quem leva o
         // pedido é assunto do movimento, não do cadastro
         ...(noAr("entregadorEnabled") && restaurant.entregadorEnabled
-          ? [{ href: `${base}/entregadores`, label: "Entregadores", icon: <Bike /> }]
+          ? [{ href: `${base}/entregadores`, label: "Entregadores", icon: <Bike />, grupo: PRINCIPAL }]
           : []),
-        { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen /> },
-        { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store /> },
+        { href: `${base}/cardapio`, label: "Cardápio digital", curto: "Cardápio", icon: <BookOpen />, grupo: PRINCIPAL },
+        { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store />, grupo: PRINCIPAL },
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
-        ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck /> }] : []),
-        // "Mercado Pago", e não "Entrega": é ali que o restaurante conecta a
-        // conta dele, e era isso que ninguém achava procurando por uma
-        // bicicleta
-        ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Mercado Pago", icon: <Handshake /> }] : []),
-        ...(ia !== null ? [{ href: `${base}/ia`, label: "Menu Fácil IA", icon: <Bot /> }] : []),
+        ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck />, grupo: PRINCIPAL }] : []),
+        // "Pagamentos": é ali que o restaurante conecta a conta do Mercado
+        // Pago. Já se chamou "Entrega" e "Mercado Pago"; ninguém achava
+        // procurando por uma bicicleta, e o nome do banco não diz o assunto.
+        ...(restaurant.fullDeliveryEnabled ? [{ href: `${base}/entrega`, label: "Pagamentos", icon: <Wallet />, grupo: GESTAO }] : []),
+        // "WhatsApp IA", e não um robô: o dono procura pelo lugar onde a
+        // Lia atende, que é o WhatsApp dele
+        ...(ia !== null ? [{ href: `${base}/ia`, label: "WhatsApp IA", icon: <MessageCircle />, grupo: GESTAO }] : []),
+        { href: `${base}/configuracoes`, label: "Configurações", icon: <Settings />, grupo: GESTAO },
         // por último, e para todos: é a porta de quando algo não vai bem
-        { href: `${base}/suporte`, label: "Suporte", icon: <LifeBuoy /> },
+        { href: `${base}/suporte`, label: "Central de suporte", curto: "Suporte", icon: <Headset />, grupo: GESTAO },
       ]}
       // baixar o programa do balcão é coisa de uma vez só: vira um ícone ao
       // lado do Sair, e não uma seção do mesmo peso que Pedidos. O admin da

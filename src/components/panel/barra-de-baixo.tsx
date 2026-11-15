@@ -82,7 +82,7 @@ export function BarraDeBaixo({
                     {item.icon}
                     {selos[item.href]}
                   </span>
-                  {item.label}
+                  {item.curto ?? item.label}
                 </Link>
               </li>
             );

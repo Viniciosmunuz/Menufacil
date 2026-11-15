@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,6 +33,9 @@ export function PanelShell({
   atalho,
   barraDeBaixo,
   foto,
+  restaurante,
+  papel,
+  contaHref,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -77,6 +80,19 @@ export function PanelShell({
    * cadastrada, fica o logo de sempre.
    */
   foto?: string | null;
+  /**
+   * O cartão do restaurante, logo abaixo do logo do Menu Fácil.
+   *
+   * Só o painel do restaurante passa: a foto (a de `foto`), o nome, se a
+   * loja está ativa na plataforma e, para o admin que entrou com a própria
+   * conta, o caminho de volta. Sem isto o topo fica como no admin: o logo e
+   * a linha de contexto.
+   */
+  restaurante?: { nome: string; status?: { label: string; ok: boolean }; voltar?: { href: string; label: string } };
+  /** a linha de baixo da conta, no rodapé do menu: "Conta do restaurante" */
+  papel?: string;
+  /** para onde o cartão da conta leva (hoje, trocar a senha) */
+  contaHref?: string;
 }) {
   const pathname = usePathname();
   const compacto = !!menuAberto && pathname !== menuAberto;
@@ -105,6 +121,50 @@ export function PanelShell({
     </Link>
   ) : null;
 
+  // o rodapé do menu: de quem é a conta e o Sair
+  const contaMiolo = (
+    <>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
+        <UserRound className="size-5" aria-hidden="true" />
+      </span>
+      {!compacto && (
+        <>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-extrabold text-ink">{userName}</span>
+            {papel && <span className="block truncate text-xs text-faint">{papel}</span>}
+          </span>
+          {contaHref && <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden="true" />}
+        </>
+      )}
+    </>
+  );
+  const contaClasses = cn("flex items-center gap-3 rounded-control", compacto ? "justify-center" : "px-1.5 py-1.5");
+  const conta = contaHref ? (
+    <Link href={contaHref} title="Trocar a senha" aria-label={"Conta de " + userName + ": trocar a senha"} className={cn(contaClasses, "hover:bg-surface-2")}>
+      {contaMiolo}
+    </Link>
+  ) : (
+    <div className={contaClasses} title={compacto ? userName : undefined}>
+      {contaMiolo}
+    </div>
+  );
+
+  const sairDoMenu = (
+    <form action={logout} className={cn(!compacto && "flex-1")}>
+      <button
+        type="submit"
+        title={compacto ? "Sair" : undefined}
+        className={cn(
+          "flex h-10 items-center justify-center gap-2 rounded-control border border-line text-sm font-bold text-muted transition-colors hover:border-line-strong hover:bg-surface-2 hover:text-ink",
+          compacto ? "w-10" : "w-full px-3",
+        )}
+      >
+        <LogOut className="size-4" aria-hidden="true" />
+        {compacto ? <span className="sr-only">Sair</span> : "Sair"}
+      </button>
+    </form>
+  );
+
   const logoutButton = (
     <form action={logout}>
       <button
@@ -130,11 +190,56 @@ export function PanelShell({
     >
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface py-6 lg:flex",
+          "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface py-5 lg:flex",
           compacto ? "items-stretch px-3" : "px-4",
         )}
       >
-        {foto && !compacto ? (
+        {restaurante && !compacto ? (
+          // O logo do Menu Fácil em cima e, logo abaixo, o cartão de quem é
+          // o painel: a foto, o nome e se a loja está ativa na plataforma.
+          <>
+            <Link href={homeHref} className="mb-5 px-2" aria-label="Início">
+              <Logo />
+            </Link>
+            <div className="mb-5 flex items-center gap-3 rounded-card border border-line p-2.5">
+              <span className="relative block size-12 shrink-0 overflow-hidden rounded-full border border-line bg-surface-2">
+                {foto ? (
+                  <Image src={foto} alt="" fill sizes="48px" className="object-cover" />
+                ) : (
+                  <span className="grid size-full place-items-center">
+                    <LogoIcon className="size-6 text-brand" />
+                  </span>
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 truncate text-sm font-extrabold">{restaurante.nome}</p>
+                  {restaurante.status && (
+                    <span
+                      className={cn(
+                        "flex h-5 shrink-0 items-center gap-1 rounded-full px-1.5 text-[0.65rem] font-extrabold",
+                        restaurante.status.ok ? "bg-success-soft text-success-ink" : "bg-surface-3 text-muted",
+                      )}
+                    >
+                      <span className={cn("size-1.5 rounded-full", restaurante.status.ok ? "bg-success" : "bg-faint")} aria-hidden="true" />
+                      {restaurante.status.label}
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-xs text-faint">Painel do restaurante</p>
+              </div>
+            </div>
+            {restaurante.voltar && (
+              <Link
+                href={restaurante.voltar.href}
+                className="-mt-2 mb-4 flex items-center gap-1.5 px-2 text-xs font-bold text-brand underline-offset-4 hover:underline"
+              >
+                <ArrowLeft className="size-3.5" aria-hidden="true" />
+                {restaurante.voltar.label}
+              </Link>
+            )}
+          </>
+        ) : foto && !compacto ? (
           // com foto, ela e o nome lado a lado tomam o lugar do logo
           <div className="mb-6 flex items-center gap-3 px-2">
             <Link href={homeHref} aria-label="Início" className="shrink-0">
@@ -152,10 +257,10 @@ export function PanelShell({
           </>
         )}
         <SidebarNav items={nav} compacto={compacto} />
-        <div className="mt-auto border-t border-line pt-4">
-          {!compacto && <p className="truncate px-3 pb-2 text-sm text-faint">{userName}</p>}
+        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-line pt-4">
+          {conta}
           <div className={cn("flex items-center gap-1", compacto && "flex-col")}>
-            {logoutButton}
+            {sairDoMenu}
             {atalhoButton}
           </div>
         </div>
