@@ -69,9 +69,9 @@ export default async function RestaurantPanelLayout({
 
   return (
     <PanelShell
-      // o menu fica aberto, com os nomes; só encolhe para ícones onde a
-      // tela precisa da largura toda
-      menuEncolhe={["/pedidos", "/salao"]}
+      // o Perfil, no alto do trilho: a foto do restaurante, a troca de
+      // senha e, para o admin, o caminho de volta
+      contaHref={`${base}/perfil`}
       // o salão é o único que usa a tela inteira: ali o mapa e o cardápio
       // disputam cada centímetro
       larga={["/salao", "/pedidos"]}
@@ -112,7 +112,7 @@ export default async function RestaurantPanelLayout({
         // "WhatsApp IA", e não um robô: o dono procura pelo lugar onde a
         // Lia atende, que é o WhatsApp dele
         ...(ia !== null ? [{ href: `${base}/ia`, label: "WhatsApp IA", icon: <MessageCircle />, grupo: GESTAO }] : []),
-        { href: `${base}/configuracoes`, label: "Configurações", icon: <Settings />, grupo: GESTAO },
+        { href: `${base}/configuracoes`, label: "Ajustes", icon: <Settings />, grupo: GESTAO },
         // por último, e para todos: é a porta de quando algo não vai bem
         { href: `${base}/suporte`, label: "Suporte", icon: <Headset />, grupo: GESTAO },
       ]}

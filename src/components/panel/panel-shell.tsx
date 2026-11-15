@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { logout } from "@/server/auth/actions";
 
 import { BarraDeBaixo } from "./barra-de-baixo";
-import { SidebarNav, TabsNav, type NavItem } from "./nav-link";
+import { SidebarNav, TabsNav, Trilho, type NavItem } from "./nav-link";
 
 // A escolha do dono: menu aberto ou recolhido, guardada neste aparelho.
 // Sem escolha, vale o automático (recolhe só onde a tela pede largura).
@@ -130,6 +130,8 @@ export function PanelShell({
   // 15/11/2026 o dono pode decidir: o botão no pé do menu grava a escolha
   // neste aparelho, e ela vale em todas as telas até ele trocar de novo.
   const escolha = useSyncExternalStore(assinarMenu, lerMenu, () => null);
+  // o painel do restaurante usa o trilho fino, que não abre nem fecha
+  const trilho = !!restaurante;
   const automatico = (menuEncolhe ?? []).some((t) => pathname.includes(t));
   const compacto = escolha === "fechado" ? true : escolha === "aberto" ? false : automatico;
 
@@ -246,73 +248,62 @@ export function PanelShell({
     <div
       className={cn(
         "tema-painel min-h-dvh bg-bg lg:grid",
-        compacto ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17rem_minmax(0,1fr)]",
+        trilho
+          ? "lg:grid-cols-[5.5rem_minmax(0,1fr)]"
+          : compacto
+            ? "lg:grid-cols-[5rem_minmax(0,1fr)]"
+            : "lg:grid-cols-[17rem_minmax(0,1fr)]",
       )}
     >
+      {trilho ? (
+        // O painel do restaurante: um trilho fino, com o ícone e o nome
+        // embaixo, no jeito do Yooga. Escolhido por ele em 15/11/2026 no
+        // lugar do menu largo que abria e fechava: com largura fixa, nada
+        // pula ao trocar de tela, e Pedidos ganha a largura sem precisar
+        // encolher nada.
+        <aside className="sticky top-0 hidden h-dvh flex-col items-center overflow-y-auto border-r border-line bg-surface py-4 [scrollbar-width:none] lg:flex">
+          <Link
+            href={contaHref ?? homeHref}
+            aria-current={contaHref && pathname.startsWith(contaHref) ? "page" : undefined}
+            title={restaurante?.nome}
+            className="group flex shrink-0 flex-col items-center gap-1.5"
+          >
+            <span
+              className={cn(
+                "relative grid size-12 place-items-center overflow-hidden rounded-full border-2 bg-surface-2 transition-colors",
+                contaHref && pathname.startsWith(contaHref) ? "border-brand" : "border-line group-hover:border-line-strong",
+              )}
+            >
+              {foto ? (
+                <Image src={foto} alt="" fill sizes="48px" className="object-cover" />
+              ) : (
+                <LogoIcon className="h-5 w-auto text-brand" />
+              )}
+            </span>
+            <span
+              className={cn(
+                "text-[0.68rem] leading-none font-extrabold",
+                contaHref && pathname.startsWith(contaHref) ? "text-brand" : "text-ink",
+              )}
+            >
+              Perfil
+            </span>
+          </Link>
+          <Trilho items={nav} />
+          {/* a marca, logo abaixo de Suporte, no mesmo desenho dos itens */}
+          <span className="mt-1 grid h-9 w-12 shrink-0 place-items-center" title="MenuFácil" aria-hidden="true">
+            <LogoIcon className="h-5 w-auto text-brand" />
+          </span>
+        </aside>
+      ) : (
       <aside
         className={cn(
           "sticky top-0 hidden h-dvh flex-col border-r border-line bg-surface py-5 lg:flex",
           compacto ? "items-stretch px-3" : "px-4",
         )}
       >
-        {restaurante && compacto ? (
-          // Recolhido, o topo guarda a mesma altura do aberto: a cúpula no
-          // lugar do logo e a foto no lugar do cartão. Sem isso os ícones
-          // subiam, e trocar de tela parecia mexer o menu inteiro.
-          <div className="flex h-44 shrink-0 flex-col items-center">
-            <Link href={homeHref} className="mb-5 grid h-8 place-items-center" aria-label="Início">
-              <LogoIcon className="h-6 w-auto text-brand" />
-            </Link>
-            <span className="grid h-[4.5rem] place-items-center" title={restaurante.nome}>
-              {marca}
-            </span>
-          </div>
-        ) : restaurante ? (
-          // O logo do Menu Fácil em cima e, logo abaixo, o cartão de quem é
-          // o painel: a foto, o nome e se a loja está ativa na plataforma.
-          <div className="flex h-44 shrink-0 flex-col">
-            <Link href={homeHref} className="mb-5 flex h-8 items-center px-2" aria-label="Início">
-              <Logo />
-            </Link>
-            <div className="mb-3 flex h-[4.5rem] items-center gap-3 rounded-card border border-line p-2.5">
-              <span className="relative block size-12 shrink-0 overflow-hidden rounded-full border border-line bg-surface-2">
-                {foto ? (
-                  <Image src={foto} alt="" fill sizes="48px" className="object-cover" />
-                ) : (
-                  <span className="grid size-full place-items-center">
-                    <LogoIcon className="size-6 text-brand" />
-                  </span>
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="min-w-0 truncate text-sm font-extrabold">{restaurante.nome}</p>
-                  {restaurante.status && (
-                    <span
-                      className={cn(
-                        "flex h-5 shrink-0 items-center gap-1 rounded-full px-1.5 text-[0.65rem] font-extrabold",
-                        restaurante.status.ok ? "bg-success-soft text-success-ink" : "bg-surface-3 text-muted",
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", restaurante.status.ok ? "bg-success" : "bg-faint")} aria-hidden="true" />
-                      {restaurante.status.label}
-                    </span>
-                  )}
-                </div>
-                <p className="truncate text-xs text-faint">Painel do restaurante</p>
-              </div>
-            </div>
-            {restaurante.voltar && (
-              <Link
-                href={restaurante.voltar.href}
-                className="flex items-center gap-1.5 px-2 text-xs font-bold text-brand underline-offset-4 hover:underline"
-              >
-                <ArrowLeft className="size-3.5" aria-hidden="true" />
-                {restaurante.voltar.label}
-              </Link>
-            )}
-          </div>
-        ) : foto && !compacto ? (
+        {/* o menu largo é o do admin; o restaurante usa o trilho, acima */}
+        {foto && !compacto ? (
           // com foto, ela e o nome lado a lado tomam o lugar do logo
           <div className="mb-6 flex items-center gap-3 px-2">
             <Link href={homeHref} aria-label="Início" className="shrink-0">
@@ -343,6 +334,7 @@ export function PanelShell({
           )}
         </div>
       </aside>
+      )}
 
       <div className="min-w-0">
         {banner}

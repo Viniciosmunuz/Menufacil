@@ -17,7 +17,7 @@ import { prontoParaCobrar } from "@/server/pagamentos/conta";
 
 import { ModoForm } from "../entrega/forms";
 
-export const metadata: Metadata = { title: "Configurações" };
+export const metadata: Metadata = { title: "Ajustes" };
 
 // Configurações: um índice, e não uma tela nova de ajustes.
 //
@@ -86,7 +86,7 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
       atalhos: [
         ...(salao ? [{ href: `${base}/salao/configuracao`, nome: "Garçons", resumo: "As contas dos garçons e o que cada um pode fazer." }] : []),
         ...(entregadores ? [{ href: `${base}/entregadores`, nome: "Contas dos entregadores", resumo: "O acesso de cada entregador ao aplicativo." }] : []),
-        { href: "/conta/senha", nome: "Minha senha", resumo: "Trocar a senha desta conta." },
+        { href: `${base}/perfil`, nome: "Minha senha", resumo: "Trocar a senha desta conta." },
       ],
     },
     {
@@ -122,7 +122,7 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Configurações" description="Tudo o que dá para ajustar no seu restaurante, em um lugar só." />
+      <PageHeader title="Ajustes" />
 
       {/* O Menu Fácil PC, em destaque. Era um ícone solto ao lado do Sair,
           que ninguém sabia o que baixava; aqui ele tem nome, o ícone do
