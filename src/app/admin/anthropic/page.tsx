@@ -35,6 +35,26 @@ const NOMES: Record<string, string> = {
   "claude-fable-5-2": "Fable 5.2",
 };
 
+/**
+ * Quanto vale um dólar em reais, pela cotação pública da AwesomeAPI
+ * (gratuita, sem chave). Guardada por uma hora. Se não responder, o
+ * cartão em reais some e o resto da tela segue igual.
+ */
+async function cotacaoDoDolar(): Promise<{ valor: number; quando: string } | null> {
+  try {
+    const r = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", { next: { revalidate: 3600 } });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { USDBRL?: { ask?: string; create_date?: string } };
+    const valor = Number(j.USDBRL?.ask);
+    return Number.isFinite(valor) && valor > 0 ? { valor, quando: j.USDBRL?.create_date ?? "" } : null;
+  } catch {
+    return null;
+  }
+}
+
+const reais = (centavosDeDolar: number, cotacao: number) =>
+  ((centavosDeDolar / 100) * cotacao).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 async function custosDoMes(chave: string) {
   const agora = new Date();
   const inicio = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
@@ -73,6 +93,7 @@ export default async function AnthropicPage() {
 
   let baldes: Balde[] | null = null;
   let erro: string | null = null;
+  const cotacao = chave ? await cotacaoDoDolar() : null;
   if (chave) {
     try {
       baldes = await custosDoMes(chave);
@@ -131,7 +152,7 @@ export default async function AnthropicPage() {
 
       {baldes && (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-3 ${cotacao ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             <Card className="flex flex-col gap-1">
               <p className="text-sm font-bold text-muted">Gasto hoje</p>
               <p className="text-3xl font-extrabold tabular-nums">{dolares(deHoje)}</p>
@@ -140,6 +161,16 @@ export default async function AnthropicPage() {
               <p className="text-sm font-bold text-muted">Gasto neste mês</p>
               <p className="text-3xl font-extrabold tabular-nums">{dolares(noMes)}</p>
             </Card>
+            {/* o mesmo gasto do mês, convertido pela cotação do dia */}
+            {cotacao && (
+              <Card className="flex flex-col gap-1">
+                <p className="text-sm font-bold text-muted">Gasto no mês em reais</p>
+                <p className="text-3xl font-extrabold tabular-nums">{reais(noMes, cotacao.valor)}</p>
+                <p className="text-xs text-faint">
+                  Dólar a {cotacao.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              </Card>
+            )}
           </div>
 
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
