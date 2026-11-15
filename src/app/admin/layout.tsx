@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquareText, ReceiptText, Store } from "lucide-react";
+import { LayoutDashboard, MessageSquareText, ReceiptText, Sparkles, Store } from "lucide-react";
 
 import { PanelShell } from "@/components/panel/panel-shell";
 import { requireAdmin } from "@/server/auth/dal";
@@ -16,6 +16,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         { href: "/admin/restaurantes", label: "Restaurantes", icon: <Store /> },
         { href: "/admin/pedidos", label: "Pedidos", icon: <ReceiptText /> },
         { href: "/admin/contatos", label: "Contatos", icon: <MessageSquareText /> },
+        // o que a IA dos restaurantes já gastou na Anthropic
+        { href: "/admin/anthropic", label: "Anthropic", icon: <Sparkles /> },
       ]}
       // no celular, o mesmo jeito do painel do dono: o dia a dia fica
       // embaixo, e Contatos vai para "Mais"
