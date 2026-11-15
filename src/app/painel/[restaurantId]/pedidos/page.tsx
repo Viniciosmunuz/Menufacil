@@ -8,7 +8,6 @@ import { BotaoImprimir } from "@/components/panel/botao-imprimir";
 import { OrderActions } from "@/components/panel/order-actions";
 import { OrderStepActions } from "@/components/panel/order-step-actions";
 import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/components/panel/order-summary";
-import { PageHeader } from "@/components/panel/page-header";
 import { StepButton } from "@/components/panel/step-button";
 import { PrintSettings } from "@/components/panel/print-settings";
 import { PushAvisos } from "@/components/panel/push-avisos";
@@ -192,7 +191,9 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
       <OrdersLive restaurantId={restaurant.id} />
       {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
       <AutoRefresh seconds={45} background />
-      <PageHeader title="Pedidos" />
+      {/* o título "Pedidos" saiu da tela a pedido dele (15/11/2026): o menu já
+          diz onde se está, e a lista sobe para perto da faixa do alto */}
+      <h1 className="sr-only">Pedidos</h1>
       <AvisoDePagosSemPedido quantos={pagosSemPedido} href={`/painel/${restaurant.id}/totem`} />
       <PrintSettings
         base={base}

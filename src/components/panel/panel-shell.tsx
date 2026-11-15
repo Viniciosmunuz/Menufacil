@@ -374,7 +374,7 @@ export function PanelShell({
           className={cn(
             "w-full px-4 py-6 sm:px-6",
             barraDeBaixo && "pb-28",
-            larguraToda ? "lg:px-6 lg:py-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10",
+            larguraToda ? "lg:px-6 lg:pt-2 lg:pb-6" : "mx-auto max-w-6xl lg:px-10 lg:py-10",
           )}
         >
           {children}
