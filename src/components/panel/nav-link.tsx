@@ -58,9 +58,9 @@ export function SidebarNav({ items, compacto = false }: { items: NavItem[]; comp
           // do segundo grupo em diante, uma linha fina separa um do outro
           className={cn("flex flex-col gap-1", n > 0 && "mt-4 border-t border-line pt-4")}
         >
-          {grupo.titulo && !compacto && (
-            <p className="px-3.5 pb-1.5 text-[0.7rem] font-extrabold tracking-[0.08em] text-faint uppercase">{grupo.titulo}</p>
-          )}
+          {/* O título do grupo ("Menu principal", "Gestão") saía escrito
+              aqui. Saiu em 15/11/2026, a pedido dele: a linha entre um
+              grupo e o outro já diz que são duas coisas. */}
           {grupo.itens.map((item) => {
             const active = isActive(pathname, item);
             return (

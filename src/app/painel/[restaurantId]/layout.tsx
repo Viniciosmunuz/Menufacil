@@ -91,7 +91,7 @@ export default async function RestaurantPanelLayout({
       // libera (salão, entregadores, totem) entram no primeiro, porque são
       // movimento, e não cadastro.
       nav={[
-        { href: base, label: "Visão geral", icon: <LayoutGrid />, exact: true, grupo: PRINCIPAL },
+        { href: base, label: "Início", icon: <LayoutGrid />, exact: true, grupo: PRINCIPAL },
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ClipboardList />, grupo: PRINCIPAL },
         // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
         // acontecendo agora --, só que nas mesas em vez da entrega

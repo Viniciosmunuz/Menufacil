@@ -21,7 +21,7 @@ import { MovimentacaoCard } from "./movimentacao-card";
 import { OperacaoCard } from "./open-now-card";
 import { StatusCard } from "./status-card";
 
-export const metadata: Metadata = { title: "Visão geral" };
+export const metadata: Metadata = { title: "Início" };
 
 export default async function RestaurantDashboardPage({ params }: PageProps<"/painel/[restaurantId]">) {
   const { restaurantId } = await params;
