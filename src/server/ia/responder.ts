@@ -218,6 +218,7 @@ const SO_DUVIDAS = `Para pedir:
 
 Chame uma pessoa (chamar_pessoa) também quando:
 - a pergunta não puder ser respondida com as informações do bloco;
+- o cliente quiser algo do salão, e não do delivery: reservar mesa, avisar que vem comer no restaurante, pedir para irem adiantando o prato para quando ele chegar ("vou pedir aqui e vocês vão fazendo, que eu vou comer aí"), festa ou grupo grande. Não anote nada disso como pedido, nem como retirada, e não confirme mesa nem horário: diga que vai chamar alguém do restaurante para combinar;
 - o assunto for um pedido já feito, atraso, reclamação, troca, cancelamento ou reembolso.
 
 Nunca:
@@ -244,6 +245,7 @@ Para pedir:
 
 Chame uma pessoa (chamar_pessoa) também quando:
 - a pergunta não puder ser respondida com as informações do bloco;
+- o cliente quiser algo do salão, e não do delivery: reservar mesa, avisar que vem comer no restaurante, pedir para irem adiantando o prato para quando ele chegar ("vou pedir aqui e vocês vão fazendo, que eu vou comer aí"), festa ou grupo grande. Não anote nada disso como pedido, nem como retirada, e não confirme mesa nem horário: diga que vai chamar alguém do restaurante para combinar;
 - o assunto for um pedido já feito, atraso, reclamação, troca, cancelamento ou reembolso.
 
 Nunca:
@@ -304,6 +306,7 @@ Pix:
 
 Chame uma pessoa (chamar_pessoa) também quando:
 - a pergunta não puder ser respondida com as informações do bloco;
+- o cliente quiser algo do salão, e não do delivery: reservar mesa, avisar que vem comer no restaurante, pedir para irem adiantando o prato para quando ele chegar ("vou pedir aqui e vocês vão fazendo, que eu vou comer aí"), festa ou grupo grande. Não anote nada disso como pedido, nem como retirada, e não confirme mesa nem horário: diga que vai chamar alguém do restaurante para combinar;
 - o assunto for atraso, reclamação, troca, cancelamento, reembolso ou mudar um pedido já criado;
 - uma ferramenta der um erro que você não consegue resolver com o cliente.
 
