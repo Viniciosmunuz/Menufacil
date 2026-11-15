@@ -4,10 +4,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/panel/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
-import { db } from "@/lib/db";
 import { requireAdmin } from "@/server/auth/dal";
-
-import { RecargaForm } from "./recarga-form";
 
 export const metadata: Metadata = { title: "Anthropic" };
 
@@ -17,9 +14,6 @@ export const metadata: Metadata = { title: "Anthropic" };
 // endpoint para isso. O que ela informa é o custo, dia a dia, pelo
 // relatório de custos da Admin API (/v1/organizations/cost_report). Por
 // isso esta tela mostra o gasto, e o saldo fica no link do Console.
-//
-// O saldo que aparece é uma estimativa: ele informa a última recarga (valor
-// e dia), e a tela desconta o que foi gasto desde aquele dia.
 //
 // A chave é uma Admin API key (sk-ant-admin...), diferente da chave que a
 // IA usa para conversar. Ela fica em ANTHROPIC_ADMIN_KEY, na Vercel.
@@ -41,12 +35,14 @@ const NOMES: Record<string, string> = {
   "claude-fable-5-2": "Fable 5.2",
 };
 
-async function custosDesde(chave: string, inicio: Date) {
+async function custosDoMes(chave: string) {
+  const agora = new Date();
+  const inicio = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
   const baldes: Balde[] = [];
   let pagina: string | null = null;
 
-  // até 31 dias por página; doze páginas cobrem um ano de recarga antiga
-  for (let volta = 0; volta < 12; volta++) {
+  // um mês cabe numa página (até 31 dias), mas a API pode paginar mesmo assim
+  for (let volta = 0; volta < 3; volta++) {
     const url = new URL("https://api.anthropic.com/v1/organizations/cost_report");
     url.searchParams.set("starting_at", inicio.toISOString());
     url.searchParams.set("bucket_width", "1d");
@@ -75,38 +71,19 @@ export default async function AnthropicPage() {
   await requireAdmin();
   const chave = process.env.ANTHROPIC_ADMIN_KEY?.trim();
 
-  // a última recarga informada, se houver
-  const registro = await db.auditLog.findFirst({
-    where: { action: "anthropic.recarga" },
-    orderBy: { createdAt: "desc" },
-    select: { details: true },
-  });
-  const detalhes = registro?.details as { centavos?: number; dia?: string } | null | undefined;
-  const recarga = detalhes?.centavos && detalhes.dia ? { centavos: detalhes.centavos, dia: detalhes.dia } : null;
-
-  const agora = new Date();
-  const inicioDoMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-  const inicioDaRecarga = recarga ? new Date(`${recarga.dia}T00:00:00Z`) : null;
-  const buscarDesde = inicioDaRecarga && inicioDaRecarga < inicioDoMes ? inicioDaRecarga : inicioDoMes;
-
-  let todos: Balde[] | null = null;
+  let baldes: Balde[] | null = null;
   let erro: string | null = null;
   if (chave) {
     try {
-      todos = await custosDesde(chave, buscarDesde);
+      baldes = await custosDoMes(chave);
     } catch (e) {
       erro = e instanceof Error ? e.message : String(e);
       console.warn("[admin/anthropic] o relatório de custos falhou:", erro);
     }
   }
 
-  const hoje = agora.toISOString().slice(0, 10);
+  const hoje = new Date().toISOString().slice(0, 10);
   const total = (b: Balde) => b.results.reduce((s, r) => s + Number(r.amount || 0), 0);
-  // o mês para os quadros; o período inteiro para o saldo
-  const baldes = todos?.filter((b) => b.starting_at >= inicioDoMes.toISOString().slice(0, 10)) ?? null;
-  const gastoDesdeARecarga =
-    recarga && todos ? todos.filter((b) => b.starting_at.slice(0, 10) >= recarga.dia).reduce((s, b) => s + total(b), 0) : null;
-  const saldo = recarga && gastoDesdeARecarga !== null ? recarga.centavos - gastoDesdeARecarga : null;
   const noMes = baldes?.reduce((s, b) => s + total(b), 0) ?? 0;
   const deHoje = baldes?.filter((b) => b.starting_at.slice(0, 10) === hoje).reduce((s, b) => s + total(b), 0) ?? 0;
 
@@ -151,31 +128,6 @@ export default async function AnthropicPage() {
       )}
 
       {erro && <Alert tone="danger">A Anthropic não devolveu o relatório: {erro}</Alert>}
-
-      {/* O saldo estimado: a recarga informada menos o gasto desde aquele
-          dia. Some o cartão de saldo enquanto não houver recarga. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <Card className="flex flex-col gap-1">
-          <p className="text-sm font-bold text-muted">Saldo estimado</p>
-          {saldo !== null && recarga ? (
-            <>
-              <p className={`text-3xl font-extrabold tabular-nums ${saldo < 500 ? "text-danger" : ""}`}>{dolares(saldo)}</p>
-              <p className="text-xs text-faint">
-                {dolares(recarga.centavos)} carregados em {recarga.dia.slice(8, 10)}/{recarga.dia.slice(5, 7)}, menos{" "}
-                {dolares(gastoDesdeARecarga ?? 0)} gastos desde então.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted">
-              {chave ? "Informe a última recarga ao lado." : "Aparece depois da chave e da primeira recarga informada."}
-            </p>
-          )}
-        </Card>
-        <Card className="flex flex-col gap-3">
-          <h2 className="font-extrabold">Última recarga</h2>
-          <RecargaForm hoje={hoje} />
-        </Card>
-      </div>
 
       {baldes && (
         <>
