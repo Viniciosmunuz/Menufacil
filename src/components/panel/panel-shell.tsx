@@ -302,11 +302,16 @@ export function PanelShell({
           <div className="mt-4 border-t border-line pt-4">
             <SidebarNav items={nav} compacto={!trilhoAberto} />
           </div>
-          {/* No pé: o ícone do aplicativo do MenuFácil, o mesmo da tela
-              inicial do celular, só de enfeite; e embaixo dele a setinha
-              que abre e recolhe, pequena, como ele pediu. */}
-          <div className={cn("mt-auto flex shrink-0 flex-col gap-2 pt-4", trilhoAberto ? "items-start px-2" : "items-center")}>
-            <Image src="/icone-192.png" alt="" width={40} height={40} className="size-10 rounded-xl" aria-hidden="true" />
+          {/* No pé: a marca do MenuFácil, só de enfeite, e embaixo dela a
+              setinha que abre e recolhe, pequena, como ele pediu.
+              O cartão colorido do aplicativo saiu em 15/11/2026: no meio dos
+              ícones de traço do trilho ele era a única coisa com fundo e cor
+              própria, e puxava o olho para o canto errado. Ficou só a
+              cúpula, no tamanho e na cor dos outros ícones. */}
+          <div className={cn("mt-auto flex shrink-0 flex-col gap-1 pt-4", trilhoAberto ? "items-start px-2" : "items-center")}>
+            <span className="grid size-11 shrink-0 place-items-center">
+              <LogoIcon className="h-5 w-auto text-faint" />
+            </span>
             <button
               type="button"
               onClick={() => gravarMenu(trilhoAberto ? "fechado" : "aberto")}

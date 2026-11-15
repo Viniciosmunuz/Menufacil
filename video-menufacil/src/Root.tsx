@@ -6,6 +6,7 @@ import { loadFont } from "@remotion/google-fonts/Nunito";
 import { Lamina2, Lamina3, Lamina4, Lamina5, Lamina6, QUADRO_DA_LAMINA } from "./Carrossel";
 import { Comissao1, Comissao2, Comissao3, Comissao4, Comissao5, Comissao6 } from "./CarrosselComissao";
 import { Whats1, Whats2, Whats3, Whats4, Whats5, Whats6 } from "./CarrosselWhatsapp";
+import { Chamada, QUADROS_DA_CHAMADA } from "./Chamada";
 import { Comercial, DURACAO_COMERCIAL, PostSistema } from "./Comercial";
 import { DURACAO_EM_SEGUNDOS, Explicacao } from "./Explicacao";
 import { DURACAO_LIA, Lia } from "./Lia";
@@ -32,6 +33,9 @@ loadSerif();
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      {/* O comercial sem voz, feito para chamar o dono de restaurante:
+          letra grande e tela de verdade, em 25 segundos. */}
+      <Composition id="Chamada" component={Chamada} durationInFrames={QUADROS_DA_CHAMADA} fps={FPS} width={1080} height={1920} />
       {/* A imagem de feed do Instagram sobre o sistema, feita das peças
           do comercial. Parada: sai com "remotion still PostSistema". */}
       <Still id="PostSistema" component={PostSistema} width={1080} height={1350} />

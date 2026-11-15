@@ -125,7 +125,10 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
 
       {/* O gráfico manda na linha: é o que se olha por mais tempo. Ao lado
           dele, o que está na mão agora e os campeões do mês. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr]">
+      {/* São três cartões. Entre 1024 e 1280 de largura a linha tem duas
+          colunas, e o terceiro deixaria um vazio do tamanho de um cartão
+          ao lado dele: nessa faixa ele ocupa a linha inteira. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:[&>*:last-child]:col-span-2 xl:grid-cols-[1.5fr_1fr_1fr] xl:[&>*:last-child]:col-span-1">
         <WeekChart dias={semana} titulo="Vendas e pedidos" descricao="Últimos sete dias." />
         <MovimentacaoCard
           base={base}
@@ -148,7 +151,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           abrir uma das gavetas esticava as outras duas junto -- dois
           cartões fechados com meio palmo de vazio dentro, do tamanho do
           que o vizinho abriu. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:[&>*:last-child]:col-span-2 xl:grid-cols-3 xl:[&>*:last-child]:col-span-1">
         {/* Esgotado com nome e interruptor: dizer "4 produtos esgotados"
             obrigava a ir até o cardápio e procurar quais eram, para uma
             coisa de um segundo. Religar acontece aqui mesmo. */}
