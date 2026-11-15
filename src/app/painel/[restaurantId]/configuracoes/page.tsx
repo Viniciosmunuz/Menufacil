@@ -1,10 +1,13 @@
-import { Bell, ChevronRight, Printer, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
+import { Bell, ChevronRight, Download, Printer, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/panel/page-header";
+import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { APP_SETUP_PATH, APP_VERSION } from "@/lib/app-release";
 import { noAr } from "@/lib/features";
 import { requireDono } from "@/server/auth/dal";
 
@@ -62,9 +65,6 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
       resumo: "A comanda no papel e os aparelhos do balcão.",
       icone: <Printer />,
       atalhos: [
-        ...(restaurant.printEnabled
-          ? [{ href: `${base}/menu-facil-pc`, nome: "Menu Fácil PC", resumo: "Baixar o programa e parear o computador que imprime." }]
-          : []),
         { href: `${base}/pedidos`, nome: "Impressão dos pedidos", resumo: "Fica na tela de Pedidos, junto dos ajustes de impressão." },
         ...(salao ? [{ href: `${base}/salao/configuracao`, nome: "Impressão do salão", resumo: "A impressora de cada seção do cardápio." }] : []),
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, nome: "Totem", resumo: "O autoatendimento e a maquininha." }] : []),
@@ -114,6 +114,30 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Configurações" description="Tudo o que dá para ajustar no seu restaurante, em um lugar só." />
+
+      {/* O Menu Fácil PC, em destaque. Era um ícone solto ao lado do Sair,
+          que ninguém sabia o que baixava; aqui ele tem nome, o ícone do
+          aplicativo e o botão. O admin pode ter desligado o recurso. */}
+      {restaurant.printEnabled && (
+        <Card className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
+          <Image src="/icone-192.png" alt="" width={56} height={56} className="size-14 shrink-0 rounded-2xl" />
+          <div className="min-w-0 flex-1 basis-56">
+            <h2 className="font-extrabold">Menu Fácil PC</h2>
+            <p className="text-sm text-muted">
+              O programa do computador do balcão: imprime o pedido sozinho e toca o sino. Windows · versão {APP_VERSION}.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a href={APP_SETUP_PATH} download className={buttonClasses("primary", "md")}>
+              <Download className="size-4" aria-hidden="true" />
+              Baixar
+            </a>
+            <Link href={`${base}/menu-facil-pc`} className={buttonClasses("secondary", "md")}>
+              Parear o computador
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         {categorias.map((c) => (

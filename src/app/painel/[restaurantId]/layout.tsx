@@ -1,4 +1,4 @@
-import { Bike, BookOpen, ClipboardList, Download, Headset, LayoutDashboard, MessageCircle, MonitorCheck, Settings, Store, UtensilsCrossed, Wallet } from "lucide-react";
+import { Bike, BookOpen, ClipboardList, Headset, LayoutDashboard, MessageCircle, MonitorCheck, Settings, Store, UtensilsCrossed, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -82,9 +82,6 @@ export default async function RestaurantPanelLayout({
         status: { label: restaurant.status === "ACTIVE" ? "Ativo" : "Inativo", ok: restaurant.status === "ACTIVE" },
         voltar: viaAdmin ? { href: `/admin/restaurantes/${restaurant.id}`, label: "Voltar ao admin" } : undefined,
       }}
-      papel={viaAdmin ? "Administrador MenuFácil" : "Conta do restaurante"}
-      // o que existe hoje de "perfil" é a troca de senha
-      contaHref="/conta/senha"
       // Dois grupos: o que é o trabalho do dia fica em cima, e o que se
       // acerta de vez em quando fica em Gestão. Os módulos que o admin
       // libera (salão, entregadores, totem) entram no primeiro, porque são
@@ -115,14 +112,8 @@ export default async function RestaurantPanelLayout({
         // por último, e para todos: é a porta de quando algo não vai bem
         { href: `${base}/suporte`, label: "Central de suporte", curto: "Suporte", icon: <Headset />, grupo: GESTAO },
       ]}
-      // baixar o programa do balcão é coisa de uma vez só: vira um ícone ao
-      // lado do Sair, e não uma seção do mesmo peso que Pedidos. O admin da
-      // plataforma pode ter desligado o recurso para este restaurante.
-      atalho={
-        restaurant.printEnabled
-          ? { href: `${base}/menu-facil-pc`, label: "Menu Fácil PC: baixar e parear o computador", icon: <Download /> }
-          : undefined
-      }
+      // O Menu Fácil PC não tem mais ícone no menu: desde 15/11/2026 ele
+      // mora num cartão no alto de Configurações, a pedido dele.
       // no celular, o menu desce: Início, Pedidos e Cardápio ficam fixos
       // embaixo, e o resto vai para "Mais"
       barraDeBaixo={{

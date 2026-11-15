@@ -258,7 +258,9 @@ export function PanelShell({
         )}
         <SidebarNav items={nav} compacto={compacto} />
         <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-line pt-4">
-          {conta}
+          {/* o cartão da conta só aparece para quem passa `papel`; no painel
+              do restaurante ele saiu em 15/11/2026, a pedido dele */}
+          {papel && conta}
           <div className={cn("flex items-center gap-1", compacto && "flex-col")}>
             {sairDoMenu}
             {atalhoButton}
