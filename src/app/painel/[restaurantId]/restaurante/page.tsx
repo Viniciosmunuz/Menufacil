@@ -18,6 +18,7 @@ const sections = [
   { href: "#entrega", label: "Entrega" },
   { href: "#area", label: "Bairros" },
   { href: "#pagamento", label: "Pix" },
+  { href: "#formas-de-pagamento", label: "Cartão e dinheiro" },
   { href: "#pizza", label: "Pizza" },
 ];
 
@@ -45,12 +46,18 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
     <div className="flex flex-col gap-6">
       <PageHeader title="Meu restaurante" description="O que você preencher aqui aparece para os clientes no site." />
 
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Partes da página">
+      {/* Os atalhos acompanham a rolagem: a página é comprida, e sem isso
+          trocar de seção era subir tudo de novo. Ficam logo abaixo da
+          faixa do alto, numa linha só que rola para o lado. */}
+      <nav
+        className="sticky top-[3.75rem] z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-bg/95 px-4 py-2 backdrop-blur [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:top-[3.25rem] lg:-mx-10 lg:px-10"
+        aria-label="Partes da página"
+      >
         {sections.map((s) => (
           <a
             key={s.href}
             href={s.href}
-            className="flex h-10 shrink-0 items-center rounded-full border border-line bg-surface px-4 text-sm font-bold text-muted hover:text-ink"
+            className="flex h-9 shrink-0 items-center rounded-full bg-surface-2 px-3.5 text-sm font-bold text-muted transition-colors hover:bg-brand-soft hover:text-brand"
           >
             {s.label}
           </a>

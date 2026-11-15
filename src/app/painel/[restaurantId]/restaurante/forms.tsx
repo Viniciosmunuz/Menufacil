@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Plus, Trash2 } from "lucide-react";
+import { Bike, ClipboardList, Clock, CreditCard, Map as MapIcon, MapPin, Phone, Pizza, Plus, QrCode, Store, Trash2 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
@@ -60,7 +60,7 @@ const pick = (values: Record<string, string> | undefined, key: string, saved: st
 
 export function InfoSection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="informacoes" title="Informações e fotos" action={saveInfo} restaurantId={r.id}>
+    <SectionForm id="informacoes" icone={<Store />} title="Informações e fotos" action={saveInfo} restaurantId={r.id}>
       {(s) => (
         <>
           <Field label="Nome do restaurante" htmlFor="name" error={s.fieldErrors?.name}>
@@ -85,7 +85,7 @@ export function InfoSection({ r }: { r: RestaurantFormData }) {
 export function ContactSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm
-      id="contato"
+      id="contato" icone={<Phone />}
       title="Contato"
       description="O WhatsApp dos pedidos é onde o restaurante recebe cada pedido novo."
       action={saveContact}
@@ -115,7 +115,7 @@ export function ContactSection({ r }: { r: RestaurantFormData }) {
 
 export function AddressSection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="endereco" title="Endereço" action={saveAddress} restaurantId={r.id}>
+    <SectionForm id="endereco" icone={<MapPin />} title="Endereço" action={saveAddress} restaurantId={r.id}>
       {(s) => (
         /* A mesma grade de seis no celular: o que é curto por natureza
            divide a linha (número com complemento, estado com CEP), e o que
@@ -211,7 +211,7 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
   const [mode, setMode] = useState<OpenMode>(r.openMode);
   return (
     <SectionForm
-      id="horarios"
+      id="horarios" icone={<Clock />}
       title="Horário de funcionamento"
       description="Se fechar depois da meia-noite, é só colocar, por exemplo, 18:00 às 02:00."
       action={saveHours}
@@ -415,7 +415,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
   };
 
   return (
-    <SectionForm id="area" title="Bairros que você atende" action={saveDeliveryAreas} restaurantId={r.id}>
+    <SectionForm id="area" icone={<MapIcon />} title="Bairros que você atende" action={saveDeliveryAreas} restaurantId={r.id}>
       {(s) => (
         <>
           {linhas.length === 0 ? (
@@ -489,7 +489,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
 
 export function DeliverySection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="entrega" title="Entrega e retirada" action={saveDelivery} restaurantId={r.id}>
+    <SectionForm id="entrega" icone={<Bike />} title="Entrega e retirada" action={saveDelivery} restaurantId={r.id}>
       {(s) => (
         <>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -520,7 +520,7 @@ export function DeliverySection({ r }: { r: RestaurantFormData }) {
 export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm
-      id="formas-de-pagamento"
+      id="formas-de-pagamento" icone={<CreditCard />}
       title="Cartão e dinheiro"
       description="Pagos na entrega (o entregador leva a maquininha e o troco) ou no balcão, na retirada."
       action={savePaymentMethods}
@@ -549,7 +549,7 @@ export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
 export function PaymentSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm
-      id="pagamento"
+      id="pagamento" icone={<QrCode />}
       title="Pagamento por Pix"
       description="Depois do pedido, o cliente vê esta chave para pagar e manda o comprovante pelo WhatsApp."
       action={savePayment}
@@ -612,7 +612,7 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
 export function PizzaSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm
-      id="pizza"
+      id="pizza" icone={<Pizza />}
       title="Pizza"
       description="Para pizzaria: o cliente escolhe os sabores e paga o preço do mais caro."
       action={savePizza}

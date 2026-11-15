@@ -101,8 +101,8 @@ export default async function RestaurantPanelLayout({
         ...(noAr("entregadorEnabled") && restaurant.entregadorEnabled
           ? [{ href: `${base}/entregadores`, label: "Entregadores", icon: <Bike />, grupo: PRINCIPAL }]
           : []),
-        { href: `${base}/cardapio`, label: "Cardápio digital", icon: <BookOpen />, grupo: PRINCIPAL },
-        { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store />, grupo: PRINCIPAL },
+        { href: `${base}/cardapio`, label: "Cardápio", icon: <BookOpen />, grupo: PRINCIPAL },
+        { href: `${base}/restaurante`, label: "Restaurante", icon: <Store />, grupo: PRINCIPAL },
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck />, grupo: PRINCIPAL }] : []),
         // "Pagamentos": é ali que o restaurante conecta a conta do Mercado
@@ -114,7 +114,7 @@ export default async function RestaurantPanelLayout({
         ...(ia !== null ? [{ href: `${base}/ia`, label: "WhatsApp IA", icon: <MessageCircle />, grupo: GESTAO }] : []),
         { href: `${base}/configuracoes`, label: "Configurações", icon: <Settings />, grupo: GESTAO },
         // por último, e para todos: é a porta de quando algo não vai bem
-        { href: `${base}/suporte`, label: "Central de suporte", curto: "Suporte", icon: <Headset />, grupo: GESTAO },
+        { href: `${base}/suporte`, label: "Suporte", icon: <Headset />, grupo: GESTAO },
       ]}
       // o Sair mora em Configurações; o menu lateral fica só com as seções
       semRodape
