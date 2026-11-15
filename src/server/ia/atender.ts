@@ -10,6 +10,7 @@ import { conhecimentoDoRestaurante } from "./conhecimento";
 import { canalDo, enviarImagem as enviarImagemPeloCanal, enviarTexto as enviarTextoPeloCanal, ondeAchar } from "./canal";
 import { oQueSabemosDoCliente, pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
+import { variantes } from "./telefone";
 
 
 
@@ -47,6 +48,8 @@ import { responder, type Turno } from "./responder";
 //    naquela conversa. Transcrever está no plano e depende de um serviço
 //    à parte -- o modelo recebe texto, não som.
 
+/** pedido entregue há mais que isto: a próxima mensagem começa conversa nova */
+const ENTREGUE_RECOMECA_MIN = 2;
 /** depois que um humano responde, a IA espera este tempo antes de voltar */
 const HUMANO_ASSUMIU_MIN = 30;
 /** teto de respostas da IA por cliente por hora */
@@ -355,12 +358,30 @@ export async function atender(evento: MensagemKapso) {
   // quem fechou e reabriu (outro expediente, ou um teste) continuava sem
   // resposta até completar a meia hora do último chamado -- em 15/11/2026
   // ele fechou, abriu, mandou "oi" e ela não respondeu.
-  const ultimaTroca = await db.auditLog.findFirst({
-    where: { restaurantId, action: "restaurant.open_mode" },
-    orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
-  });
-  const quietaDesde = Math.max(agora - HUMANO_ASSUMIU_MIN * 60_000, ultimaTroca?.createdAt.getTime() ?? 0);
+  //
+  // E o pedido entregue fecha o assunto: passados ENTREGUE_RECOMECA_MIN
+  // minutos de o restaurante marcar como entregue, quem escrever de novo é
+  // atendido como se fosse a primeira vez, com a boas-vindas -- pedido dele
+  // de 15/11/2026. Os dois minutos deixam o "obrigado, chegou" de quem
+  // acabou de receber cair na mesma conversa.
+  const [ultimaTroca, entregue] = await Promise.all([
+    db.auditLog.findFirst({
+      where: { restaurantId, action: "restaurant.open_mode" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    telefone
+      ? db.orderStatusEvent.findFirst({
+          where: { status: "COMPLETED", order: { restaurantId, customerWhatsapp: { in: variantes(telefone) } } },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        })
+      : null,
+  ]);
+  const fimDaEntrega = entregue ? entregue.createdAt.getTime() + ENTREGUE_RECOMECA_MIN * 60_000 : 0;
+  /** a partir de quando a conversa recomeça: loja reaberta ou pedido entregue */
+  const recomeco = Math.max(ultimaTroca?.createdAt.getTime() ?? 0, fimDaEntrega <= agora ? fimDaEntrega : 0);
+  const quietaDesde = Math.max(agora - HUMANO_ASSUMIU_MIN * 60_000, recomeco);
   const humanoRecente = eTeste
     ? 0
     : await db.iaMensagem.count({
@@ -568,7 +589,7 @@ export async function atender(evento: MensagemKapso) {
       // noite seguinte não quer continuar de onde parou. Sem este corte, a
       // IA lia a véspera inteira e repetia o que tinha dito lá -- "o vini
       // já foi avisado" a cada mensagem nova, um dia depois do chamado.
-      createdAt: { gte: new Date(Math.max(agora - 24 * 60 * 60_000, conhecimento.inicioDoTurno.getTime())) },
+      createdAt: { gte: new Date(Math.max(agora - 24 * 60 * 60_000, conhecimento.inicioDoTurno.getTime(), recomeco)) },
       texto: { not: MARCA_CHAMOU },
     },
     orderBy: { createdAt: "desc" },
