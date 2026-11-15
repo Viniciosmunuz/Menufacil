@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Download, Printer, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
+import { Bell, ChevronRight, Download, LogOut, Printer, SlidersHorizontal, Store, Truck, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { APP_SETUP_PATH, APP_VERSION } from "@/lib/app-release";
 import { noAr } from "@/lib/features";
+import { logout } from "@/server/auth/actions";
 import { requireDono } from "@/server/auth/dal";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -30,7 +31,7 @@ type Categoria = { titulo: string; resumo: string; icone: ReactNode; atalhos: At
 
 export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[restaurantId]/configuracoes">) {
   const { restaurantId } = await params;
-  const { restaurant } = await requireDono(restaurantId);
+  const { restaurant, user } = await requireDono(restaurantId);
 
   const base = `/painel/${restaurant.id}`;
   const dados = `${base}/restaurante`;
@@ -139,9 +140,12 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
         </Card>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      {/* Duas colunas que se encaixam: cada cartão tem a altura do que
+          contém, e numa grade comum o mais curto deixava um buraco ao lado
+          do mais alto. Em colunas, o de baixo sobe e encosta. */}
+      <div className="gap-4 lg:columns-2">
         {categorias.map((c) => (
-          <Card key={c.titulo} className="flex flex-col gap-3 p-4 sm:p-5">
+          <Card key={c.titulo} className="mb-4 flex break-inside-avoid flex-col gap-3 p-4 sm:p-5">
             <div className="flex items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand [&_svg]:size-5">{c.icone}</span>
               <div className="min-w-0">
@@ -169,6 +173,21 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
           </Card>
         ))}
       </div>
+
+      {/* Sair fica aqui, e não no menu: é coisa de uma vez por dia, e no
+          menu ele dividia espaço com o que se usa o tempo todo. */}
+      <Card className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
+        <div className="min-w-0 flex-1 basis-56">
+          <h2 className="font-extrabold">Conta</h2>
+          <p className="truncate text-sm text-muted">Você entrou como {user.name}.</p>
+        </div>
+        <form action={logout}>
+          <button type="submit" className={buttonClasses("secondary", "md")}>
+            <LogOut className="size-4" aria-hidden="true" />
+            Sair da conta
+          </button>
+        </form>
+      </Card>
     </div>
   );
 }

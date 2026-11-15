@@ -36,6 +36,7 @@ export function PanelShell({
   restaurante,
   papel,
   contaHref,
+  semRodape,
 }: {
   homeHref: string;
   /** o que está sendo gerenciado: "Administração" ou o nome do restaurante */
@@ -91,6 +92,14 @@ export function PanelShell({
   restaurante?: { nome: string; status?: { label: string; ok: boolean }; voltar?: { href: string; label: string } };
   /** a linha de baixo da conta, no rodapé do menu: "Conta do restaurante" */
   papel?: string;
+  /**
+   * Tira o rodapé do menu lateral, com o Sair.
+   *
+   * No painel do restaurante o Sair mora em Configurações desde
+   * 15/11/2026, a pedido dele. O admin não tem essa tela e continua com o
+   * botão no menu.
+   */
+  semRodape?: boolean;
   /** para onde o cartão da conta leva (hoje, trocar a senha) */
   contaHref?: string;
 }) {
@@ -257,7 +266,7 @@ export function PanelShell({
           </>
         )}
         <SidebarNav items={nav} compacto={compacto} />
-        <div className="mt-auto flex shrink-0 flex-col gap-2 border-t border-line pt-4">
+        <div className={cn("mt-auto shrink-0 flex-col gap-2 border-t border-line pt-4", semRodape ? "hidden" : "flex")}>
           {/* o cartão da conta só aparece para quem passa `papel`; no painel
               do restaurante ele saiu em 15/11/2026, a pedido dele */}
           {papel && conta}

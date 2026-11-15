@@ -112,6 +112,8 @@ export default async function RestaurantPanelLayout({
         // por último, e para todos: é a porta de quando algo não vai bem
         { href: `${base}/suporte`, label: "Central de suporte", curto: "Suporte", icon: <Headset />, grupo: GESTAO },
       ]}
+      // o Sair mora em Configurações; o menu lateral fica só com as seções
+      semRodape
       // O Menu Fácil PC não tem mais ícone no menu: desde 15/11/2026 ele
       // mora num cartão no alto de Configurações, a pedido dele.
       // no celular, o menu desce: Início, Pedidos e Cardápio ficam fixos

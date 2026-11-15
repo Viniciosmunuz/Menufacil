@@ -21,7 +21,7 @@ import { temChaveDePagamento } from "@/server/pagamentos/segredo";
 import { conectarMercadoPago } from "./actions";
 import { ConectarForm, DesconectarForm, ModoForm, SegredoDoWebhookForm, TokenColadoForm } from "./forms";
 
-export const metadata: Metadata = { title: "Entrega" };
+export const metadata: Metadata = { title: "Pagamentos" };
 
 const RECADOS: Record<string, { tom: "success" | "danger" | "warning"; texto: string }> = {
   ok: { tom: "success", texto: "Conta do Mercado Pago conectada. O Pix do seu delivery já cai nela." },
@@ -62,7 +62,7 @@ export default async function EntregaPage({ params, searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Entrega"
+        title="Pagamentos"
         description="Como o cliente fecha e paga o pedido. Dá para trocar quando quiser: o que já está em pé não muda."
       />
 
