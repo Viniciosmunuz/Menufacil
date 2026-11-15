@@ -90,7 +90,7 @@ export default async function RestaurantPanelLayout({
       // libera (salão, entregadores, totem) entram no primeiro, porque são
       // movimento, e não cadastro.
       nav={[
-        { href: base, label: "Visão geral", curto: "Início", icon: <LayoutDashboard />, exact: true, grupo: PRINCIPAL },
+        { href: base, label: "Visão geral", icon: <LayoutDashboard />, exact: true, grupo: PRINCIPAL },
         { href: `${base}/pedidos`, label: "Pedidos", icon: <ClipboardList />, grupo: PRINCIPAL },
         // Salão logo abaixo de Pedidos: é a mesma pergunta -- o que está
         // acontecendo agora --, só que nas mesas em vez da entrega
@@ -100,7 +100,7 @@ export default async function RestaurantPanelLayout({
         ...(noAr("entregadorEnabled") && restaurant.entregadorEnabled
           ? [{ href: `${base}/entregadores`, label: "Entregadores", icon: <Bike />, grupo: PRINCIPAL }]
           : []),
-        { href: `${base}/cardapio`, label: "Cardápio digital", curto: "Cardápio", icon: <BookOpen />, grupo: PRINCIPAL },
+        { href: `${base}/cardapio`, label: "Cardápio digital", icon: <BookOpen />, grupo: PRINCIPAL },
         { href: `${base}/restaurante`, label: "Meu restaurante", icon: <Store />, grupo: PRINCIPAL },
         // Totem de autoatendimento: modulo isolado, so para quem o admin liberou
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, label: "Totem", icon: <MonitorCheck />, grupo: PRINCIPAL }] : []),

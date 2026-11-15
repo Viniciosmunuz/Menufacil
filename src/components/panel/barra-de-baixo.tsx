@@ -60,7 +60,7 @@ export function BarraDeBaixo({
   const noMais = items.filter((i) => !fixos.includes(i.href));
   const maisAceso = noMais.some((i) => isActive(pathname, i)) || (atalho ? pathname.startsWith(atalho.href) : false);
 
-  const botao = "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 text-[11px] font-bold transition-colors [&_svg]:size-5";
+  const botao = "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 text-[10.5px] font-bold tracking-tight whitespace-nowrap transition-colors [&_svg]:size-5";
 
   // Dentro de uma mesa do salão a barra sai: a tela tem a seta de voltar e
   // o próprio rodapé, com a comanda e o Salvar -- que ficavam embaixo dela.

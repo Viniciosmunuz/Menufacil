@@ -17,7 +17,7 @@ import { BuscaDeProdutos, type ProdutoDaBusca } from "./busca";
 import { CardapioLayout, type CategoriaResumo } from "./cardapio-layout";
 import { CategoryCard, NewCategoryButton } from "./category-card";
 
-export const metadata: Metadata = { title: "Cardápio" };
+export const metadata: Metadata = { title: "Cardápio digital" };
 
 type Product = {
   id: string;
@@ -197,7 +197,7 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Cardápio"
+        title="Cardápio digital"
         description={
           categories.length
             ? `${productCount} produto${productCount === 1 ? "" : "s"} em ${categories.length} categoria${categories.length === 1 ? "" : "s"}. Toque no interruptor quando algo acabar.`
