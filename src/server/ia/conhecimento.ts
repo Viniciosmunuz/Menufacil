@@ -280,7 +280,18 @@ export async function conhecimentoDoRestaurante(
 
   // ─── o agora ───────────────────────────────────────────────────────
   const aberto = r.status === "ACTIVE" && isOpenNow(r.openMode, horas);
-  const inicioDoTurno = inicioDaOperacao(horas);
+  // Fechar e abrir no botão também começa um expediente novo. Até
+  // 15/11/2026 só o horário cadastrado (ou 4 horas de silêncio) recomeçava
+  // a conversa: ele fechou e abriu a loja, mandou "oi", e a Lia continuou o
+  // pedido de antes, com o nome e o bairro da conversa anterior. A troca no
+  // botão fica no registro do painel; a mais recente vale como começo.
+  const pelaAgenda = inicioDaOperacao(horas);
+  const ultimaTroca = await db.auditLog.findFirst({
+    where: { restaurantId, action: "restaurant.open_mode" },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  const inicioDoTurno = ultimaTroca && ultimaTroca.createdAt > pelaAgenda ? ultimaTroca.createdAt : pelaAgenda;
   const hora = new Intl.DateTimeFormat("pt-BR", {
     timeZone: TIME_ZONE,
     weekday: "long",
