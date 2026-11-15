@@ -30,6 +30,12 @@ function isExternalEntry(request: NextRequest) {
 
 function storeRules(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // O celular da tela Restaurante, no painel, abre o cardápio do próprio
+  // restaurante. Ele passa reto pela trava: quem já abriu o link de outro
+  // restaurante neste navegador (o admin, testando) seria mandado para lá,
+  // e a prévia mostraria o cardápio errado. Também não grava a trava.
+  if (pathname.startsWith("/restaurante/") && request.nextUrl.searchParams.has("previa")) return NextResponse.next();
   const entered = /^\/restaurante\/([a-z0-9-]+)(?:\/|$)/.exec(pathname)?.[1];
 
   if (entered && isExternalEntry(request)) {

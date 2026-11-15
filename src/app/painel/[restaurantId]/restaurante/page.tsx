@@ -117,7 +117,7 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
                 <iframe
                   // a hora da última mudança no endereço: salvou, o endereço muda e
                   // o celular recarrega sozinho com o que acabou de ser gravado
-                  src={`/restaurante/${r.slug}?v=${r.updatedAt.getTime()}`}
+                  src={`/restaurante/${r.slug}?previa=${r.updatedAt.getTime()}`}
                   title={`Cardápio de ${r.name}`}
                   loading="lazy"
                   className="absolute top-0 left-0 h-[780px] w-[390px] origin-top-left scale-[0.78] border-0"
