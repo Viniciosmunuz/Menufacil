@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/panel/page-header";
@@ -65,7 +66,9 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
       </nav>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-6 lg:order-2">
+        {/* self-stretch: a coluna desce até o fim da página, e é isso que
+            deixa o celular lá embaixo grudar enquanto o resto rola */}
+        <aside className="flex flex-col gap-3 lg:order-2 lg:self-stretch">
           <p className="text-sm font-bold text-muted">Como aparece no site</p>
           <div className="max-w-sm">
             <RestaurantCard
@@ -86,6 +89,41 @@ export default async function MyRestaurantPage({ params }: PageProps<"/painel/[r
                 deliveryTimeMax: r.deliveryTimeMax,
               }}
             />
+          </div>
+
+          {/* O cardápio de verdade, aberto num celular ao lado do formulário.
+              Navega como o cliente navega: abre item, troca de categoria,
+              põe no carrinho. É o mesmo endereço do link, carregado do
+              próprio site. Só no computador: no celular a tela já é o
+              celular, e a moldura não caberia. */}
+          <div className="hidden lg:sticky lg:top-28 lg:mt-3 lg:flex lg:flex-col lg:gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold text-muted">Seu cardápio</p>
+              <a
+                href={`/restaurante/${r.slug}`}
+                target="_blank"
+                rel="noopener"
+                className="flex items-center gap-1 text-sm font-bold text-brand hover:underline"
+              >
+                Abrir
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            </div>
+            {/* 390 x 780 é a tela de um celular comum; o 0,78 encolhe para
+                caber nos 20rem da coluna sem o cardápio virar versão de
+                computador */}
+            <div className="mx-auto w-fit rounded-[2.4rem] border-[7px] border-night bg-night p-0.5 shadow-xl shadow-black/15">
+              <div className="relative h-[608px] w-[304px] overflow-hidden rounded-[1.9rem] bg-bg">
+                <iframe
+                  // a hora da última mudança no endereço: salvou, o endereço muda e
+                  // o celular recarrega sozinho com o que acabou de ser gravado
+                  src={`/restaurante/${r.slug}?v=${r.updatedAt.getTime()}`}
+                  title={`Cardápio de ${r.name}`}
+                  loading="lazy"
+                  className="absolute top-0 left-0 h-[780px] w-[390px] origin-top-left scale-[0.78] border-0"
+                />
+              </div>
+            </div>
           </div>
         </aside>
 
