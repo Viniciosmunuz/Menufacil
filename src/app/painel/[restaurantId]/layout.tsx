@@ -2,15 +2,19 @@ import { Bike, BookOpen, ClipboardList, Headset, LayoutGrid, MessageCircle, Moni
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AbertoFechado, EntregaPausada, LedDaIa, SeloDePedidos } from "@/components/panel/barra-de-baixo";
+import { EntregaPausada, SeloDePedidos } from "@/components/panel/barra-de-baixo";
 import { ImpressaoDoSalao } from "@/components/panel/impressao-do-salao";
 import { LembraATela } from "@/components/panel/lembra-a-tela";
 import { PanelShell } from "@/components/panel/panel-shell";
+import { SeloAbertoFechado, SeloDaIa } from "@/components/panel/selos-do-topo";
 import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
 import { isOpenNow, soRetirada } from "@/lib/opening-hours";
 import { requireDono } from "@/server/auth/dal";
 import { pedidosEsperando } from "@/server/stats";
+
+import { ligarIaDoRestaurante } from "./ia/actions";
+import { setOpenMode } from "./restaurante/actions";
 
 // os dois grupos do menu lateral
 const PRINCIPAL = "Menu principal";
@@ -123,11 +127,20 @@ export default async function RestaurantPanelLayout({
         nome: restaurant.name,
         topo: horario ? (
           <span className="flex shrink-0 items-center gap-2">
-            {ia === true && isOpenNow(horario.openMode, horario.openingHours) && <LedDaIa href={`${base}/ia`} ligada />}
+            {/* a chave da IA aparece sempre que o recurso existe: desligada
+                também, porque é dali que se liga */}
+            {ia !== null && (
+              <SeloDaIa
+                restaurantId={restaurant.id}
+                ligada={ia}
+                casaAberta={isOpenNow(horario.openMode, horario.openingHours)}
+                ligar={ligarIaDoRestaurante}
+              />
+            )}
             {horario.deliveryEnabled && soRetirada(horario.pickupOnlyUntil) && horario.pickupOnlyUntil && (
               <EntregaPausada href={base} ate={horario.pickupOnlyUntil} />
             )}
-            <AbertoFechado href={base} openMode={horario.openMode} hours={horario.openingHours} />
+            <SeloAbertoFechado restaurantId={restaurant.id} openMode={horario.openMode} hours={horario.openingHours} mudar={setOpenMode} />
           </span>
         ) : undefined,
         selos: { [`${base}/pedidos`]: <SeloDePedidos restaurantId={restaurant.id} inicial={esperando} /> },

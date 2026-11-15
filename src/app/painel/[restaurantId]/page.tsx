@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { EsgotadosCard } from "@/components/panel/esgotados-card";
 import { MensalidadeCard } from "@/components/panel/mensalidade-card";
 import { WeekChart } from "@/components/panel/week-chart";
-import { competenciaDe, competenciaLabel, situacaoDaCobranca } from "@/lib/cobranca";
+import { competenciaDe, situacaoDaCobranca } from "@/lib/cobranca";
 import { db } from "@/lib/db";
 import { startOfDaysAgo, startOfToday } from "@/lib/format";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
@@ -172,7 +172,7 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
       {/* O rodapé: para onde ir depois de olhar o movimento, e como o dia
           está indo contra a média da semana. */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
-        <DesempenhoCard base={base} mes={competenciaLabel(competenciaDe())} />
+        <DesempenhoCard base={base} />
         <ComoEstaODia semana={semana} />
       </div>
     </div>

@@ -30,7 +30,7 @@ function Atalho({ icone, titulo, apoio, href }: { icone: ReactNode; titulo: stri
   );
 }
 
-export function DesempenhoCard({ base, mes }: { base: string; mes: string }) {
+export function DesempenhoCard({ base }: { base: string }) {
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -43,17 +43,9 @@ export function DesempenhoCard({ base, mes }: { base: string; mes: string }) {
             <p className="text-sm text-muted">Acompanhe os principais indicadores do seu negócio.</p>
           </div>
         </div>
-        {/* O mês virou caminho, e não só etiqueta. Ele estava escrito
-            aqui como quem diz "estes números são de novembro", e a
-            pergunta seguinte -- "e outubro?" -- não tinha para onde ir.
-            Agora leva à tela onde o mês se troca. */}
-        <Link
-          href={`${base}/resumo`}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1 text-sm font-bold text-muted transition-colors hover:border-line-strong hover:text-ink"
-        >
-          <span className="first-letter:uppercase">{mes}</span>
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-        </Link>
+        {/* O mês saía escrito aqui, com um atalho para trocá-lo. Saiu em
+            15/11/2026, a pedido dele: o mês se escolhe dentro de cada
+            tela, onde o seletor já existe. */}
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">

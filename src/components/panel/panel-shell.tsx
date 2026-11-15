@@ -282,7 +282,7 @@ export function PanelShell({
         {/* no computador, a mesma informação da barra do celular: fica
             grudada no alto e acompanha a rolagem */}
         {barraDeBaixo?.topo && (
-          <div className="sticky top-0 z-20 hidden justify-end border-b border-line bg-bg/95 px-6 py-2.5 backdrop-blur lg:flex">
+          <div className="sticky top-0 z-20 hidden justify-end bg-bg/95 px-6 py-2.5 backdrop-blur lg:flex">
             {barraDeBaixo.topo}
           </div>
         )}

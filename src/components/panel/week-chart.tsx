@@ -1,16 +1,20 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LineChart, TrendingDown, TrendingUp } from "lucide-react";
+import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 import type { DiaDaSemana } from "@/server/stats";
 
-// Os sete últimos dias em barras.
+// Os sete últimos dias numa curva, como gráfico de cotação.
 //
-// Feito com divs e altura em porcentagem: sem biblioteca de gráfico e
+// Eram barras até 15/11/2026; ele pediu a cara de gráfico da bolsa. É uma
+// linha com a área preenchida embaixo, e não velas: vela precisa de
+// abertura, máxima, mínima e fechamento, e um dia de vendas é um número só.
+//
+// Feito com um SVG de duas linhas: sem biblioteca de gráfico e
 // acompanhando o tema. O que importa aqui não é precisão de milímetro, é
 // enxergar o ritmo da semana -- que dia enche, que dia esvazia.
 //
@@ -42,12 +46,6 @@ export function WeekChart({ dias, titulo, descricao }: { dias: DiaDaSemana[]; ti
   // chegando do servidor sem apontar para um dia que já saiu da janela
   const [escolhido, setEscolhido] = useState<string | null>(null);
   const [medida, setMedida] = useState<Medida>("pedidos");
-  // as barras sobem depois da primeira pintura, em vez de já nascerem de pé
-  const [subiu, setSubiu] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setSubiu(true), 30);
-    return () => clearTimeout(t);
-  }, []);
 
   const vendas = medida === "vendas";
   const valorDe = (d: DiaDaSemana) => (vendas ? d.centavos : d.pedidos);
@@ -60,12 +58,34 @@ export function WeekChart({ dias, titulo, descricao }: { dias: DiaDaSemana[]; ti
   // três linhas de referência, do topo ao chão
   const marcas = [1, 0.5, 0].map((p) => ({ p, texto: vendas ? curto(maior * p) : String(Math.round(maior * p)) }));
 
+  // Onde cada valor cai, em % da altura. O maior dia não encosta no teto:
+  // sobra uma folga em cima para o número dele caber.
+  const FOLGA = 16;
+  const altura = (proporcao: number) => 100 - proporcao * (100 - FOLGA);
+  const pontos = dias.map((d, i) => {
+    const valor = valorDe(d);
+    return {
+      d,
+      valor,
+      x: ((i + 0.5) / dias.length) * 100,
+      y: altura(valor / maior),
+      aceso: d.key === escolhido || (!escolhido && d.hoje),
+    };
+  });
+  const linha = pontos.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const marcado = pontos.find((p) => p.d.key === escolhido) ?? null;
+
+  // a variação do dia escolhido sobre o dia anterior, na medida que está à vista
+  const anterior = dia ? dias[dias.findIndex((d) => d.key === dia.key) - 1] : undefined;
+  const variacao =
+    dia && anterior && valorDe(anterior) > 0 ? Math.round(((valorDe(dia) - valorDe(anterior)) / valorDe(anterior)) * 100) : null;
+
   return (
     <Card className="flex flex-col">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-            <BarChart3 className="size-5" aria-hidden="true" />
+            <LineChart className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <h2 className="text-lg leading-tight font-extrabold">{titulo}</h2>
@@ -96,63 +116,99 @@ export function WeekChart({ dias, titulo, descricao }: { dias: DiaDaSemana[]; ti
       ) : (
         <>
           <div className="mt-5 flex gap-2.5">
-            {/* o eixo: três números discretos, alinhados às linhas */}
-            <div className="flex h-32 w-9 shrink-0 flex-col justify-between py-px text-right text-[0.65rem] leading-none font-bold text-faint tabular-nums sm:h-36">
+            {/* o eixo: três números discretos, na altura das linhas */}
+            <div className="relative h-32 w-9 shrink-0 text-right text-[0.65rem] leading-none font-bold text-faint tabular-nums sm:h-36">
               {marcas.map((m) => (
-                <span key={m.p}>{m.texto}</span>
+                <span key={m.p} className="absolute right-0 -translate-y-1/2" style={{ top: `${altura(m.p)}%` }}>
+                  {m.texto}
+                </span>
               ))}
             </div>
 
             <div className="relative min-w-0 flex-1">
-              {/* as linhas de referência, atrás das barras */}
-              <div aria-hidden="true" className="absolute inset-x-0 top-0 h-32 sm:h-36">
-                {marcas.map((m) => (
-                  <span
-                    key={m.p}
-                    className={cn("absolute inset-x-0 border-t", m.p === 0 ? "border-line-strong" : "border-line")}
-                    style={{ top: `${(1 - m.p) * 100}%` }}
+              <div className="relative h-32 sm:h-36">
+                {/* as linhas de referência, atrás da curva */}
+                <div aria-hidden="true" className="absolute inset-0">
+                  {marcas.map((m) => (
+                    <span
+                      key={m.p}
+                      className={cn("absolute inset-x-0 border-t", m.p === 0 ? "border-line-strong" : "border-dashed border-line")}
+                      style={{ top: `${altura(m.p)}%` }}
+                    />
+                  ))}
+                </div>
+
+                {/* A curva e a área embaixo dela. O desenho estica com o
+                    cartão (por isso o traço não escala), e os pontos são
+                    HTML por cima: esticado, um círculo de SVG vira oval. */}
+                <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible">
+                  <defs>
+                    <linearGradient id="semana-area" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-brand)" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="var(--color-brand)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={`${linha} L ${pontos[pontos.length - 1].x} 100 L ${pontos[0].x} 100 Z`} fill="url(#semana-area)" />
+                  <path
+                    d={linha}
+                    fill="none"
+                    stroke="var(--color-brand)"
+                    strokeWidth="2.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
                   />
-                ))}
-              </div>
+                </svg>
 
-              <div className="relative flex h-32 items-end justify-between gap-1.5 sm:h-36 sm:gap-3">
-                {dias.map((d) => {
-                  const selecionado = d.key === escolhido;
-                  const valor = valorDe(d);
-                  const aceso = selecionado || (!escolhido && d.hoje);
-                  return (
-                    <button
-                      key={d.key}
-                      type="button"
-                      // tocar de novo no mesmo dia volta ao total da semana: é o
-                      // caminho que a mão tenta antes de procurar um "fechar"
-                      onClick={() => setEscolhido(selecionado ? null : d.key)}
-                      aria-pressed={selecionado}
-                      aria-label={`${comData(d)}: ${d.pedidos} pedido${d.pedidos === 1 ? "" : "s"}, ${formatCents(d.centavos)}`}
-                      className="group flex h-full min-w-0 flex-1 cursor-pointer flex-col justify-end rounded-t-control focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+                {/* a linha de prumo do dia escolhido, como no gráfico da bolsa */}
+                {marcado && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 border-l border-dashed border-brand/50"
+                    style={{ left: `${marcado.x}%` }}
+                  />
+                )}
+
+                {pontos.map((p) => (
+                  <span key={p.d.key} aria-hidden="true" className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+                    <span
+                      className={cn(
+                        "block rounded-full border-2 border-brand transition-all",
+                        p.aceso ? "size-3.5 bg-brand ring-4 ring-brand/15" : "size-2.5 bg-surface",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 text-[0.7rem] leading-none font-extrabold whitespace-nowrap tabular-nums",
+                        p.aceso ? "text-ink" : "text-muted",
+                      )}
                     >
-                      <span
-                        className={cn(
-                          "mb-1 text-[0.7rem] leading-none font-extrabold tabular-nums transition-colors",
-                          valor > 0 ? (aceso ? "text-ink" : "text-muted") : "text-transparent",
-                        )}
-                      >
-                        {vendas ? curto(valor) : valor || 0}
-                      </span>
-                      <span
-                        className={cn(
-                          "w-full rounded-t-md transition-[height,background-color] duration-500 ease-out",
-                          aceso ? "bg-brand" : escolhido ? "bg-brand/20" : "bg-brand/35 group-hover:bg-brand/55",
-                        )}
-                        // 6% é o toco que mostra "teve movimento, mas pouco"; 2%, o dia vazio
-                        style={{ height: subiu ? `${valor > 0 ? Math.max(Math.round((valor / maior) * 100), 6) : 2}%` : "2%" }}
+                      {vendas ? curto(p.valor) : p.valor}
+                    </span>
+                  </span>
+                ))}
+
+                {/* um botão por dia, na coluna inteira: o dedo não precisa acertar o ponto */}
+                <div className="absolute inset-0 flex">
+                  {dias.map((d) => {
+                    const selecionado = d.key === escolhido;
+                    return (
+                      <button
+                        key={d.key}
+                        type="button"
+                        // tocar de novo no mesmo dia volta ao total da semana: é o
+                        // caminho que a mão tenta antes de procurar um "fechar"
+                        onClick={() => setEscolhido(selecionado ? null : d.key)}
+                        aria-pressed={selecionado}
+                        aria-label={`${comData(d)}: ${d.pedidos} pedido${d.pedidos === 1 ? "" : "s"}, ${formatCents(d.centavos)}`}
+                        className="h-full min-w-0 flex-1 cursor-pointer rounded-control hover:bg-brand/5 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
                       />
-                    </button>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="mt-2 flex justify-between gap-1.5 sm:gap-3">
+              <div className="mt-2 flex">
                 {dias.map((d) => (
                   <span
                     key={d.key}
@@ -177,7 +233,22 @@ export function WeekChart({ dias, titulo, descricao }: { dias: DiaDaSemana[]; ti
                 <span className="text-muted">
                   <span className="font-bold text-ink">{comData(dia)}</span> · {dia.pedidos} pedido{dia.pedidos === 1 ? "" : "s"}
                 </span>
-                <span className="font-extrabold text-ink tabular-nums">{formatCents(dia.centavos)}</span>
+                <span className="flex items-center gap-2">
+                  {variacao !== null && variacao !== 0 && (
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-extrabold tabular-nums",
+                        variacao > 0 ? "bg-success-soft text-success-ink" : "bg-danger-soft text-danger-ink",
+                      )}
+                      title="Sobre o dia anterior"
+                    >
+                      {variacao > 0 ? <TrendingUp className="size-3.5" aria-hidden="true" /> : <TrendingDown className="size-3.5" aria-hidden="true" />}
+                      {variacao > 0 ? "+" : ""}
+                      {variacao}%
+                    </span>
+                  )}
+                  <span className="font-extrabold text-ink tabular-nums">{formatCents(dia.centavos)}</span>
+                </span>
               </>
             ) : (
               <>
