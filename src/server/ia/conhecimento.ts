@@ -213,7 +213,7 @@ export async function conhecimentoDoRestaurante(
     }
     if (r.deliveryTimeMin && r.deliveryTimeMax)
       linhas.push(
-        `- Tempo de entrega: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos. SÓ diga isso se o cliente perguntar quanto tempo demora. Nunca ofereça o prazo por conta própria, nem no meio de outra resposta.`,
+        `- Tempo cadastrado pelo restaurante: ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos. Quando o cliente perguntar quanto tempo demora -- antes ou depois do pedido --, responda com ele: na entrega, "de ${r.deliveryTimeMin} a ${r.deliveryTimeMax} minutos"; na retirada, "fica pronto em até ${r.deliveryTimeMax} minutos". Nunca diga que não tem prazo, e nunca ofereça o prazo por conta própria, nem no meio de outra resposta.`,
       );
     if (areas.length > 0) {
       linhas.push(`- BAIRROS ATENDIDOS (a entrega só vai nestes; fora deles, só retirada):`);
