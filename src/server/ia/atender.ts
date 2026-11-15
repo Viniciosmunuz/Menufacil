@@ -351,6 +351,16 @@ export async function atender(evento: MensagemKapso) {
   // Número de teste: o dono está conversando dos dois lados de propósito,
   // e o freio só atrapalharia.
   const eTeste = telefone ? estaNaLista(atendente.semEspera, telefone) : false;
+  // Fechar e abrir a loja no botão também desfaz o silêncio. Sem isto,
+  // quem fechou e reabriu (outro expediente, ou um teste) continuava sem
+  // resposta até completar a meia hora do último chamado -- em 15/11/2026
+  // ele fechou, abriu, mandou "oi" e ela não respondeu.
+  const ultimaTroca = await db.auditLog.findFirst({
+    where: { restaurantId, action: "restaurant.open_mode" },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  const quietaDesde = Math.max(agora - HUMANO_ASSUMIU_MIN * 60_000, ultimaTroca?.createdAt.getTime() ?? 0);
   const humanoRecente = eTeste
     ? 0
     : await db.iaMensagem.count({
@@ -358,7 +368,7 @@ export async function atender(evento: MensagemKapso) {
           restaurantId,
           contato,
           papel: "HUMANO",
-          createdAt: { gte: new Date(agora - HUMANO_ASSUMIU_MIN * 60_000) },
+          createdAt: { gte: new Date(quietaDesde) },
         },
       });
   if (humanoRecente > 0) return;
