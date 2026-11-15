@@ -21,6 +21,19 @@ export function normalizePhone(input: string) {
   return digits.length <= 11 ? `55${digits}` : digits;
 }
 
+/**
+ * O número, já normalizado, tem cara de celular brasileiro: 55 + DDD + 9 e
+ * mais oito dígitos.
+ *
+ * Serve para o campo em que o cliente digita o próprio WhatsApp. Fixo e
+ * número faltando dígito passam na regra geral de telefone, e viram pedido
+ * em que o botão de avisar o cliente não abre conversa nenhuma. Não vale
+ * para número que veio do próprio WhatsApp: lá o 9 costuma vir cortado.
+ */
+export function pareceCelular(normalizado: string) {
+  return /^55[1-9]\d9\d{8}$/.test(normalizado);
+}
+
 // Fuso usado para datas e para "hoje" nos painéis. O servidor na nuvem roda
 // em UTC; sem isso, o dia viraria às 20h em Manaus.
 export const TIME_ZONE = process.env.NEXT_PUBLIC_TIME_ZONE || "America/Manaus";

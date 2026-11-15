@@ -378,7 +378,7 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 label="Seu número de WhatsApp"
                 htmlFor="customerWhatsapp"
                 error={err.customerWhatsapp}
-                hint="Com DDD, igual está no WhatsApp. Ex.: (92) 99999-0000"
+                hint="É por ele que o restaurante avisa do seu pedido. Com DDD, igual está no WhatsApp. Ex.: (92) 99999-0000"
               >
                 <WhatsappInput
                   id="customerWhatsapp"

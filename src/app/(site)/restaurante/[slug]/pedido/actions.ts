@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { pareceCelular } from "@/lib/format";
 import { fieldErrors, formObject, type FieldErrors } from "@/lib/validation";
 import { OrderError, checkoutSchema, parseItems, placeOrder } from "@/server/orders/place-order";
 import { agendarAvisoDePedido } from "@/server/push/agendar";
@@ -24,6 +25,19 @@ export async function submitOrder(_prev: CheckoutState, formData: FormData): Pro
 
   const parsed = checkoutSchema.safeParse(values);
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values };
+
+  // É por este número que o restaurante avisa do pedido. Fixo ou número
+  // com dígito faltando não tem WhatsApp, e o balcão só descobre na hora
+  // de avisar. A regra fica aqui, e não no esquema, porque o pedido anotado
+  // pela Lia usa o mesmo esquema com o número que o próprio WhatsApp entrega.
+  if (!pareceCelular(parsed.data.customerWhatsapp)) {
+    return {
+      fieldErrors: {
+        customerWhatsapp: "Esse número não parece ser de celular. Coloque o seu WhatsApp com DDD e o 9 na frente, por exemplo (92) 99999-0000.",
+      },
+      values,
+    };
+  }
 
   let code: string;
   try {
