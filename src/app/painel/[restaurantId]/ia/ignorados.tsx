@@ -161,6 +161,28 @@ export function ListasDaIa({
     paraLinhas(semEspera, "tst"),
   );
 
+  /**
+   * O botão só existe quando há o que salvar.
+   *
+   * Fora das gavetas ele ficava solto no meio da pilha, entre as duas
+   * listas e a gaveta das conversas, parecendo pertencer à de baixo.
+   * Mas levá-lo para dentro de uma das gavetas seria pior: o formulário
+   * é um só, e um botão dentro da primeira gaveta salvaria também a
+   * segunda sem dizer isso a ninguém.
+   *
+   * Então ele aparece quando as listas deixam de ser o que está salvo, e
+   * some de novo depois de salvar. Quem compara é o estado, não um
+   * evento de digitação: evento se perde -- um clique em "Adicionar",
+   * um campo preenchido pelo navegador -- e um botão que não aparece é
+   * um dono que não consegue salvar.
+   */
+  const comoEstaSalvo = (numeros: string[]) => numeros.map((n) => formatPhone(n)).join("|");
+  const comoEsta = (linhas: Linha[]) =>
+    linhas.map((l) => l.numero.trim()).filter(Boolean).join("|");
+  const mexeu =
+    comoEsta(linhasIgnorados) !== comoEstaSalvo(ignorados) ||
+    comoEsta(linhasTeste) !== comoEstaSalvo(semEspera);
+
   // os números continuam num formulário só, mesmo em duas gavetas: são
   // dois campos do mesmo registro, e gaveta fechada não tira o campo do
   // envio. Salvar uma sem a outra criaria o jeito de perder a de dentro.
@@ -201,9 +223,11 @@ export function ListasDaIa({
         />
       </Gaveta>
 
-      <SubmitButton size="sm" className="self-start" pendingText="Salvando...">
-        Salvar as listas
-      </SubmitButton>
+      {mexeu && (
+        <SubmitButton size="sm" className="self-start" pendingText="Salvando...">
+          Salvar as listas
+        </SubmitButton>
+      )}
     </form>
   );
 }
