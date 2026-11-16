@@ -57,6 +57,9 @@ function saved(): SectionState {
 
 const infoSchema = z.object({
   name: text("Informe o nome do restaurante.", 80),
+  /// a linha que o cardápio mostra embaixo do nome e que a Lia recita
+  /// quando perguntam o que o restaurante é
+  description: optionalText(300),
   removeLogo: checkbox,
   removeCover: checkbox,
 });
@@ -65,7 +68,7 @@ export async function saveInfo(_prev: SectionState, formData: FormData): Promise
   const acc = await access(formData);
   const parsed = parse(infoSchema, formData);
   if ("state" in parsed) return parsed.state;
-  const { name, removeLogo, removeCover } = parsed.data;
+  const { name, description, removeLogo, removeCover } = parsed.data;
 
   const current = await db.restaurant.findUniqueOrThrow({
     where: { id: acc.restaurant.id },
@@ -84,7 +87,7 @@ export async function saveInfo(_prev: SectionState, formData: FormData): Promise
     throw error;
   }
 
-  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { name, logoUrl, coverUrl } });
+  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { name, description, logoUrl, coverUrl } });
   if (logoUrl !== current.logoUrl) await deleteImage(current.logoUrl);
   if (coverUrl !== current.coverUrl) await deleteImage(current.coverUrl);
 

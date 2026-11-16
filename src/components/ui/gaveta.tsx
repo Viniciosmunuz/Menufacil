@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -11,6 +11,8 @@ import { cn } from "@/lib/cn";
 // lista de pedidos e do cardápio.
 
 export function Gaveta({
+  id,
+  ref,
   titulo,
   resumo,
   icone,
@@ -20,6 +22,18 @@ export function Gaveta({
   children,
   className,
 }: {
+  /** âncora da gaveta, para quem chega por um link `#id` */
+  id?: string;
+  /**
+   * O `<details>` em si, para abrir pelo DOM.
+   *
+   * Abrir uma gaveta já montada trocando a prop `aberta` não funciona: o
+   * React escreve `open` só na primeira vez e depois deixa o atributo
+   * com o navegador, que é quem manda nele enquanto a pessoa clica. Quem
+   * precisa abrir uma gaveta depois -- o link `#pagamento` do painel, um
+   * erro que voltou do servidor -- mexe no elemento por aqui.
+   */
+  ref?: Ref<HTMLDetailsElement>;
   titulo: string;
   /** uma linha dizendo o que tem dentro, visível com a gaveta fechada */
   resumo?: string;
@@ -45,6 +59,8 @@ export function Gaveta({
 }) {
   return (
     <details
+      id={id}
+      ref={ref}
       open={aberta}
       className={cn(
         "drawer group rounded-card border border-line bg-surface open:border-line-strong",

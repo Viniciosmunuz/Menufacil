@@ -4,7 +4,7 @@ import { Bike, ClipboardList, Clock, CreditCard, Map as MapIcon, MapPin, Phone, 
 import { memo, useCallback, useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
-import { SectionForm } from "@/components/panel/section-form";
+import { SectionForm, type SectionState } from "@/components/panel/section-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,7 +12,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { MoneyInput, centsToInput } from "@/components/ui/money-input";
 import type { OpenMode, PixKeyType } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
-import { formatPhone } from "@/lib/format";
+import { formatCents, formatPhone } from "@/lib/format";
 import { WEEKDAYS, type OpeningHourData } from "@/lib/opening-hours";
 import { PIX_KEY_TYPES, formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 
@@ -58,9 +58,74 @@ export type RestaurantFormData = {
 const pick = (values: Record<string, string> | undefined, key: string, saved: string | null | undefined) =>
   values && key in values ? values[key] : (saved ?? "");
 
+// ---- O que cada gaveta diz quando está fechada --------------------------
+//
+// Não é enfeite: é o que faz a tela inteira caber numa tela. Fechada, a
+// linha responde "qual é a taxa de entrega", "atendo quantos bairros",
+// "o Pix está lá" -- as perguntas que antes custavam rolar meia página.
+// Quando falta algo que trava o restaurante (o WhatsApp, a chave Pix), é
+// a falta que vai escrita, porque é a única coisa ali que importa.
+
+/** junta os pedaços que existem, ignorando os vazios */
+const emLinha = (...partes: (string | null | undefined | false)[]) =>
+  partes.filter(Boolean).join(" · ");
+
+const resumoInfo = (r: RestaurantFormData) => {
+  const fotos = r.logoUrl && r.coverUrl ? "logo e capa" : r.logoUrl ? "falta a foto de capa" : r.coverUrl ? "falta o logo" : "sem fotos";
+  return emLinha(r.name, fotos);
+};
+
+const resumoContato = (r: RestaurantFormData) =>
+  r.whatsapp ? emLinha(formatPhone(r.whatsapp), r.instagram && `@${r.instagram}`) : "Falta o WhatsApp dos pedidos";
+
+const resumoEndereco = (r: RestaurantFormData) => {
+  if (!r.city) return "Falta o endereço";
+  const rua = emLinha([r.street, r.number].filter(Boolean).join(", ") || null, r.neighborhood);
+  return rua ? `${rua} — ${r.city}` : r.city;
+};
+
+const resumoHorario = (r: RestaurantFormData) => {
+  if (r.openMode === "OPEN") return "Aberto agora, até você mudar";
+  if (r.openMode === "CLOSED") return "Fechado agora, até você mudar";
+  const abertos = r.hours.filter((h) => !h.closed);
+  if (abertos.length === 0) return "Nenhum dia aberto";
+  // todos no mesmo horário é o caso comum, e dá a linha mais curta
+  const mesmo = abertos.every((h) => h.opensAt === abertos[0].opensAt && h.closesAt === abertos[0].closesAt);
+  const dias = abertos.length === 7 ? "Todo dia" : `${abertos.length} dias`;
+  return mesmo ? `${dias}, ${abertos[0].opensAt} às ${abertos[0].closesAt}` : `${dias}, horários diferentes`;
+};
+
+const resumoEntrega = (r: RestaurantFormData) => {
+  if (!r.deliveryEnabled && !r.pickupEnabled) return "Não está recebendo pedido";
+  const tempo = r.deliveryTimeMin && r.deliveryTimeMax ? `${r.deliveryTimeMin} a ${r.deliveryTimeMax} min` : null;
+  const entrega = r.deliveryEnabled ? emLinha(`Entrega ${formatCents(r.deliveryFeeCents)}`, tempo) : null;
+  return emLinha(entrega, r.pickupEnabled && (r.deliveryEnabled ? "retirada no local" : "Só retirada no local"));
+};
+
+const resumoBairros = (areas: AreaData[]) =>
+  areas.length === 0
+    ? "Entrega para qualquer endereço, taxa única"
+    : `${areas.length} ${areas.length === 1 ? "bairro" : "bairros"}`;
+
+// a chave em si, não o tipo dela: "Celular" não diz se é o número certo,
+// e é justamente isso que se quer conferir de relance
+const resumoPix = (r: RestaurantFormData) =>
+  r.pixKey ? emLinha(formatPixKey(r.pixKeyType, r.pixKey), r.pixHolderName) : "Falta a chave Pix";
+
+const resumoFormas = (r: RestaurantFormData) =>
+  emLinha(r.acceptsCard && "Aceita cartão", r.acceptsCash && "Aceita dinheiro") || "Só Pix";
+
+const resumoPizza = (r: RestaurantFormData) =>
+  r.pizzaMaxFlavors === 0
+    ? "Não trabalho com pizza"
+    : emLinha(
+        `Até ${r.pizzaMaxFlavors} ${r.pizzaMaxFlavors === 1 ? "sabor" : "sabores"}`,
+        r.menuCategories.some((c) => c.pizzaFlavors) ? null : "falta marcar a categoria dos sabores",
+      );
+
 export function InfoSection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="informacoes" icone={<Store />} title="Informações e fotos" action={saveInfo} restaurantId={r.id}>
+    <SectionForm id="informacoes" icone={<Store />} title="Informações e fotos" resumo={resumoInfo(r)} action={saveInfo} restaurantId={r.id}>
       {(s) => (
         <>
           {/* duas colunas: de um lado quem é o restaurante (nome e logo),
@@ -75,45 +140,104 @@ export function InfoSection({ r }: { r: RestaurantFormData }) {
             </div>
             <ImageField name="cover" removeName="removeCover" label="Foto de capa" currentUrl={r.coverUrl} />
           </div>
+
+          {/* A Lia lê isto para responder "vocês são o quê?", e o cardápio
+              mostra embaixo do nome. Estava no banco desde sempre e não
+              tinha campo em tela nenhuma: ninguém conseguia preencher. */}
+          <Field label="Sobre o restaurante" htmlFor="description" error={s.fieldErrors?.description}>
+            <Textarea
+              id="description"
+              name="description"
+              maxLength={300}
+              rows={2}
+              placeholder="Ex.: Lanches, pizzas e porções. Entregamos em toda Presidente Figueiredo."
+              defaultValue={pick(s.values, "description", r.description)}
+            />
+          </Field>
         </>
       )}
     </SectionForm>
   );
 }
 
+/**
+ * Contato.
+ *
+ * Em cima fica o que o cliente realmente vê: o WhatsApp dos pedidos e o
+ * Instagram, que o cardápio mostra. O telefone fixo e o e-mail saíram da
+ * primeira vista em 16/11/2026 -- o fixo só aparece quando a Lia recita
+ * os contatos, e o e-mail do restaurante não vai a lugar nenhum hoje:
+ * nem ao cardápio, nem à Lia. Continuam ali embaixo, a um clique, porque
+ * escondê-los não é apagá-los: quem já preencheu continua enxergando e
+ * mudando, e o campo segue indo junto no envio.
+ */
 export function ContactSection({ r }: { r: RestaurantFormData }) {
   return (
     <SectionForm
       id="contato" icone={<Phone />}
       title="Contato"
+      resumo={resumoContato(r)}
       action={saveContact}
       restaurantId={r.id}
     >
       {(s) => (
-        /* os dois telefones dividem a linha no celular; e-mail e Instagram
-           ficam inteiros, que é onde se digita texto longo */
-        <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
-          <Field label="WhatsApp dos pedidos" htmlFor="whatsapp" error={s.fieldErrors?.whatsapp}>
-            <Input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" defaultValue={pick(s.values, "whatsapp", formatPhone(r.whatsapp))} placeholder="(92) 99999-0000" aria-invalid={!!s.fieldErrors?.whatsapp} />
-          </Field>
-          <Field label="Telefone fixo" htmlFor="phone" error={s.fieldErrors?.phone}>
-            <Input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={pick(s.values, "phone", formatPhone(r.phone))} placeholder="(92) 3000-0000" aria-invalid={!!s.fieldErrors?.phone} />
-          </Field>
-          <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} className="col-span-2 sm:col-span-1">
-            <Input id="email" name="email" type="email" inputMode="email" defaultValue={pick(s.values, "email", r.email)} aria-invalid={!!s.fieldErrors?.email} />
-          </Field>
-          <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} className="col-span-2 sm:col-span-1">
-            <Input id="instagram" name="instagram" defaultValue={pick(s.values, "instagram", r.instagram ? `@${r.instagram}` : "")} placeholder="@seurestaurante" aria-invalid={!!s.fieldErrors?.instagram} />
-          </Field>
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
+            <Field label="WhatsApp dos pedidos" htmlFor="whatsapp" error={s.fieldErrors?.whatsapp} className="col-span-2 sm:col-span-1">
+              <Input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" defaultValue={pick(s.values, "whatsapp", formatPhone(r.whatsapp))} placeholder="(92) 99999-0000" aria-invalid={!!s.fieldErrors?.whatsapp} />
+            </Field>
+            <Field label="Instagram" htmlFor="instagram" error={s.fieldErrors?.instagram} className="col-span-2 sm:col-span-1">
+              <Input id="instagram" name="instagram" defaultValue={pick(s.values, "instagram", r.instagram ? `@${r.instagram}` : "")} placeholder="@seurestaurante" aria-invalid={!!s.fieldErrors?.instagram} />
+            </Field>
+          </div>
+          <OutrosContatos r={r} s={s} />
         </div>
       )}
     </SectionForm>
   );
 }
 
+/** o telefone fixo e o e-mail, fechados até alguém precisar deles */
+function OutrosContatos({ r, s }: { r: RestaurantFormData; s: SectionState }) {
+  // quem já tem algum salvo, ou voltou com erro num deles, abre à mostra:
+  // esconder o que está preenchido faria o dono achar que sumiu
+  const [aberto, setAberto] = useState(
+    Boolean(r.phone || r.email || s.fieldErrors?.phone || s.fieldErrors?.email),
+  );
+
+  if (!aberto) {
+    return (
+      <>
+        {/* fechados, os campos continuam no envio com o valor de hoje:
+            sem isso, salvar o contato apagaria o que está guardado */}
+        <input type="hidden" name="phone" value={formatPhone(r.phone)} />
+        <input type="hidden" name="email" value={r.email ?? ""} />
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          className="self-start text-sm font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+        >
+          + telefone fixo e e-mail
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
+      <Field label="Telefone fixo" htmlFor="phone" error={s.fieldErrors?.phone} className="col-span-2 sm:col-span-1">
+        <Input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={pick(s.values, "phone", formatPhone(r.phone))} placeholder="(92) 3000-0000" aria-invalid={!!s.fieldErrors?.phone} />
+      </Field>
+      <Field label="E-mail" htmlFor="email" error={s.fieldErrors?.email} className="col-span-2 sm:col-span-1">
+        <Input id="email" name="email" type="email" inputMode="email" defaultValue={pick(s.values, "email", r.email)} aria-invalid={!!s.fieldErrors?.email} />
+      </Field>
+    </div>
+  );
+}
+
 export function AddressSection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="endereco" icone={<MapPin />} title="Endereço" action={saveAddress} restaurantId={r.id}>
+    <SectionForm id="endereco" icone={<MapPin />} title="Endereço" resumo={resumoEndereco(r)} action={saveAddress} restaurantId={r.id}>
       {(s) => (
         /* A mesma grade de seis no celular: o que é curto por natureza
            divide a linha (número com complemento, estado com CEP), e o que
@@ -211,6 +335,7 @@ export function HoursSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="horarios" icone={<Clock />}
       title="Horário de funcionamento"
+      resumo={resumoHorario(r)}
       action={saveHours}
       restaurantId={r.id}
     >
@@ -407,7 +532,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
   };
 
   return (
-    <SectionForm id="area" icone={<MapIcon />} title="Bairros que você atende" action={saveDeliveryAreas} restaurantId={r.id}>
+    <SectionForm id="area" icone={<MapIcon />} title="Bairros que você atende" resumo={resumoBairros(areas)} action={saveDeliveryAreas} restaurantId={r.id}>
       {(s) => (
         <>
           {linhas.length === 0 ? (
@@ -480,7 +605,7 @@ export function DeliveryAreasSection({ r, areas }: { r: RestaurantFormData; area
 
 export function DeliverySection({ r }: { r: RestaurantFormData }) {
   return (
-    <SectionForm id="entrega" icone={<Bike />} title="Entrega e retirada" action={saveDelivery} restaurantId={r.id}>
+    <SectionForm id="entrega" icone={<Bike />} title="Entrega e retirada" resumo={resumoEntrega(r)} action={saveDelivery} restaurantId={r.id}>
       {(s) => (
         <>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -513,6 +638,7 @@ export function PaymentMethodsSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="formas-de-pagamento" icone={<CreditCard />}
       title="Cartão e dinheiro"
+      resumo={resumoFormas(r)}
       action={savePaymentMethods}
       restaurantId={r.id}
     >
@@ -539,6 +665,7 @@ export function PaymentSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="pagamento" icone={<QrCode />}
       title="Pagamento por Pix"
+      resumo={resumoPix(r)}
       action={savePayment}
       restaurantId={r.id}
     >
@@ -599,6 +726,7 @@ export function PizzaSection({ r }: { r: RestaurantFormData }) {
     <SectionForm
       id="pizza" icone={<Pizza />}
       title="Pizza"
+      resumo={resumoPizza(r)}
       action={savePizza}
       restaurantId={r.id}
     >
