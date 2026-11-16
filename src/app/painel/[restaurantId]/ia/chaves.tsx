@@ -6,7 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SwitchButton } from "@/components/ui/switch-button";
 
-import { esquecerConversas, iaAnotaPedidos, iaNoChatDoCardapio, type EstadoDaAcao } from "./actions";
+import { esquecerConversas, iaAnotaPedidos, iaNoChatDoCardapio, iaOferece, type EstadoDaAcao } from "./actions";
 
 // As chaves que o dono mexe sozinho. Cada uma é um formulário próprio:
 // são decisões separadas, e uma não espera a outra.
@@ -65,6 +65,26 @@ export function Pedidos({ restaurantId, ligado }: { restaurantId: string; ligado
         ligado
           ? 'Ela manda o link primeiro, sempre. Se o cliente não conseguir pedir por ele, aí sim anota pela conversa, lê o resumo com o total e só cria o pedido depois do "sim" — ele chega em Pedidos com o selo "Feito pela IA". Também manda o Pix de pedido em aberto e pede o comprovante, mas quem confirma o pagamento é você (ou o Mercado Pago).'
           : "Hoje ela tira dúvidas sobre o cardápio, horário, entrega e pagamento, e manda o link para o cliente pedir. Ligando, ela também anota o pedido de quem não conseguir pelo link."
+      }
+      estado={estado}
+      acao={acao}
+    />
+  );
+}
+
+/** a IA pode oferecer uma coisa antes de fechar o pedido */
+export function Ofertas({ restaurantId, ligado }: { restaurantId: string; ligado: boolean }) {
+  const [estado, acao] = useActionState<EstadoDaAcao, FormData>(iaOferece, {});
+
+  return (
+    <Chave
+      titulo="Oferecer no pedido"
+      restaurantId={restaurantId}
+      ligado={ligado}
+      texto={
+        ligado
+          ? "Antes de mostrar o resumo, ela oferece uma coisa — e uma só: o acompanhamento que falta no prato, o que falta para o pedido mínimo, uma bebida ou uma sobremesa, nessa ordem. Se o cliente disser não, ela não insiste nem oferece outra coisa naquele pedido."
+          : 'Ligando, ela pergunta uma vez por pedido se o cliente quer a bebida, o acompanhamento que falta ou a sobremesa — como o garçom que pergunta "e para beber?". Nunca mais de uma pergunta, e nunca depois de um não.'
       }
       estado={estado}
       acao={acao}

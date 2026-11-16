@@ -10,7 +10,7 @@ import { requireDono } from "@/server/auth/dal";
 import { conversasDaIa } from "@/server/ia/conversas";
 import { conferirPareamento } from "@/server/ia/uazapi";
 
-import { Esquecer, NoCardapio, Pedidos } from "./chaves";
+import { Esquecer, NoCardapio, Ofertas, Pedidos } from "./chaves";
 import { ConversasDaIa } from "./conversas";
 import { ListasDaIa } from "./ignorados";
 import { ConectarWhatsapp } from "./conectar";
@@ -43,6 +43,7 @@ export default async function IaPage({
       select: {
         ativo: true,
         fazPedidos: true,
+        ofertas: true,
         noChat: true,
         phoneNumberId: true,
         zapiChannelId: true,
@@ -141,6 +142,18 @@ export default async function IaPage({
           <Pedidos
             restaurantId={restaurant.id}
             ligado={Boolean(atendente?.fazPedidos)}
+          />
+        </Card>
+      )}
+
+      {/* Oferecer só faz sentido para quem anota o pedido: é no meio da
+          anotação que a oferta cabe. Sem isso, a chave ficaria ligada sem
+          mudar nada. */}
+      {comWhatsapp && atendente?.fazPedidos && (
+        <Card className="flex flex-col gap-3">
+          <Ofertas
+            restaurantId={restaurant.id}
+            ligado={Boolean(atendente?.ofertas)}
           />
         </Card>
       )}

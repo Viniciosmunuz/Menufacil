@@ -236,6 +236,45 @@ export async function iaAnotaPedidos(
 }
 
 /**
+ * O dono decide se a IA pode oferecer alguma coisa antes de fechar o
+ * pedido.
+ *
+ * Uma oferta por pedido, no máximo: o acompanhamento que falta, o que
+ * falta para o pedido mínimo, uma bebida ou uma sobremesa -- nessa ordem,
+ * e só a primeira que couber. Recusa vale para o pedido inteiro.
+ *
+ * É chave do dono, e não decisão da plataforma, porque quem conhece a
+ * clientela é ele. Numa casa isso é o garçom perguntando "e para beber?";
+ * noutra é insistência. Nasce desligada.
+ */
+export async function iaOferece(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const ligar = formData.get("ligar") === "1";
+
+  await db.atendenteIa.update({
+    where: { restaurantId: restaurant.id },
+    data: { ofertas: ligar },
+  });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.ofertas",
+    details: { ligado: ligar, viaAdmin },
+  });
+  refresh();
+  return {
+    message: ligar
+      ? "Ela vai oferecer uma coisa por pedido, no máximo."
+      : "Ela não oferece mais nada: só anota o que o cliente pedir.",
+  };
+}
+
+/**
  * O atendente no chat do cardápio.
  *
  * Não depende de WhatsApp nenhum: responde quem abriu o link do

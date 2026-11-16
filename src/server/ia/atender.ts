@@ -229,6 +229,7 @@ export async function atender(evento: MensagemKapso) {
       restaurantId: true,
       ativo: true,
       fazPedidos: true,
+      ofertas: true,
       ignorados: true,
       semEspera: true,
       phoneNumberId: true,
@@ -665,6 +666,7 @@ export async function atender(evento: MensagemKapso) {
     pedidos: atendente.fazPedidos
       ? { restaurantId, slug: conhecimento.slug, contato, telefone }
       : undefined,
+    oferece: atendente.ofertas,
   });
   if (!resposta) return;
 

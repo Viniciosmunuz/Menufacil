@@ -1724,6 +1724,15 @@ model AtendenteIa {
   /// a IA pode anotar pedido na conversa. Desligado, ela so manda o link.
   fazPedidos  Boolean   @default(false)
 
+  /// A IA pode oferecer uma coisa antes de fechar o pedido.
+  ///
+  /// Acompanhamento que falta, o que falta para o pedido minimo, bebida ou
+  /// sobremesa -- uma so por pedido, na ordem que o prompt define. Nasce
+  /// desligada: quem conhece a clientela e o dono, e oferta e o tipo de
+  /// coisa que um restaurante quer e o vizinho nao. Sem anotar pedido ela
+  /// nao serve para nada, porque e no meio da anotacao que a oferta cabe.
+  ofertas     Boolean   @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
