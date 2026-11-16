@@ -6,7 +6,25 @@ import { cn } from "@/lib/cn";
 
 // Interruptor liga/desliga que envia o formulário em volta dele. Enquanto
 // salva, já mostra a nova posição (resposta imediata no toque).
-export function SwitchButton({ checked, label, className }: { checked: boolean; label: string; className?: string }) {
+export function SwitchButton({
+  checked,
+  label,
+  className,
+  rotuloOculto = false,
+}: {
+  checked: boolean;
+  label: string;
+  className?: string;
+  /**
+   * O nome fica só para o leitor de tela.
+   *
+   * Para a linha em que o título já está escrito ao lado do interruptor:
+   * repetir a mesma palavra a dois centímetros dela não ajuda ninguém que
+   * enxerga, e tirar o texto de dentro do botão deixaria quem usa leitor
+   * de tela com um "ligado" sem dono.
+   */
+  rotuloOculto?: boolean;
+}) {
   const { pending } = useFormStatus();
   const on = pending ? !checked : checked;
   return (
@@ -31,7 +49,7 @@ export function SwitchButton({ checked, label, className }: { checked: boolean; 
           )}
         />
       </span>
-      {label}
+      {rotuloOculto ? <span className="sr-only">{label}</span> : label}
     </button>
   );
 }

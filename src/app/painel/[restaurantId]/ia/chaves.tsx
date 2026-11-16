@@ -1,5 +1,6 @@
 "use client";
 
+import { Eraser } from "lucide-react";
 import { useActionState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -10,45 +11,54 @@ import { esquecerConversas, iaAnotaPedidos, iaNoChatDoCardapio, iaOferece, type 
 
 // As chaves que o dono mexe sozinho. Cada uma é um formulário próprio:
 // são decisões separadas, e uma não espera a outra.
+//
+// Até 16/11/2026 cada chave era um cartão solto, com um parágrafo embaixo
+// explicando o que ela fazia. Quatro cartões, quatro parágrafos, e a tela
+// pedia leitura antes de qualquer toque. Agora são linhas de uma lista só:
+// o nome à esquerda, o interruptor à direita, e uma linha curta dizendo o
+// que muda. Ele pediu intuitivo, e intuitivo é olhar e saber usar -- não
+// ler um texto embaixo de cada campo.
 
 /**
- * Uma chave de ligar e desligar: título, interruptor e a explicação.
+ * Uma linha de chave: nome, uma linha de recado, e o interruptor.
  *
- * Interruptor e não botão. O botão dizia a ação ("Desligar no cardápio") e
- * o estado vinha numa etiqueta ao lado -- duas leituras para responder
- * "está ligado?". O interruptor responde isso na posição, que é como o
- * resto do painel já funciona (os recursos, as permissões do garçom).
- *
- * O rótulo repete o título de propósito: é o que o leitor de tela anuncia
- * junto do "ligado/desligado", e sem ele a chave seria "ligado" sozinho.
+ * O interruptor fica à direita porque é para onde o polegar vai, e porque
+ * alinhado em coluna ele deixa a lista inteira legível de relance: tudo o
+ * que está verde está ligado.
  */
 function Chave({
   titulo,
-  texto,
+  recado,
   estado,
   acao,
   restaurantId,
   ligado,
 }: {
   titulo: string;
-  texto: string;
+  /** uma linha, não um parágrafo: o que muda quando a chave vira */
+  recado: string;
   estado: EstadoDaAcao;
   acao: (formData: FormData) => void;
   restaurantId: string;
   ligado: boolean;
 }) {
   return (
-    <>
-      <form action={acao} className="flex items-start">
-        <input type="hidden" name="restaurantId" value={restaurantId} />
-        {/* o valor é o contrário do estado de agora: o toque inverte */}
-        <input type="hidden" name="ligar" value={ligado ? "0" : "1"} />
-        <SwitchButton checked={ligado} label={titulo} className="font-extrabold" />
-      </form>
-      <p className="text-sm text-muted">{texto}</p>
+    <div className="flex flex-col gap-2 px-5 py-4">
+      <div className="flex items-center gap-4">
+        <span className="min-w-0 flex-1">
+          <span className="block font-extrabold">{titulo}</span>
+          <span className="block text-sm text-muted">{recado}</span>
+        </span>
+        <form action={acao} className="shrink-0">
+          <input type="hidden" name="restaurantId" value={restaurantId} />
+          {/* o valor é o contrário do estado de agora: o toque inverte */}
+          <input type="hidden" name="ligar" value={ligado ? "0" : "1"} />
+          <SwitchButton checked={ligado} label={titulo} rotuloOculto />
+        </form>
+      </div>
       {estado.error && <Alert tone="danger">{estado.error}</Alert>}
       {estado.message && !estado.error && <Alert tone="success">{estado.message}</Alert>}
-    </>
+    </div>
   );
 }
 
@@ -61,10 +71,10 @@ export function Pedidos({ restaurantId, ligado }: { restaurantId: string; ligado
       titulo="Anotar pedidos"
       restaurantId={restaurantId}
       ligado={ligado}
-      texto={
+      recado={
         ligado
-          ? 'Ela manda o link primeiro, sempre. Se o cliente não conseguir pedir por ele, aí sim anota pela conversa, lê o resumo com o total e só cria o pedido depois do "sim" — ele chega em Pedidos com o selo "Feito pela IA". Também manda o Pix de pedido em aberto e pede o comprovante, mas quem confirma o pagamento é você (ou o Mercado Pago).'
-          : "Hoje ela tira dúvidas sobre o cardápio, horário, entrega e pagamento, e manda o link para o cliente pedir. Ligando, ela também anota o pedido de quem não conseguir pelo link."
+          ? "Anota pela conversa e manda o Pix. Quem confirma o pagamento é você."
+          : "Hoje ela só tira dúvidas e manda o link do cardápio."
       }
       estado={estado}
       acao={acao}
@@ -81,10 +91,10 @@ export function Ofertas({ restaurantId, ligado }: { restaurantId: string; ligado
       titulo="Oferecer no pedido"
       restaurantId={restaurantId}
       ligado={ligado}
-      texto={
+      recado={
         ligado
-          ? "Antes de mostrar o resumo, ela oferece uma coisa — e uma só: o acompanhamento que falta no prato, o que falta para o pedido mínimo, uma bebida ou uma sobremesa, nessa ordem. Se o cliente disser não, ela não insiste nem oferece outra coisa naquele pedido."
-          : 'Ligando, ela pergunta uma vez por pedido se o cliente quer a bebida, o acompanhamento que falta ou a sobremesa — como o garçom que pergunta "e para beber?". Nunca mais de uma pergunta, e nunca depois de um não.'
+          ? "Uma pergunta por pedido: bebida, acompanhamento ou sobremesa."
+          : 'Perguntar uma vez "e para beber?", como o garçom faz.'
       }
       estado={estado}
       acao={acao}
@@ -101,10 +111,10 @@ export function NoCardapio({ restaurantId, ligado }: { restaurantId: string; lig
       titulo="Atender no cardápio"
       restaurantId={restaurantId}
       ligado={ligado}
-      texto={
+      recado={
         ligado
-          ? 'Quem abre o link do restaurante vê o botão "Tirar dúvida" e conversa ali mesmo. Ela responde sobre o cardápio, a entrega e o pagamento, e manda a pessoa fechar o pedido pelo próprio cardápio. Só responde com o restaurante aberto.'
-          : 'Ligando, aparece um botão "Tirar dúvida" no seu cardápio e ela responde ali mesmo. Não precisa de WhatsApp conectado.'
+          ? 'O botão "Tirar dúvida" está no seu cardápio, com o restaurante aberto.'
+          : "Responder quem abre o seu link, sem precisar de WhatsApp."
       }
       estado={estado}
       acao={acao}
@@ -123,21 +133,17 @@ export function Esquecer({ restaurantId }: { restaurantId: string }) {
   const [estado, acao] = useActionState<EstadoDaAcao, FormData>(esquecerConversas, {});
 
   return (
-    <>
-      <p className="font-extrabold">Recomeçar as conversas</p>
+    <form action={acao} className="flex flex-col gap-3">
+      <input type="hidden" name="restaurantId" value={restaurantId} />
       <p className="text-sm text-muted">
-        Apaga o que a IA lembra das conversas. Os seus pedidos, os clientes e as mensagens no
-        WhatsApp não são tocados. Use quando ela estiver repetindo uma resposta antiga, ou quando
-        ficou quieta com alguém depois que você respondeu pelo celular.
+        Ela esquece as conversas e volta a atender todo mundo do zero. Os pedidos já feitos não são tocados.
       </p>
+      <SubmitButton variant="secondary" size="sm" className="self-start" pendingText="Apagando...">
+        <Eraser className="size-4" aria-hidden="true" />
+        Apagar as conversas
+      </SubmitButton>
       {estado.error && <Alert tone="danger">{estado.error}</Alert>}
       {estado.message && !estado.error && <Alert tone="success">{estado.message}</Alert>}
-      <form action={acao} className="flex items-start">
-        <input type="hidden" name="restaurantId" value={restaurantId} />
-        <SubmitButton variant="secondary" size="sm">
-          Apagar o que ela lembra
-        </SubmitButton>
-      </form>
-    </>
+    </form>
   );
 }

@@ -1,8 +1,11 @@
+import { Eraser, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { Card } from "@/components/ui/card";
+import { Gaveta } from "@/components/ui/gaveta";
+import { cn } from "@/lib/cn";
 import { db } from "@/lib/db";
 import { noAr } from "@/lib/features";
 import { formatPhone } from "@/lib/format";
@@ -103,31 +106,38 @@ export default async function IaPage({
         description="O atendente que responde os seus clientes. Você decide o que ele faz."
       />
 
-      <Card className="flex flex-col gap-3">
-        {/* A bolinha e o "No WhatsApp: ligada" saíram daqui: diziam o mesmo
-            que a chavinha logo abaixo, e ler duas vezes a mesma coisa faz
-            duvidar de qual das duas está certa. Fica o número, que a chave
-            não diz. */}
-        {atendente?.numeroExibido && (
-          <p className="text-sm text-muted">
-            No WhatsApp {formatPhone(atendente.numeroExibido)}
-          </p>
-        )}
+      {/* O número e o estado da conexão, que é o que se olha primeiro: sem
+          WhatsApp conectado, nada do resto desta tela acontece. */}
+      <Card className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "grid size-11 shrink-0 place-items-center rounded-control",
+                comWhatsapp ? "bg-success/12 text-success" : "bg-surface-2 text-faint",
+              )}
+            >
+              <MessageCircle className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-extrabold">
+                {atendente?.numeroExibido ? formatPhone(atendente.numeroExibido) : "WhatsApp do restaurante"}
+              </p>
+              <p className="text-sm text-muted">{comWhatsapp ? "Conectado" : "Sem conexão"}</p>
+            </div>
+          </div>
+
+          {comWhatsapp && (
+            <LigarIa restaurantId={restaurant.id} ligada={Boolean(atendente?.ativo)} />
+          )}
+        </div>
 
         {comWhatsapp ? (
-          <>
-            <LigarIa
-              restaurantId={restaurant.id}
-              ligada={Boolean(atendente?.ativo)}
-            />
-            {/* a explicação vem depois da chave, como nas outras: a chave
-                diz o estado, o texto diz o que isso significa */}
-            <p className="text-sm text-muted">
-              {atendente?.ativo
-                ? "Ela responde quem mandar mensagem enquanto o restaurante estiver aberto. Fora do horário, ou fechado no botão, ela não responde nada. Se você ou alguém da equipe responder pelo celular, ela fica quieta naquela conversa por 30 minutos."
-                : "Desligada, as mensagens chegam no seu WhatsApp normalmente e ninguém responde por você."}
-            </p>
-          </>
+          <p className="text-sm text-muted">
+            {atendente?.ativo
+              ? "Ela atende enquanto o restaurante está aberto. Se alguém da equipe responder pelo celular, ela se cala naquela conversa por 30 minutos."
+              : "Desligada, as mensagens chegam no seu WhatsApp e ninguém responde por você."}
+          </p>
         ) : (
           /* Sem WhatsApp, o caminho de conectar sozinho -- que existe
              só na uazapi, onde o QR code tem API. Quem está num dos
@@ -137,42 +147,31 @@ export default async function IaPage({
         )}
       </Card>
 
-      {comWhatsapp && (
-        <Card className="flex flex-col gap-3">
-          <Pedidos
-            restaurantId={restaurant.id}
-            ligado={Boolean(atendente?.fazPedidos)}
-          />
-        </Card>
-      )}
-
-      {/* Oferecer só faz sentido para quem anota o pedido: é no meio da
-          anotação que a oferta cabe. Sem isso, a chave ficaria ligada sem
-          mudar nada. */}
-      {comWhatsapp && atendente?.fazPedidos && (
-        <Card className="flex flex-col gap-3">
-          <Ofertas
-            restaurantId={restaurant.id}
-            ligado={Boolean(atendente?.ofertas)}
-          />
-        </Card>
-      )}
-
-      <Card className="flex flex-col gap-3">
-        <NoCardapio
-          restaurantId={restaurant.id}
-          ligado={Boolean(atendente?.noChat)}
-        />
+      {/* As chaves numa lista só. Eram quatro cartões soltos, cada um com
+          o seu parágrafo; em pilha ficava impossível ver de relance o que
+          estava ligado. */}
+      <Card className="flex flex-col divide-y divide-line p-0 sm:p-0">
+        {comWhatsapp && (
+          <Pedidos restaurantId={restaurant.id} ligado={Boolean(atendente?.fazPedidos)} />
+        )}
+        {/* Oferecer só faz sentido para quem anota o pedido: é no meio da
+            anotação que a oferta cabe. Sem isso, a chave ficaria ligada
+            sem mudar nada. */}
+        {comWhatsapp && atendente?.fazPedidos && (
+          <Ofertas restaurantId={restaurant.id} ligado={Boolean(atendente?.ofertas)} />
+        )}
+        <NoCardapio restaurantId={restaurant.id} ligado={Boolean(atendente?.noChat)} />
       </Card>
 
+      {/* Daqui para baixo é tudo gaveta: listas de número e conversas são
+          coisa de consultar de vez em quando, não de deixar aberta na
+          tela. Ele pediu assim. */}
       {atendente && (
-        <Card>
-          <ListasDaIa
-            restaurantId={restaurant.id}
-            ignorados={atendente.ignorados}
-            semEspera={atendente.semEspera}
-          />
-        </Card>
+        <ListasDaIa
+          restaurantId={restaurant.id}
+          ignorados={atendente.ignorados}
+          semEspera={atendente.semEspera}
+        />
       )}
 
       {atendente && (
@@ -185,9 +184,9 @@ export default async function IaPage({
       )}
 
       {atendente && (
-        <Card className="flex flex-col gap-3">
+        <Gaveta titulo="Recomeçar as conversas" resumo="Ela esquece tudo e atende do zero" icone={<Eraser />}>
           <Esquecer restaurantId={restaurant.id} />
-        </Card>
+        </Gaveta>
       )}
     </div>
   );

@@ -1,11 +1,12 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { FlaskConical, Plus, Trash2, UserX } from "lucide-react";
 import { memo, useActionState, useCallback, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
+import { Gaveta } from "@/components/ui/gaveta";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { formatPhone } from "@/lib/format";
 
@@ -160,36 +161,55 @@ export function ListasDaIa({
     paraLinhas(semEspera, "tst"),
   );
 
+  // os números continuam num formulário só, mesmo em duas gavetas: são
+  // dois campos do mesmo registro, e gaveta fechada não tira o campo do
+  // envio. Salvar uma sem a outra criaria o jeito de perder a de dentro.
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="restaurantId" value={restaurantId} />
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
       {state.message && <Alert tone="success">{state.message}</Alert>}
 
-      <Lista
-        campo="ignorado"
+      <Gaveta
         titulo="Quem a IA não responde"
-        explicacao="Sua família, seus amigos, os fornecedores. A IA nunca responde esses números, e não guarda nada do que eles escrevem."
-        vazia="Ninguém na lista: a IA responde todo mundo enquanto estiver ligada."
-        linhas={linhasIgnorados}
-        setLinhas={setIgnorados}
-      />
+        resumo={quantos(linhasIgnorados, "a IA responde todo mundo")}
+        icone={<UserX />}
+      >
+        <Lista
+          campo="ignorado"
+          titulo="Quem a IA não responde"
+          explicacao="Sua família, seus amigos, os fornecedores. A IA nunca responde esses números."
+          vazia="Ninguém na lista."
+          linhas={linhasIgnorados}
+          setLinhas={setIgnorados}
+        />
+      </Gaveta>
 
-      <div className="border-t border-line pt-6">
+      <Gaveta
+        titulo="Números de teste"
+        resumo={quantos(linhasTeste, "nenhum")}
+        icone={<FlaskConical />}
+      >
         <Lista
           campo="teste"
           titulo="Números de teste"
-          explicacao="Quando você responde alguém pelo celular, a IA fica quieta naquela conversa por 30 minutos, para não falar por cima de você. Nestes números ela responde mesmo assim — serve para você testar conversando dos dois lados."
+          explicacao="Nestes números ela responde mesmo depois de você responder pelo celular — serve para testar dos dois lados."
           vazia="Nenhum número de teste."
           linhas={linhasTeste}
           setLinhas={setTeste}
         />
-      </div>
+      </Gaveta>
 
       <SubmitButton size="sm" className="self-start" pendingText="Salvando...">
         Salvar as listas
       </SubmitButton>
     </form>
   );
+}
+
+/** "3 números" na gaveta fechada, ou o que dizer quando não há nenhum */
+function quantos(linhas: Linha[], vazio: string) {
+  const n = linhas.filter((l) => l.numero.trim()).length;
+  return n === 0 ? vazio : n === 1 ? "1 número" : `${n} números`;
 }
