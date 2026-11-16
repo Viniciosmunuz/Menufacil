@@ -51,12 +51,18 @@ export function SuporteForm({ restaurantId }: { restaurantId: string }) {
         </div>
       </div>
 
-      <Field
-        label="O que está acontecendo?"
-        htmlFor="mensagem"
-        hint="Conte como se estivesse falando com a gente. Se puder, diga o número do pedido ou o nome do prato."
-      >
-        <Textarea id="mensagem" name="mensagem" rows={5} maxLength={2000} placeholder="Ex.: a comanda do pedido #42 não saiu na impressora do balcão." />
+      {/* A dica saiu de baixo do campo e entrou no exemplo: o que ela
+          pedia -- falar como se estivesse falando com a gente, dizer o
+          número do pedido -- o próprio exemplo já mostra, e mostrar
+          ensina mais rápido do que explicar. */}
+      <Field label="O que está acontecendo?" htmlFor="mensagem">
+        <Textarea
+          id="mensagem"
+          name="mensagem"
+          rows={5}
+          maxLength={2000}
+          placeholder="Ex.: a comanda do pedido #42 não saiu na impressora do balcão."
+        />
       </Field>
 
       {estado.error && <Alert tone="danger">{estado.error}</Alert>}

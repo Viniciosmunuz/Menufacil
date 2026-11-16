@@ -30,9 +30,23 @@ export const metadata: Metadata = { title: "Ajustes" };
 // Só aparece o que este restaurante tem. Um recurso que o admin não
 // liberou não vira uma linha apagada: simplesmente não está na lista.
 
-type Atalho = { href: string; nome: string; resumo: string };
+/**
+ * Uma linha do índice.
+ *
+ * O `resumo` é opcional desde 16/11/2026, e quase sempre fica de fora.
+ * Toda linha tinha uma: "Contato — WhatsApp, telefone, e-mail e
+ * Instagram", "Endereço — Onde o cliente retira o pedido". Dizer de novo
+ * o que o nome já diz dobra a altura da lista e ensina o olho a pular a
+ * segunda linha -- e aí ele pula também as poucas que precisavam ser
+ * lidas.
+ *
+ * Sobraram as que avisam o que o nome não entrega: que o ajuste mora em
+ * outra tela ("Fica na tela de Pedidos") ou o que a palavra significa
+ * aqui dentro ("Totem", "Mercado Pago").
+ */
+type Atalho = { href: string; nome: string; resumo?: string };
 
-type Categoria = { titulo: string; resumo: string; icone: ReactNode; atalhos: Atalho[] };
+type Categoria = { titulo: string; icone: ReactNode; atalhos: Atalho[] };
 
 export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[restaurantId]/configuracoes">) {
   const { restaurantId } = await params;
@@ -50,60 +64,54 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
   const categorias: Categoria[] = [
     {
       titulo: "Dados do restaurante",
-      resumo: "Como o restaurante aparece para o cliente.",
       icone: <Store />,
       atalhos: [
-        { href: `${dados}#informacoes`, nome: "Nome, descrição e fotos", resumo: "O nome, a foto de perfil e a capa do cardápio." },
-        { href: `${dados}#contato`, nome: "Contato", resumo: "WhatsApp, telefone, e-mail e Instagram." },
-        { href: `${dados}#endereco`, nome: "Endereço", resumo: "Onde o cliente retira o pedido." },
+        { href: `${dados}#informacoes`, nome: "Nome, descrição e fotos" },
+        { href: `${dados}#contato`, nome: "Contato" },
+        { href: `${dados}#endereco`, nome: "Endereço" },
       ],
     },
     {
       titulo: "Delivery e entrega",
-      resumo: "Quando você atende e até onde entrega.",
       icone: <Truck />,
       atalhos: [
-        { href: `${dados}#horarios`, nome: "Horários de funcionamento", resumo: "Os dias e as horas em que a loja abre." },
-        { href: `${dados}#entrega`, nome: "Entrega e retirada", resumo: "A taxa, o tempo e se há entrega ou só retirada." },
-        { href: `${dados}#area`, nome: "Bairros atendidos", resumo: "Os bairros e a taxa de cada um." },
-        ...(entregadores ? [{ href: `${base}/entregadores`, nome: "Entregadores", resumo: "Quem leva os pedidos." }] : []),
+        { href: `${dados}#horarios`, nome: "Horários de funcionamento" },
+        { href: `${dados}#entrega`, nome: "Entrega e retirada" },
+        { href: `${dados}#area`, nome: "Bairros atendidos" },
+        ...(entregadores ? [{ href: `${base}/entregadores`, nome: "Entregadores" }] : []),
       ],
     },
     {
       titulo: "Impressão e equipamentos",
-      resumo: "A comanda no papel e os aparelhos do balcão.",
       icone: <Printer />,
       atalhos: [
-        { href: `${base}/pedidos`, nome: "Impressão dos pedidos", resumo: "Fica na tela de Pedidos, junto dos ajustes de impressão." },
+        { href: `${base}/pedidos`, nome: "Impressão dos pedidos", resumo: "Fica na tela de Pedidos." },
         ...(salao ? [{ href: `${base}/salao/configuracao`, nome: "Impressão do salão", resumo: "A impressora de cada seção do cardápio." }] : []),
         ...(restaurant.totemEnabled ? [{ href: `${base}/totem`, nome: "Totem", resumo: "O autoatendimento e a maquininha." }] : []),
       ],
     },
     {
       titulo: "Equipe e acessos",
-      resumo: "Quem entra no sistema e o que cada um pode fazer.",
       icone: <Users />,
       atalhos: [
-        ...(salao ? [{ href: `${base}/salao/configuracao`, nome: "Garçons", resumo: "As contas dos garçons e o que cada um pode fazer." }] : []),
-        ...(entregadores ? [{ href: `${base}/entregadores`, nome: "Contas dos entregadores", resumo: "O acesso de cada entregador ao aplicativo." }] : []),
-        { href: `${base}/perfil`, nome: "Minha senha", resumo: "Trocar a senha desta conta." },
+        ...(salao ? [{ href: `${base}/salao/configuracao`, nome: "Garçons" }] : []),
+        ...(entregadores ? [{ href: `${base}/entregadores`, nome: "Contas dos entregadores" }] : []),
+        { href: `${base}/perfil`, nome: "Minha senha" },
       ],
     },
     {
       titulo: "Notificações",
-      resumo: "Como você fica sabendo de um pedido novo.",
       icone: <Bell />,
       atalhos: [
-        { href: `${base}/pedidos`, nome: "Som e avisos de pedido novo", resumo: "Fica na tela de Pedidos: o toque do sino e o aviso no celular." },
+        { href: `${base}/pedidos`, nome: "Som e avisos de pedido novo", resumo: "Fica na tela de Pedidos." },
       ],
     },
     {
       titulo: "Pagamentos",
-      resumo: "Como o cliente paga.",
       icone: <Wallet />,
       atalhos: [
-        { href: `${dados}#pagamento`, nome: "Pix", resumo: "A chave Pix que o cliente usa para pagar." },
-        { href: `${dados}#formas-de-pagamento`, nome: "Cartão e dinheiro", resumo: "O que você aceita na entrega e na retirada." },
+        { href: `${dados}#pagamento`, nome: "Chave Pix" },
+        { href: `${dados}#formas-de-pagamento`, nome: "Cartão e dinheiro" },
         ...(restaurant.fullDeliveryEnabled
           ? [{ href: `${base}/entrega`, nome: "Mercado Pago", resumo: "A conta que recebe o Pix pago na hora do pedido." }]
           : []),
@@ -111,10 +119,9 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
     },
     {
       titulo: "Preferências",
-      resumo: "O jeito do sistema trabalhar no seu restaurante.",
       icone: <SlidersHorizontal />,
       atalhos: [
-        { href: `${dados}#pizza`, nome: "Pizza de mais de um sabor", resumo: "Quantos sabores o cliente pode escolher numa pizza." },
+        { href: `${dados}#pizza`, nome: "Pizza de mais de um sabor" },
         ...(ia ? [{ href: `${base}/ia`, nome: "WhatsApp IA", resumo: "O que a Lia faz quando atende os seus clientes." }] : []),
       ],
     },
@@ -194,25 +201,27 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
 
       <div className="gap-4 lg:columns-2">
         {categorias.map((c) => (
-          <Card key={c.titulo} className="mb-4 flex break-inside-avoid flex-col gap-3 p-4 sm:p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand [&_svg]:size-5">{c.icone}</span>
-              <div className="min-w-0">
-                <h2 className="font-extrabold">{c.titulo}</h2>
-                <p className="text-sm text-muted">{c.resumo}</p>
-              </div>
+          // O ícone do grupo perdeu o quadrado laranja em 16/11/2026.
+          // Eram seis blocos de cor numa tela em que o laranja é do que
+          // se toca -- os botões, a aba aberta --, e aqui ele não marcava
+          // nada: marcava todos. Cinza e sem fundo, o título volta a ser
+          // o que se lê primeiro.
+          <Card key={c.titulo} className="mb-4 flex break-inside-avoid flex-col gap-2 p-4 sm:p-5">
+            <div className="flex items-center gap-2.5">
+              <span className="shrink-0 text-faint [&_svg]:size-4">{c.icone}</span>
+              <h2 className="text-sm font-extrabold tracking-wide text-muted uppercase">{c.titulo}</h2>
             </div>
 
-            <ul className="-mx-2 flex flex-col border-t border-line pt-2">
+            <ul className="-mx-2 flex flex-col">
               {c.atalhos.map((a) => (
                 <li key={a.nome}>
                   <Link
                     href={a.href}
-                    className="flex min-h-12 items-center gap-3 rounded-control px-2 py-2 transition-colors hover:bg-surface-2"
+                    className="flex min-h-11 items-center gap-3 rounded-control px-2 py-2 transition-colors hover:bg-surface-2"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block font-bold">{a.nome}</span>
-                      <span className="block text-sm text-muted">{a.resumo}</span>
+                      {a.resumo && <span className="block text-sm text-muted">{a.resumo}</span>}
                     </span>
                     <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden="true" />
                   </Link>
@@ -224,19 +233,18 @@ export default async function ConfiguracoesPage({ params }: PageProps<"/painel/[
       </div>
 
       {/* Sair fica aqui, e não no menu: é coisa de uma vez por dia, e no
-          menu ele dividia espaço com o que se usa o tempo todo. */}
-      <Card className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
-        <div className="min-w-0 flex-1 basis-56">
-          <h2 className="font-extrabold">Conta</h2>
-          <p className="truncate text-sm text-muted">Você entrou como {user.name}.</p>
-        </div>
+          menu ele dividia espaço com o que se usa o tempo todo.
+          Deixou de ser um cartão inteiro: é um pé de página, do tamanho
+          da importância que tem. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+        <p className="truncate text-sm text-muted">Você entrou como {user.name}.</p>
         <form action={logout}>
-          <button type="submit" className={buttonClasses("secondary", "md")}>
+          <button type="submit" className={buttonClasses("secondary", "sm")}>
             <LogOut className="size-4" aria-hidden="true" />
             Sair da conta
           </button>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }

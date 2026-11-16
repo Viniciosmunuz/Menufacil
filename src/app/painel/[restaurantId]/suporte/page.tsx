@@ -1,9 +1,10 @@
-import { CircleCheck, Clock } from "lucide-react";
+import { CircleCheck, Clock, History } from "lucide-react";
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/panel/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Gaveta } from "@/components/ui/gaveta";
 import { db } from "@/lib/db";
 import { formatWhen } from "@/lib/format";
 import { requireDono } from "@/server/auth/dal";
@@ -11,6 +12,13 @@ import { requireDono } from "@/server/auth/dal";
 import { SuporteForm } from "./form";
 
 export const metadata: Metadata = { title: "Suporte" };
+
+/** quantos ainda esperam resposta, que é o que importa na gaveta fechada */
+function resumoDosChamados(chamados: { status: string }[]) {
+  const esperando = chamados.filter((c) => c.status !== "RESOLVIDO").length;
+  if (esperando === 0) return chamados.length === 1 ? "1 chamado, resolvido" : `${chamados.length} chamados, todos resolvidos`;
+  return esperando === 1 ? "1 esperando resposta" : `${esperando} esperando resposta`;
+}
 
 // Pedir ajuda.
 //
@@ -35,16 +43,24 @@ export default async function SuportePage({ params }: PageProps<"/painel/[restau
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    // Largura de leitura, não a da tela inteira.
+    //
+    // O formulário ocupava os 1800 pixels do painel num computador: uma
+    // caixa de texto larga daquele jeito faz o olho perder a linha, e o
+    // botão terminava sozinho a um palmo do campo. Aqui dentro são duas
+    // perguntas curtas, e duas perguntas curtas pedem uma coluna.
+    <div className="flex max-w-3xl flex-col gap-5">
       <PageHeader title="Suporte" description="Conte o que está acontecendo. A conversa abre no WhatsApp do MenuFácil com tudo escrito." />
 
       <Card>
         <SuporteForm restaurantId={restaurant.id} />
       </Card>
 
+      {/* O histórico fica numa gaveta: a pergunta "eu já avisei disso?"
+          aparece de vez em quando, e fechada a gaveta já responde quantos
+          ainda estão esperando -- que é a parte urgente dela. */}
       {chamados.length > 0 && (
-        <Card className="flex flex-col gap-3">
-          <p className="font-extrabold">O que você já contou</p>
+        <Gaveta titulo="O que você já contou" resumo={resumoDosChamados(chamados)} icone={<History />}>
           <ul className="flex flex-col divide-y divide-line">
             {chamados.map((c) => (
               <li key={c.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-3 first:pt-0">
@@ -67,7 +83,7 @@ export default async function SuportePage({ params }: PageProps<"/painel/[restau
               </li>
             ))}
           </ul>
-        </Card>
+        </Gaveta>
       )}
     </div>
   );

@@ -69,7 +69,13 @@ function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p:
       id={`produto-${p.id}`}
       data-esgotado={p.available ? "nao" : "sim"}
       data-sem-foto={p.imageUrl ? "nao" : "sim"}
-      className={cn("flex items-center gap-2 px-2.5 py-2", !p.available && "bg-warning/8")}
+      className={cn(
+        // `group` para as setas de ordem acordarem com o ponteiro na
+        // linha; o realce é da linha inteira, e não só do nome, porque
+        // a linha inteira é um alvo só
+        "group flex items-center gap-2 px-2.5 py-2 transition-colors",
+        p.available ? "hover:bg-surface-2/60" : "bg-warning/8",
+      )}
     >
       <Link
         href={`/painel/${restaurantId}/cardapio/produto/${p.id}`}
@@ -102,15 +108,25 @@ function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p:
         </span>
       </Link>
 
+      {/* Só o interruptor, sem a palavra ao lado.
+          Numa categoria de dez pratos, "Disponível" aparecia dez vezes
+          em coluna -- e o que acabou já se vê de três outros jeitos na
+          mesma linha: o interruptor cinza, a pílula "esgotado" junto do
+          preço e o fundo amarelo. Quem usa leitor de tela continua
+          ouvindo o nome, por `rotuloOculto`. */}
       <form action={toggleProduct} className="shrink-0">
         {hidden}
         <input type="hidden" name="field" value="available" />
-        <SwitchButton checked={p.available} label={p.available ? "Disponível" : "Esgotado"} className="w-32" />
+        <SwitchButton checked={p.available} label={`${p.name}: ${p.available ? "disponível" : "esgotado"}`} rotuloOculto />
       </form>
 
-      {/* a ordem do cardápio: discreta, porque se mexe nela uma vez e
-          depois não se mexe mais */}
-      <div className="hidden shrink-0 flex-col sm:flex">
+      {/* A ordem do cardápio: discreta, porque se mexe nela uma vez e
+          depois não se mexe mais. Apagada até o ponteiro chegar na
+          linha -- numa categoria de dez pratos eram vinte setas de pé
+          numa coluna, pedindo atenção que nenhuma delas merece. Some só
+          no computador, que é onde o ponteiro existe: no celular a
+          coluna inteira já não aparece. */}
+      <div className="hidden shrink-0 flex-col opacity-35 transition-opacity group-hover:opacity-100 focus-within:opacity-100 sm:flex">
         <form action={moveProduct}>
           {hidden}
           <input type="hidden" name="direction" value="up" />
