@@ -21,10 +21,12 @@ import { ligarImpressoraDoApp } from "@/app/painel/[restaurantId]/impressora-do-
 // antigo (antes da 1.4.0) ignora esse nome e tira tudo no caixa: sai no
 // lugar errado, mas sai -- nenhuma comanda fica presa na fila.
 
-// O servidor avisa pelo canal ao vivo do painel quando entra comanda de
-// mesa ou conta pedida, e a fila é buscada na hora -- a via já vem junto,
-// numa ida só. A volta de tempos em tempos fica de reserva, para o canal
-// que caiu e voltou sem ninguém perceber.
+// A tela pergunta ao servidor, de poucos em poucos segundos, se entrou
+// comanda de mesa ou conta pedida. Quando entrou, a fila é buscada na hora
+// -- a via já vem junto, numa ida só.
+/** de quanto em quanto tempo a tela espia se mudou alguma coisa */
+const VIGIA = 3000;
+/** e a busca completa da fila, de reserva, para o que escapar da espiada */
 const RESERVA = 15000;
 
 /** a tela de impressoras avisa por aqui que ligou ou desligou uma */
@@ -138,8 +140,8 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
           deNovo = false;
           if ((await volta()) === "sem-salao") semSalao = true;
         } while (deNovo && !parado && !semSalao);
-        // restaurante sem salão: o canal não tem o que avisar
-        if (semSalao) canal?.close();
+        // restaurante sem salão: as duas voltas param sozinhas daqui em
+        // diante, porque as duas olham o semSalao antes de marcar a próxima
       } catch {
         // sem internet agora: a próxima volta tenta de novo
       } finally {
@@ -154,21 +156,28 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
     };
     void reserva();
 
-    // o aviso do servidor: entrou comanda de mesa ou pediram a conta
-    let canal: EventSource | null = null;
-    let religar: ReturnType<typeof setTimeout> | undefined;
-    const abrirCanal = () => {
-      if (parado || semSalao || typeof EventSource === "undefined") return;
-      canal = new EventSource(`/api/painel/${restaurantId}/eventos?salao=1`);
-      canal.addEventListener("pronto", () => void agora());
-      canal.addEventListener("impressao", () => void agora());
-      canal.onerror = () => {
-        canal?.close();
-        // o canal se encerra sozinho a cada 50 s: reabrir é o esperado
-        if (!parado) religar = setTimeout(abrirCanal, 1500);
-      };
+    // A pergunta curta ao servidor: entrou comanda de mesa, pediram a via
+    // de novo ou o garçom pediu a conta. Era um canal aberto (SSE) até
+    // 15/11/2026, com uma função do servidor de pé o tempo todo; isso
+    // estourou a memória da conta na Vercel. Perguntar de três em três
+    // segundos custa quase nada e a comanda sai no mesmo tempo de antes.
+    let vigia: ReturnType<typeof setTimeout> | undefined;
+    let retrato: string | null = null;
+    const espiar = async () => {
+      if (parado || semSalao) return;
+      try {
+        const r = await fetch(`/api/painel/${restaurantId}/eventos?salao=1`, { cache: "no-store" });
+        if (r.ok) {
+          const dados = (await r.json()) as { retrato: string };
+          if (retrato !== null && dados.retrato !== retrato) void agora();
+          retrato = dados.retrato;
+        }
+      } catch {
+        // sem internet agora: a próxima volta tenta de novo
+      }
+      if (!parado && !semSalao) vigia = setTimeout(espiar, VIGIA);
     };
-    abrirCanal();
+    void espiar();
 
     // ligou ou desligou uma impressora: pega as filas de novo na hora
     const mudou = () => {
@@ -181,8 +190,7 @@ export function ImpressaoDoSalao({ restaurantId }: { restaurantId: string }) {
       parado = true;
       rodando = false;
       if (timer) clearTimeout(timer);
-      if (religar) clearTimeout(religar);
-      canal?.close();
+      if (vigia) clearTimeout(vigia);
       window.removeEventListener(IMPRESSORAS_MUDARAM, mudou);
     };
   }, [restaurantId]);

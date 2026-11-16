@@ -2,24 +2,19 @@ import { db } from "@/lib/db";
 import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 
-// Canal de eventos do painel (SSE): em vez de a tela recarregar de tempos
-// em tempos, o servidor avisa quando alguma coisa muda nos pedidos e a tela
-// se atualiza na hora.
+// O retrato do painel: um resumo curtinho do que está aberto agora. A tela
+// pergunta de tempos em tempos e, quando o resumo muda, se atualiza. É o
+// que faz o pedido novo surgir no balcão sem ninguém recarregar nada.
 //
-// A Vercel derruba a conexão quando a função passa do tempo dela, então o
-// canal se encerra sozinho antes disso e o navegador reconecta — o
-// EventSource faz isso por conta própria, sem perder nada: ao reconectar,
-// a primeira mensagem já traz o estado atual.
+// Até 15/11/2026 isto era um canal aberto (SSE): o servidor ficava de pé o
+// tempo todo, consultando o banco a cada dois segundos, uma função viva por
+// tela aberta. Com o balcão aberto o dia inteiro, isso sozinho estourou a
+// memória da conta na Vercel -- e projeto estourado é cardápio fora do ar.
+// A resposta simples custa um centésimo disso e a tela continua se
+// atualizando sozinha; o que muda é a espera, de dois para dez segundos.
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-/** de quanto em quanto tempo o servidor olha se mudou algo */
-const OLHAR_MS = 2000;
-/** encerra antes do limite da Vercel, para o navegador reconectar limpo */
-const VIDA_MS = 50_000;
-/** sinal de vida, para nenhum intermediário fechar a conexão por silêncio */
-const PING_MS = 15_000;
+export const maxDuration = 15;
 
 /**
  * Retrato do que importa: quantos pedidos abertos, quando mudaram, e o que
@@ -84,8 +79,8 @@ async function retrato(restaurantId: string) {
  *
  * Muda quando entra pedido de mesa, quando alguém pede a via de novo ou
  * quando o garçom pede a conta: é o sinal para o programa buscar a fila na
- * hora, em vez de esperar a próxima volta. É o que faz a comanda sair em um
- * ou dois segundos depois do Salvar no celular do garçom.
+ * hora, em vez de esperar a próxima volta. É o que faz a comanda sair logo
+ * depois do Salvar no celular do garçom.
  */
 async function retratoDaImpressao(restaurantId: string) {
   const desde = new Date(Date.now() - 12 * 60 * 60 * 1000);
@@ -110,77 +105,11 @@ export async function GET(request: Request, { params }: RouteContext<"/api/paine
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
 
-  // ?salao=1: o canal da impressão do salão, e não o dos pedidos. Olha mais
-  // amiúde porque é papel que alguém está esperando na boca da impressora.
+  // ?salao=1: o retrato da impressão do salão, e não o dos pedidos
   const doSalao = new URL(request.url).searchParams.get("salao") === "1";
-  const olhar = doSalao ? retratoDaImpressao : retrato;
-  const evento = doSalao ? "impressao" : "pedidos";
-  const intervalo = doSalao ? 1000 : OLHAR_MS;
+  const agora = doSalao ? await retratoDaImpressao(restaurant.id) : await retrato(restaurant.id);
 
-  const encoder = new TextEncoder();
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let ping: ReturnType<typeof setInterval> | null = null;
-  let fim: ReturnType<typeof setTimeout> | null = null;
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      let vivo = true;
-      const manda = (evento: string, dado: string) => {
-        if (!vivo) return;
-        try {
-          controller.enqueue(encoder.encode(`event: ${evento}\ndata: ${dado}\n\n`));
-        } catch {
-          vivo = false;
-        }
-      };
-      const encerra = () => {
-        if (!vivo) return;
-        vivo = false;
-        if (timer) clearInterval(timer);
-        if (ping) clearInterval(ping);
-        if (fim) clearTimeout(fim);
-        try {
-          controller.close();
-        } catch {
-          // já fechado do outro lado
-        }
-      };
-
-      request.signal.addEventListener("abort", encerra);
-
-      let anterior = await olhar(restaurant.id);
-      manda("pronto", anterior);
-
-      timer = setInterval(async () => {
-        if (!vivo) return;
-        try {
-          const agora = await olhar(restaurant.id);
-          if (agora !== anterior) {
-            anterior = agora;
-            manda(evento, agora);
-          }
-        } catch {
-          encerra();
-        }
-      }, intervalo);
-
-      ping = setInterval(() => manda("ping", String(Date.now())), PING_MS);
-      fim = setTimeout(encerra, VIDA_MS);
-    },
-    cancel() {
-      if (timer) clearInterval(timer);
-      if (ping) clearInterval(ping);
-      if (fim) clearTimeout(fim);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "content-type": "text/event-stream; charset=utf-8",
-      "cache-control": "no-cache, no-transform",
-      connection: "keep-alive",
-      // alguns proxies só param de bufferizar com isto
-      "x-accel-buffering": "no",
-    },
+  return new Response(JSON.stringify({ retrato: agora }), {
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }
