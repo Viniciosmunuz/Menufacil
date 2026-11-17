@@ -52,12 +52,9 @@ export function OperacaoCard({ restaurantId, open, openMode, today, entregaAtiva
   return (
     <Card className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-5">
       <div className="flex min-w-0 items-center gap-3 xl:flex-1">
-        <span
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-full",
-            open ? "bg-success/15 text-success" : "bg-surface-3 text-faint",
-          )}
-        >
+        {/* A cor do traço continua dizendo se está aberto; o disco atrás
+            dela saiu, para o ícone ser o mesmo da barra de menu. */}
+        <span className={cn("shrink-0", open ? "text-success" : "text-faint")}>
           <Store className="size-5" aria-hidden="true" />
         </span>
 

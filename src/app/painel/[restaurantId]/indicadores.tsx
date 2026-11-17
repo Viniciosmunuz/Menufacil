@@ -51,18 +51,23 @@ function Variacao({ atual, anterior, menosEMelhor = false }: { atual: number; an
 }
 
 /**
- * O tom de cada cartão: fundo claro no selo, ícone na cor cheia.
+ * O tom de cada cartão.
  *
- * Antes o selo era um círculo da cor cheia com o ícone branco. Quatro
- * círculos saturados em linha puxavam o olho antes dos números, que são
- * o assunto -- e é por isso que o painel que ele mandou como referência
- * usa o inverso: a cor fica no véu, e o preto fica no valor.
+ * Virou só a cor do traço em 16/11/2026, a pedido dele: os mesmos ícones
+ * da barra de menu, no mesmo desenho de linha, sem quadrado atrás.
+ *
+ * O selo passou por três formas até aqui. Era um círculo da cor cheia com
+ * o ícone branco -- quatro discos saturados em linha puxavam o olho antes
+ * dos números, que são o assunto. Virou véu claro com o ícone colorido, o
+ * que já era melhor. Agora é o ícone sozinho: quatro molduras de cor para
+ * enfeitar quatro números continuavam disputando a primeira olhada com
+ * eles, e a tela inteira do painel se fala por traço fino.
  */
 const TONS = {
-  laranja: "bg-brand-soft text-brand",
-  ambar: "bg-warning-soft text-warning",
-  verde: "bg-success-soft text-success",
-  azul: "bg-info-soft text-info",
+  laranja: "text-brand",
+  ambar: "text-warning",
+  verde: "text-success",
+  azul: "text-info",
 } as const;
 
 function Indicador({
@@ -95,27 +100,24 @@ function Indicador({
      * de interpretar. O histórico continua inteiro no gráfico de sete
      * dias logo abaixo, que é maior e tem eixo.
      *
-     * O cartão mede a si mesmo (@container). Os quatro ficam numa linha
-     * só já na janela do Menu Fácil PC, que é mais estreita que um
-     * monitor cheio; ali cada cartão tem uns 170px, e "R$ 1.234,56" ao
-     * lado do selo não cabe. Então, estreito, o selo sobe para cima do
-     * título e o valor diminui um pouco; a partir de 13,5rem volta o
-     * desenho de sempre, com o selo ao lado. */
-    <div className="@container flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 sm:p-4">
-      <div className="flex min-w-0 flex-col items-start gap-2 @[13.5rem]:flex-row @[13.5rem]:items-center @[13.5rem]:gap-3">
-        <span
-          className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-[1rem] @[13.5rem]:size-12 @[13.5rem]:rounded-[1.1rem]",
-            TONS[tom],
-          )}
-        >
-          {icone}
-        </span>
-
-        <div className="w-full min-w-0 flex-1">
-          <p className="truncate text-[0.8rem] leading-tight font-bold text-muted">{titulo}</p>
-          <p className="mt-1 text-[1.35rem] leading-none font-extrabold tabular-nums @[13.5rem]:text-[1.65rem]">{valor}</p>
-        </div>
+     * O ícone subiu para a linha do título em 16/11/2026. Quando ele
+     * tinha um quadrado de cor atrás, o bloco pesava e fazia sentido ao
+     * lado do conjunto todo; vira traço fino, sozinho no meio da altura
+     * do cartão, ele ficava boiando longe do que nomeia. Na mesma linha
+     * do título ele volta a ser o que é: a etiqueta do número.
+     *
+     * O cartão mede a si mesmo (@container): nos quatro em linha reta,
+     * na janela do Menu Fácil PC, cada um tem uns 170px, e o valor
+     * diminui um pouco para caber. */
+    <div className="@container flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-[0_1px_2px_-1px_rgb(28_25_23/0.06),0_12px_28px_-16px_rgb(28_25_23/0.14)] sm:p-4">
+      <div className="w-full min-w-0">
+        <p className="flex min-w-0 items-center gap-2 text-[0.8rem] leading-tight font-bold text-muted">
+          <span className={cn("shrink-0 [&_svg]:size-4", TONS[tom])}>{icone}</span>
+          <span className="truncate">{titulo}</span>
+        </p>
+        <p className="mt-2 text-[1.35rem] leading-none font-extrabold tracking-tight tabular-nums @[13.5rem]:text-[1.7rem]">
+          {valor}
+        </p>
       </div>
 
       {detalhe && (

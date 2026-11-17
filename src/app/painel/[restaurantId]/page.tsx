@@ -10,11 +10,23 @@ import { OPEN_ORDER_STATUSES } from "@/lib/labels";
 import { isOpenNow, soRetirada, todayLabel } from "@/lib/opening-hours";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { activationChecklist } from "@/server/restaurants/checklist";
-import { fechamentoDoDia, hojeContraOntem, pedidosAtrasados, semanaDePedidos, temposDoAtendimento } from "@/server/stats";
+import {
+  fechamentoDoDia,
+  hojeContraOntem,
+  mesDaLia,
+  pedidosAtrasados,
+  quemMaisPede,
+  semanaDePedidos,
+  temposDoAtendimento,
+  type MesDaLia as MesDaLiaDados,
+  type QuemMaisPede,
+} from "@/server/stats";
 
 import { toggleProduct } from "./cardapio/actions";
 import { FechamentoCard } from "./fechamento-card";
-import { ComoEstaODia, DesempenhoCard } from "./desempenho";
+import { ClientesQueVoltam } from "./clientes-que-voltam";
+import { MesDaLia } from "./mes-da-lia";
+import { DesempenhoCard } from "./desempenho";
 import { Indicadores } from "./indicadores";
 import { MaisPedidosCard } from "./mais-pedidos-card";
 import { MovimentacaoCard } from "./movimentacao-card";
@@ -82,10 +94,30 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
       }),
     ]);
 
+  /**
+   * A Lia está atendendo neste restaurante?
+   *
+   * Decide o que ocupa o canto do rodapé. Quem tem a IA ligada quer
+   * saber se ela está valendo o que custa; quem não tem, não precisa de
+   * um cartão dela apagado na tela, e ali cabe melhor a conta dos
+   * clientes que voltam.
+   *
+   * É `ativo`, e não só o recurso liberado: a IA desligada no botão não
+   * fechou pedido nenhum, e um cartão dela marcando zero seria cobrança
+   * de uma coisa que o dono escolheu não usar.
+   */
+  const comLia = Boolean(restaurant.iaEnabled && details.atendenteIa?.ativo);
+
   // o caixa é do turno, e o turno vem do horário: por isso depois do
   // Promise.all, que é quando os horários chegam
   // o atraso se mede contra a régua da casa, que só existe depois dos tempos
-  const [fechamento, atrasados] = await Promise.all([fechamentoDoDia(escopo, details.openingHours), pedidosAtrasados(escopo, tempos)]);
+  // e o cartão do rodapé, que depende de a Lia estar ligada ou não -- só
+  // uma das duas contas é feita, nunca as duas
+  const [fechamento, atrasados, rodape] = await Promise.all([
+    fechamentoDoDia(escopo, details.openingHours),
+    pedidosAtrasados(escopo, tempos),
+    comLia ? mesDaLia(restaurant.id, startOfDaysAgo(30)) : quemMaisPede(restaurant.id, startOfDaysAgo(30)),
+  ]);
   const mensalidade = situacaoDaCobranca(details, details.payments[0] ?? null);
   const base = `/painel/${restaurant.id}`;
 
@@ -176,7 +208,15 @@ export default async function RestaurantDashboardPage({ params }: PageProps<"/pa
           está indo contra a média da semana. */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
         <DesempenhoCard base={base} />
-        <ComoEstaODia semana={semana} />
+        {comLia ? (
+          <MesDaLia dados={rodape as MesDaLiaDados} href={`${base}/ia`} />
+        ) : (
+          <ClientesQueVoltam
+            deQuemVoltou={(rodape as QuemMaisPede).deQuemVoltou}
+            totalDePedidos={(rodape as QuemMaisPede).totalDePedidos}
+            href={`${base}/clientes`}
+          />
+        )}
       </div>
     </div>
   );

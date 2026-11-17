@@ -15,7 +15,7 @@ export function MaisPedidosCard({ produtos, cardapioHref }: { produtos: MaisPedi
   return (
     <Card className="flex flex-col">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+        <span className="shrink-0 text-faint">
           <Trophy className="size-5" aria-hidden="true" />
         </span>
         {/* "Mais pedidos no mês" quebrava em duas linhas na coluna

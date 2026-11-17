@@ -802,3 +802,43 @@ export async function mesesComVenda(restaurantId: string): Promise<string[]> {
   meses.add(todayKey().slice(0, 7));
   return [...meses].sort().reverse();
 }
+
+// ---- O mês da Lia ------------------------------------------------------
+
+export type MesDaLia = {
+  /** pedidos de delivery do mês, qualquer que seja o caminho */
+  pedidos: number;
+  centavos: number;
+  /** destes, os que a Lia fechou sozinha na conversa do WhatsApp */
+  pedidosDaLia: number;
+  centavosDaLia: number;
+  /** quantas pessoas diferentes ela atendeu até fechar pedido */
+  clientesDaLia: number;
+};
+
+/**
+ * Quanto do mês passou pela Lia.
+ *
+ * O pedido já nasce marcado: `feitoPelaIa` é gravado no instante em que
+ * ela chama a ferramenta de criar, e a tela de Pedidos usa a mesma marca
+ * para pôr o selo "Anotado pela IA" na linha. Aqui ela vira conta.
+ *
+ * O recorte é o delivery dos últimos 30 dias, igual ao dos campeões do
+ * mês: o salão tem o caixa dele e não entra em número nenhum do painel.
+ */
+export async function mesDaLia(restaurantId: string, desde: Date): Promise<MesDaLia> {
+  const janela = { restaurantId, ...VALE, createdAt: { gte: desde } };
+  const [tudo, daLia, pessoas] = await Promise.all([
+    db.order.aggregate({ where: janela, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.aggregate({ where: { ...janela, feitoPelaIa: true }, _count: { _all: true }, _sum: { totalCents: true } }),
+    db.order.groupBy({ by: ["customerId"], where: { ...janela, feitoPelaIa: true } }),
+  ]);
+
+  return {
+    pedidos: tudo._count._all,
+    centavos: tudo._sum.totalCents ?? 0,
+    pedidosDaLia: daLia._count._all,
+    centavosDaLia: daLia._sum.totalCents ?? 0,
+    clientesDaLia: pessoas.length,
+  };
+}

@@ -36,7 +36,10 @@ function Linha({
         href={href}
         className="flex items-center gap-3 rounded-control py-2.5 transition-colors hover:bg-surface-2"
       >
-        <span className={cn("grid size-10 shrink-0 place-items-center rounded-control", tom)}>{icone}</span>
+        {/* O traço fino da barra de menu, sem quadrado atrás: a cor
+            continua dizendo a etapa, mas sem a moldura que fazia cada
+            linha parecer um botão. */}
+        <span className={cn("shrink-0 [&_svg]:size-5", tom)}>{icone}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate leading-tight font-bold">{titulo}</span>
           <span className="block truncate text-xs text-muted">{apoio}</span>
@@ -77,7 +80,7 @@ export function MovimentacaoCard({
       <ul className="mt-3 flex flex-col divide-y divide-line">
         <Linha
           icone={<PackageOpen className="size-5" aria-hidden="true" />}
-          tom="bg-brand-soft text-brand"
+          tom="text-brand"
           titulo="Em andamento"
           apoio="Esperando, na cozinha e na entrega"
           quantos={emAndamento}
@@ -85,7 +88,7 @@ export function MovimentacaoCard({
         />
         <Linha
           icone={<CircleCheck className="size-5" aria-hidden="true" />}
-          tom="bg-success/12 text-success"
+          tom="text-success"
           titulo="Concluídos"
           apoio="Hoje · entregues e retirados"
           quantos={concluidos}
@@ -93,7 +96,7 @@ export function MovimentacaoCard({
         />
         <Linha
           icone={<CircleSlash className="size-5" aria-hidden="true" />}
-          tom="bg-surface-3 text-faint"
+          tom="text-faint"
           titulo="Cancelados"
           apoio="Hoje"
           quantos={cancelados}
@@ -113,7 +116,7 @@ export function MovimentacaoCard({
           href={`${base}/pedidos`}
           className="mt-3 flex items-center gap-3 rounded-control border border-warning/50 bg-warning/10 px-3 py-2.5 transition-colors hover:bg-warning/15"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-control bg-warning/20 text-warning">
+          <span className="shrink-0 text-warning [&_svg]:size-5">
             <TriangleAlert className="size-5" aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">

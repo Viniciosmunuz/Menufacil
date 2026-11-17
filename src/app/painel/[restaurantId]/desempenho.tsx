@@ -1,11 +1,8 @@
-import { ChevronRight, LineChart, TrendingDown, TrendingUp, Trophy, Users, Wallet } from "lucide-react";
+import { ChevronRight, LineChart, Trophy, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/cn";
-import { formatCents } from "@/lib/format";
-import type { DiaDaSemana } from "@/server/stats";
 
 // O rodapé da Visão geral: para onde ir depois de olhar o movimento.
 //
@@ -20,7 +17,13 @@ function Atalho({ icone, titulo, apoio, href }: { icone: ReactNode; titulo: stri
       href={href}
       className="flex items-center gap-3 rounded-control border border-line bg-bg px-3.5 py-3 transition-colors hover:border-line-strong hover:bg-surface-2"
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">{icone}</span>
+      {/* A regra dos ícones desta tela, desde 16/11/2026:
+          cor só quando ela diz um estado (verde para aberto, vermelho
+          para o que está errado). Ícone de título e de atalho é traço
+          fino cinza, sem bolinha atrás. Aqui eram três discos laranja
+          numa fileira, e o laranja nesta marca é do que se toca --
+          gastá-lo em enfeite tira força dos botões de verdade. */}
+      <span className="shrink-0 text-faint">{icone}</span>
       {/* Sem `truncate`: em três colunas os nomes não cabiam numa linha e
           chegavam cortados na tela -- "Produtos mai…", "Fechamento …",
           que não dizem para onde o atalho leva. Quebrar em duas linhas
@@ -36,16 +39,17 @@ function Atalho({ icone, titulo, apoio, href }: { icone: ReactNode; titulo: stri
 
 export function DesempenhoCard({ base }: { base: string }) {
   return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-white">
-            <LineChart className="size-5" aria-hidden="true" />
+    <Card className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {/* "Acompanhe os principais indicadores do seu negócio" saiu:
+              os três atalhos logo abaixo dizem, com nome e tudo, quais
+              indicadores são. Um subtítulo que anuncia o que vem a
+              seguir é o tipo de linha que se lê uma vez e nunca mais. */}
+          <span className="shrink-0 text-faint">
+            <LineChart className="size-4" aria-hidden="true" />
           </span>
-          <div className="min-w-0">
-            <h2 className="text-lg leading-tight font-extrabold">Desempenho do restaurante</h2>
-            <p className="text-sm text-muted">Acompanhe os principais indicadores do seu negócio.</p>
-          </div>
+          <h2 className="text-sm font-extrabold tracking-wide text-muted uppercase">Desempenho</h2>
         </div>
         {/* O mês saía escrito aqui, com um atalho para trocá-lo. Saiu em
             15/11/2026, a pedido dele: o mês se escolhe dentro de cada
@@ -72,67 +76,6 @@ export function DesempenhoCard({ base }: { base: string }) {
           href={`${base}/resumo`}
         />
       </div>
-    </Card>
-  );
-}
-
-/**
- * Como o dia está indo, contra a média da semana.
- *
- * A regra está escrita na própria tela de propósito. Elogio automático sem
- * conta por trás é enfeite -- e no dia ruim fica mentindo na cara de quem
- * trabalhou. Aqui o cartão diz exatamente contra o que está comparando, e
- * cala a boca enquanto não houver semana suficiente para comparar.
- *
- * A média é dos dias ANTERIORES que tiveram venda: incluir hoje, que ainda
- * está no meio, puxaria a régua para baixo e todo dia pareceria bom.
- */
-export function ComoEstaODia({ semana }: { semana: DiaDaSemana[] }) {
-  const hoje = semana.find((d) => d.hoje)?.centavos ?? 0;
-  const anteriores = semana.filter((d) => !d.hoje && d.centavos > 0);
-
-  // menos de dois dias de histórico não é média, é um dia solto
-  if (anteriores.length < 2) {
-    return (
-      <Card className="flex flex-col justify-center gap-1.5">
-        <p className="text-lg leading-tight font-extrabold">Juntando histórico</p>
-        <p className="text-sm text-muted">
-          A partir de dois dias com venda na semana, este cartão passa a comparar o dia de hoje com a média dos anteriores.
-        </p>
-      </Card>
-    );
-  }
-
-  const media = Math.round(anteriores.reduce((soma, d) => soma + d.centavos, 0) / anteriores.length);
-  const pct = Math.round(((hoje - media) / media) * 100);
-  const acima = hoje >= media;
-
-  return (
-    <Card
-      className={cn(
-        "flex flex-col justify-center gap-1.5",
-        acima && "border-brand/40 bg-[linear-gradient(150deg,rgb(249_104_11/0.14),transparent_60%)]",
-      )}
-    >
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-full text-white",
-            acima ? "bg-brand" : "bg-surface-3 text-muted",
-          )}
-        >
-          {acima ? <TrendingUp className="size-5" aria-hidden="true" /> : <TrendingDown className="size-5" aria-hidden="true" />}
-        </span>
-        <p className="text-lg leading-tight font-extrabold">{acima ? "Muito bom!" : "Dia mais calmo"}</p>
-      </div>
-
-      <p className="text-sm text-muted">
-        Hoje está{" "}
-        <span className={cn("font-extrabold", acima ? "text-brand" : "text-ink")}>
-          {Math.abs(pct)}% {acima ? "acima" : "abaixo"}
-        </span>{" "}
-        da média dos outros dias desta semana, que é de {formatCents(media)}.
-      </p>
     </Card>
   );
 }

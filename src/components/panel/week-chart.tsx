@@ -84,7 +84,7 @@ export function WeekChart({ dias, titulo, descricao }: { dias: DiaDaSemana[]; ti
     <Card className="flex flex-col">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+          <span className="shrink-0 text-faint">
             <LineChart className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
