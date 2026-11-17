@@ -21,9 +21,13 @@ function Atalho({ icone, titulo, apoio, href }: { icone: ReactNode; titulo: stri
       className="flex items-center gap-3 rounded-control border border-line bg-bg px-3.5 py-3 transition-colors hover:border-line-strong hover:bg-surface-2"
     >
       <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">{icone}</span>
+      {/* Sem `truncate`: em três colunas os nomes não cabiam numa linha e
+          chegavam cortados na tela -- "Produtos mai…", "Fechamento …",
+          que não dizem para onde o atalho leva. Quebrar em duas linhas
+          custa um pouco de altura e entrega o nome inteiro. */}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm leading-tight font-extrabold">{titulo}</span>
-        <span className="block truncate text-xs text-muted">{apoio}</span>
+        <span className="block text-sm leading-tight font-extrabold">{titulo}</span>
+        <span className="mt-0.5 block text-xs leading-tight text-muted">{apoio}</span>
       </span>
       <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden="true" />
     </Link>
@@ -52,7 +56,7 @@ export function DesempenhoCard({ base }: { base: string }) {
         <Atalho
           icone={<Trophy className="size-5" aria-hidden="true" />}
           titulo="Produtos mais vendidos"
-          apoio="Ranking e faturamento por item"
+          apoio="Ranking por item"
           href={`${base}/resumo#produtos`}
         />
         <Atalho
@@ -63,8 +67,8 @@ export function DesempenhoCard({ base }: { base: string }) {
         />
         <Atalho
           icone={<Wallet className="size-5" aria-hidden="true" />}
-          titulo="Fechamento e resumo mensal"
-          apoio="Vendas, pedidos e resultados"
+          titulo="Fechamento mensal"
+          apoio="Vendas e resultados"
           href={`${base}/resumo`}
         />
       </div>

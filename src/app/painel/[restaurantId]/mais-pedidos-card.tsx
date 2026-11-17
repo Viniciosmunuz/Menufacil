@@ -18,8 +18,11 @@ export function MaisPedidosCard({ produtos, cardapioHref }: { produtos: MaisPedi
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
           <Trophy className="size-5" aria-hidden="true" />
         </span>
+        {/* "Mais pedidos no mês" quebrava em duas linhas na coluna
+            estreita, e o "no mês" já estava dito logo abaixo, em
+            "últimos 30 dias". */}
         <div className="min-w-0">
-          <h2 className="text-lg leading-tight font-extrabold">Mais pedidos no mês</h2>
+          <h2 className="text-lg leading-tight font-extrabold">Mais pedidos</h2>
           <p className="text-sm text-muted">Os campeões dos últimos 30 dias.</p>
         </div>
       </div>

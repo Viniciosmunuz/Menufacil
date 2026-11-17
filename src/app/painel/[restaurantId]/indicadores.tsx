@@ -78,8 +78,9 @@ function Indicador({
   tom: keyof typeof TONS;
   titulo: string;
   valor: string;
-  /** a frase ao lado da variação: "vs ontem", "Tempo médio" */
-  apoio: string;
+  /** a frase ao lado da variação: "vs ontem", "Tempo médio". Fora quando
+   *  não há o que comparar -- "vs ontem" sem número não informa nada */
+  apoio?: string;
   /** a linha de contagem, quando existe: "6 pedidos · 6 concluídos" */
   detalhe?: { icone: ReactNode; texto: string };
   extra?: ReactNode;
@@ -124,10 +125,15 @@ function Indicador({
         </p>
       )}
 
-      <p className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
-        {extra}
-        <span className="truncate">{apoio}</span>
-      </p>
+      {/* A linha do pé só existe quando tem o que dizer. Sem ela, o
+          cartão sem comparação deixava um "vs ontem" órfão embaixo do
+          valor -- e, nos cartões de tempo, uma linha vazia de altura. */}
+      {(extra || apoio) && (
+        <p className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
+          {extra}
+          {apoio && <span className="truncate">{apoio}</span>}
+        </p>
+      )}
     </div>
   );
 }
@@ -175,7 +181,9 @@ export function Indicadores({
           tom="laranja"
           titulo="Vendas hoje"
           valor={formatCents(centavos)}
-          apoio="vs ontem"
+          // "vs ontem" só com o número ao lado: sozinho, era uma frase
+          // pendurada no pé do cartão sem dizer coisa nenhuma
+          apoio={centavos > 0 && centavosOntem > 0 ? "vs ontem" : undefined}
           detalhe={{
             icone: <ShoppingCart className="size-3.5" aria-hidden="true" />,
             texto: `${pedidos} ${pedidos === 1 ? "pedido" : "pedidos"}${concluidos > 0 ? ` · ${concluidos} concluído${concluidos === 1 ? "" : "s"}` : ""}`,
@@ -188,7 +196,7 @@ export function Indicadores({
           tom="ambar"
           titulo="Ticket médio"
           valor={ticket > 0 ? formatCents(ticket) : "—"}
-          apoio="vs ontem"
+          apoio={ticket > 0 && ticketOntem > 0 ? "vs ontem" : undefined}
           extra={<Variacao atual={ticket} anterior={ticketOntem} />}
         />
 
