@@ -76,7 +76,11 @@ const itemSchema = {
         required: ["produto_id", "quantidade"],
       },
     },
-    observacao: { type: "string", description: "ex.: sem cebola" },
+    observacao: {
+      type: "string",
+      description:
+        "como o cliente quer este item, nas palavras dele, quando não for uma opção do cardápio: 'sem cebola', 'molho vermelho', 'bem passado', 'molho à parte'. Sai no painel e na comanda, embaixo do item.",
+    },
   },
   required: ["produto_id", "quantidade"],
 } as const;
