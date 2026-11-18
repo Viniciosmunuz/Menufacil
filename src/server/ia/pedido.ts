@@ -102,7 +102,7 @@ export const FERRAMENTAS_DE_PEDIDO: Anthropic.Beta.BetaTool[] = [
         referencia: { type: "string", description: "ponto de referência; obrigatório na entrega" },
         pagamento: { type: "string", enum: ["PIX", "CARTAO", "DINHEIRO"] },
         cartao: { type: "string", enum: ["CREDITO", "DEBITO"], description: "só no cartão" },
-        troco_para: { type: "string", description: "só no dinheiro, quando precisa de troco: o valor, ex.: 100,00" },
+        troco_para: { type: "string", description: "só na ENTREGA em dinheiro, quando precisa de troco: o valor, ex.: 100,00. Na retirada não existe troco: não pergunte e não mande." },
         observacoes: { type: "string" },
         itens: { type: "array", items: itemSchema, minItems: 1 },
       },
@@ -150,6 +150,7 @@ function paraOCheckout(entrada: Record<string, unknown>, telefone: string) {
   const troco = texto(entrada.troco_para)?.trim();
   const tipo = texto(entrada.tipo);
   const cartao = texto(entrada.cartao);
+  const checkoutDeEntrega = tipo === "ENTREGA";
   const checkout = {
     customerName: texto(entrada.nome),
     customerWhatsapp: telefoneDoSite(telefone),
@@ -162,8 +163,11 @@ function paraOCheckout(entrada: Record<string, unknown>, telefone: string) {
     notes: texto(entrada.observacoes),
     paymentMethod: metodo,
     cardType: cartao === "CREDITO" ? "CREDIT" : cartao === "DEBITO" ? "DEBIT" : undefined,
-    needsChange: metodo === "CASH" ? (troco ? "sim" : "nao") : undefined,
-    changeFor: metodo === "CASH" ? troco : undefined,
+    // Troco só na entrega: quem retira paga no balcão, onde tem caixa.
+    // Se a IA mandar troco numa retirada, o campo é descartado aqui --
+    // a comanda do balcão não leva "troco para R$ 100".
+    needsChange: metodo === "CASH" && checkoutDeEntrega ? (troco ? "sim" : "nao") : undefined,
+    changeFor: metodo === "CASH" && checkoutDeEntrega ? troco : undefined,
   };
   const itens = lista(entrada.itens).map((bruto) => {
     const i = (bruto ?? {}) as Record<string, unknown>;

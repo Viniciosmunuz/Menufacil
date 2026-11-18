@@ -101,7 +101,11 @@ export const checkoutSchema = z
     if (v.paymentMethod === "CARD" && !v.cardType) {
       ctx.addIssue({ code: "custom", path: ["cardType"], message: "Escolha crédito ou débito." });
     }
-    if (v.paymentMethod === "CASH") {
+    // Troco é coisa da entrega: o entregador sai com a maleta e precisa
+    // levar o dinheiro certo. Quem retira paga no balcão, onde tem caixa
+    // -- exigir a resposta ali era travar o pedido por um dado que
+    // ninguém ia usar.
+    if (v.paymentMethod === "CASH" && v.type === "DELIVERY") {
       if (!v.needsChange) ctx.addIssue({ code: "custom", path: ["needsChange"], message: "Diga se precisa de troco." });
       if (v.needsChange === "sim") {
         const cents = parseMoneyToCents(v.changeFor);
@@ -342,7 +346,14 @@ export async function prepararPedido(params: { slug: string; input: CheckoutInpu
   const deliveryFeeCents = type === "DELIVERY" ? (area ? area.feeCents : restaurant.deliveryFeeCents) : 0;
   const totalCents = subtotalCents + deliveryFeeCents;
 
-  const changeForCents = method === "CASH" && input.needsChange === "sim" ? parseMoneyToCents(input.changeFor) : null;
+  // Na retirada o troco não existe, mesmo que venha preenchido: o campo
+  // some da tela quando a pessoa troca entrega por retirada, e o que
+  // ficou do caminho anterior não pode virar "troco para R$ 100" na
+  // comanda de quem vai pagar no balcão.
+  const changeForCents =
+    method === "CASH" && type === "DELIVERY" && input.needsChange === "sim"
+      ? parseMoneyToCents(input.changeFor)
+      : null;
   if (changeForCents !== null && changeForCents < totalCents) {
     throw new OrderError(`O troco precisa ser para um valor igual ou maior que o total (${formatCents(totalCents)}).`, "changeFor");
   }

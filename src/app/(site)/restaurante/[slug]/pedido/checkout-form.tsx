@@ -275,7 +275,12 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
         ? "Pix"
         : method === "CARD"
           ? `Cartão${cardType ? ` de ${cardTypeLabel[cardType].toLowerCase()}` : ""}`
-          : `Dinheiro${needsChange === "sim" && field("changeFor") ? `, troco para R$ ${field("changeFor")}` : ", sem troco"}`;
+          : // "sem troco" só faz sentido onde o troco foi perguntado. Na
+            // retirada a frase sobrava, e respondia uma pergunta que a
+            // tela não fez.
+            type !== "DELIVERY"
+            ? "Dinheiro"
+            : `Dinheiro${needsChange === "sim" && field("changeFor") ? `, troco para R$ ${field("changeFor")}` : ", sem troco"}`;
     return { place: place.filter(Boolean) as string[], payment, notes: field("notes") };
   }
 
@@ -620,7 +625,11 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                 </div>
               )}
 
-              {method === "CASH" && (
+              {/* Troco só na entrega: o entregador sai com a maleta e
+                  precisa levar o dinheiro certo. Quem retira paga no
+                  balcão, onde tem caixa -- perguntar ali é um passo a
+                  mais por uma informação que ninguém usa. */}
+              {method === "CASH" && type === "DELIVERY" && (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm font-bold">Precisa de troco?</p>
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Troco">
