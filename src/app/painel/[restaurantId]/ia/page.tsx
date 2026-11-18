@@ -1,4 +1,4 @@
-import { Eraser, MessageCircle } from "lucide-react";
+import { Eraser, MessageCircle, NotebookPen } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -16,6 +16,7 @@ import { conferirPareamento } from "@/server/ia/uazapi";
 import { Esquecer, NoCardapio, Ofertas, Pedidos } from "./chaves";
 import { ConversasDaIa } from "./conversas";
 import { ListasDaIa } from "./ignorados";
+import { NotasDaIa } from "./notas";
 import { ConectarWhatsapp } from "./conectar";
 import { LigarIa } from "./ligar";
 
@@ -53,6 +54,7 @@ export default async function IaPage({
         uazapiBaseUrl: true,
         uazapiToken: true,
         numeroExibido: true,
+        notas: true,
         ignorados: true,
         semEspera: true,
       },
@@ -162,6 +164,25 @@ export default async function IaPage({
         )}
         <NoCardapio restaurantId={restaurant.id} ligado={Boolean(atendente?.noChat)} />
       </Card>
+
+      {/* O que o cardápio e a lista de bairros não contam: o apelido do
+          lugar, o cliente que todo mundo conhece, o combinado da casa.
+          Fica em gaveta porque se escreve uma vez e não se mexe mais --
+          mas acima das conversas, porque é configuração do que ela sabe,
+          e não registro do que ela fez. */}
+      {atendente && (
+        <Gaveta
+          titulo="O que ela precisa saber"
+          resumo={
+            atendente.notas
+              ? "As suas anotações sobre a clientela e a cidade"
+              : 'Apelidos de lugar, clientes antigos: "no Moura", "no posto do Zé"'
+          }
+          icone={<NotebookPen />}
+        >
+          <NotasDaIa restaurantId={restaurant.id} notas={atendente.notas ?? ""} />
+        </Gaveta>
+      )}
 
       {/* Daqui para baixo é tudo gaveta: listas de número e conversas são
           coisa de consultar de vez em quando, não de deixar aberta na

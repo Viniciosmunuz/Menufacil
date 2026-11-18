@@ -125,6 +125,8 @@ export async function conhecimentoDoRestaurante(
       acceptsCash: true,
       fullDeliveryEnabled: true,
       deliveryMode: true,
+      // o que o dono escreveu sobre a clientela e a cidade
+      atendenteIa: { select: { notas: true } },
       openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
         // a seção que só o garçom lança (couvert, embalagem) não existe para o cliente
@@ -228,6 +230,11 @@ export async function conhecimentoDoRestaurante(
         );
       }
       linhas.push("  - Se o cliente disser um bairro que não está nesta lista, não anote entrega: diga que ali ainda não há entrega e ofereça a retirada no local.");
+      // Antes de recusar, uma pergunta. "Entrega aqui no Moura" não é um
+      // bairro de fora da área: é o nome que a cidade dá a um lugar que
+      // está dentro dela. Recusar na primeira mensagem perdia o cliente
+      // por um nome que ninguém tinha cadastrado.
+      linhas.push("  - ANTES DE RECUSAR, veja se é mesmo um bairro. O cliente diz o lugar do jeito que a cidade chama: \"aqui no Moura\", \"no posto do Zé\", \"lá na borracharia\". Isso não é bairro de fora da área -- é um ponto que pode estar dentro dela. Pergunte em qual bairro fica, citando os que você atende, e só depois decida. Recusar de cara perde um cliente que a moto atende toda semana.");
       linhas.push("  - Os nomes entre parênteses depois de \"também:\" são os LUGARES atendidos dentro daquela área, e pagam a taxa dela.");
       linhas.push("  - Numa área que tem lugares entre parênteses, só se entrega NELES -- não na área inteira. Então o bairro do pedido tem de ser um desses nomes, nunca o nome da área sozinho. Se o cliente disser só o nome da área (\"estou na BR-174\"), pergunte em qual dos lugares ele está antes de anotar.");
     }
@@ -237,6 +244,30 @@ export async function conhecimentoDoRestaurante(
   linhas.push(`- Formas de pagamento: ${formas}`);
   if (r.paymentInstructions) linhas.push(`- Sobre o pagamento: ${r.paymentInstructions.slice(0, 300)}`);
   linhas.push("");
+
+  // O que só quem é da cidade sabe, escrito pelo dono.
+  //
+  // Entra depois da entrega porque é ali que ele faz falta: o cliente
+  // escreve "entrega aqui no Moura", e isso não é bairro cadastrado nem
+  // nome de rua. Vem com as duas travas que o texto livre não garante
+  // sozinho -- não inventar a partir dele, e não furar a lista de
+  // bairros.
+  const notas = r.atendenteIa?.notas?.trim();
+  if (notas) {
+    linhas.push("O QUE O RESTAURANTE ANOTOU PARA VOCÊ:");
+    linhas.push("(escrito pelo dono, sobre a clientela e a cidade; vale como verdade)");
+    linhas.push(notas.slice(0, 2000));
+    linhas.push(
+      "- Use isso para ENTENDER o que o cliente fala: um apelido de lugar, um cliente que todo mundo conhece, um combinado da casa.",
+    );
+    linhas.push(
+      "- Não é cardápio nem lista de bairros. Não invente preço, prato nem taxa a partir daqui, e NUNCA entregue num lugar fora dos bairros atendidos -- nem que ele esteja citado aqui. Se o apelido cair num bairro que você não atende, trate como qualquer endereço fora da área.",
+    );
+    linhas.push(
+      "- Se o apelido não disser em que bairro fica, pergunte o bairro antes de anotar a entrega, em vez de recusar: \"Moura é em qual bairro?\" resolve, \"ali não entregamos\" perde o cliente.",
+    );
+    linhas.push("");
+  }
 
   if (!comIds) {
     linhas.push("CARDÁPIO (preços em reais):");

@@ -1733,6 +1733,24 @@ model AtendenteIa {
   /// nao serve para nada, porque e no meio da anotacao que a oferta cabe.
   ofertas     Boolean   @default(false)
 
+  /// O que so quem e da cidade sabe, escrito pelo dono.
+  ///
+  /// Existe porque o cardapio e a lista de bairros nao contam tudo. No
+  /// Papaleguas o cliente escreve "entrega aqui no Moura": nao e bairro
+  /// cadastrado nem nome de rua, e a Lia recusava a entrega de um
+  /// endereco que a moto faz toda semana. O mesmo vale para o posto, a
+  /// borracharia e o combinado que o restaurante tem com um vizinho.
+  ///
+  /// Texto livre de proposito. Qualquer campo estruturado que eu
+  /// desenhasse erraria no caso seguinte, e quem conhece a clientela e o
+  /// dono -- ele escreve do jeito dele, e vai direto para o contexto da
+  /// IA, junto do bloco do restaurante.
+  ///
+  /// Nao vale como permissao de entrega: a lista de bairros continua
+  /// mandando. Um apelido daqui serve para a IA ENTENDER o lugar e
+  /// perguntar o bairro, nunca para entregar fora da area.
+  notas       String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

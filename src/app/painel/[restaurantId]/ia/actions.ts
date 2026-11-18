@@ -489,3 +489,53 @@ export async function conferirWhatsapp(restaurantId: string): Promise<EstadoDaCo
   if (pareamento.conectado) refresh();
   return pareamento;
 }
+
+/**
+ * O que só quem é da cidade sabe.
+ *
+ * O cardápio e a lista de bairros não contam tudo. No Papaléguas o
+ * cliente escreve "entrega aqui no Moura": não é bairro cadastrado nem
+ * nome de rua, é como a cidade chama aquele lugar -- e a Lia recusava
+ * uma entrega que a moto faz toda semana, porque o nome não batia com
+ * nada que ela conhecia.
+ *
+ * Texto livre, e não uma lista de campos, porque o caso seguinte nunca é
+ * igual ao anterior: às vezes é o apelido de um lugar, às vezes um
+ * cliente antigo que todo mundo conhece pelo sobrenome, às vezes um
+ * combinado com o vizinho. Quem conhece a clientela é o dono.
+ *
+ * O teto de 2.000 caracteres não é arbitrário: isso entra em toda
+ * conversa que a IA atende, e texto no contexto se paga por token. Dois
+ * mil cabem umas trinta anotações e não pesam na conta.
+ */
+export async function salvarNotasDaIa(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const texto = String(formData.get("notas") ?? "").trim();
+  if (texto.length > 2000) {
+    return { error: "O texto é longo demais: no máximo 2.000 caracteres." };
+  }
+
+  await db.atendenteIa.update({
+    where: { restaurantId: restaurant.id },
+    data: { notas: texto || null },
+  });
+  // O conteúdo não vai para o registro: é texto do restaurante sobre
+  // clientes dele, e o que importa auditar é que mudou e quanto tem.
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.notas",
+    details: { caracteres: texto.length, viaAdmin },
+  });
+  refresh();
+  return {
+    message: texto
+      ? "Pronto: ela já sabe disso na próxima conversa."
+      : "Apaguei as anotações.",
+  };
+}
