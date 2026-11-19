@@ -18,7 +18,8 @@ import {
   text,
   type FieldErrors,
 } from "@/lib/validation";
-import { requireRestaurantAccess } from "@/server/auth/dal";
+import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
+import { derrubarCardapio } from "@/server/public/restaurants";
 import { panelAudit } from "@/server/panel";
 import { activationChecklist } from "@/server/restaurants/checklist";
 import { setFlavorCategories, syncPizzaProducts } from "@/server/restaurants/pizza";
@@ -48,7 +49,15 @@ async function access(formData: FormData) {
   return requireRestaurantAccess(String(formData.get("restaurantId") ?? ""));
 }
 
-function saved(): SectionState {
+/**
+ * Seção salva: atualiza o painel e derruba o cardápio guardado.
+ *
+ * Toda seção desta tela muda o que o cliente vê no link -- horário,
+ * bairro de entrega, forma de pagamento, nome da casa. Sem derrubar o
+ * cache, a mudança levaria até um minuto para chegar nele.
+ */
+function saved(acc: RestaurantAccess): SectionState {
+  void derrubarCardapio(acc.restaurant.slug);
   refresh();
   return { ok: true, savedAt: Date.now() };
 }
@@ -92,7 +101,7 @@ export async function saveInfo(_prev: SectionState, formData: FormData): Promise
   if (coverUrl !== current.coverUrl) await deleteImage(current.coverUrl);
 
   await panelAudit(acc, "restaurant.info", { name });
-  return saved();
+  return saved(acc);
 }
 
 // ---- Contato ------------------------------------------------------------
@@ -122,7 +131,7 @@ export async function saveContact(_prev: SectionState, formData: FormData): Prom
 
   await db.restaurant.update({ where: { id: acc.restaurant.id }, data: parsed.data });
   await panelAudit(acc, "restaurant.contact");
-  return saved();
+  return saved(acc);
 }
 
 // ---- Endereço -----------------------------------------------------------
@@ -149,7 +158,7 @@ export async function saveAddress(_prev: SectionState, formData: FormData): Prom
 
   await db.restaurant.update({ where: { id: acc.restaurant.id }, data: parsed.data });
   await panelAudit(acc, "restaurant.address");
-  return saved();
+  return saved(acc);
 }
 
 // ---- Horários -----------------------------------------------------------
@@ -196,7 +205,7 @@ export async function saveHours(_prev: SectionState, formData: FormData): Promis
     ),
   ]);
   await panelAudit(acc, "restaurant.hours", { openMode });
-  return saved();
+  return saved(acc);
 }
 
 /** botão rápido do início do painel: abrir/fechar agora ou voltar ao automático */
@@ -214,6 +223,9 @@ export async function setOpenMode(formData: FormData) {
     db.iaRascunho.deleteMany({ where: { restaurantId: acc.restaurant.id } }),
   ]);
   await panelAudit(acc, "restaurant.open_mode", { openMode, conversasApagadas: conversa.count, rascunhosApagados: rascunhos.count });
+  // a mais urgente das invalidações: o dono fechou a loja no botão, e o
+  // link não pode continuar aceitando pedido nem por um minuto
+  await derrubarCardapio(acc.restaurant.slug);
   refresh();
 }
 
@@ -237,6 +249,7 @@ export async function alternarSoRetirada(formData: FormData) {
   const ate = soRetirada(restaurant.pickupOnlyUntil) ? null : fimDoTurno(restaurant.openingHours);
   await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { pickupOnlyUntil: ate } });
   await panelAudit(acc, "restaurant.so_retirada", { ligado: ate !== null, ate: ate?.toISOString() ?? null });
+  await derrubarCardapio(acc.restaurant.slug);
   refresh();
 }
 
@@ -291,7 +304,7 @@ export async function saveDelivery(_prev: SectionState, formData: FormData): Pro
     },
   });
   await panelAudit(acc, "restaurant.delivery");
-  return saved();
+  return saved(acc);
 }
 
 // ---- Área de entrega ----------------------------------------------------
@@ -344,7 +357,7 @@ export async function saveDeliveryAreas(_prev: SectionState, formData: FormData)
     ...(areas.length ? [db.deliveryArea.createMany({ data: areas.map((a) => ({ ...a, restaurantId: acc.restaurant.id })) })] : []),
   ]);
   await panelAudit(acc, "restaurant.delivery_areas");
-  return saved();
+  return saved(acc);
 }
 
 // ---- Pagamento (Pix) ----------------------------------------------------
@@ -371,7 +384,7 @@ export async function savePayment(_prev: SectionState, formData: FormData): Prom
     data: { pixKeyType, pixKey: key.value, pixHolderName, paymentInstructions },
   });
   await panelAudit(acc, "restaurant.payment", { pixKeyType });
-  return saved();
+  return saved(acc);
 }
 
 // ---- Cartão e dinheiro (pagos na entrega ou no balcão) --------------------
@@ -385,7 +398,7 @@ export async function savePaymentMethods(_prev: SectionState, formData: FormData
   const { acceptsCard, acceptsCash } = parsed.data;
   await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { acceptsCard, acceptsCash } });
   await panelAudit(acc, "restaurant.payment_methods", { acceptsCard, acceptsCash });
-  return saved();
+  return saved(acc);
 }
 
 // ---- Pedir publicação ---------------------------------------------------
@@ -426,5 +439,5 @@ export async function savePizza(_prev: SectionState, formData: FormData): Promis
   await setFlavorCategories(acc.restaurant.id, max > 0 ? categorias : []);
   await syncPizzaProducts(acc.restaurant.id, max);
   await panelAudit(acc, "restaurant.pizza", { sabores: max, categorias: categorias.length });
-  return saved();
+  return saved(acc);
 }

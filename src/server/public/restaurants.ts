@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { connection } from "next/server";
 
 import type { RestaurantCardData } from "@/components/public/restaurant-card";
@@ -189,10 +190,31 @@ export async function listPopularCategories(limit = 6) {
  * O cache é do pedido, não do tempo: dois acessos diferentes continuam
  * cada um com a sua consulta, e nada fica velho.
  */
-export const getPublicRestaurant = cache(async (slug: string, preview: boolean) => {
-  await connection();
-  const restaurant = await db.restaurant.findUnique({
-    where: { slug },
+/** a etiqueta que o painel usa para derrubar o cache de um cardápio */
+export const etiquetaDoCardapio = (slug: string) => `cardapio:${slug}`;
+
+/**
+ * A consulta do cardápio, guardada entre acessos.
+ *
+ * São as mesmas 131 linhas de cardápio com opções, sabores e
+ * acompanhamentos, e elas rodavam inteiras a cada abertura do link --
+ * indo buscar no banco, que fica nos Estados Unidos. Foi esse peso que
+ * estourou a CPU da conta em 19/11/2026 e derrubou o Papaléguas.
+ *
+ * Agora o resultado fica guardado e serve todo mundo. O minuto de
+ * validade é só o teto: quando o dono mexe no cardápio pelo painel, a
+ * etiqueta cai na hora, e ninguém fica esperando por item esgotado.
+ *
+ * **O que NÃO entra aqui:** se a loja está aberta, quem é o dono e a
+ * trava do cookie. Isso é calculado a cada acesso, logo abaixo -- se o
+ * "Aberto" entrasse no cache, a loja continuaria aberta depois de
+ * fechar.
+ */
+const cardapioDoBanco = (slug: string) =>
+  unstable_cache(
+    async () =>
+      db.restaurant.findUnique({
+        where: { slug },
     include: {
       openingHours: { orderBy: { weekday: "asc" }, select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
@@ -236,8 +258,38 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
         },
       },
     },
-  });
-  if (!restaurant) return null;
+      }),
+    ["cardapio-publico", slug],
+    { tags: [etiquetaDoCardapio(slug)], revalidate: 60 },
+  )();
+
+/**
+ * As datas que voltam do cache como texto.
+ *
+ * O cache do Next guarda em JSON, e JSON não tem data: `pickupOnlyUntil`
+ * sai de lá como string. Quem usa esse campo chama `.getTime()` nele
+ * (ver `soRetirada`), e string não tem `getTime` -- a página do cardápio
+ * cairia inteira, em produção, na primeira vez que o dono pausasse a
+ * entrega. Então elas voltam a ser Date aqui, na saída.
+ */
+function comAsDatasDeVolta<T extends { pickupOnlyUntil: Date | null; createdAt: Date; updatedAt: Date; activatedAt: Date | null }>(
+  r: T,
+): T {
+  const data = (v: Date | string | null) => (v === null ? null : v instanceof Date ? v : new Date(v));
+  return {
+    ...r,
+    pickupOnlyUntil: data(r.pickupOnlyUntil),
+    activatedAt: data(r.activatedAt),
+    createdAt: data(r.createdAt) as Date,
+    updatedAt: data(r.updatedAt) as Date,
+  };
+}
+
+export const getPublicRestaurant = cache(async (slug: string, preview: boolean) => {
+  await connection();
+  const guardado = await cardapioDoBanco(slug);
+  if (!guardado) return null;
+  const restaurant = comAsDatasDeVolta(guardado);
 
   let isPreview = false;
   if (restaurant.status !== "ACTIVE") {
@@ -248,6 +300,7 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
   return {
     restaurant,
     isPreview,
+    // calculado a cada acesso, e nunca dentro do cache
     open: isOpenNow(restaurant.openMode, restaurant.openingHours),
   };
 });
@@ -273,4 +326,19 @@ export async function maisPedidos(restaurantId: string): Promise<string[]> {
     take: 3,
   });
   return linhas.filter((l) => l.productId && (l._sum.quantity ?? 0) >= 5).map((l) => l.productId!);
+}
+
+/**
+ * Derruba o cardápio guardado de um restaurante.
+ *
+ * Chamada pelo painel sempre que o dono mexe no que o cliente vê: preço,
+ * foto, item esgotado, categoria, horário, bairro de entrega. Sem ela o
+ * cliente ainda veria o cardápio velho até o minuto de validade virar --
+ * e um minuto é muito quando o que acabou é o prato que ele pediu.
+ */
+export async function derrubarCardapio(slug: string) {
+  const { revalidateTag } = await import("next/cache");
+  // o segundo argumento é novo do Next 16: "max" derruba tudo o que
+  // estiver guardado sob a etiqueta, sem meio-termo
+  revalidateTag(etiquetaDoCardapio(slug), "max");
 }

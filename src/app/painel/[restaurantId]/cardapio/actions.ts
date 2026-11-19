@@ -8,6 +8,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { checkbox, fieldErrors, formObject, optionalText, parseMoneyToCents, text, type FieldErrors } from "@/lib/validation";
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
+import { derrubarCardapio } from "@/server/public/restaurants";
 import { panelAudit } from "@/server/panel";
 import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
 
@@ -27,6 +28,18 @@ async function access(formData: FormData) {
 }
 
 const idOf = (formData: FormData, key = "id") => String(formData.get(key) ?? "");
+
+/**
+ * O dono mexeu no que o cliente vê.
+ *
+ * Atualiza a tela do painel, como antes, e derruba o cardápio guardado
+ * do cliente -- senão o preço novo, a foto nova ou o item que acabou
+ * demorariam até um minuto para aparecer no link.
+ */
+async function aoMudarOCardapio(acc: RestaurantAccess) {
+  await derrubarCardapio(acc.restaurant.slug);
+  refresh();
+}
 
 /** troca de lugar com o vizinho e renumera a lista (0, 1, 2...) numa transação */
 async function swapOrder<T extends { id: string }>(
@@ -79,7 +92,7 @@ export async function saveMenuCategory(_prev: MenuFormState, formData: FormData)
     });
     await panelAudit(acc, "menu.category_create", { name });
   }
-  refresh();
+  await aoMudarOCardapio(acc);
   return { ok: true };
 }
 
@@ -94,7 +107,7 @@ export async function moveMenuCategory(formData: FormData) {
   const moved = await swapOrder(categories, idOf(formData), formData.get("direction") === "up" ? -1 : 1, (id, sortOrder) =>
     db.menuCategory.updateMany({ where: { id, restaurantId }, data: { sortOrder } }),
   );
-  if (moved) refresh();
+  if (moved) await aoMudarOCardapio(acc);
 }
 
 export async function deleteMenuCategory(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
@@ -109,7 +122,7 @@ export async function deleteMenuCategory(_prev: MenuFormState, formData: FormDat
   }
   await db.menuCategory.delete({ where: { id: category.id } });
   await panelAudit(acc, "menu.category_delete", { name: category.name });
-  refresh();
+  await aoMudarOCardapio(acc);
   return { ok: true };
 }
 
@@ -349,7 +362,7 @@ export async function toggleProduct(formData: FormData) {
   const value = !product[field];
   await db.product.update({ where: { id: product.id }, data: { [field]: value } });
   await panelAudit(acc, `menu.product_${field}`, { name: product.name, value });
-  refresh();
+  await aoMudarOCardapio(acc);
 }
 
 export async function moveProduct(formData: FormData) {
@@ -368,7 +381,7 @@ export async function moveProduct(formData: FormData) {
   const moved = await swapOrder(siblings, product.id, formData.get("direction") === "up" ? -1 : 1, (id, sortOrder) =>
     db.product.updateMany({ where: { id, restaurantId }, data: { sortOrder } }),
   );
-  if (moved) refresh();
+  if (moved) await aoMudarOCardapio(acc);
 }
 
 /**
@@ -399,5 +412,5 @@ export async function toggleProductOption(formData: FormData) {
     name: option.name,
     value,
   });
-  refresh();
+  await aoMudarOCardapio(acc);
 }
