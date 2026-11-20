@@ -472,7 +472,21 @@ export async function responder(params: {
           {
             type: "text",
             text: `${regras}\n\n=== INFORMAÇÕES DO RESTAURANTE ===\n${params.conhecimento.fixo}`,
-            cache_control: { type: "ephemeral" },
+            /**
+             * Uma hora, e não os cinco minutos do padrão.
+             *
+             * Este bloco tem quase 18 mil tokens -- as regras mais o
+             * cardápio inteiro --, e escrevê-lo no cache era 41% da
+             * conta: uma conversa de pedido dura oito minutos, então o
+             * guardado de cinco minutos vencia no meio e era reescrito.
+             * Com movimento, vencia de novo na conversa seguinte.
+             *
+             * A escrita de uma hora custa o dobro da de cinco minutos,
+             * mas acontece uma vez por hora em vez de duas por conversa.
+             * Num restaurante com movimento isso é a diferença entre
+             * escrever quarenta vezes por dia e escrever dez.
+             */
+            cache_control: { type: "ephemeral", ttl: "1h" },
           },
         ],
         messages: mensagens,

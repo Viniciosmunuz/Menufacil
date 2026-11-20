@@ -10,6 +10,7 @@ import { conhecimentoDoRestaurante } from "./conhecimento";
 import { canalDo, enviarImagem as enviarImagemPeloCanal, enviarTexto as enviarTextoPeloCanal, ondeAchar } from "./canal";
 import { oQueSabemosDoCliente, pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
+import { emojiDaCasa, soUmCumprimento, textoDaSaudacao } from "./saudacao";
 import { variantes } from "./telefone";
 
 
@@ -658,6 +659,28 @@ export async function atender(evento: MensagemKapso) {
     : null;
 
   const cliente = [doBanco, doPerfil].filter(Boolean).join("\n\n") || null;
+
+  /**
+   * O "oi" que não precisa de IA.
+   *
+   * Só quando é a primeira fala da conversa e ela é um cumprimento e
+   * nada mais. Da segunda em diante a IA assume, porque aí já existe
+   * assunto -- e assunto é o trabalho dela.
+   *
+   * Isso é metade da conta do mês num restaurante onde a maioria só
+   * pede o link. Ver `saudacao.ts`.
+   */
+  if (conversa.length === 1 && conversa[0].papel === "cliente" && soUmCumprimento(conversa[0].texto)) {
+    const mandouSaudacao = await mandar([
+      textoDaSaudacao({
+        nome: conhecimento.nome,
+        link: conhecimento.link,
+        emoji: emojiDaCasa(conhecimento.fixo),
+      }),
+    ]);
+    if (mandouSaudacao) console.info("[ia] saudação respondida sem IA");
+    return;
+  }
 
   const resposta = await responder({
     conhecimento,
