@@ -12,6 +12,7 @@ import {
   apontarWebhook,
   conferirPareamento,
   criarInstancia,
+  LIMITE_DE_INSTANCIAS,
   pedirQrCode,
   servidorDaConta,
   type Pareamento,
@@ -453,6 +454,16 @@ export async function conectarWhatsapp(restaurantId: string): Promise<EstadoDaCo
   }
 
   const pareamento = await pedirQrCode(conta);
+  // O pacote cheio não é falha passageira: tentar de novo não resolve, e
+  // mandar o dono tentar é o que custou um sábado em 21/11/2026.
+  if (pareamento === LIMITE_DE_INSTANCIAS) {
+    return {
+      ...vazio,
+      error:
+        "O pacote de números do MenuFácil está cheio, então não dá para conectar mais um agora." +
+        " Isso não se resolve tentando de novo: fale com o suporte do MenuFácil para liberar uma vaga.",
+    };
+  }
   if (!pareamento) {
     return { ...vazio, error: "Não consegui gerar o QR Code agora. Tente de novo." };
   }

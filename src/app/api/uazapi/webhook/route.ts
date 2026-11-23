@@ -2,6 +2,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/lib/db";
 import { atender, type MensagemKapso } from "@/server/ia/atender";
+import { MARCA_LOCALIZACAO, pontoDoAviso } from "@/server/ia/localizacao";
 import { faxinaDaIa } from "@/server/ia/faxina";
 import { transcrever, transcricaoLigada } from "@/server/ia/transcrever";
 import { baixarMidia } from "@/server/ia/uazapi";
@@ -206,6 +207,35 @@ export async function POST(req: NextRequest) {
       ` api=${m.wasSentByApi ? "sim" : "não"}`,
   );
 
+  /**
+   * Localização: o pin do mapa vira um texto que a IA entende.
+   *
+   * No primeiro fim de semana da Lia uma cliente mandou o pin em vez de
+   * escrever o bairro. O `atender()` só conhece texto, áudio, imagem e
+   * documento: `location` caía num return silencioso, e o atendente do
+   * restaurante teve de entrar na conversa para fechar o pedido.
+   *
+   * O pin em si não resolve: o pedido exige rua, número e ponto de
+   * referência **escritos**, e ninguém aqui converte coordenada em
+   * endereço. Então o que entra na conversa é o aviso de que o cliente
+   * mandou o mapa -- com o texto que a uazapi manda junto, quando manda
+   * (nome do lugar, endereço aproximado) -- e a IA pede o que falta.
+   *
+   * Os nomes dos campos vão para o log porque o formato da uazapi não
+   * está documentado e a doc já errou antes. Os valores não vão: é
+   * endereço de um cliente.
+   */
+  const ehLocalizacao = tipo.includes("location");
+  const pin = ehLocalizacao ? pontoDoAviso(m) : null;
+  if (ehLocalizacao) {
+    // os nomes dos campos, nunca os valores: o formato não está
+    // documentado, e o que está dentro é o endereço de um cliente
+    console.info(
+      `[uazapi/webhook] localização recebida (${pin ? "com" : "sem"} coordenadas)` +
+        ` · campos: ${Object.keys(m).join(",")}`,
+    );
+  }
+
   if (!telefone) {
     // O payload inteiro vai junto só neste caso: sem telefone não há o
     // que fazer, e é o único jeito de descobrir por que não veio.
@@ -287,11 +317,29 @@ export async function POST(req: NextRequest) {
     message: {
       id: chave,
       // o atender distingue texto de mídia por este campo
-      type: tipo === "conversation" || tipo === "extendedtextmessage" || tipo === "text"
-        ? "text"
-        : tipo,
+      type:
+        ehLocalizacao ||
+        tipo === "conversation" ||
+        tipo === "extendedtextmessage" ||
+        tipo === "text"
+          ? "text"
+          : tipo,
       from: telefone,
-      text: { body: texto },
+      // O pin vira o mesmo link que o cliente teria colado se tivesse
+      // compartilhado do Google Maps. Assim os dois jeitos de mandar o
+      // mapa seguem por um caminho só, lá no atender -- e é esse link que
+      // o `lerMapa` abre para descobrir rua e bairro.
+      text: {
+        body: ehLocalizacao
+          ? [
+              MARCA_LOCALIZACAO,
+              pin ? `https://maps.google.com/?q=${pin.lat},${pin.lng}` : null,
+              texto.trim() ? `(o mapa veio com: "${texto.trim()}")` : null,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : texto,
+      },
       kapso: {
         direction: daCasa ? "outbound" : "inbound",
         // Saiu do aparelho do restaurante e não foi a própria IA: é uma

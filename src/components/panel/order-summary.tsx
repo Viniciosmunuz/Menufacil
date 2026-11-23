@@ -1,4 +1,4 @@
-import { Bike, ChevronDown, MessageSquare } from "lucide-react";
+import { Bike, ChevronDown, MapPin, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -31,6 +31,9 @@ export const orderSummarySelect = {
   deliveryComplement: true,
   deliveryNeighborhood: true,
   deliveryReference: true,
+  // o pino que o cliente mandou: vira o link que abre o mapa
+  destinoLat: true,
+  destinoLng: true,
   subtotalCents: true,
   deliveryFeeCents: true,
   totalCents: true,
@@ -145,6 +148,25 @@ export function OrderSummary({ order: o }: { order: OrderSummaryData }) {
           </dd>
           {o.deliveryComplement && <dd className="text-muted">{o.deliveryComplement}</dd>}
           {o.deliveryReference && <dd className="text-muted">Ref.: {o.deliveryReference}</dd>}
+          {/* O pino do cliente, quando ele mandou um.
+
+              Um toque e o mapa do celular abre já com o destino -- é o
+              que resolve o endereço que ninguém acha pelo nome: ramal
+              sem placa, condomínio, casa sem número. O endereço escrito
+              fica acima e continua valendo, porque pino cai no vizinho. */}
+          {delivery && o.destinoLat != null && o.destinoLng != null && (
+            <dd className="mt-1">
+              <a
+                href={`https://maps.google.com/?q=${o.destinoLat},${o.destinoLng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-bold text-brand underline-offset-2 hover:underline"
+              >
+                <MapPin className="size-4" aria-hidden="true" />
+                Abrir no mapa
+              </a>
+            </dd>
+          )}
         </div>
         <div>
           <dt className="font-bold text-muted">Pagamento</dt>

@@ -11,7 +11,7 @@ import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus 
 import { cn } from "@/lib/cn";
 import { formatCents, formatPhone, formatTime } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
-import { FINAL_ORDER_STATUSES, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
+import { FINAL_ORDER_STATUSES, confirmacaoDoPasso, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 
 // A lista de pedidos em tabela, no computador.
 //
@@ -97,6 +97,7 @@ export function TabelaDePedidos<T extends Pedido>({
   action,
   hidden,
   notify,
+  lojaFechada,
   relogio,
   detalhe,
   marcar,
@@ -107,6 +108,8 @@ export function TabelaDePedidos<T extends Pedido>({
   hidden?: Record<string, string>;
   /** o aviso que vai para o cliente no próximo passo de cada pedido */
   notify: (p: T) => StatusNotice | null;
+  /** loja fechada: o passo que avisa o cliente pede confirmação antes */
+  lojaFechada?: boolean;
   /** o contador de tempo; vem de fora porque é componente de navegador */
   relogio: (desde: Date) => React.ReactNode;
   /** o que aparece quando a linha abre: o mesmo resumo do cartão antigo */
@@ -180,7 +183,12 @@ export function TabelaDePedidos<T extends Pedido>({
                         {Object.entries(hidden ?? {}).map(([nome, valor]) => (
                           <input key={nome} type="hidden" name={nome} value={valor} />
                         ))}
-                        <StepButton label={passo(p)!.label} notify={notify(p)} size="sm" />
+                        <StepButton
+                          label={passo(p)!.label}
+                          notify={notify(p)}
+                          size="sm"
+                          confirmar={confirmacaoDoPasso(lojaFechada, passo(p)!.to, p.type)}
+                        />
                       </form>
                     ) : null
                   }

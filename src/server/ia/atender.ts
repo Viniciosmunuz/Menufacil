@@ -7,6 +7,7 @@ import { isOpenNow } from "@/lib/opening-hours";
 import { avisarClienteChamou } from "@/server/push/avisos";
 
 import { conhecimentoDoRestaurante } from "./conhecimento";
+import { lerMapa, MARCA_LOCALIZACAO, mapaEmTexto } from "./localizacao";
 import { canalDo, enviarImagem as enviarImagemPeloCanal, enviarTexto as enviarTextoPeloCanal, ondeAchar } from "./canal";
 import { oQueSabemosDoCliente, pixEmAberto } from "./pedido";
 import { responder, type Turno } from "./responder";
@@ -301,7 +302,7 @@ export async function atender(evento: MensagemKapso) {
     return Boolean(r && r.status === "ACTIVE" && isOpenNow(r.openMode, r.openingHours));
   }
 
-  const texto = (m.text?.body ?? "").slice(0, TEXTO_MAX).trim();
+  let texto = (m.text?.body ?? "").slice(0, TEXTO_MAX).trim();
   const direcao = m.kapso?.direction;
 
   // ─── saiu do número do restaurante ─────────────────────────────────
@@ -339,7 +340,48 @@ export async function atender(evento: MensagemKapso) {
   // esse registro que faz a IA ficar quieta por 30 minutos naquela
   // conversa, e a meia hora atravessa a hora de abrir. Sem isso, ele
   // responderia alguém 17h50 e ela falaria por cima dele às 18h.
+  //
+  // **Vale para todo mundo, sem exceção.** Chegou a existir aqui uma
+  // folga para quem tinha pedido andando -- responder o "obrigado" de
+  // quem acabou de receber o "saiu para entrega". Ele preferiu que não:
+  // loja fechada é loja fechada, e quem fala fora de hora é o dono.
   if (!(await abertoAgora())) return;
+
+  /**
+   * Localização por um canal que ainda não a traduz.
+   *
+   * O webhook da uazapi transforma o pin num link antes de chegar aqui,
+   * e então ele entra como texto comum. Pela Kapso e pela Z-API o aviso
+   * chega cru: tipo `location` e nada escrito. Isso caía no `return` mudo
+   * do bloco de mídia, e mudez foi o que obrigou o atendente a entrar na
+   * conversa no primeiro fim de semana da Lia.
+   *
+   * Sem coordenadas não há mapa para ler, mas há o que responder: que o
+   * cliente mandou a localização e que ela precisa do endereço escrito.
+   */
+  const ehLocalizacao = (m.type ?? "").toLowerCase().includes("location");
+  if (ehLocalizacao && !texto) texto = MARCA_LOCALIZACAO;
+
+  /**
+   * O mapa, lido antes de a mensagem ser gravada.
+   *
+   * **Antes de gravar, e não na hora de responder**, porque o que fica
+   * escrito aqui é o que a IA relê em cada mensagem seguinte. Se a
+   * tradução acontecesse só de passagem, o endereço que o mapa deu
+   * sumiria do histórico no turno seguinte -- e ela pediria de novo o que
+   * o cliente já havia respondido.
+   *
+   * Depois das travas de cima, de propósito: restaurante fechado e
+   * mensagem repetida saem antes, e não gastam uma ida ao Google nem ao
+   * OpenStreetMap.
+   *
+   * Em texto comum isto custa uma expressão regular e nada mais: só quem
+   * mandou link de mapa chega a sair para a rede.
+   */
+  if (texto) {
+    const mapa = await lerMapa({ texto, ehPin: ehLocalizacao });
+    if (mapa) texto = mapaEmTexto(mapa, ehLocalizacao, texto);
+  }
 
   // ─── o cliente escreveu ────────────────────────────────────────────
   const recebida = await db.iaMensagem.create({
@@ -533,7 +575,7 @@ export async function atender(evento: MensagemKapso) {
     return true;
   };
 
-  if (m.type !== "text" || !texto) {
+  if (!ehLocalizacao && (m.type !== "text" || !texto)) {
     // Áudio: ela diz que não ouve, e pede por escrito.
     //
     // Vale mesmo quando ela só tira dúvidas (sem anotar pedido): quem

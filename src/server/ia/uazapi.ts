@@ -354,7 +354,21 @@ function lerPareamento(dados: RespostaConexao | null): Pareamento {
  *
  * Documentação: https://docs.uazapi.com/reference/connectInstance.md
  */
-export async function pedirQrCode(conta: ContaUazapi): Promise<Pareamento | null> {
+/**
+ * O servidor da uazapi está com o pacote de números cheio?
+ *
+ * Em 21/11/2026 isto apareceu onze vezes num sábado, e no painel saía
+ * "não consegui gerar o QR Code agora, tente de novo" -- que faz o dono
+ * tentar de novo a tarde inteira achando que é defeito. Não é: o pacote
+ * de números do servidor está cheio, e tentar de novo nunca vai resolver.
+ * Quem resolve é desconectar um número que não se usa mais, ou crescer o
+ * plano -- e isso é decisão de quem paga, não da tela.
+ */
+const PACOTE_CHEIO = /maximum number of instances|limit.*instances|instances.*limit/i;
+
+export const LIMITE_DE_INSTANCIAS = "limite-de-instancias" as const;
+
+export async function pedirQrCode(conta: ContaUazapi): Promise<Pareamento | typeof LIMITE_DE_INSTANCIAS | null> {
   const resposta = await fetch(endereco(conta, "/instance/connect"), {
     method: "POST",
     headers: { "content-type": "application/json", token: conta.token },
@@ -363,7 +377,7 @@ export async function pedirQrCode(conta: ContaUazapi): Promise<Pareamento | null
   const texto = await resposta.text();
   if (!resposta.ok) {
     console.error(`[uazapi] conectar recusado (${resposta.status}): ${texto.slice(0, 300)}`);
-    return null;
+    return PACOTE_CHEIO.test(texto) ? LIMITE_DE_INSTANCIAS : null;
   }
   try {
     return lerPareamento(JSON.parse(texto) as RespostaConexao);

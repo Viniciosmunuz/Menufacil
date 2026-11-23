@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { formatCents, formatTime } from "@/lib/format";
 import { orderStatusLabel, paymentStatusLabel } from "@/lib/labels";
 import { paymentText } from "@/lib/payment";
+import { observacoesComMapa, referenciaComTelefone } from "@/lib/referencia-do-pedido";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
 import { appUrl } from "@/lib/site";
 import { OrderError, checkoutSchema, parseItems, placeOrder, prepararPedido } from "@/server/orders/place-order";
@@ -100,6 +101,16 @@ export const FERRAMENTAS_DE_PEDIDO: Anthropic.Beta.BetaTool[] = [
         complemento: { type: "string" },
         bairro: { type: "string" },
         referencia: { type: "string", description: "ponto de referência; obrigatório na entrega" },
+        latitude: {
+          type: "number",
+          description:
+            "só quando o cliente mandou o mapa e apareceu um aviso [MAPA] na conversa: a latitude dele, copiada exatamente como está escrita lá. Não invente e não calcule.",
+        },
+        longitude: {
+          type: "number",
+          description:
+            "a longitude do mesmo aviso [MAPA], copiada exatamente. Só junto com a latitude.",
+        },
         pagamento: { type: "string", enum: ["PIX", "CARTAO", "DINHEIRO"] },
         cartao: { type: "string", enum: ["CREDITO", "DEBITO"], description: "só no cartão" },
         troco_para: { type: "string", description: "só na ENTREGA em dinheiro, quando precisa de troco: o valor, ex.: 100,00. Na retirada não existe troco: não pergunte e não mande." },
@@ -141,6 +152,17 @@ export const FERRAMENTAS_DE_PEDIDO: Anthropic.Beta.BetaTool[] = [
 const erro = (texto: string): ResultadoDaFerramenta => ({ texto, erro: true });
 
 const texto = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : undefined);
+/**
+ * Um número que o modelo mandou, se for número de verdade.
+ *
+ * Coordenada chega às vezes como texto ("-2.030412"), porque ela foi
+ * copiada de uma linha de conversa. O que não dá para ler vira nada, e o
+ * pedido segue sem o ponto: quem valida a faixa é o checkout.
+ */
+const numero = (v: unknown) => {
+  const n = typeof v === "string" ? Number(v) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
+};
 const lista = (v: unknown) => (Array.isArray(v) ? v : []);
 
 /** traduz o pedido da IA para o formato do formulário do site */
@@ -151,6 +173,11 @@ function paraOCheckout(entrada: Record<string, unknown>, telefone: string) {
   const tipo = texto(entrada.tipo);
   const cartao = texto(entrada.cartao);
   const checkoutDeEntrega = tipo === "ENTREGA";
+  // Veio do mapa quando a IA copiou as coordenadas do aviso [MAPA]. É o
+  // que faz a comanda avisar de onde saiu aquele endereço.
+  const lat = numero(entrada.latitude);
+  const lng = numero(entrada.longitude);
+  const doMapa = checkoutDeEntrega && lat != null && lng != null;
   const checkout = {
     customerName: texto(entrada.nome),
     customerWhatsapp: telefoneDoSite(telefone),
@@ -159,8 +186,18 @@ function paraOCheckout(entrada: Record<string, unknown>, telefone: string) {
     number: texto(entrada.numero),
     complement: texto(entrada.complemento),
     neighborhood: texto(entrada.bairro),
-    reference: texto(entrada.referencia),
-    notes: texto(entrada.observacoes),
+    reference: referenciaComTelefone(texto(entrada.referencia), telefone),
+    // O ponto do mapa que o cliente mandou, quando mandou.
+    //
+    // Vale mais do que o endereço escrito: sem ele o sistema traduz a rua
+    // depois, e o OpenStreetMap não tem os números das casas de cidade
+    // pequena -- a moto chega na quadra. Com ele, chega na porta.
+    //
+    // Vem copiado pela IA do aviso [MAPA] da conversa, e passa pelo mesmo
+    // crivo do checkout do site: fora da faixa, vira nada.
+    destinoLat: lat,
+    destinoLng: lng,
+    notes: observacoesComMapa(texto(entrada.observacoes), doMapa, telefone),
     paymentMethod: metodo,
     cardType: cartao === "CREDITO" ? "CREDIT" : cartao === "DEBITO" ? "DEBIT" : undefined,
     // Troco só na entrega: quem retira paga no balcão, onde tem caixa.
@@ -203,7 +240,28 @@ async function conferir(slug: string, dados: { checkout: unknown; itens: unknown
 const COMO_CONTAR =
   " Explique isso ao cliente com as suas palavras, numa frase de WhatsApp: ele não tem carrinho nem página aberta." +
   " Se um item esgotou ou saiu do cardápio, diga qual é e ofereça outro parecido da mesma seção;" +
-  " se o problema for o bairro, o mínimo ou a forma de pagamento, diga o que é e o que dá para fazer." +
+  " se o problema for o mínimo ou a forma de pagamento, diga o que é e o que dá para fazer." +
+  // O bairro merece um passo a mais antes do "não entregamos".
+  //
+  // Em 22/11/2026 uma cliente deu o endereço como "Condomínio Bosque
+  // das Águas, segunda rua, primeira casa do lado direito". Isso é
+  // endereço completo para qualquer entregador da cidade, e não tem
+  // bairro nenhum dentro -- o que foi parar no campo do bairro não
+  // estava na lista, e o pedido parou. Ela chamou uma pessoa, e a
+  // conversa virou pedido anotado no dedo.
+  //
+  // Condomínio, hotel, posto e fábrica ficam DENTRO de um bairro. A
+  // pergunta certa não é "não entregamos aí", é "em qual bairro fica?".
+  " **Se o problema for o bairro, olhe antes o que você mandou nesse campo.** Se o que está lá é o nome de um lugar" +
+  " -- condomínio, hotel, pousada, posto, fábrica, empresa --, não é bairro nenhum: todo lugar desses fica dentro de" +
+  " um bairro, e o que falta é saber qual. Pergunte ao cliente em qual bairro fica, ofereça os bairros atendidos e" +
+  " confira de novo com a resposta dele, mantendo o lugar como referência ou complemento. Só diga que não entrega ali" +
+  " depois que ele tiver dito um bairro de verdade que não está na lista.**" +
+  " **Se faltou um dado -- ponto de referência, número, bairro, nome --, PERGUNTE esse dado ao cliente" +
+  " e confira de novo com a resposta dele. Isso é trabalho seu, e não motivo para chamar ninguém:" +
+  " chamar uma pessoa porque faltou a referência deixa o cliente esperando por uma pergunta de dez segundos.**" +
+  " Nunca diga que teve um problema, que o sistema recusou ou que não conseguiu fechar: para o cliente," +
+  " é só mais uma pergunta sua." +
   " Só confira de novo depois que ele responder.";
 
 async function conferirPedido(ctx: ContextoDoPedido, entrada: Record<string, unknown>): Promise<ResultadoDaFerramenta> {

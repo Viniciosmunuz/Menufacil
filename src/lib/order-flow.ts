@@ -157,3 +157,36 @@ export function fullDeliverySteps(type: OrderType, pagoNaEntrega: boolean): { st
     { status: ["COMPLETED"], label: type === "DELIVERY" ? "Entregue" : "Retirado" },
   ];
 }
+
+/**
+ * Este passo manda uma mensagem ao cliente pelo WhatsApp?
+ *
+ * É um aviso por pedido, na hora em que o cliente precisa se mexer: na
+ * entrega, quando a moto sai; na retirada, quando a comida fica pronta no
+ * balcão. O resto do caminho ele vê no link de acompanhamento, que foi
+ * junto com o pedido dele.
+ *
+ * Mora aqui, e não junto dos textos das mensagens, porque o painel
+ * precisa da mesma resposta antes de mandar: é com ela que o botão do
+ * passo sabe se tem algo a confirmar com a loja fechada. Em dois lugares
+ * a regra andaria para lados diferentes.
+ */
+export const avisaOCliente = (status: OrderStatus, type: OrderType) =>
+  type === "DELIVERY" ? status === "OUT_FOR_DELIVERY" : status === "READY";
+
+/**
+ * O texto do "sim" quando este passo precisa de confirmação, ou nada.
+ *
+ * Um só lugar para a regra e para a frase, porque o botão do passo
+ * aparece em quatro: a linha da tabela, o cartão do celular, o detalhe
+ * aberto e a tela de um pedido só. Em quatro cópias, uma ficaria para
+ * trás no dia em que a frase mudasse.
+ *
+ * Hoje a confirmação existe por um motivo só: a loja fechada. O aviso do
+ * passo sai no mesmo instante para o cliente, e fora do movimento o dono
+ * às vezes está acertando o status de um pedido de horas antes -- um
+ * "saiu para entrega" naquela hora assusta quem já recebeu. A mensagem
+ * continua saindo; o que muda é que ele diz sim antes.
+ */
+export const confirmacaoDoPasso = (lojaFechada: boolean | undefined, status: OrderStatus, type: OrderType) =>
+  lojaFechada && avisaOCliente(status, type) ? "Sim, avisar o cliente" : null;

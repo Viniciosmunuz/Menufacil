@@ -3,7 +3,7 @@ import "server-only";
 import type { OrderOrigin, CardType, OrderStatus, OrderType, PaymentMethod, PixKeyType } from "@/generated/prisma/enums";
 import { formatCents, formatPhone } from "@/lib/format";
 import { orderStatusLabel } from "@/lib/labels";
-import { nextOrderStep } from "@/lib/order-flow";
+import { avisaOCliente, nextOrderStep } from "@/lib/order-flow";
 import { itemLabel } from "@/lib/options";
 import { paymentHint, paymentText } from "@/lib/payment";
 import { formatPixKey, pixKeyTypeLabel } from "@/lib/pix";
@@ -34,6 +34,9 @@ type OrderForMessage = {
   deliveryComplement: string | null;
   deliveryNeighborhood: string | null;
   deliveryReference: string | null;
+  /** o pino que o cliente mandou, quando mandou: vira o link do mapa */
+  destinoLat?: number | null;
+  destinoLng?: number | null;
   notes: string | null;
   subtotalCents: number;
   deliveryFeeCents: number;
@@ -43,6 +46,23 @@ type OrderForMessage = {
   items: { productName: string; optionsText?: string | null; quantity: number; totalCents: number; notes: string | null }[];
 };
 
+/**
+ * O endereço do cliente como link de mapa, quando ele mandou o pino.
+ *
+ * Quem lê este recado é o restaurante, no WhatsApp -- e ali um link é
+ * um toque: abre o mapa do celular já com o destino, e o entregador sai
+ * sabendo para onde ir. O endereço escrito continua acima, porque é ele
+ * que vale quando o pino está no vizinho.
+ *
+ * Só existe quando o cliente mandou a localização ou um link do Google
+ * Maps na conversa com a IA (ver `server/ia/localizacao.ts`) ou marcou o
+ * ponto no mapa do cardápio. Pedido com endereço só digitado não tem
+ * pino nenhum, e aqui não aparece nada.
+ */
+function linkDoMapa(o: OrderForMessage) {
+  if (o.destinoLat == null || o.destinoLng == null) return null;
+  return `https://maps.google.com/?q=${o.destinoLat},${o.destinoLng}`;
+}
 /** "Cartão de débito" + "Levar a maquininha na entrega." (nada extra no Pix) */
 function paymentOf(o: OrderForMessage) {
   const choice = { method: o.paymentMethod, cardType: o.payment?.cardType, changeForCents: o.payment?.changeForCents };
@@ -103,6 +123,7 @@ export function orderToRestaurant(o: OrderForMessage, r: RestaurantForMessage): 
           `*Endereço:* ${addressLine(o)}`,
           ...(o.deliveryComplement ? [`Complemento: ${o.deliveryComplement}`] : []),
           ...(o.deliveryReference ? [`Referência: ${o.deliveryReference}`] : []),
+          ...(linkDoMapa(o) ? [`*Mapa:* ${linkDoMapa(o)}`] : []),
         ]
       : []),
     ...(o.notes ? [`*Observações:* ${o.notes}`] : []),
@@ -162,6 +183,9 @@ export function orderFromCustomer(o: OrderForMessage, r: { name: string }) {
     delivery ? `*Entrega:* ${addressLine(o)}` : "*Retirada no local*",
     ...(delivery && o.deliveryComplement ? [`Complemento: ${o.deliveryComplement}`] : []),
     ...(delivery && o.deliveryReference ? [`Referência: ${o.deliveryReference}`] : []),
+    // o pino, quando o cliente marcou um: aqui o link é um toque, e o
+    // restaurante abre o mapa já no destino
+    ...(delivery && linkDoMapa(o) ? [`*Mapa:* ${linkDoMapa(o)}`] : []),
     ...(o.notes ? [`*Observações:* ${o.notes}`] : []),
     "",
     `*Nome:* ${o.customerName}`,
@@ -238,19 +262,6 @@ export function orderStatusUpdate(
 export const waAppLink = (phone: string, text: string) => `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
 
 /**
- * Aviso que o restaurante manda ao cliente pelo WhatsApp, junto com a
- * mudança de status no painel.
- *
- * É um por pedido, na hora em que o cliente precisa se mexer: na entrega,
- * quando a moto sai; na retirada, quando a comida fica pronta no balcão. O
- * resto do caminho ele vê no link de acompanhamento, que foi junto com o
- * pedido dele — por isso estas mensagens não levam link nenhum: quem
- * recebe já vai abrir a porta ou vir buscar.
- */
-const noticeWorthy = (status: OrderStatus, type: OrderType) =>
-  type === "DELIVERY" ? status === "OUT_FOR_DELIVERY" : status === "READY";
-
-/**
  * Com entregadores no restaurante, este aviso leva o link.
  *
  * É a diferença que o módulo faz para quem está esperando: em vez de
@@ -283,7 +294,7 @@ export function statusNoticeText(
   r: { name: string; entregadorEnabled?: boolean },
   status: OrderStatus,
 ) {
-  if (!noticeWorthy(status, o.type)) return null;
+  if (!avisaOCliente(status, o.type)) return null;
   return o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);
 }
 
@@ -305,7 +316,7 @@ export function nextStatusNotice(
   // obrigaria o dono a tocar em enviar para algo que já foi.
   if (r.iaAvisa) return null;
   const step = nextOrderStep(o.status, o.type, o.paymentMethod, o.origin);
-  if (!step || !noticeWorthy(step.to, o.type) || !o.customerWhatsapp) return null;
+  if (!step || !avisaOCliente(step.to, o.type) || !o.customerWhatsapp) return null;
   const body = o.type === "DELIVERY" ? onTheWay(o, r) : readyForPickup(o, r);
   // app: abre o WhatsApp instalado (computador ou celular); web: o plano B
   return { app: waAppLink(o.customerWhatsapp, body), web: waMeLink(o.customerWhatsapp, body) };

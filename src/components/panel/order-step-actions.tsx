@@ -1,6 +1,6 @@
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import type { OrderOrigin, OrderStatus, OrderType, PaymentMethod, PaymentStatus } from "@/generated/prisma/enums";
-import { FINAL_ORDER_STATUSES, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
+import { confirmacaoDoPasso, FINAL_ORDER_STATUSES, nextOrderStep, pagamentoConfirmado } from "@/lib/order-flow";
 
 import { StepButton, type StatusNotice } from "./step-button";
 
@@ -13,6 +13,7 @@ export function OrderStepActions({
   hidden,
   size = "sm",
   notify,
+  lojaFechada,
 }: {
   // a origem manda no caminho: o pedido do 100% Delivery tem passo a mais
   // (recebido, em preparo) porque o cliente acompanha cada um deles
@@ -31,9 +32,20 @@ export function OrderStepActions({
   size?: "sm" | "md";
   /** aviso pronto para o cliente, aberto junto com a mudança de status */
   notify?: StatusNotice | null;
+  /**
+   * A loja está fechada agora.
+   *
+   * Com ela fechada e pedido ainda em preparo, o dono está acertando o
+   * status fora do movimento -- às vezes de um pedido de horas antes. O
+   * passo que fala com o cliente passa a pedir confirmação, porque um
+   * "saiu para entrega" naquela hora assusta quem já recebeu. A mensagem
+   * continua saindo: o que muda é que ele diz sim antes.
+   */
+  lojaFechada?: boolean;
 }) {
   if (FINAL_ORDER_STATUSES.includes(order.status)) return null;
   const step = nextOrderStep(order.status, order.type, order.paymentMethod, order.origin, pagamentoConfirmado(order.payment));
+  const confirmar = step ? confirmacaoDoPasso(lojaFechada, step.to, order.type) : null;
 
   const fields = (to: OrderStatus) => (
     <>
@@ -57,9 +69,9 @@ export function OrderStepActions({
     // pedido" não caberia em meia tela -- botão aqui não quebra linha.
     <div className="grid grid-cols-2 items-start gap-2 [&>form>button]:w-full sm:flex sm:flex-wrap sm:items-center sm:[&>form>button]:w-auto">
       {step && (
-        <form action={action}>
+        <form action={action} className="has-[span]:col-span-2 sm:col-auto">
           {fields(step.to)}
-          <StepButton label={step.label} notify={notify} size={size} />
+          <StepButton label={step.label} notify={notify} size={size} confirmar={confirmar} />
         </form>
       )}
       <form action={action} className={step ? "has-[span]:col-span-2 sm:col-auto" : "col-span-2 sm:col-auto"}>

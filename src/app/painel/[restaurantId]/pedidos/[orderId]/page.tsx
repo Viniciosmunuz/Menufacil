@@ -19,6 +19,7 @@ import { formatDateTime } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone } from "@/lib/labels";
 import { FINAL_ORDER_STATUSES, isFullDelivery } from "@/lib/order-flow";
 import { requireRestaurantAccess } from "@/server/auth/dal";
+import { lojaAbertaAgora } from "@/server/restaurants/loja-aberta";
 import { conversaDoPedido } from "@/server/chat/chat";
 import { algumComputadorAcordado } from "@/server/print/devices";
 
@@ -86,7 +87,7 @@ export default async function RestaurantOrderPage({ params }: PageProps<"/painel
         {final ? (
           <p className="text-muted">{order.status === "CANCELED" ? "Este pedido foi cancelado." : "Pedido concluído."}</p>
         ) : (
-          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notify={nextStatusNotice(order, { ...restaurant, iaAvisa })} />
+          <OrderStepActions order={order} action={stepRestaurantOrder} hidden={hidden} size="md" notify={nextStatusNotice(order, { ...restaurant, iaAvisa })} lojaFechada={!(await lojaAbertaAgora(restaurant.id))} />
         )}
       </Card>
 

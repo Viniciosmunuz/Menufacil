@@ -55,9 +55,16 @@ async function access(formData: FormData) {
  * Toda seção desta tela muda o que o cliente vê no link -- horário,
  * bairro de entrega, forma de pagamento, nome da casa. Sem derrubar o
  * cache, a mudança levaria até um minuto para chegar nele.
+ *
+ * **Com `await`, e não solta.** Na primeira versão isto era
+ * `void derrubarCardapio(...)`: a promessa ficava correndo sozinha e o
+ * `revalidateTag` acabava rodando depois que a ação já tinha terminado,
+ * fora do contexto dela. O Next recusa -- "can't be called during
+ * render" -- e o cardápio não era derrubado. Apareceu em produção no
+ * primeiro fim de semana da Lia, ao salvar a tela do restaurante.
  */
-function saved(acc: RestaurantAccess): SectionState {
-  void derrubarCardapio(acc.restaurant.slug);
+async function saved(acc: RestaurantAccess): Promise<SectionState> {
+  await derrubarCardapio(acc.restaurant.slug);
   refresh();
   return { ok: true, savedAt: Date.now() };
 }
