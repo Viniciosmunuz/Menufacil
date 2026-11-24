@@ -485,6 +485,28 @@ export async function responder(params: {
   const imagens: string[] = [];
   let chamouPessoa = false;
   let motivoDaChamada: string | null = null;
+  /**
+   * O bloco em cache, e de que ele é feito.
+   *
+   * São duas coisas de donos diferentes: as regras, que eu escrevo, e o
+   * conhecimento do restaurante -- cardápio, bairros, endereços --, que
+   * vem do banco e cresce com o cliente. Cada letra daqui é paga em toda
+   * leitura e em dobro em toda escrita, e sem saber a divisão qualquer
+   * corte é palpite: em 24/11/2026 eu apostei que as regras eram o peso,
+   * e elas são menos de um terço.
+   *
+   * Medido em letras, não em tokens: contar token de verdade custaria
+   * uma chamada à API por resposta, que é o oposto do objetivo. O que se
+   * quer aqui é a proporção, e para isso a letra serve.
+   */
+  const bloco = `${regras}
+
+=== INFORMAÇÕES DO RESTAURANTE ===
+${params.conhecimento.fixo}`;
+  console.info(
+    `[ia] bloco em cache: ${bloco.length} letras (regras ${regras.length}, restaurante ${params.conhecimento.fixo.length})`,
+  );
+
   const tokens = { entrada: 0, saida: 0, cache: 0, escrito: 0 };
 
   try {
@@ -502,7 +524,7 @@ export async function responder(params: {
         system: [
           {
             type: "text",
-            text: `${regras}\n\n=== INFORMAÇÕES DO RESTAURANTE ===\n${params.conhecimento.fixo}`,
+            text: bloco,
             /**
              * Uma hora, e não os cinco minutos do padrão.
              *
