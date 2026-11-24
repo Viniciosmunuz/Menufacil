@@ -311,6 +311,52 @@ export async function atender(evento: MensagemKapso) {
     // é isso que faz a IA ficar quieta nos próximos minutos. O que a própria
     // IA mandou pela API também volta como aviso, e esse se ignora.
     if (m.kapso?.origin === "business_app") {
+      /**
+       * O eco: a mensagem do próprio cliente voltando como se fosse nossa.
+       *
+       * Em 24/11/2026 a uazapi passou a entregar a mesma mensagem duas
+       * vezes -- uma como recebida e, cerca de um minuto depois, a mesma
+       * com `fromMe`. Nos logs o par é inconfundível:
+       *
+       *     00:28:03  chegou em …2838
+       *     00:28:21  saiu   em …2838   (mesmo texto)
+       *
+       * É o WhatsApp migrando para endereço `@lid`: o remetente chega com
+       * um identificador que o provedor não reconhece como sendo da
+       * instância, e ele erra o lado.
+       *
+       * **O estrago não é o histórico bonito: é a IA emudecer.** Uma linha
+       * HUMANO faz ela calar por 30 minutos naquela conversa -- é a regra
+       * de "uma pessoa assumiu". Então o cliente escrevia, o eco chegava, e
+       * a próxima mensagem dele ficava sem resposta. Um cliente pediu o
+       * valor do Pix e não recebeu nada.
+       *
+       * O crivo é o texto: se o que "saiu" é igualzinho ao que o mesmo
+       * contato mandou há pouco, é eco. Uma pessoa do restaurante não
+       * responde copiando ao pé da letra o que o cliente acabou de
+       * escrever -- e, se um dia copiar, o preço é um silêncio a menos,
+       * não um a mais.
+       */
+      const ECO_MIN = 5;
+      const igual = texto
+        ? await db.iaMensagem.findFirst({
+            where: {
+              restaurantId,
+              contato,
+              papel: "CLIENTE",
+              texto,
+              createdAt: { gte: new Date(Date.now() - ECO_MIN * 60_000) },
+            },
+            select: { id: true },
+          })
+        : null;
+      if (igual) {
+        console.info(
+          `[ia] eco do provedor descartado (mesma mensagem do cliente voltou como nossa) · …${telefone?.slice(-4) ?? "????"}`,
+        );
+        return;
+      }
+
       await db.iaMensagem.create({
         data: {
           restaurantId,
