@@ -405,7 +405,7 @@ export type Resposta = {
   /** por que ela chamou, nas palavras dela -- vira o aviso no painel */
   motivoDaChamada: string | null;
   modelo: string;
-  tokens: { entrada: number; saida: number; cache: number };
+  tokens: { entrada: number; saida: number; cache: number; escrito: number };
 };
 
 let cliente: Anthropic | null = null;
@@ -485,7 +485,7 @@ export async function responder(params: {
   const imagens: string[] = [];
   let chamouPessoa = false;
   let motivoDaChamada: string | null = null;
-  const tokens = { entrada: 0, saida: 0, cache: 0 };
+  const tokens = { entrada: 0, saida: 0, cache: 0, escrito: 0 };
 
   try {
     for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
@@ -506,11 +506,19 @@ export async function responder(params: {
             /**
              * Uma hora, e não os cinco minutos do padrão.
              *
-             * Este bloco tem quase 18 mil tokens -- as regras mais o
-             * cardápio inteiro --, e escrevê-lo no cache era 41% da
-             * conta: uma conversa de pedido dura oito minutos, então o
-             * guardado de cinco minutos vencia no meio e era reescrito.
-             * Com movimento, vencia de novo na conversa seguinte.
+             * Este bloco -- as regras mais o cardápio inteiro --
+             * tinha quase 18 mil tokens quando esta escolha foi feita, e
+             * escrevê-lo no cache era 41% da conta: uma conversa de
+             * pedido dura oito minutos, então o guardado de cinco minutos
+             * vencia no meio e era reescrito. Com movimento, vencia de
+             * novo na conversa seguinte.
+             *
+             * **Em 24/11/2026 ele estava em 32.887 tokens**, medido nos
+             * logs de produção: quase o dobro, quase todo em regras
+             * acrescentadas naquele dia. O preço disso é pago em toda
+             * leitura e em dobro em toda escrita, então o número merece
+             * ser olhado de vez em quando -- é o que o `ESCRITOS no
+             * cache` do log serve para medir.
              *
              * A escrita de uma hora custa o dobro da de cinco minutos,
              * mas acontece uma vez por hora em vez de duas por conversa.
@@ -525,6 +533,12 @@ export async function responder(params: {
       tokens.entrada += resposta.usage.input_tokens;
       tokens.saida += resposta.usage.output_tokens;
       tokens.cache += resposta.usage.cache_read_input_tokens ?? 0;
+      // O que foi ESCRITO no cache, que é o caro: a escrita de uma hora
+      // custa o dobro do preço de entrada, e a leitura custa um vinte
+      // avos dele. Sem este número a conta do mês é adivinhação -- em
+      // 24/11/2026 eu afirmei que as escritas eram 80% do gasto, sem ter
+      // como saber, e estava errado.
+      tokens.escrito += resposta.usage.cache_creation_input_tokens ?? 0;
 
       if (resposta.stop_reason === "refusal") {
         console.warn("[ia] o modelo recusou responder; a conversa fica para o restaurante");

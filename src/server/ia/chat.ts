@@ -145,7 +145,7 @@ export async function conversarNoCardapio(params: {
 
   // só números, para acompanhar o custo: nada do conteúdo da conversa
   console.info(
-    `[ia/chat] respondeu (${resposta.modelo}): ${resposta.tokens.entrada} entrada, ${resposta.tokens.cache} do cache, ${resposta.tokens.saida} saída`,
+    `[ia/chat] respondeu (${resposta.modelo}): ${resposta.tokens.entrada} entrada, ${resposta.tokens.cache} do cache, ${resposta.tokens.saida} saída${resposta.tokens.escrito ? `, ${resposta.tokens.escrito} ESCRITOS no cache` : ""}`,
   );
 
   return { ok: true, texto: resposta.texto, anexos: resposta.anexos };
