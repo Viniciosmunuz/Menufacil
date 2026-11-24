@@ -611,6 +611,14 @@ export async function salvarEnderecoConhecido(
     .filter(Boolean)
     .slice(0, 10);
 
+  // Renomear é apagar e criar: a chave é o nome, então mudar o nome sem
+  // isto deixaria o antigo vivo na lista, e a IA veria o mesmo lugar duas
+  // vezes com endereços diferentes.
+  const antes = String(formData.get("nomeOriginal") ?? "").trim();
+  if (antes && antes !== nome) {
+    await db.enderecoConhecido.deleteMany({ where: { restaurantId: restaurant.id, nome: antes } });
+  }
+
   await db.enderecoConhecido.upsert({
     where: { restaurantId_nome: { restaurantId: restaurant.id, nome } },
     update: { apelidos, rua, numero: campo("numero") || "s/n", bairro, referencia, complemento: campo("complemento") || null },

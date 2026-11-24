@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -18,6 +18,11 @@ import { apagarEnderecoConhecido, salvarEnderecoConhecido, type EstadoDaAcao } f
 // nenhuma. "Entrega aqui no Moura" vira rua, número, bairro e referência
 // de uma vez.
 //
+// Dá para editar, e não só criar e apagar: o primeiro cadastro quase
+// nunca sai certo. O Rocha entrou como "mercado" e é adega -- apagar e
+// digitar tudo de novo para trocar uma palavra é o tipo de coisa que faz
+// o dono deixar errado.
+//
 // Sem texto explicativo embaixo dos campos, como no resto do painel: os
 // placeholders mostram um exemplo com cara de coisa real, e quem olha
 // entende o que é sem ler nada.
@@ -32,6 +37,16 @@ export type EnderecoConhecido = {
   complemento: string | null;
 };
 
+const VAZIO: EnderecoConhecido = {
+  nome: "",
+  apelidos: [],
+  rua: "",
+  numero: "",
+  bairro: "",
+  referencia: "",
+  complemento: null,
+};
+
 export function EnderecosConhecidos({
   restaurantId,
   enderecos,
@@ -41,8 +56,17 @@ export function EnderecosConhecidos({
 }) {
   const [estado, salvar] = useActionState<EstadoDaAcao, FormData>(salvarEnderecoConhecido, {});
   const [apagado, apagar] = useActionState<EstadoDaAcao, FormData>(apagarEnderecoConhecido, {});
-  // o formulário só aparece quando ele vai usar: a lista é o que importa
-  const [abrindo, setAbrindo] = useState(enderecos.length === 0);
+  // `null` é o formulário fechado; um objeto é o que está sendo escrito
+  const [editando, setEditando] = useState<EnderecoConhecido | null>(
+    enderecos.length === 0 ? VAZIO : null,
+  );
+  // o nome com que ele chegou: se mudar, o antigo sai da lista
+  const [original, setOriginal] = useState("");
+
+  function abrir(e: EnderecoConhecido, nomeOriginal: string) {
+    setEditando(e);
+    setOriginal(nomeOriginal);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,7 +75,7 @@ export function EnderecosConhecidos({
           {enderecos.map((e) => (
             <li
               key={e.nome}
-              className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface-2 p-3"
+              className="flex items-start justify-between gap-2 rounded-lg border border-line bg-surface-2 p-3"
             >
               <div className="min-w-0">
                 <p className="font-bold">
@@ -66,13 +90,28 @@ export function EnderecosConhecidos({
                 </p>
                 <p className="text-sm text-faint">Ref.: {e.referencia}</p>
               </div>
-              <form action={apagar}>
-                <input type="hidden" name="restaurantId" value={restaurantId} />
-                <input type="hidden" name="nome" value={e.nome} />
-                <SubmitButton variant="ghost" size="sm" pendingText="..." aria-label={`Tirar ${e.nome} da lista`}>
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </SubmitButton>
-              </form>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => abrir(e, e.nome)}
+                  aria-label={`Editar ${e.nome}`}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                </Button>
+                <form action={apagar}>
+                  <input type="hidden" name="restaurantId" value={restaurantId} />
+                  <input type="hidden" name="nome" value={e.nome} />
+                  <SubmitButton
+                    variant="ghost"
+                    size="sm"
+                    pendingText="..."
+                    aria-label={`Tirar ${e.nome} da lista`}
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </SubmitButton>
+                </form>
+              </div>
             </li>
           ))}
         </ul>
@@ -81,27 +120,67 @@ export function EnderecosConhecidos({
       {apagado.message && <Alert tone="success">{apagado.message}</Alert>}
       {apagado.error && <Alert tone="danger">{apagado.error}</Alert>}
 
-      {abrindo ? (
-        <form action={salvar} className="flex flex-col gap-3 rounded-lg border border-line p-3">
+      {editando ? (
+        <form
+          action={salvar}
+          /* a chave remonta os campos ao trocar de lugar: sem ela, o
+             formulário guardaria o que estava escrito no anterior */
+          key={original || "novo"}
+          className="flex flex-col gap-3 rounded-lg border border-line p-3"
+        >
           <input type="hidden" name="restaurantId" value={restaurantId} />
+          <input type="hidden" name="nomeOriginal" value={original} />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Como o cliente chama" htmlFor="endereco-nome">
-              <Input id="endereco-nome" name="nome" required placeholder="Moura" />
+              <Input
+                id="endereco-nome"
+                name="nome"
+                required
+                defaultValue={editando.nome}
+                placeholder="Moura"
+              />
             </Field>
             <Field label="Outros nomes (separados por vírgula)" htmlFor="endereco-apelidos">
-              <Input id="endereco-apelidos" name="apelidos" placeholder="casa do Moura, seu Moura" />
+              <Input
+                id="endereco-apelidos"
+                name="apelidos"
+                defaultValue={editando.apelidos.join(", ")}
+                placeholder="casa do Moura, seu Moura"
+              />
             </Field>
             <Field label="Rua" htmlFor="endereco-rua">
-              <Input id="endereco-rua" name="rua" required placeholder="Rua do Campo" />
+              <Input
+                id="endereco-rua"
+                name="rua"
+                required
+                defaultValue={editando.rua}
+                placeholder="Av. Sucupira"
+              />
             </Field>
             <Field label="Número" htmlFor="endereco-numero">
-              <Input id="endereco-numero" name="numero" placeholder="s/n" />
+              <Input
+                id="endereco-numero"
+                name="numero"
+                defaultValue={editando.numero}
+                placeholder="s/n"
+              />
             </Field>
             <Field label="Bairro" htmlFor="endereco-bairro">
-              <Input id="endereco-bairro" name="bairro" required placeholder="Centro" />
+              <Input
+                id="endereco-bairro"
+                name="bairro"
+                required
+                defaultValue={editando.bairro}
+                placeholder="Morada do Sol"
+              />
             </Field>
             <Field label="Complemento" htmlFor="endereco-complemento">
-              <Input id="endereco-complemento" name="complemento" placeholder="casa dos fundos" />
+              <Input
+                id="endereco-complemento"
+                name="complemento"
+                defaultValue={editando.complemento ?? ""}
+                placeholder="casa dos fundos"
+              />
             </Field>
           </div>
           <Field label="Ponto de referência" htmlFor="endereco-referencia">
@@ -109,16 +188,17 @@ export function EnderecosConhecidos({
               id="endereco-referencia"
               name="referencia"
               required
-              placeholder="casa do Moura, em frente ao campo"
+              defaultValue={editando.referencia}
+              placeholder="adega do Rocha, em frente ao Papaléguas"
             />
           </Field>
           <div className="flex flex-wrap items-center gap-3">
             <SubmitButton size="sm" pendingText="Salvando...">
-              Salvar lugar
+              {original ? "Salvar alterações" : "Salvar lugar"}
             </SubmitButton>
             {enderecos.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setAbrindo(false)}>
-                Fechar
+              <Button variant="ghost" size="sm" onClick={() => setEditando(null)}>
+                Cancelar
               </Button>
             )}
           </div>
@@ -126,7 +206,7 @@ export function EnderecosConhecidos({
           {estado.message && !estado.error && <Alert tone="success">{estado.message}</Alert>}
         </form>
       ) : (
-        <Button variant="outline" size="sm" onClick={() => setAbrindo(true)}>
+        <Button variant="outline" size="sm" onClick={() => abrir(VAZIO, "")}>
           Adicionar lugar
         </Button>
       )}

@@ -392,7 +392,7 @@ async function updateLaunchCategories() {
 // Os lugares que a cidade conhece pelo nome, no Papaléguas.
 //
 // "Entregar no Rocha" e "aqui no Moura" sao enderecos completos para quem
-// mora ali -- o Rocha e o mercado da frente, o Moura e a casa em frente ao
+// mora ali -- o Rocha e a adega da frente, o Moura e a casa em frente ao
 // restaurante --, e a Lia recusava os dois por nao serem bairro nem rua.
 // Em 24/11/2026 ela respondeu "Rocha nao esta na nossa lista de bairros
 // atendidos" a um cliente que a moto atende toda semana.
@@ -418,11 +418,11 @@ const LUGARES_CONHECIDOS: { slug: string; marca: string; lugares: { nome: string
     lugares: [
       {
         nome: "Rocha",
-        apelidos: ["mercado do Rocha", "mercadinho do Rocha", "supermercado Rocha"],
+        apelidos: ["adega do Rocha", "adega Rocha"],
         rua: "Av. Sucupira",
         numero: "s/n",
         bairro: "Morada do Sol",
-        referencia: "mercado do Rocha, em frente ao Papaléguas",
+        referencia: "adega do Rocha, em frente ao Papaléguas",
       },
       {
         nome: "Moura",
@@ -435,6 +435,43 @@ const LUGARES_CONHECIDOS: { slug: string; marca: string; lugares: { nome: string
     ],
   },
 ];
+
+// Correcoes pontuais no que ja foi semeado.
+//
+// O seed acima entra uma vez e nao volta -- e tem de ser assim, senao
+// cada deploy desfaria o que ele corrigiu no painel. Mas quando o erro e
+// NOSSO, ele ja esta no banco de producao e ninguem o tirou de la: o
+// Rocha entrou como "mercado" e e uma adega.
+//
+// Entao a correcao so toca na linha que ainda carrega o texto errado. Se
+// ele ja tiver arrumado pelo painel, nada bate e nada muda.
+const CORRECOES: { slug: string; marca: string; nome: string; seDisser: string; para: { apelidos: string[]; referencia: string } }[] = [
+  {
+    slug: "papaleguas",
+    marca: "launch.enderecos.v2",
+    nome: "Rocha",
+    seDisser: "mercado do Rocha, em frente ao Papaléguas",
+    para: {
+      apelidos: ["adega do Rocha", "adega Rocha"],
+      referencia: "adega do Rocha, em frente ao Papaléguas",
+    },
+  },
+];
+
+async function corrigirEnderecosConhecidos() {
+  for (const c of CORRECOES) {
+    const restaurant = await db.restaurant.findUnique({ where: { slug: c.slug }, select: { id: true } });
+    if (!restaurant) continue;
+    if (await db.auditLog.findFirst({ where: { restaurantId: restaurant.id, action: c.marca }, select: { id: true } })) continue;
+
+    const { count } = await db.enderecoConhecido.updateMany({
+      where: { restaurantId: restaurant.id, nome: c.nome, referencia: c.seDisser },
+      data: c.para,
+    });
+    await db.auditLog.create({ data: { restaurantId: restaurant.id, action: c.marca } });
+    if (count > 0) console.log(`• "${c.slug}": ${c.nome} corrigido.`);
+  }
+}
 
 async function seedEnderecosConhecidos() {
   for (const item of LUGARES_CONHECIDOS) {
@@ -469,6 +506,7 @@ async function main() {
   await updateLaunchCategories();
   await setupLaunchPizza();
   await seedEnderecosConhecidos();
+  await corrigirEnderecosConhecidos();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 
