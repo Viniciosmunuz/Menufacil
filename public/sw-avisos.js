@@ -28,10 +28,14 @@ self.addEventListener("push", (event) => {
   }
 
   const url = dados.url || PADRAO.url;
+  // "tem gente esperando" não pode parecer pedido novo: até 24/11/2026 os
+  // dois chegavam com o mesmo ícone e a mesma vibração, e no balcão
+  // confundiam os dois
+  const atendimento = dados.estilo === "atendimento";
   event.waitUntil(
     self.registration.showNotification(dados.titulo || PADRAO.titulo, {
       body: dados.corpo || PADRAO.corpo,
-      icon: "/icone-192.png",
+      icon: atendimento ? "/icone-atendimento.png" : "/icone-192.png",
       badge: "/icone-192.png",
       // cada pedido tem a sua tag: dois pedidos seguidos aparecem como dois
       // avisos, e o mesmo pedido reenviado não vira aviso repetido
@@ -39,7 +43,12 @@ self.addEventListener("push", (event) => {
       renotify: true,
       // fica na tela até alguém tocar: pedido não pode passar batido
       requireInteraction: true,
-      vibrate: [220, 120, 220, 120, 220],
+      // Vibração própria para "tem gente esperando": uma longa e duas
+      // curtas, contra as três iguais do pedido novo. Com o celular no
+      // bolso, é por ela que dá para saber o que chegou sem olhar. O som
+      // continua o mesmo nos dois -- foi decisão dele.
+      vibrate: atendimento ? [500, 140, 120, 140, 120] : [220, 120, 220, 120, 220],
+      actions: atendimento ? [{ action: "abrir", title: "Responder" }] : undefined,
       data: { url },
     }),
   );

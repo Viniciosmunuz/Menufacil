@@ -76,8 +76,20 @@ const quando = (d: Date) => {
 };
 
 /** o nome da conversa: o telefone bonito, ou que veio do cardápio */
+/**
+ * Com quem ela falou.
+ *
+ * O nome vem na frente quando existe: a lista mostrava só o número, e
+ * número não diz com quem ela falou -- para saber, ele abria conversa
+ * por conversa. Quem nunca pediu não tem cadastro, e aí fica o número,
+ * que é o que sempre houve.
+ */
 const nomeDe = (c: ResumoDeConversa) =>
-  c.noCardapio ? "Pelo cardápio" : formatPhone(c.telefone);
+  c.noCardapio ? "Pelo cardápio" : c.nome || formatPhone(c.telefone);
+
+/** a inicial, para o círculo; sem nome, continua o bonequinho */
+const inicialDe = (c: ResumoDeConversa) =>
+  c.noCardapio || !c.nome ? null : c.nome.trim().charAt(0).toLocaleUpperCase("pt-BR");
 
 const BOTAO =
   "flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-bold transition-colors disabled:opacity-50";
@@ -98,8 +110,17 @@ function Linha({
 }) {
   return (
     <li className="flex gap-3 border-b border-line py-3 last:border-0">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-faint">
-        <User className="size-4" aria-hidden="true" />
+      {/* a inicial de quem tem nome, o bonequinho de quem não tem: na
+          lista corrida, a letra é o que diferencia uma linha da outra */}
+      <span
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-full border",
+          inicialDe(conversa)
+            ? "border-brand/40 bg-brand-soft text-sm font-extrabold text-brand"
+            : "border-line bg-surface-2 text-faint",
+        )}
+      >
+        {inicialDe(conversa) ?? <User className="size-4" aria-hidden="true" />}
       </span>
 
       <div className="min-w-0 flex-1">
@@ -117,6 +138,12 @@ function Linha({
           )}
           <span className="ml-auto shrink-0 text-xs text-faint">{quando(conversa.quando)}</span>
         </div>
+
+        {/* o número continua à vista: é por ele que ele acha a pessoa no
+            WhatsApp, e some se o nome tomasse o lugar dele */}
+        {conversa.nome && !conversa.noCardapio && (
+          <p className="truncate text-xs text-faint">{formatPhone(conversa.telefone)}</p>
+        )}
 
         <p className="mt-0.5 truncate text-sm text-muted">{legivel(conversa.ultima)}</p>
 

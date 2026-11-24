@@ -413,6 +413,28 @@ async function updateLaunchCategories() {
 // painel. Sem isso, cada deploy desfaria o que ele tivesse corrigido.
 const LUGARES_CONHECIDOS: { slug: string; marca: string; lugares: { nome: string; apelidos: string[]; rua: string; numero: string; bairro: string; referencia: string }[] }[] = [
   {
+    // O Point Bee, de 24/11/2026. Uma cliente pediu "aqui no point bee" e
+    // a Lia perguntou o bairro quatro vezes -- o endereco saiu aos pedacos
+    // ("Av acariquara", depois "15", depois o mapa, depois "Honorio
+    // Roldao"), e o pedido so fechou no fim. Agora o nome basta.
+    //
+    // Entra com marca propria porque a v1 ja rodou: o seed nao volta na
+    // mesma marca, e e isso que impede um deploy de desfazer o que ele
+    // corrigiu no painel.
+    slug: "papaleguas",
+    marca: "launch.enderecos.v3",
+    lugares: [
+      {
+        nome: "Point Bee",
+        apelidos: ["point bar", "point b", "bar do point", "point"],
+        rua: "Av. Acariquara",
+        numero: "15",
+        bairro: "Honório Roldão",
+        referencia: "Point Bee, o bar",
+      },
+    ],
+  },
+  {
     slug: "papaleguas",
     marca: "launch.enderecos.v1",
     lugares: [

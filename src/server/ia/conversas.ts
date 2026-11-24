@@ -3,6 +3,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/format";
 
+import { variantes } from "./telefone";
+
 /**
  * As conversas que a IA teve, para o dono ver no painel.
  *
@@ -33,6 +35,8 @@ export type ResumoDeConversa = {
   /** o telefone com DDI, só quando dá para pôr numa lista; vazio no cardápio */
   telefone: string;
   noCardapio: boolean;
+  /** o nome do cadastro, quando este cliente já pediu alguma vez */
+  nome: string | null;
   ultima: string;
   papel: Papel;
   quando: Date;
@@ -74,11 +78,38 @@ export async function conversasDaIa(restaurantId: string): Promise<ResumoDeConve
 
   const quantas = new Map(contagens.map((c) => [c.contato, c._count._all]));
 
+  /**
+   * O nome de quem está do outro lado.
+   *
+   * A lista mostrava só "(92) 8545-6168", e número não diz com quem ele
+   * falou -- para saber, ele tinha de abrir conversa por conversa. O nome
+   * vem do cadastro do cliente, que nasce no primeiro pedido: quem já
+   * pediu alguma vez tem nome, quem só perguntou o horário não tem, e
+   * esse continua aparecendo pelo número.
+   *
+   * Busca pelas duas formas do número, com e sem o 9 do celular: o mesmo
+   * cliente chega de um jeito pelo WhatsApp e está gravado de outro.
+   */
+  const telefones = ultimas.filter((l) => !doCardapio(l.contato)).map((l) => l.contato);
+  const nomes = new Map<string, string>();
+  if (telefones.length > 0) {
+    const clientes = await db.customer.findMany({
+      where: { whatsapp: { in: [...new Set(telefones.flatMap(variantes))] } },
+      select: { whatsapp: true, name: true },
+    });
+    const porNumero = new Map(clientes.map((c) => [c.whatsapp, c.name]));
+    for (const t of telefones) {
+      const achado = variantes(t).map((v) => porNumero.get(v)).find(Boolean);
+      if (achado) nomes.set(t, achado);
+    }
+  }
+
   return ultimas
     .map((l) => ({
       contato: l.contato,
       telefone: doCardapio(l.contato) ? "" : l.contato,
       noCardapio: doCardapio(l.contato),
+      nome: nomes.get(l.contato) ?? null,
       ultima: l.texto,
       papel: l.papel,
       quando: l.createdAt,

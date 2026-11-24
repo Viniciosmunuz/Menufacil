@@ -211,7 +211,11 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         recados={
           chamados.length > 0 || recados.length > 0 ? (
             <>
-              {chamados.length > 0 && <AvisosDaIa chamados={chamados} />}
+              {chamados.length > 0 && (
+                <AvisosDaIa
+                  chamados={chamados.map((c) => ({ ...c, desde: c.quando.toISOString() }))}
+                />
+              )}
               {recados.length > 0 && <AvisosDeMensagem mensagens={recados} base={base} />}
             </>
           ) : null

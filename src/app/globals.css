@@ -47,6 +47,16 @@
      tirados do mesmo matiz do token acima, com contraste AA do `ink` sobre
      o `soft`. Quem precisa pintar um cartão inteiro usa estas fichas, e
      não um hex novo. */
+  /* O verde do WhatsApp, e só dele.
+     Fora da escala de estados de propósito: não quer dizer "deu certo",
+     quer dizer "é do WhatsApp". Nasceu no aviso de cliente esperando
+     atendimento, que se confundia com o de pedido novo -- mesma moldura
+     laranja, mesmo canto, mesmo som -- e no balcão isso fazia gente
+     deixar cliente esperando achando que era pedido. Ele pediu o verde
+     do aplicativo, que é o que todo mundo já reconhece de longe. */
+  --color-zap: #25d366;
+  --color-zap-escuro: #1da851;
+
   --color-success-soft: #d8f8e4;
   --color-success-line: #72de9a;
   --color-success-ink: #107937;
@@ -329,6 +339,10 @@ details.drawer[open]::details-content {
 
   /* as mesmas três faces, viradas para o escuro: o `soft` deixa de ser tom
      claro e vira o fundo fechado, e é o `ink` que clareia */
+  /* no escuro o verde do WhatsApp fica como ele é: já tem contraste */
+  --color-zap: #25d366;
+  --color-zap-escuro: #3ddb7a;
+
   --color-success-soft: #114524;
   --color-success-line: #29854b;
   --color-success-ink: #90e9b1;

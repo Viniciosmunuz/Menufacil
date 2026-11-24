@@ -76,7 +76,10 @@ async function entregar(aparelho: Aparelho, payload: string) {
   }
 }
 
-async function enviarParaORestaurante(restaurantId: string, conteudo: { titulo: string; corpo: string; tag: string }) {
+async function enviarParaORestaurante(
+  restaurantId: string,
+  conteudo: { titulo: string; corpo: string; tag: string; estilo?: "atendimento"; url?: string },
+) {
   if (!pushLigado()) return 0;
   const aparelhos = await db.pushDevice.findMany({
     where: {
@@ -94,7 +97,9 @@ async function enviarParaORestaurante(restaurantId: string, conteudo: { titulo: 
   if (aparelhos.length === 0) return 0;
 
   configurar();
-  const payload = JSON.stringify({ ...conteudo, url: `/painel/${restaurantId}/pedidos` });
+  // a url do conteúdo manda, quando vem: é o aviso de atendimento, que
+  // abre a conversa no WhatsApp em vez da tela de pedidos
+  const payload = JSON.stringify({ url: `/painel/${restaurantId}/pedidos`, ...conteudo });
   const saidas = await Promise.all(aparelhos.map((a) => entregar(a, payload)));
   return saidas.filter(Boolean).length;
 }
@@ -143,11 +148,20 @@ export async function avisarMensagemDoCliente(params: { restaurantId: string; or
 }
 
 /** Menu Fácil IA: um cliente pediu para falar com uma pessoa no WhatsApp */
-export async function avisarClienteChamou(params: { restaurantId: string; quem: string }) {
+export async function avisarClienteChamou(params: { restaurantId: string; quem: string; contato?: string }) {
   return enviarParaORestaurante(params.restaurantId, {
-    titulo: "Cliente quer falar com você",
-    corpo: `${params.quem} pediu para falar com uma pessoa no WhatsApp. A IA avisou que você já vai responder.`,
+    // **O nome na frente.** O titulo era "Cliente quer falar com voce" --
+    // igual em todos --, e o nome ficava no corpo, que o Android corta.
+    // Com o celular no bolso, dois avisos seguidos eram indistinguiveis.
+    titulo: `🙋 ${params.quem} está esperando atendimento`,
+    corpo: "Pediu para falar com uma pessoa no WhatsApp.",
     tag: `chamou-${params.quem}`,
+    // o que faz este aviso nao parecer o de pedido novo no celular: icone
+    // proprio, vibracao propria e um botao que abre a conversa direto
+    estilo: "atendimento" as const,
+    // abre o WhatsApp do cliente, e não o painel: é lá que ele está
+    // esperando, e passar pelo painel é um toque a mais no meio da correria
+    url: params.contato ? `https://wa.me/${params.contato.replace(/\D/g, "")}` : undefined,
   });
 }
 

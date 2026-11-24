@@ -494,6 +494,7 @@ export async function atender(evento: MensagemKapso) {
     await avisarClienteChamou({
       restaurantId,
       quem: evento.push_name?.trim() || (telefone ? formatPhone(telefone) : "Um cliente"),
+      contato: telefone ?? undefined,
     }).catch((erro) => console.error("[ia] falha ao avisar o dono:", erro));
   };
 

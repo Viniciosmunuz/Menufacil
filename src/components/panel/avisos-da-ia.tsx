@@ -1,9 +1,8 @@
 "use client";
 
 import { Headset, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { buttonClasses } from "@/components/ui/button";
 import { CHOICE_KEY, SOUND_KEY, idList, playSound, read, remember, somEscolhido, useStored } from "@/lib/aviso-local";
 
 // A Lia chamou uma pessoa: sobe no canto, como o pedido e o recado.
@@ -19,6 +18,17 @@ import { CHOICE_KEY, SOUND_KEY, idList, playSound, read, remember, somEscolhido,
 // O som é o mesmo dos outros dois, e isso é decisão: no balcão aquele
 // sino já quer dizer "olha a tela". Um segundo som precisaria ser
 // aprendido, e enquanto não fosse, seria ruído.
+//
+// **O que não podia continuar igual era o olho.** Até 24/11/2026 este
+// aviso usava a mesma moldura laranja do pedido novo, no mesmo canto e
+// com o mesmo botão -- a única diferença era o texto, e texto ninguém lê
+// de longe no meio do movimento. No Papaléguas confundiam os dois e
+// deixavam cliente esperando achando que era pedido.
+//
+// Agora: faixa no verde do WhatsApp (é de lá que a pessoa está falando),
+// bolinha piscando, "ATENDER AGORA" em caixa alta e o tempo de espera --
+// que é o que diz se dá para deixar para depois do movimento ou se
+// alguém larga a chapa. Quatro diferenças, nenhuma delas depender de ler.
 
 const VISTOS_KEY = "mf_chamados_vistos";
 
@@ -27,7 +37,31 @@ export type ChamadoNovo = {
   contato: string;
   quem: string;
   motivo: string;
+  /** desde quando ele está esperando, em ISO; sem isso, o tempo não aparece */
+  desde?: string;
 };
+
+/**
+ * Há quanto tempo essa pessoa está esperando.
+ *
+ * É a informação que decide: "há 1 min" dá para terminar o que está na
+ * chapa, "há 12 min" é alguém que já desistiu de ser atendido. Conta no
+ * navegador e se atualiza sozinho -- o aviso fica na tela até alguém
+ * tocar nele, e um "há 2 min" congelado mentiria depois de dez.
+ */
+function Espera({ desde }: { desde: string }) {
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const min = Math.max(0, Math.floor((agora - new Date(desde).getTime()) / 60_000));
+  // menos de um minuto não é espera: seria "há 0 min", que não quer dizer nada
+  const texto = min < 1 ? "agora" : min < 60 ? `há ${min} min` : `há ${Math.floor(min / 60)} h`;
+  return <span className="shrink-0 text-[0.7rem] font-bold opacity-90">{texto}</span>;
+}
 
 export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
   const salvos = useStored(VISTOS_KEY);
@@ -66,15 +100,34 @@ export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
   return (
     <>
       {novos.slice(0, 2).map((c) => (
-        <div
-          key={c.chave}
-          className="flex flex-col gap-1.5 rounded-card border border-brand/60 bg-surface p-3 shadow-2xl shadow-black/50"
-        >
-          <div className="flex items-center gap-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
-              <Headset className="size-4" aria-hidden="true" />
+        <div key={c.chave} className="overflow-hidden rounded-card shadow-2xl shadow-black/50">
+          {/* A faixa, fina de propósito: ele pediu que não fosse grossa.
+              O que ela precisa é ser vista de relance, e para isso bastam
+              a cor, a bolinha e a palavra. */}
+          <div className="flex items-center gap-2 bg-zap px-3 py-1.5 text-white">
+            <span className="size-2 shrink-0 animate-pulse rounded-full bg-white" />
+            <span className="flex-1 text-[0.7rem] font-extrabold uppercase tracking-wider">
+              Atender agora
             </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-bold">{c.quem} quer falar com você</span>
+            {c.desde && <Espera desde={c.desde} />}
+          </div>
+
+          <div className="flex flex-col gap-2 border border-t-0 border-zap/70 bg-surface p-3">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-extrabold">{c.quem}</span>
+              <button
+                type="button"
+                onClick={() => dispensar([c.chave])}
+                aria-label={`Dispensar o aviso de ${c.quem}`}
+                className="-my-1 grid size-8 shrink-0 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* o motivo diz se dá para deixar para depois do movimento */}
+            <p className="truncate text-sm text-muted">{c.motivo}</p>
+
             {/* Abre a conversa no WhatsApp, e não no painel: o cliente
                 está lá, esperando uma pessoa responder. Mandar para a
                 tela de conversas daqui faria quem atende ler o que já
@@ -84,23 +137,12 @@ export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => dispensar([c.chave])}
-              className={buttonClasses("primary", "sm")}
+              className="flex items-center justify-center gap-2 rounded-control bg-zap px-4 py-2 text-sm font-bold text-white hover:bg-zap-escuro"
             >
-              Responder
+              <Headset className="size-4" aria-hidden="true" />
+              Responder no WhatsApp
             </a>
-            <button
-              type="button"
-              onClick={() => dispensar([c.chave])}
-              aria-label={`Dispensar o aviso de ${c.quem}`}
-              className="grid size-8 shrink-0 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </button>
           </div>
-
-          {/* o motivo ganha a linha inteira: é o que diz se dá para deixar
-              para depois do movimento ou se alguém tem de largar a chapa */}
-          <p className="truncate pl-9 text-sm text-muted">{c.motivo}</p>
         </div>
       ))}
 
