@@ -117,11 +117,15 @@ export async function salvarListas(
     return fora;
   }
 
+  // Só a lista de ignorados.
+  //
+  // A de "números de teste" saiu da tela em 24/11/2026 e a coluna ficou,
+  // com o que já estava lá. Ler o formulário atrás dela gravaria uma
+  // lista vazia no primeiro salvamento -- apagando, sem avisar, números
+  // que ninguém pediu para tirar.
   let ignorados: string[];
-  let semEspera: string[];
   try {
     ignorados = numerosDe("ignorado");
-    semEspera = numerosDe("teste");
   } catch (e) {
     if (e instanceof NumeroRuim)
       return { error: `"${e.texto}" não parece um número com DDD.` };
@@ -130,7 +134,7 @@ export async function salvarListas(
 
   await db.atendenteIa.update({
     where: { restaurantId: restaurant.id },
-    data: { ignorados, semEspera },
+    data: { ignorados },
   });
   await audit({
     actorUserId: user.id,
@@ -138,7 +142,6 @@ export async function salvarListas(
     action: "restaurant.ia.listas",
     details: {
       ignorados: ignorados.length,
-      semEspera: semEspera.length,
       viaAdmin,
     },
   });
@@ -549,4 +552,109 @@ export async function salvarNotasDaIa(
       ? "Pronto: ela já sabe disso na próxima conversa."
       : "Apaguei as anotações.",
   };
+}
+
+/**
+ * Um lugar que a cidade conhece pelo nome, com o endereço pronto.
+ *
+ * O que as notas em texto livre não davam: elas ajudavam a IA a ENTENDER
+ * "aqui no Moura", mas o pedido ainda parava, porque faltavam rua,
+ * número, bairro e referência -- e ela perguntava tudo de novo a quem
+ * acabara de dizer onde estava. Com o endereço cadastrado, dizer o nome
+ * basta.
+ *
+ * O bairro é conferido contra as áreas de entrega: é dele que sai a
+ * taxa, e um lugar conhecido não é licença para entregar fora da área.
+ * Sem área cadastrada, qualquer bairro passa -- é o restaurante que
+ * cobra uma taxa só.
+ */
+export async function salvarEnderecoConhecido(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const campo = (nome: string) => String(formData.get(nome) ?? "").trim();
+
+  const nome = campo("nome");
+  const rua = campo("rua");
+  const bairro = campo("bairro");
+  const referencia = campo("referencia");
+  if (!nome) return { error: "Dê um nome ao lugar, do jeito que o cliente fala." };
+  if (!rua) return { error: "Informe a rua." };
+  if (!bairro) return { error: "Informe o bairro." };
+  if (!referencia) return { error: "Informe o ponto de referência: é o que o entregador lê." };
+
+  const areas = await db.deliveryArea.findMany({
+    where: { restaurantId: restaurant.id },
+    select: { name: true, apelidos: true },
+  });
+  if (areas.length > 0) {
+    const igual = (a: string, b: string) =>
+      a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR");
+    const existe = areas.some(
+      (a) => igual(a.name, bairro) || a.apelidos.some((ap) => igual(ap, bairro)),
+    );
+    if (!existe) {
+      return {
+        error:
+          `"${bairro}" não está nos seus bairros de entrega, então a taxa não sairia.` +
+          " Use um dos bairros cadastrados em Entrega, ou cadastre esse antes.",
+      };
+    }
+  }
+
+  const apelidos = campo("apelidos")
+    .split(",")
+    .map((a) => a.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+
+  await db.enderecoConhecido.upsert({
+    where: { restaurantId_nome: { restaurantId: restaurant.id, nome } },
+    update: { apelidos, rua, numero: campo("numero") || "s/n", bairro, referencia, complemento: campo("complemento") || null },
+    create: {
+      restaurantId: restaurant.id,
+      nome,
+      apelidos,
+      rua,
+      numero: campo("numero") || "s/n",
+      bairro,
+      referencia,
+      complemento: campo("complemento") || null,
+    },
+  });
+  // o nome do lugar vai para o registro, o endereço não: endereço é dado
+  // de cliente, e o que importa auditar é que a lista mudou
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.endereco",
+    details: { nome, viaAdmin },
+  });
+  refresh();
+  return { message: `Pronto: ela já sabe onde fica o ${nome}.` };
+}
+
+/** tira um lugar da lista; o pedido já feito com ele não muda */
+export async function apagarEnderecoConhecido(
+  _prev: EstadoDaAcao,
+  formData: FormData,
+): Promise<EstadoDaAcao> {
+  const { restaurant, user, viaAdmin } = await requireDono(
+    String(formData.get("restaurantId") ?? ""),
+  );
+  const nome = String(formData.get("nome") ?? "").trim();
+  if (!nome) return { error: "Não achei qual lugar apagar." };
+
+  await db.enderecoConhecido.deleteMany({ where: { restaurantId: restaurant.id, nome } });
+  await audit({
+    actorUserId: user.id,
+    restaurantId: restaurant.id,
+    action: "restaurant.ia.endereco",
+    details: { nome, apagado: true, viaAdmin },
+  });
+  refresh();
+  return { message: `Tirei o ${nome} da lista.` };
 }

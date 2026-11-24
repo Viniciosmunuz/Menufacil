@@ -109,6 +109,22 @@ describe("lugarDaUrl", () => {
     expect(lugarDaUrl("https://www.google.com/maps/place/-2.0304,-60.0251/@-2.03,-60.02,17z")).toBeNull();
   });
 
+  it("lê o endereço inteiro do ?q= em texto, que é o formato que o Google manda", () => {
+    // link real do Papaléguas, resolvido em 24/11/2026: o encurtado abriu
+    // num maps.google.com/?q=<endereço> SEM coordenada nenhuma -- e este
+    // texto traz rua e bairro, que é o que o mapa aberto não sabe daqui
+    const url =
+      "https://maps.google.com/?q=Restaurante+e+Lanchonete+Papal%C3%A9guas+-+Av.+Sucupira+-+Morada+do+Sol,+Presidente+Figueiredo+-+AM,+69735-000&ftid=0x927205f8724b71fd:0x4ffcd1b577fb48b4";
+    expect(lugarDaUrl(url)).toContain("Av. Sucupira");
+    expect(lugarDaUrl(url)).toContain("Morada do Sol");
+    // e não há coordenada ali: quem tentasse achar uma inventaria
+    expect(pontoDaUrl(url)).toBeNull();
+  });
+
+  it("coordenada no ?q= continua sendo ponto, e não nome", () => {
+    expect(lugarDaUrl("https://maps.google.com/?q=-2.0304,-60.0251")).toBeNull();
+  });
+
   it("endereço sem /place não tem nome", () => {
     expect(lugarDaUrl("https://www.google.com/maps/@-2.03,-60.02,17z")).toBeNull();
   });

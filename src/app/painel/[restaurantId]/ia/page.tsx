@@ -1,4 +1,4 @@
-import { Eraser, MessageCircle, NotebookPen } from "lucide-react";
+import { Eraser, MapPin, MessageCircle, NotebookPen } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -16,6 +16,7 @@ import { conferirPareamento } from "@/server/ia/uazapi";
 import { Esquecer, NoCardapio, Ofertas, Pedidos } from "./chaves";
 import { ConversasDaIa } from "./conversas";
 import { ListasDaIa } from "./ignorados";
+import { EnderecosConhecidos } from "./enderecos";
 import { NotasDaIa } from "./notas";
 import { ConectarWhatsapp } from "./conectar";
 import { LigarIa } from "./ligar";
@@ -41,7 +42,7 @@ export default async function IaPage({
 
   // as duas em paralelo: a gaveta das conversas não precisa esperar o
   // registro do atendente para ser consultada
-  const [atendente, conversas] = await Promise.all([
+  const [atendente, conversas, enderecos] = await Promise.all([
     db.atendenteIa.findUnique({
       where: { restaurantId: restaurant.id },
       select: {
@@ -56,10 +57,14 @@ export default async function IaPage({
         numeroExibido: true,
         notas: true,
         ignorados: true,
-        semEspera: true,
       },
     }),
     conversasDaIa(restaurant.id),
+    db.enderecoConhecido.findMany({
+      where: { restaurantId: restaurant.id },
+      orderBy: { nome: "asc" },
+      select: { nome: true, apelidos: true, rua: true, numero: true, bairro: true, referencia: true, complemento: true },
+    }),
   ]);
 
   /**
@@ -184,24 +189,32 @@ export default async function IaPage({
         </Gaveta>
       )}
 
+      {/* Os lugares com endereço pronto. Gaveta própria, e não dentro da
+          folha de notas, porque são duas coisas diferentes: a folha
+          explica o que o cliente fala, esta lista fecha o pedido sozinha. */}
+      {atendente && (
+        <Gaveta
+          titulo="Endereços conhecidos"
+          resumo={
+            enderecos.length > 0
+              ? enderecos.map((e) => e.nome).join(", ")
+              : "Lugares que dispensam o endereço: \"no Moura\", \"no Rocha\""
+          }
+          icone={<MapPin />}
+        >
+          <EnderecosConhecidos restaurantId={restaurant.id} enderecos={enderecos} />
+        </Gaveta>
+      )}
+
       {/* Daqui para baixo é tudo gaveta: listas de número e conversas são
           coisa de consultar de vez em quando, não de deixar aberta na
           tela. Ele pediu assim. */}
       {atendente && (
-        <ListasDaIa
-          restaurantId={restaurant.id}
-          ignorados={atendente.ignorados}
-          semEspera={atendente.semEspera}
-        />
+        <ListasDaIa restaurantId={restaurant.id} ignorados={atendente.ignorados} />
       )}
 
       {atendente && (
-        <ConversasDaIa
-          restaurantId={restaurant.id}
-          conversas={conversas}
-          ignorados={atendente.ignorados}
-          semEspera={atendente.semEspera}
-        />
+        <ConversasDaIa restaurantId={restaurant.id} conversas={conversas} ignorados={atendente.ignorados} />
       )}
 
       {atendente && (

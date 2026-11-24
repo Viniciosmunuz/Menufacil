@@ -127,6 +127,11 @@ export async function conhecimentoDoRestaurante(
       deliveryMode: true,
       // o que o dono escreveu sobre a clientela e a cidade
       atendenteIa: { select: { notas: true } },
+      // os lugares que a cidade conhece pelo nome, com o endereço pronto
+      enderecosConhecidos: {
+        orderBy: { nome: "asc" },
+        select: { nome: true, apelidos: true, rua: true, numero: true, bairro: true, referencia: true, complemento: true },
+      },
       openingHours: { select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
       menuCategories: {
         // a seção que só o garçom lança (couvert, embalagem) não existe para o cliente
@@ -252,6 +257,27 @@ export async function conhecimentoDoRestaurante(
   // nome de rua. Vem com as duas travas que o texto livre não garante
   // sozinho -- não inventar a partir dele, e não furar a lista de
   // bairros.
+  // Os lugares com endereço pronto.
+  //
+  // Vem ANTES das notas livres de propósito: aqui o endereço está
+  // completo e fecha o pedido sozinho, e lá embaixo é texto solto que
+  // só ajuda a entender. Se os dois falarem do mesmo lugar, o daqui é o
+  // que vale -- e a ordem é o que diz isso ao modelo.
+  const conhecidos = r.enderecosConhecidos ?? [];
+  if (conhecidos.length > 0) {
+    linhas.push("ENDEREÇOS CONHECIDOS (o endereço já está pronto: dizer o nome basta):");
+    for (const e of conhecidos) {
+      const outros = e.apelidos.length ? ` (também: ${e.apelidos.join(", ")})` : "";
+      const comp = e.complemento ? `, ${e.complemento}` : "";
+      linhas.push(`  - ${e.nome}${outros} -> rua "${e.rua}", número "${e.numero}"${comp}, bairro "${e.bairro}", referência "${e.referencia}"`);
+    }
+    linhas.push("  - **Quando o cliente disser um destes nomes como endereço (\"entrega aqui no Moura\", \"é no Rocha\", \"lá no Moura mesmo\"), o endereço está COMPLETO.** Monte o pedido com a rua, o número, o bairro e a referência exatamente como estão escritos aí, letra por letra.");
+    linhas.push("  - **NÃO pergunte mais nada do endereço:** nem a rua, nem o número, nem o bairro, nem o ponto de referência. Perguntar isso a quem disse o nome do lugar é o mesmo que não ter ouvido -- ele falou o endereço inteiro numa palavra.");
+    linhas.push("  - Confirme pelo nome ao mostrar o resumo (\"entrega no Moura\"), e não pela rua: é assim que o cliente chama o lugar dele.");
+    linhas.push("  - Se ele der o nome E mais detalhes (\"no Moura, casa dos fundos\"), use o endereço daqui e mande o que ele acrescentou no complemento.");
+    linhas.push("  - A lista de bairros continua mandando na taxa: a taxa é a do bairro escrito aí.");
+    linhas.push("");
+  }
   const notas = r.atendenteIa?.notas?.trim();
   if (notas) {
     linhas.push("O QUE O RESTAURANTE ANOTOU PARA VOCÊ:");

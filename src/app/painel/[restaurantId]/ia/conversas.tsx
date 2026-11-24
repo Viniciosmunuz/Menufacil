@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Ban, FlaskConical, Loader2, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Ban, Loader2, MessageSquare, User } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -86,16 +86,14 @@ const BOTAO_PARADO = "border-line bg-surface text-muted hover:border-line-strong
 function Linha({
   conversa,
   marcado,
-  teste,
   abrir,
   marcar,
   mexendo,
 }: {
   conversa: ResumoDeConversa;
   marcado: boolean;
-  teste: boolean;
   abrir: () => void;
-  marcar: (lista: "ignorado" | "teste") => void;
+  marcar: (lista: "ignorado") => void;
   mexendo: boolean;
 }) {
   return (
@@ -117,11 +115,6 @@ function Linha({
               não responde
             </span>
           )}
-          {teste && (
-            <span className="shrink-0 rounded-full bg-success-soft px-2 py-0.5 text-[0.65rem] font-extrabold text-success-ink">
-              teste
-            </span>
-          )}
           <span className="ml-auto shrink-0 text-xs text-faint">{quando(conversa.quando)}</span>
         </div>
 
@@ -133,36 +126,20 @@ function Linha({
             Ver conversa ({conversa.total})
           </button>
 
-          {/* sem telefone não há o que pôr nas listas */}
+          {/* sem telefone não há o que pôr na lista */}
           {!conversa.noCardapio && (
-            <>
-              <button
-                type="button"
-                disabled={mexendo}
-                onClick={() => marcar("ignorado")}
-                className={cn(
-                  BOTAO,
-                  marcado
-                    ? "border-danger-line bg-danger-soft text-danger-ink"
-                    : BOTAO_PARADO,
-                )}
-              >
-                <Ban className="size-3.5" aria-hidden="true" />
-                Não responder
-              </button>
-              <button
-                type="button"
-                disabled={mexendo}
-                onClick={() => marcar("teste")}
-                className={cn(
-                  BOTAO,
-                  teste ? "border-success-line bg-success-soft text-success-ink" : BOTAO_PARADO,
-                )}
-              >
-                <FlaskConical className="size-3.5" aria-hidden="true" />
-                É teste
-              </button>
-            </>
+            <button
+              type="button"
+              disabled={mexendo}
+              onClick={() => marcar("ignorado")}
+              className={cn(
+                BOTAO,
+                marcado ? "border-danger-line bg-danger-soft text-danger-ink" : BOTAO_PARADO,
+              )}
+            >
+              <Ban className="size-3.5" aria-hidden="true" />
+              Não responder
+            </button>
           )}
         </div>
       </div>
@@ -219,14 +196,12 @@ export function ConversasDaIa({
   restaurantId,
   conversas,
   ignorados,
-  semEspera,
 }: {
   restaurantId: string;
   conversas: ResumoDeConversa[];
   ignorados: string[];
-  semEspera: string[];
 }) {
-  const [listas, setListas] = useState({ ignorados, semEspera });
+  const [listas, setListas] = useState({ ignorados });
   const [aberta, setAberta] = useState<ResumoDeConversa | null>(null);
   const [falas, setFalas] = useState<Fala[]>([]);
   const [recado, setRecado] = useState<{ erro?: string; ok?: string }>({});
@@ -247,14 +222,13 @@ export function ConversasDaIa({
     });
   }
 
-  function marcar(conversa: ResumoDeConversa, lista: "ignorado" | "teste") {
+  function marcar(conversa: ResumoDeConversa, lista: "ignorado") {
     marcando(async () => {
       const r = await marcarNaLista(restaurantId, conversa.telefone, lista);
       if (r.error) return setRecado({ erro: r.error });
       // o servidor devolve as duas listas salvas, e a tela passa a mostrar
       // o que está gravado -- não o que eu supus que ficaria
-      if (r.ignorados && r.semEspera)
-        setListas({ ignorados: r.ignorados, semEspera: r.semEspera });
+      if (r.ignorados) setListas({ ignorados: r.ignorados });
       setRecado({ ok: r.message });
     });
   }
@@ -289,7 +263,6 @@ export function ConversasDaIa({
                 key={c.contato}
                 conversa={c}
                 marcado={estaEm(listas.ignorados, c.telefone)}
-                teste={estaEm(listas.semEspera, c.telefone)}
                 abrir={() => abrir(c)}
                 marcar={(lista) => marcar(c, lista)}
                 mexendo={mexendo}

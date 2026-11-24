@@ -301,6 +301,7 @@ model Restaurant {
   payments            RestaurantPayment[]
   chamados            SupportTicket[]
   deliveryAreas       DeliveryArea[]
+  enderecosConhecidos EnderecoConhecido[]
   entregadores        Entregador[]
 
   @@index([status])
@@ -315,7 +316,7 @@ model Restaurant {
 /// deixaria sem entregar todo restaurante que ainda nao cadastrou os
 /// bairros dele. A lista so passa a mandar quando existe.
 model DeliveryArea {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   restaurantId String
   name         String
   /// Outros nomes do mesmo lugar, que valem a mesma taxa.
@@ -334,12 +335,12 @@ model DeliveryArea {
   /// cliente procura onde ele esta, nao o nome do trecho. A taxa e uma
   /// so, a da area.
   apelidos     String[] @default([])
-  feeCents     Int     @default(0)
+  feeCents     Int      @default(0)
   /// Desligar guarda o bairro e a taxa para quando voltar a entregar la;
   /// apagar perde os dois. Bairro desligado nao aparece para o cliente.
-  active       Boolean @default(true)
+  active       Boolean  @default(true)
   /// a ordem em que aparecem na lista do cliente
-  position     Int     @default(0)
+  position     Int      @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -363,14 +364,14 @@ model Entregador {
   /// a conta de login; uma por entregador, e so dele
   userId       String @unique
 
-  nome     String
-  telefone String // somente digitos, com DDI
-  fotoUrl  String?
-  moto     String?
+  nome      String
+  telefone  String // somente digitos, com DDI
+  fotoUrl   String?
+  moto      String?
   /// A cor da moto: e o que o cliente reconhece da janela, antes de ler
   /// qualquer placa. Opcional, como o resto da moto.
   corDaMoto String?
-  placa    String?
+  placa     String?
 
   /// desligado pelo dono: nao entra, nao recebe pedido. O cadastro fica,
   /// porque as entregas antigas continuam no nome dele.
@@ -385,9 +386,9 @@ model Entregador {
   /// saber onde a moto está agora, e um histórico de por onde o
   /// entregador andou seria um dado que ninguém pediu e que teria de ser
   /// protegido depois.
-  latitude   Float?
-  longitude  Float?
-  posicaoEm  DateTime?
+  latitude  Float?
+  longitude Float?
+  posicaoEm DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -756,10 +757,10 @@ model Order {
   ///
   /// Nulo quer dizer "ainda nao tentei" ou "nao achei" -- nos dois casos o
   /// mapa mostra so a moto, sem o alfinete do destino.
-  destinoLat   Float?
-  destinoLng   Float?
+  destinoLat Float?
+  destinoLng Float?
   /// quando a conversao foi tentada; evita tentar de novo a cada abertura
-  destinoEm    DateTime?
+  destinoEm  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1666,7 +1667,7 @@ model AtendenteIa {
   /// que o WhatsApp conecta, e o WhatsApp esta travado pela Meta. Esta
   /// aqui liga a IA no link que o cliente ja abre, sem depender de nada
   /// de fora. Nasce desligada.
-  noChat       Boolean @default(false)
+  noChat Boolean @default(false)
 
   /// o cliente do restaurante dentro da conta Kapso do MenuFacil
   kapsoCustomerId String?
@@ -1680,7 +1681,7 @@ model AtendenteIa {
   /// Caminho alternativo ao da Meta, que recusa o envio desta conta para
   /// numeros brasileiros (130497). Tambem unico: e por ele que o webhook
   /// descobre de qual restaurante e a mensagem.
-  zapiChannelId   String? @unique
+  zapiChannelId String? @unique
 
   /// O servidor da instancia na uazapi, por exemplo https://abc.uazapi.com.
   ///
@@ -1699,11 +1700,11 @@ model AtendenteIa {
   /// o nome da instancia no painel da uazapi, so para a tela do admin
   uazapiInstancia String?
 
-  numeroExibido   String?
+  numeroExibido  String?
   /// o webhook registrado na Kapso para este numero (evita registrar duas vezes)
-  kapsoWebhookId  String?
+  kapsoWebhookId String?
   /// assina os avisos que chegam deste numero. Nunca sai do servidor.
-  segredoWebhook  String?
+  segredoWebhook String?
 
   /// Numeros que a IA nunca responde, so digitos com DDI.
   ///
@@ -1731,7 +1732,7 @@ model AtendenteIa {
   /// desligada: quem conhece a clientela e o dono, e oferta e o tipo de
   /// coisa que um restaurante quer e o vizinho nao. Sem anotar pedido ela
   /// nao serve para nada, porque e no meio da anotacao que a oferta cabe.
-  ofertas     Boolean   @default(false)
+  ofertas Boolean @default(false)
 
   /// O que so quem e da cidade sabe, escrito pelo dono.
   ///
@@ -1749,12 +1750,54 @@ model AtendenteIa {
   /// Nao vale como permissao de entrega: a lista de bairros continua
   /// mandando. Um apelido daqui serve para a IA ENTENDER o lugar e
   /// perguntar o bairro, nunca para entregar fora da area.
-  notas       String?
+  notas String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+/// Um lugar que a cidade conhece pelo nome, com o endereco pronto.
+///
+/// "Entrega aqui no Moura" e "entregar no Rocha" sao enderecos completos
+/// para quem mora ali -- o Moura e uma casa, o Rocha e o mercado da
+/// frente -- e nao sao bairro nem rua. A Lia recusava os dois: em
+/// 24/11/2026 ela respondeu "Rocha nao esta na nossa lista de bairros
+/// atendidos" a um cliente que a moto atende toda semana.
+///
+/// As notas em texto livre (AtendenteIa.notas) ja ajudavam a ENTENDER o
+/// lugar, mas nao bastavam para FECHAR o pedido: faltavam rua, numero,
+/// bairro e referencia, e a Lia tinha de perguntar tudo de novo a quem
+/// ja tinha dito onde estava. Aqui o endereco vem pronto, e dizer o nome
+/// basta.
+///
+/// O bairro tem de ser um dos cadastrados em DeliveryArea: e dele que
+/// sai a taxa de entrega, e um lugar conhecido nao e licenca para
+/// entregar fora da area.
+model EnderecoConhecido {
+  id           String   @id @default(cuid())
+  restaurantId String
+  /// como o cliente chama o lugar: "Moura", "Rocha"
+  nome         String
+  /// os outros jeitos de falar dele: "mercado do Rocha", "supermercado Rocha"
+  apelidos     String[]
+  rua          String
+  /// "s/n" quando a casa nao tem numero, que e o comum aqui
+  numero       String   @default("s/n")
+  /// tem de bater com o nome (ou um apelido) de uma area de entrega
+  bairro       String
+  /// o que o entregador precisa para achar: "mercado do Rocha, na frente da praca"
+  referencia   String
+  complemento  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, nome])
+  @@index([restaurantId])
 }
 
 enum IaPapel {

@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, Plus, Trash2, UserX } from "lucide-react";
+import { Plus, Trash2, UserX } from "lucide-react";
 import { memo, useActionState, useCallback, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -144,11 +144,9 @@ const paraLinhas = (numeros: string[], prefixo: string) =>
 export function ListasDaIa({
   restaurantId,
   ignorados,
-  semEspera,
 }: {
   restaurantId: string;
   ignorados: string[];
-  semEspera: string[];
 }) {
   const [state, action] = useActionState<EstadoDaAcao, FormData>(
     salvarListas,
@@ -156,9 +154,6 @@ export function ListasDaIa({
   );
   const [linhasIgnorados, setIgnorados] = useState<Linha[]>(() =>
     paraLinhas(ignorados, "ign"),
-  );
-  const [linhasTeste, setTeste] = useState<Linha[]>(() =>
-    paraLinhas(semEspera, "tst"),
   );
 
   /**
@@ -179,13 +174,14 @@ export function ListasDaIa({
   const comoEstaSalvo = (numeros: string[]) => numeros.map((n) => formatPhone(n)).join("|");
   const comoEsta = (linhas: Linha[]) =>
     linhas.map((l) => l.numero.trim()).filter(Boolean).join("|");
-  const mexeu =
-    comoEsta(linhasIgnorados) !== comoEstaSalvo(ignorados) ||
-    comoEsta(linhasTeste) !== comoEstaSalvo(semEspera);
+  const mexeu = comoEsta(linhasIgnorados) !== comoEstaSalvo(ignorados);
 
-  // os números continuam num formulário só, mesmo em duas gavetas: são
-  // dois campos do mesmo registro, e gaveta fechada não tira o campo do
-  // envio. Salvar uma sem a outra criaria o jeito de perder a de dentro.
+  // Só a lista de quem a IA não responde.
+  //
+  // A lista de "números de teste" morava aqui ao lado e saiu em
+  // 24/11/2026, a pedido dele: servia para ele conversar dos dois lados
+  // enquanto testava, e com a Lia já atendendo cliente de verdade virou
+  // uma gaveta que ninguém abre.
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="restaurantId" value={restaurantId} />
@@ -208,24 +204,9 @@ export function ListasDaIa({
         />
       </Gaveta>
 
-      <Gaveta
-        titulo="Números de teste"
-        resumo={quantos(linhasTeste, "nenhum")}
-        icone={<FlaskConical />}
-      >
-        <Lista
-          campo="teste"
-          titulo="Números de teste"
-          explicacao="Nestes números ela responde mesmo depois de você responder pelo celular — serve para testar dos dois lados."
-          vazia="Nenhum número de teste."
-          linhas={linhasTeste}
-          setLinhas={setTeste}
-        />
-      </Gaveta>
-
       {mexeu && (
         <SubmitButton size="sm" className="self-start" pendingText="Salvando...">
-          Salvar as listas
+          Salvar a lista
         </SubmitButton>
       )}
     </form>

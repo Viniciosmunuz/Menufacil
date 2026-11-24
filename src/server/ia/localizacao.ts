@@ -169,19 +169,43 @@ export function pontoDaUrl(url: string): Ponto | null {
   return null;
 }
 
-/** o nome que o Google pôs no link, quando o ponto é um lugar conhecido dele */
+/**
+ * O nome que o Google pôs no link, quando o ponto é um lugar conhecido dele.
+ *
+ * Dois formatos, e o segundo é o que mais aparece. Medido em 24/11/2026
+ * com o link do próprio Papaléguas:
+ *
+ * - `/maps/place/<Nome>/@...` -- o que eu esperava.
+ * - `maps.google.com/?q=<endereço inteiro em texto>` -- **sem coordenada
+ *   nenhuma**, e foi o que veio. Eu só lia o primeiro, então o endereço
+ *   completo que o Google tinha escrito ali era jogado fora e a IA dizia
+ *   que não conseguiu abrir o mapa.
+ *
+ * O segundo formato é o melhor dos dois: o texto do Google traz rua **e
+ * bairro**, que é justamente o que o mapa aberto não sabe desta cidade.
+ */
 export function lugarDaUrl(url: string): string | null {
-  const achado = url.match(/\/maps\/place\/([^/@?]+)/);
-  if (!achado) return null;
-  let nome: string;
-  try {
-    nome = decodeURIComponent(achado[1].replace(/\+/g, " ")).trim();
-  } catch {
-    return null;
+  const limpar = (bruto: string) => {
+    let nome: string;
+    try {
+      nome = decodeURIComponent(bruto.replace(/\+/g, " ")).trim();
+    } catch {
+      return null;
+    }
+    // coordenada não é nome de lugar: isso é o pin solto, e quem o lê é
+    // o `pontoDaUrl`
+    if (/^-?\d+\.\d+\s*,\s*-?\d+\.\d+$/.test(nome)) return null;
+    return nome.slice(0, 160) || null;
+  };
+
+  const noCaminho = url.match(/\/maps\/place\/([^/@?]+)/);
+  if (noCaminho) {
+    const nome = limpar(noCaminho[1]);
+    if (nome) return nome;
   }
-  // "/place/-2.03,-60.02" é o pin solto: coordenada não é nome de lugar
-  if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(nome)) return null;
-  return nome.slice(0, 120) || null;
+
+  const naConsulta = url.match(/[?&](?:q|query)=([^&]+)/i);
+  return naConsulta ? limpar(naConsulta[1]) : null;
 }
 
 /**

@@ -389,12 +389,86 @@ async function updateLaunchCategories() {
   }
 }
 
+// Os lugares que a cidade conhece pelo nome, no Papaléguas.
+//
+// "Entregar no Rocha" e "aqui no Moura" sao enderecos completos para quem
+// mora ali -- o Rocha e o mercado da frente, o Moura e a casa em frente ao
+// restaurante --, e a Lia recusava os dois por nao serem bairro nem rua.
+// Em 24/11/2026 ela respondeu "Rocha nao esta na nossa lista de bairros
+// atendidos" a um cliente que a moto atende toda semana.
+//
+// Os dois ficam na mesma rua do restaurante e bem em frente a ele, dito
+// por ele em 24/11/2026. A rua saiu do link do Google que ele mandou no
+// mesmo dia: Av. Sucupira, bairro Morada do Sol.
+//
+// **Atencao ao cadastro do restaurante**: ele guarda "Praca da Cultura,
+// Centro", que e o endereco que a Lia da na retirada. Os dois nao batem,
+// e quem sabe qual esta certo e ele. Se o cadastro for corrigido um dia,
+// estes dois lugares precisam ir junto -- ou a moto sai para outro bairro.
+//
+// Numero "s/n" e a referencia com o nome pelo qual todo mundo chama: e a
+// convencao que o prompt ja usa para lugar de nome proprio.
+//
+// Entra UMA VEZ, marcado no registro: dali em diante quem manda e o
+// painel. Sem isso, cada deploy desfaria o que ele tivesse corrigido.
+const LUGARES_CONHECIDOS: { slug: string; marca: string; lugares: { nome: string; apelidos: string[]; rua: string; numero: string; bairro: string; referencia: string }[] }[] = [
+  {
+    slug: "papaleguas",
+    marca: "launch.enderecos.v1",
+    lugares: [
+      {
+        nome: "Rocha",
+        apelidos: ["mercado do Rocha", "mercadinho do Rocha", "supermercado Rocha"],
+        rua: "Av. Sucupira",
+        numero: "s/n",
+        bairro: "Morada do Sol",
+        referencia: "mercado do Rocha, em frente ao Papaléguas",
+      },
+      {
+        nome: "Moura",
+        apelidos: ["casa do Moura", "seu Moura"],
+        rua: "Av. Sucupira",
+        numero: "s/n",
+        bairro: "Morada do Sol",
+        referencia: "casa do Moura, em frente ao Papaléguas",
+      },
+    ],
+  },
+];
+
+async function seedEnderecosConhecidos() {
+  for (const item of LUGARES_CONHECIDOS) {
+    const restaurant = await db.restaurant.findUnique({ where: { slug: item.slug }, select: { id: true } });
+    if (!restaurant) continue;
+    if (await db.auditLog.findFirst({ where: { restaurantId: restaurant.id, action: item.marca }, select: { id: true } })) continue;
+
+    // O bairro tem de existir nas areas de entrega, senao a taxa nao sai.
+    // Sem area nenhuma cadastrada o restaurante cobra uma taxa so, e ai
+    // qualquer bairro passa.
+    const areas = await db.deliveryArea.findMany({ where: { restaurantId: restaurant.id }, select: { name: true, apelidos: true } });
+    const mesmo = (a: string, b: string) => a.trim().toLocaleLowerCase("pt-BR") === b.trim().toLocaleLowerCase("pt-BR");
+    const cabe = (bairro: string) =>
+      areas.length === 0 || areas.some((a) => mesmo(a.name, bairro) || a.apelidos.some((ap) => mesmo(ap, bairro)));
+
+    const entram = item.lugares.filter((l) => cabe(l.bairro));
+    if (entram.length > 0) {
+      await db.enderecoConhecido.createMany({
+        data: entram.map((l) => ({ ...l, restaurantId: restaurant.id })),
+        skipDuplicates: true,
+      });
+    }
+    await db.auditLog.create({ data: { restaurantId: restaurant.id, action: item.marca } });
+    console.log(`• "${item.slug}": ${entram.length} endereço(s) conhecido(s).`);
+  }
+}
+
 async function main() {
   await seedAdmin();
   await seedCategories();
   await seedLaunches();
   await updateLaunchCategories();
   await setupLaunchPizza();
+  await seedEnderecosConhecidos();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 
