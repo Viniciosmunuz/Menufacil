@@ -65,8 +65,12 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
     <>
       {/* O espaço que a barra presa ocupa, devolvido ao conteúdo.
           Sem ele, a faixa cobre o último pedido da lista -- e o pedido
-          que some é sempre o mais novo, que é o que importa. */}
-      <div aria-hidden="true" className="h-[5.5rem]" />
+          que some é sempre o mais novo, que é o que importa.
+
+          7,5rem foi medido no navegador, não estimado: a faixa dá 117 px
+          com o cartão de duas linhas mais o selo, e o meu chute inicial
+          de 5,5rem deixava trinta pixels do último pedido debaixo dela. */}
+      <div aria-hidden="true" className="h-[7.5rem]" />
 
       {/* Presa no fim da tela. No celular sobe para cima da barra de menu,
           que já mora ali -- duas barras no mesmo lugar escondem uma à
