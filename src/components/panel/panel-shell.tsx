@@ -249,6 +249,12 @@ export function PanelShell({
     // creme; ele pediu o branco predominando. A classe `.tema-painel`
     // continua no globals.css, mas não inverte mais nada.
     <div
+      // Onde a coluna do conteúdo começa, para quem precisa se prender no
+      // fim da tela sem passar por cima do menu lateral. A faixa das
+      // conversas é `fixed`, e `fixed` não enxerga a coluna do grid: sem
+      // esta medida ela atravessaria a tela inteira e cobriria o trilho.
+      // Fica aqui porque é aqui que se sabe se o trilho está recolhido.
+      style={{ "--trilho": trilho ? (trilhoAberto ? "15rem" : "4.75rem") : compacto ? "5rem" : "17rem" } as React.CSSProperties}
       className={cn(
         "tema-painel min-h-dvh bg-bg lg:grid",
         trilho

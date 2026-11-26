@@ -59,32 +59,48 @@ export async function marcarNaLista(
 
   const atendente = await db.atendenteIa.findUnique({
     where: { restaurantId: restaurant.id },
-    select: { ignorados: true, semEspera: true },
+    select: { id: true, semEspera: true },
   });
   if (!atendente) return { error: "A IA ainda não foi configurada." };
 
-  const campo = lista === "ignorado" ? "ignorados" : "semEspera";
-  const atual = atendente[campo];
-  const tinha = atual.includes(numero);
-  const nova = tinha ? atual.filter((n) => n !== numero) : [...atual, numero];
+  let tinha: boolean;
+  if (lista === "ignorado") {
+    // Sem nome e sem aviso: daqui ele só diz "não responda esse". O nome
+    // e a chave do aviso se põem na tela da lista, onde dá para ver o
+    // cadastro inteiro -- marcar um fornecedor no meio de uma conversa
+    // não é hora de decidir se o balcão deve ser alertado.
+    const atual = await db.iaContatoIgnorado.findUnique({
+      where: { atendenteIaId_numero: { atendenteIaId: atendente.id, numero } },
+      select: { id: true },
+    });
+    tinha = !!atual;
+    if (atual) await db.iaContatoIgnorado.delete({ where: { id: atual.id } });
+    else await db.iaContatoIgnorado.create({ data: { atendenteIaId: atendente.id, numero } });
+  } else {
+    const atual = atendente.semEspera;
+    tinha = atual.includes(numero);
+    await db.atendenteIa.update({
+      where: { restaurantId: restaurant.id },
+      data: { semEspera: tinha ? atual.filter((n) => n !== numero) : [...atual, numero] },
+    });
+  }
 
-  const salvo = await db.atendenteIa.update({
+  const salvo = await db.atendenteIa.findUniqueOrThrow({
     where: { restaurantId: restaurant.id },
-    data: { [campo]: nova },
-    select: { ignorados: true, semEspera: true },
+    select: { semEspera: true, contatosIgnorados: { select: { numero: true } } },
   });
   await audit({
     actorUserId: user.id,
     restaurantId: restaurant.id,
     action: "restaurant.ia.listas",
-    details: { lista: campo, tirou: tinha, daConversa: true, viaAdmin },
+    details: { lista, tirou: tinha, daConversa: true, viaAdmin },
   });
   refresh();
 
   const nome = lista === "ignorado" ? "quem a IA não responde" : "números de teste";
   return {
     message: tinha ? `Tirado de ${nome}.` : `Na lista de ${nome}.`,
-    ignorados: salvo.ignorados,
+    ignorados: salvo.contatosIgnorados.map((c) => c.numero),
     semEspera: salvo.semEspera,
   };
 }
@@ -104,15 +120,27 @@ export async function salvarListas(
     String(formData.get("restaurantId") ?? ""),
   );
 
-  /** os números de um campo, só dígitos e sem repetir */
-  function numerosDe(campo: string) {
-    const fora: string[] = [];
-    for (const bruto of formData.getAll(campo)) {
-      const texto = String(bruto).trim();
+  /**
+   * As linhas da lista: número, nome e a chave do aviso.
+   *
+   * Os três campos vêm como listas paralelas, e por isso a linha em
+   * branco não pode ser pulada antes do alinhamento: pular o número sem
+   * pular o nome ao lado dele embaralharia todos os de baixo -- a
+   * "Padaria" acabaria colada no telefone da mãe dele. Primeiro junta,
+   * depois descarta.
+   */
+  function linhasDe(campo: string) {
+    const numeros = formData.getAll(campo).map((x) => String(x).trim());
+    const nomes = formData.getAll(`${campo}-nome`).map((x) => String(x).trim());
+    const avisos = formData.getAll(`${campo}-avisar`).map((x) => String(x) === "1");
+
+    const fora: { numero: string; nome: string | null; avisar: boolean }[] = [];
+    for (const [i, texto] of numeros.entries()) {
       if (!texto) continue; // linha em branco é linha que ele desistiu de preencher
       const limpo = normalizePhone(texto);
       if (!/^55\d{10,11}$/.test(limpo)) throw new NumeroRuim(texto);
-      if (!fora.includes(limpo)) fora.push(limpo);
+      if (fora.some((x) => x.numero === limpo)) continue;
+      fora.push({ numero: limpo, nome: nomes[i]?.slice(0, 60) || null, avisar: avisos[i] ?? false });
     }
     return fora;
   }
@@ -123,25 +151,47 @@ export async function salvarListas(
   // com o que já estava lá. Ler o formulário atrás dela gravaria uma
   // lista vazia no primeiro salvamento -- apagando, sem avisar, números
   // que ninguém pediu para tirar.
-  let ignorados: string[];
+  let ignorados: { numero: string; nome: string | null; avisar: boolean }[];
   try {
-    ignorados = numerosDe("ignorado");
+    ignorados = linhasDe("ignorado");
   } catch (e) {
     if (e instanceof NumeroRuim)
       return { error: `"${e.texto}" não parece um número com DDD.` };
     throw e;
   }
 
-  await db.atendenteIa.update({
+  /**
+   * Grava a lista inteira de uma vez: apaga quem saiu, grava quem ficou.
+   *
+   * Numa transação porque o meio do caminho é uma lista sem ninguém --
+   * e a lista vazia é justamente a que faz a IA responder a família toda
+   * de uma vez. Meio segundo disso já é mensagem enviada.
+   */
+  const atendente = await db.atendenteIa.findUnique({
     where: { restaurantId: restaurant.id },
-    data: { ignorados },
+    select: { id: true },
   });
+  if (!atendente) return { error: "A IA ainda não está montada para este restaurante." };
+
+  await db.$transaction([
+    db.iaContatoIgnorado.deleteMany({
+      where: { atendenteIaId: atendente.id, numero: { notIn: ignorados.map((x) => x.numero) } },
+    }),
+    ...ignorados.map((x) =>
+      db.iaContatoIgnorado.upsert({
+        where: { atendenteIaId_numero: { atendenteIaId: atendente.id, numero: x.numero } },
+        update: { nome: x.nome, avisar: x.avisar },
+        create: { atendenteIaId: atendente.id, numero: x.numero, nome: x.nome, avisar: x.avisar },
+      }),
+    ),
+  ]);
   await audit({
     actorUserId: user.id,
     restaurantId: restaurant.id,
     action: "restaurant.ia.listas",
     details: {
       ignorados: ignorados.length,
+      avisam: ignorados.filter((x) => x.avisar).length,
       viaAdmin,
     },
   });

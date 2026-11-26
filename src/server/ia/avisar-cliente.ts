@@ -198,7 +198,7 @@ export async function avisarStatusDoPedido(orderId: string, status: OrderStatus)
           name: true,
           entregadorEnabled: true,
           iaEnabled: true,
-          atendenteIa: { select: { ativo: true, ...CAMPOS_DO_CANAL, ignorados: true } },
+          atendenteIa: { select: { ativo: true, ...CAMPOS_DO_CANAL, contatosIgnorados: { select: { numero: true } } } },
         },
       },
     },
@@ -214,7 +214,7 @@ export async function avisarStatusDoPedido(orderId: string, status: OrderStatus)
   // a lista de quem a IA nunca responde vale aqui também: é o celular do
   // dono, da família, de quem não quer saber de robô
   const digitos = pedido.customerWhatsapp.replace(/\D/g, "");
-  if (ia.ignorados.some((n) => n.replace(/\D/g, "") === digitos)) return;
+  if (ia.contatosIgnorados.some((c) => c.numero.replace(/\D/g, "") === digitos)) return;
 
   const texto = (await textoDoAceite(orderId, pedido, r, status)) ?? statusNoticeText(pedido, r, status);
   if (!texto) return;

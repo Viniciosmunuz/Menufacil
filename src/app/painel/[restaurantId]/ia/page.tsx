@@ -56,7 +56,7 @@ export default async function IaPage({
         uazapiToken: true,
         numeroExibido: true,
         notas: true,
-        ignorados: true,
+        contatosIgnorados: { select: { numero: true, nome: true, avisar: true }, orderBy: { createdAt: "asc" } },
       },
     }),
     conversasDaIa(restaurant.id),
@@ -210,11 +210,11 @@ export default async function IaPage({
           coisa de consultar de vez em quando, não de deixar aberta na
           tela. Ele pediu assim. */}
       {atendente && (
-        <ListasDaIa restaurantId={restaurant.id} ignorados={atendente.ignorados} />
+        <ListasDaIa restaurantId={restaurant.id} ignorados={atendente.contatosIgnorados} />
       )}
 
       {atendente && (
-        <ConversasDaIa restaurantId={restaurant.id} conversas={conversas} ignorados={atendente.ignorados} />
+        <ConversasDaIa restaurantId={restaurant.id} conversas={conversas} ignorados={atendente.contatosIgnorados.map((c) => c.numero)} />
       )}
 
       {atendente && (

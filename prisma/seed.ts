@@ -521,6 +521,48 @@ async function seedEnderecosConhecidos() {
   }
 }
 
+/**
+ * O nome do contato que o Papaléguas já tinha na lista da IA.
+ *
+ * Ele pediu em 26/11/2026: "aquele que tá do Papaléguas, já coloca
+ * padaria". O número vive só na produção, e eu não tenho como saber qual
+ * é daqui -- então a regra é a mais conservadora possível:
+ *
+ * - só mexe se houver EXATAMENTE um contato na lista (com mais de um, não
+ *   dá para saber qual é a padaria, e chutar seria dar à mãe dele o nome
+ *   de um fornecedor);
+ * - só mexe se ele ainda não tiver nome, para não passar por cima do que
+ *   o dono escrever na tela antes disto rodar.
+ *
+ * O aviso vai ligado junto: é o motivo do pedido -- a padaria escrever e
+ * ninguém no painel ficar sabendo.
+ */
+const NOME_DO_CONTATO = [{ slug: "papaleguas", nome: "Padaria", marca: "seed.ia.contato.papaleguas.v1" }];
+
+async function nomearContatoDaIa() {
+  for (const item of NOME_DO_CONTATO) {
+    const restaurant = await db.restaurant.findUnique({ where: { slug: item.slug }, select: { id: true } });
+    if (!restaurant) continue;
+    if (await db.auditLog.findFirst({ where: { restaurantId: restaurant.id, action: item.marca }, select: { id: true } })) continue;
+
+    const atendente = await db.atendenteIa.findUnique({
+      where: { restaurantId: restaurant.id },
+      select: { contatosIgnorados: { select: { id: true, nome: true } } },
+    });
+    const lista = atendente?.contatosIgnorados ?? [];
+    const so = lista.length === 1 && !lista[0].nome?.trim() ? lista[0] : null;
+    if (so) {
+      await db.iaContatoIgnorado.update({ where: { id: so.id }, data: { nome: item.nome, avisar: true } });
+    }
+    await db.auditLog.create({ data: { restaurantId: restaurant.id, action: item.marca, details: { nomeou: !!so, tinha: lista.length } } });
+    console.log(
+      so
+        ? `• "${item.slug}": o contato da IA virou "${item.nome}", com aviso ligado.`
+        : `• "${item.slug}": ${lista.length} contato(s) na lista da IA, nenhum nome posto (ele escolhe na tela).`,
+    );
+  }
+}
+
 async function main() {
   await seedAdmin();
   await seedCategories();
@@ -529,6 +571,7 @@ async function main() {
   await setupLaunchPizza();
   await seedEnderecosConhecidos();
   await corrigirEnderecosConhecidos();
+  await nomearContatoDaIa();
   if (process.env.SEED_DEMO === "true") await seedDemo();
 }
 

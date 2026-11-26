@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2, UserX } from "lucide-react";
+import { BellRing, Plus, Trash2, UserX } from "lucide-react";
 import { memo, useActionState, useCallback, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -24,13 +24,17 @@ import { salvarListas, type EstadoDaAcao } from "./actions";
 // dono está testando com alguém conhecido, trocando mensagem dos dois
 // lados. Nos números de teste o freio não vale.
 
-type Linha = { chave: string; numero: string };
+type Linha = { chave: string; numero: string; nome: string; avisar: boolean };
 
 /**
- * Uma linha de número.
+ * Uma linha de contato: o nome, o número e a chave do aviso.
+ *
+ * O nome vem primeiro, e não o número, porque é por ele que o dono acha
+ * quem procura. Uma coluna de telefones não diz nada a quem abre esta
+ * tela seis meses depois -- "Padaria" diz.
  *
  * Fora do componente de cima e com memo, como no cadastro de bairros: sem
- * isso, uma tecla digitada redesenha as duas listas inteiras.
+ * isso, uma tecla digitada redesenha a lista inteira.
  */
 const LinhaDeNumero = memo(function LinhaDeNumero({
   linha,
@@ -42,29 +46,57 @@ const LinhaDeNumero = memo(function LinhaDeNumero({
   linha: Linha;
   campo: string;
   rotulo: string;
-  mexer: (chave: string, valor: string) => void;
+  mexer: (chave: string, parte: Partial<Linha>) => void;
   tirar: (chave: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <Input
-        name={campo}
-        type="tel"
-        inputMode="tel"
-        aria-label={rotulo}
-        placeholder="(92) 99999-0000"
-        maxLength={20}
-        value={linha.numero}
-        onChange={(e) => mexer(linha.chave, e.target.value)}
-      />
-      <button
-        type="button"
-        onClick={() => tirar(linha.chave)}
-        aria-label={`Tirar ${linha.numero || rotulo} da lista`}
-        className="grid size-11 shrink-0 place-items-center rounded-control border border-line text-faint transition-colors hover:border-danger hover:text-danger"
-      >
-        <Trash2 className="size-4" aria-hidden="true" />
-      </button>
+    <div className="flex flex-col gap-2 rounded-card border border-line p-3">
+      <div className="flex items-center gap-3">
+        <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+          <Input
+            name={`${campo}-nome`}
+            aria-label={`${rotulo}: nome`}
+            placeholder="Padaria"
+            maxLength={60}
+            value={linha.nome}
+            onChange={(e) => mexer(linha.chave, { nome: e.target.value })}
+          />
+          <Input
+            name={campo}
+            type="tel"
+            inputMode="tel"
+            aria-label={`${rotulo}: número`}
+            placeholder="(92) 99999-0000"
+            maxLength={20}
+            value={linha.numero}
+            onChange={(e) => mexer(linha.chave, { numero: e.target.value })}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => tirar(linha.chave)}
+          aria-label={`Tirar ${linha.nome || linha.numero || rotulo} da lista`}
+          className="grid size-11 shrink-0 place-items-center rounded-control border border-line text-faint transition-colors hover:border-danger hover:text-danger"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* O valor vai num campo escondido, e não na caixinha: caixinha
+          desmarcada não é enviada pelo navegador, e aí a lista de avisos
+          chegaria mais curta que a de números -- o aviso da padaria
+          acabaria colado no telefone de outra pessoa. */}
+      <input type="hidden" name={`${campo}-avisar`} value={linha.avisar ? "1" : "0"} />
+      <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted">
+        <input
+          type="checkbox"
+          checked={linha.avisar}
+          onChange={(e) => mexer(linha.chave, { avisar: e.target.checked })}
+          className="size-4 accent-brand"
+        />
+        <BellRing className="size-3.5 shrink-0 text-faint" aria-hidden="true" />
+        Avisar no painel quando escrever
+      </label>
     </div>
   );
 });
@@ -86,10 +118,8 @@ function Lista({
   setLinhas: React.Dispatch<React.SetStateAction<Linha[]>>;
 }) {
   const mexer = useCallback(
-    (chave: string, valor: string) =>
-      setLinhas((l) =>
-        l.map((x) => (x.chave === chave ? { ...x, numero: valor } : x)),
-      ),
+    (chave: string, parte: Partial<Linha>) =>
+      setLinhas((l) => l.map((x) => (x.chave === chave ? { ...x, ...parte } : x))),
     [setLinhas],
   );
   const tirar = useCallback(
@@ -127,26 +157,34 @@ function Lista({
         onClick={() =>
           setLinhas((l) => [
             ...l,
-            { chave: `${campo}-${Date.now()}-${l.length}`, numero: "" },
+            { chave: `${campo}-${Date.now()}-${l.length}`, numero: "", nome: "", avisar: false },
           ])
         }
       >
         <Plus className="size-4" aria-hidden="true" />
-        Adicionar número
+        Adicionar contato
       </Button>
     </div>
   );
 }
 
-const paraLinhas = (numeros: string[], prefixo: string) =>
-  numeros.map((n, i) => ({ chave: `${prefixo}-${i}`, numero: formatPhone(n) }));
+/** o que está salvo, do jeito que a tela edita */
+export type ContatoIgnorado = { numero: string; nome: string | null; avisar: boolean };
+
+const paraLinhas = (contatos: ContatoIgnorado[], prefixo: string) =>
+  contatos.map((c, i) => ({
+    chave: `${prefixo}-${i}`,
+    numero: formatPhone(c.numero),
+    nome: c.nome ?? "",
+    avisar: c.avisar,
+  }));
 
 export function ListasDaIa({
   restaurantId,
   ignorados,
 }: {
   restaurantId: string;
-  ignorados: string[];
+  ignorados: ContatoIgnorado[];
 }) {
   const [state, action] = useActionState<EstadoDaAcao, FormData>(
     salvarListas,
@@ -171,9 +209,13 @@ export function ListasDaIa({
    * um campo preenchido pelo navegador -- e um botão que não aparece é
    * um dono que não consegue salvar.
    */
-  const comoEstaSalvo = (numeros: string[]) => numeros.map((n) => formatPhone(n)).join("|");
+  const comoEstaSalvo = (contatos: ContatoIgnorado[]) =>
+    contatos.map((c) => `${formatPhone(c.numero)}~${c.nome ?? ""}~${c.avisar}`).join("|");
   const comoEsta = (linhas: Linha[]) =>
-    linhas.map((l) => l.numero.trim()).filter(Boolean).join("|");
+    linhas
+      .filter((l) => l.numero.trim())
+      .map((l) => `${l.numero.trim()}~${l.nome.trim()}~${l.avisar}`)
+      .join("|");
   const mexeu = comoEsta(linhasIgnorados) !== comoEstaSalvo(ignorados);
 
   // Só a lista de quem a IA não responde.
@@ -197,7 +239,7 @@ export function ListasDaIa({
         <Lista
           campo="ignorado"
           titulo="Quem a IA não responde"
-          explicacao="Sua família, seus amigos, os fornecedores. A IA nunca responde esses números."
+          explicacao="Sua família, seus amigos, os fornecedores. A IA nunca responde esses números. Marque o aviso nos que você não quer perder, como a padaria."
           vazia="Ninguém na lista."
           linhas={linhasIgnorados}
           setLinhas={setIgnorados}

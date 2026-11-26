@@ -215,17 +215,25 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
         comFaixa={conversasDoBalcao.length > 0}
+        /* Os dois avisos ficam montados mesmo com a lista vazia, e isso
+           é o que os faz funcionar.
+
+           Cada um guarda, ao montar, o que já estava esperando -- para
+           que abrir o painel depois do almoço não despeje no canto os
+           chamados da manhã inteira. Só que eles só eram montados quando
+           já havia algo na lista: o primeiro chamado de uma tela limpa
+           montava o componente e, no mesmo instante, era guardado como
+           "já estava aqui". Nunca aparecia.
+
+           Achado em 26/11/2026, testando o aviso do contato da lista: a
+           padaria escrevia, o chamado nascia no banco, e o painel ficava
+           mudo. Vazios eles não ocupam espaço nenhum: cada um devolve
+           null quando não tem o que mostrar. */
         recados={
-          chamados.length > 0 || recados.length > 0 ? (
-            <>
-              {chamados.length > 0 && (
-                <AvisosDaIa
-                  chamados={chamados.map((c) => ({ ...c, desde: c.quando.toISOString() }))}
-                />
-              )}
-              {recados.length > 0 && <AvisosDeMensagem mensagens={recados} base={base} />}
-            </>
-          ) : null
+          <>
+            <AvisosDaIa chamados={chamados.map((c) => ({ ...c, desde: c.quando.toISOString() }))} />
+            <AvisosDeMensagem mensagens={recados} base={base} />
+          </>
         }
         avisos={
           <PushAvisos

@@ -1708,11 +1708,16 @@ model AtendenteIa {
 
   /// Numeros que a IA nunca responde, so digitos com DDI.
   ///
-  /// O WhatsApp do restaurante costuma ser o celular do dono: a familia e
-  /// os amigos escrevem no mesmo numero. Quem esta nesta lista nao recebe
-  /// resposta da IA e nem tem a mensagem guardada -- a conversa fica so
-  /// entre eles, como se a IA nao existisse.
+  /// Virou a tabela `IaContatoIgnorado` em 26/11/2026, para cada numero
+  /// poder ter nome e a chave do aviso. Fica aqui, vazia, so porque
+  /// apagar coluna em producao nao se desfaz: a migracao copiou tudo
+  /// para a tabela nova, e ninguem mais le daqui.
+  ///
+  /// @deprecated use `contatosIgnorados`
   ignorados String[]
+
+  /// Quem a IA nao responde, um por linha, com nome e a chave do aviso.
+  contatosIgnorados IaContatoIgnorado[]
 
   /// Numeros de teste: o freio dos 30 minutos nao vale para eles.
   ///
@@ -1756,6 +1761,39 @@ model AtendenteIa {
   updatedAt DateTime @updatedAt
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+/// Um numero que a IA nao responde -- com nome, e com a chave do aviso.
+///
+/// Era uma lista de numeros soltos (`AtendenteIa.ignorados`). Virou tabela
+/// em 26/11/2026, por dois motivos que o dono levantou no mesmo pedido:
+///
+/// 1. **Nome.** Uma coluna de telefones nao diz nada a quem abre a tela
+///    seis meses depois. "Padaria" diz.
+/// 2. **O aviso.** A padaria manda mensagem e a IA, de proposito, nao
+///    responde -- e ninguem no painel fica sabendo que a mensagem chegou.
+///    Com `avisar` ligado, essa mensagem vira um chamado de atendente,
+///    igual ao que a Lia abre quando um cliente pede gente de verdade.
+///
+/// `avisar` nasce desligado porque a maior parte desta lista e a familia e
+/// os amigos do dono: se todo "oi, mae" tocasse o alarme do balcao, em uma
+/// semana ninguem mais olharia para o alarme.
+model IaContatoIgnorado {
+  id           String @id @default(cuid())
+  atendenteIaId String
+
+  /// so digitos, com DDI -- do mesmo jeito que o numero chega do WhatsApp
+  numero String
+  /// como o dono chama essa pessoa: "Padaria", "Mae", "Fornecedor do gas"
+  nome   String?
+  /// quando este numero escrever, abre um chamado de atendente no painel
+  avisar Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  atendenteIa AtendenteIa @relation(fields: [atendenteIaId], references: [id], onDelete: Cascade)
+
+  @@unique([atendenteIaId, numero])
 }
 
 /// Um lugar que a cidade conhece pelo nome, com o endereco pronto.

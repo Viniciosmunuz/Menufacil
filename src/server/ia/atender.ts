@@ -233,6 +233,7 @@ export async function atender(evento: MensagemKapso) {
       fazPedidos: true,
       ofertas: true,
       ignorados: true,
+      contatosIgnorados: { select: { numero: true, nome: true, avisar: true } },
       semEspera: true,
       phoneNumberId: true,
       zapiChannelId: true,
@@ -278,8 +279,39 @@ export async function atender(evento: MensagemKapso) {
   //
   // Só o fim do número, como em todo log deste caminho: serve para
   // reconhecer qual é, não para virar agenda.
-  if (telefone && estaNaLista(atendente.ignorados, telefone)) {
-    console.info(`[ia] número na lista de ignorados, sem resposta · …${telefone.slice(-4)}`);
+  const ignorado = telefone
+    ? atendente.contatosIgnorados.find((c) => semNove(c.numero) === semNove(telefone))
+    : undefined;
+  if (ignorado) {
+    console.info(`[ia] número na lista de ignorados, sem resposta · …${telefone!.slice(-4)}`);
+
+    /**
+     * Com o aviso ligado, a mensagem vira um chamado de atendente.
+     *
+     * A padaria escreve, a IA (de propósito) não responde, e até aqui o
+     * painel não ficava sabendo de nada: a mensagem só existia no
+     * WhatsApp do dono. Quem está no balcão não tem como adivinhar que
+     * chegou recado do fornecedor.
+     *
+     * O chamado leva o nome que o dono cadastrou, e não o número: o
+     * aviso precisa dizer QUEM é, senão vira mais um telefone solto na
+     * tela. Sem nome cadastrado, o número é o que sobra.
+     *
+     * A mensagem em si continua não sendo guardada. O que muda é só o
+     * aviso de que ela chegou -- a conversa segue inteira no WhatsApp,
+     * que é onde ela já acontecia.
+     */
+    if (ignorado.avisar) {
+      const quem = ignorado.nome?.trim();
+      await db.iaChamado.create({
+        data: {
+          restaurantId,
+          contato: telefone!,
+          nome: quem || null,
+          motivo: quem ? `${quem} mandou mensagem no WhatsApp` : "Contato da sua lista mandou mensagem",
+        },
+      });
+    }
     return;
   }
 
