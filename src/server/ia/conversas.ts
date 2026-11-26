@@ -204,6 +204,52 @@ const JANELA_DO_DIA_H = 12;
 const PAROU_MIN = 15;
 const MINIMO_DE_MENSAGENS = 3;
 
+/**
+ * O que o cliente diz quando a conversa acabou bem.
+ *
+ * A lista é curta de propósito, e não tem "sim", "isso", "pode" nem
+ * "fechou": essas são respostas ao resumo do pedido, e se ficarem sem
+ * resposta a conversa está mesmo travada. Aqui só entra o que não espera
+ * nada de volta -- agradecimento e aviso de que chegou.
+ */
+const FECHOS = new Set([
+  "ok", "okay", "blz", "beleza", "valeu", "vlw", "obrigado", "obrigada", "obg",
+  "brigado", "brigada", "grato", "grata", "agradecido", "tmj", "show", "top",
+  "perfeito", "otimo", "ótimo", "de nada", "por nada", "tá certo", "ta certo",
+  "tudo certo", "recebi", "chegou", "já chegou", "ja chegou", "ciente",
+]);
+
+/** o texto sem emoji e sem pontuação, em minúsculas */
+const semEnfeite = (texto: string) =>
+  texto
+    .replace(/\p{Extended_Pictographic}/gu, " ")
+    .replace(/[^\p{Letter}\p{Number}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+/**
+ * A última fala do cliente foi um fecho?
+ *
+ * Um 👍 depois do pedido entregue não é um cliente esperando -- e era
+ * assim que ele aparecia na faixa, em vermelho, entre os que precisam de
+ * alguém. Quem só reagiu não perguntou nada.
+ *
+ * Duas forças diferentes, por um motivo: uma reação sem letra nenhuma
+ * nunca é pergunta, então vale sempre. Uma palavra como "ok" é mais
+ * ambígua -- pode ser o "ok" que confirma o resumo do pedido -- e por
+ * isso só vale quando a conversa já virou pedido, que é quando um
+ * agradecimento faz sentido.
+ */
+function ehFecho(texto: string, temPedido: boolean): boolean {
+  const cru = texto.trim();
+  if (cru === "") return false;
+  const limpo = semEnfeite(cru);
+  if (limpo === "") return true; // só emoji, reação ou pontuação
+  if (!temPedido || limpo.length > 24) return false;
+  return FECHOS.has(limpo) || limpo.split(" ").every((p) => FECHOS.has(p));
+}
+
 export type EstadoDaConversa = "sem-resposta" | "atendente" | "atendendo" | "pedido" | "encerrada";
 
 export type ConversaAtiva = {
@@ -281,9 +327,11 @@ export async function conversasAtivas(restaurantId: string): Promise<ConversaAti
 
       // A ordem destes testes é a regra inteira. O cliente esperando vem
       // antes de tudo, inclusive de já ter virado pedido: quem fez o
-      // pedido e depois escreveu de novo continua esperando resposta.
+      // pedido e depois escreveu de novo continua esperando resposta --
+      // a não ser que o que ele escreveu tenha sido um fecho.
+      const esperando = l.papel === "CLIENTE" && !ehFecho(l.texto, numero !== null);
       const estado: EstadoDaConversa =
-        l.papel === "CLIENTE"
+        esperando
           ? "sem-resposta"
           : l.papel === "HUMANO"
             ? "atendente"
