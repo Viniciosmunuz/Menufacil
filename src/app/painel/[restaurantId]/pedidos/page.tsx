@@ -214,6 +214,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         markPrintedAction={markPrinted}
         pairAction={pairPrintDevice}
         unpairAction={unpairPrintDevice}
+        comFaixa={conversasDoBalcao.length > 0}
         recados={
           chamados.length > 0 || recados.length > 0 ? (
             <>

@@ -101,6 +101,7 @@ export function PrintSettings({
   unpairAction,
   avisos,
   recados,
+  comFaixa,
 }: {
   base: string;
   panelUrl: string;
@@ -114,6 +115,8 @@ export function PrintSettings({
    * blocos presos ao mesmo canto se sobrepõem.
    */
   recados?: ReactNode;
+  /** a faixa das conversas está na tela: os avisos sobem para não cobri-la */
+  comFaixa?: boolean;
   acceptAction: (formData: FormData) => Promise<void>;
   /** destrava a via para o computador do balcão tirar de novo */
   reprintAction: (formData: FormData) => Promise<void>;
@@ -352,7 +355,15 @@ export function PrintSettings({
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-4 bottom-24 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:w-96 lg:bottom-6"
+          className={cn(
+            "fixed inset-x-4 z-50 flex flex-col gap-2 pb-[env(safe-area-inset-bottom)] sm:inset-x-auto sm:right-6 sm:w-96",
+            // Com a faixa das conversas no fim da tela, o aviso sobe para
+            // não cair em cima dela. Ele tem z maior, então sem isto o
+            // aviso cobriria a faixa inteira no celular -- e a faixa é o
+            // que mostra quem está esperando, justamente quando há
+            // movimento, que é quando o aviso aparece.
+            comFaixa ? "bottom-[11.5rem] lg:bottom-[8.5rem]" : "bottom-24 lg:bottom-6",
+          )}
         >
           {/* o recado fica em cima do pedido: pedido novo é dinheiro parado
               esperando um toque, recado é recado */}
