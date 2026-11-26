@@ -175,3 +175,134 @@ export async function chamadosEsperando(restaurantId: string): Promise<ChamadoEs
     quando: c.createdAt,
   }));
 }
+
+/**
+ * O dia da Lia, para a faixa do balcão.
+ *
+ * Duas coisas na mesma faixa, e a ordem é o que as separa: **o que
+ * precisa de alguém** vem na frente, **o que ela já resolveu hoje** vem
+ * atrás, discreto. Ele pediu as duas -- ver quem está esperando agora, e
+ * ver o que ela deu conta sozinha no dia.
+ *
+ * O que nunca entra é a saudação. Quem mandou "oi" e recebeu o link é a
+ * maioria das conversas, não é atendimento nenhum, e encheria a faixa de
+ * gente que não pediu nada. Três mensagens é o corte: "oi", a saudação
+ * dela, e mais alguma coisa -- com duas, foi só o cumprimento.
+ *
+ * Os cinco estados, na ordem em que aparecem:
+ *
+ * - **sem resposta** -- o cliente falou por último e ficou sem resposta.
+ *   É o "cadê rapaz" de 24/11/2026, que só foi descoberto porque ele leu
+ *   conversa por conversa. Fica em vermelho pelo tempo que for.
+ * - **atendente assumiu** -- alguém do restaurante entrou no meio.
+ * - **Lia atendendo** -- conversa viva, tocando agora.
+ * - **virou pedido** -- fechou sozinha, com o número do pedido junto.
+ * - **encerrada** -- acabou sem pedido: ela falou por último e o cliente
+ *   não voltou. Fica discreto, só para a conta do dia fechar.
+ */
+const JANELA_DO_DIA_H = 12;
+const PAROU_MIN = 15;
+const MINIMO_DE_MENSAGENS = 3;
+
+export type EstadoDaConversa = "sem-resposta" | "atendente" | "atendendo" | "pedido" | "encerrada";
+
+export type ConversaAtiva = {
+  contato: string;
+  telefone: string;
+  nome: string | null;
+  ultima: string;
+  papel: Papel;
+  quando: Date;
+  estado: EstadoDaConversa;
+  /** o número do pedido que saiu desta conversa, quando saiu */
+  pedido: number | null;
+};
+
+const PESO: Record<EstadoDaConversa, number> = {
+  "sem-resposta": 0,
+  atendente: 1,
+  atendendo: 2,
+  pedido: 3,
+  encerrada: 4,
+};
+
+export async function conversasAtivas(restaurantId: string): Promise<ConversaAtiva[]> {
+  const desde = new Date(Date.now() - JANELA_DO_DIA_H * 60 * 60_000);
+
+  const [ultimas, contagens] = await Promise.all([
+    db.$queryRaw<Linha[]>`
+      SELECT DISTINCT ON (m."contato")
+             m."contato", m."texto", m."papel"::text AS papel, m."createdAt"
+      FROM "IaMensagem" m
+      WHERE m."restaurantId" = ${restaurantId} AND m."createdAt" >= ${desde}
+      ORDER BY m."contato", m."createdAt" DESC
+    `,
+    db.iaMensagem.groupBy({
+      by: ["contato"],
+      where: { restaurantId, createdAt: { gte: desde } },
+      _count: { _all: true },
+    }),
+  ]);
+  if (ultimas.length === 0) return [];
+
+  const quantas = new Map(contagens.map((c) => [c.contato, c._count._all]));
+  const candidatas = ultimas.filter(
+    (l) => !doCardapio(l.contato) && (quantas.get(l.contato) ?? 0) >= MINIMO_DE_MENSAGENS,
+  );
+  if (candidatas.length === 0) return [];
+
+  /**
+   * O pedido que saiu de cada conversa, e o nome de quem está do outro
+   * lado. Busca pelas duas formas do número, com e sem o 9 do celular: o
+   * pedido guarda o telefone do jeito do site e a conversa chega do jeito
+   * do WhatsApp.
+   */
+  const numeros = [...new Set(candidatas.flatMap((l) => variantes(l.contato)))];
+  const [pedidos, clientes] = await Promise.all([
+    db.order.findMany({
+      where: { restaurantId, customerWhatsapp: { in: numeros }, createdAt: { gte: desde } },
+      orderBy: { createdAt: "desc" },
+      select: { customerWhatsapp: true, number: true },
+    }),
+    db.customer.findMany({ where: { whatsapp: { in: numeros } }, select: { whatsapp: true, name: true } }),
+  ]);
+  const porNumero = new Map(clientes.map((c) => [c.whatsapp, c.name]));
+  // o mais recente de cada número, que é o que a conversa fechou
+  const pedidoDe = new Map<string, number>();
+  for (const p of pedidos) if (!pedidoDe.has(p.customerWhatsapp)) pedidoDe.set(p.customerWhatsapp, p.number);
+
+  const agora = Date.now();
+
+  return candidatas
+    .map((l) => {
+      const formas = variantes(l.contato);
+      const numero = formas.map((v) => pedidoDe.get(v)).find((n) => n !== undefined) ?? null;
+      const parada = agora - l.createdAt.getTime() > PAROU_MIN * 60_000;
+
+      // A ordem destes testes é a regra inteira. O cliente esperando vem
+      // antes de tudo, inclusive de já ter virado pedido: quem fez o
+      // pedido e depois escreveu de novo continua esperando resposta.
+      const estado: EstadoDaConversa =
+        l.papel === "CLIENTE"
+          ? "sem-resposta"
+          : l.papel === "HUMANO"
+            ? "atendente"
+            : numero !== null
+              ? "pedido"
+              : parada
+                ? "encerrada"
+                : "atendendo";
+
+      return {
+        contato: l.contato,
+        telefone: l.contato,
+        nome: formas.map((v) => porNumero.get(v)).find(Boolean) ?? null,
+        ultima: l.texto,
+        papel: l.papel,
+        quando: l.createdAt,
+        estado,
+        pedido: numero,
+      };
+    })
+    .sort((a, b) => PESO[a.estado] - PESO[b.estado] || b.quando.getTime() - a.quando.getTime());
+}

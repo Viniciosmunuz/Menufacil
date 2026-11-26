@@ -11,6 +11,7 @@ import { OrderDrawer, OrderSummary, editableOrder, orderSummarySelect } from "@/
 import { StepButton } from "@/components/panel/step-button";
 import { PrintSettings } from "@/components/panel/print-settings";
 import { PushAvisos } from "@/components/panel/push-avisos";
+import { FaixaDeConversas } from "@/components/panel/faixa-de-conversas";
 import { OrdersLive } from "@/components/panel/orders-live";
 import { AutoRefresh } from "@/components/ui/auto-refresh";
 import { buttonClasses } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import { appUrl } from "@/lib/site";
 import { requireRestaurantAccess } from "@/server/auth/dal";
 import { lojaAbertaAgora } from "@/server/restaurants/loja-aberta";
 import { naoLidasPorPedido, recadosEsperando } from "@/server/chat/chat";
-import { chamadosEsperando } from "@/server/ia/conversas";
+import { chamadosEsperando, conversasAtivas } from "@/server/ia/conversas";
 import { algumComputadorAcordado, listDevices } from "@/server/print/devices";
 import { contarPagamentosSemPedido } from "@/server/totem/pagos";
 import { chavePublicaDePush } from "@/server/push/avisos";
@@ -71,7 +72,7 @@ const emRota = (o?: { status: OrderStatus }) => o?.status === "OUT_FOR_DELIVERY"
 // atendimento à mão. A página se atualiza sozinha para mostrar pedido novo.
 export default async function RestaurantOrdersPage({ params, searchParams }: PageProps<"/painel/[restaurantId]/pedidos">) {
   const { restaurantId } = await params;
-  const { restaurant } = await requireRestaurantAccess(restaurantId);
+  const { restaurant, papel } = await requireRestaurantAccess(restaurantId);
   // Com a IA ligada, o aviso ao cliente sai sozinho quando o status muda.
   // Aqui isso só apaga o link do botão: sem ele, tocar no passo não abre
   // mais o WhatsApp para o dono mandar a mesma mensagem na mão.
@@ -92,7 +93,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   // tela dele, com o mapa das mesas.
   const where = { restaurantId: restaurant.id, origin: { not: "SALAO" as const }, ...(statuses ? { status: { in: [...statuses] } } : {}) };
 
-  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, chamados, printFacilLigado, ultimos] = await Promise.all([
+  const [orders, total, byStatus, openOrders, printDevices, pagosSemPedido, recados, chamados, conversasDoBalcao, printFacilLigado, ultimos] = await Promise.all([
     db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, select: orderSummarySelect }),
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], where: { restaurantId: restaurant.id, origin: { not: "SALAO" } }, _count: { _all: true } }),
@@ -133,6 +134,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
     // para qualquer restaurante com a IA ligada -- a conversa dela
     // acontece no WhatsApp, fora do 100% Delivery
     restaurant.iaEnabled ? chamadosEsperando(restaurant.id) : Promise.resolve([]),
+    // Só para o dono: o número da Lia é o pessoal dele, e quem está no
+    // balcão não tem o que ver nas conversas que chegam ali. É a mesma
+    // regra que a aba da IA já segue.
+    restaurant.iaEnabled && papel !== "STAFF" ? conversasAtivas(restaurant.id) : Promise.resolve([]),
     // com um computador acordado, o botão Imprimir de cada pedido manda a
     // via de volta para ele em vez de tentar imprimir no aparelho de quem
     // tocou -- que no celular não tem impressora nenhuma
@@ -193,6 +198,7 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
   return (
     <div className="flex flex-col gap-6">
       <OrdersLive restaurantId={restaurant.id} />
+
       {/* rede de segurança: se o canal ao vivo cair, a tela ainda se atualiza */}
       <AutoRefresh seconds={45} background />
       {/* o título "Pedidos" saiu da tela a pedido dele (15/11/2026): o menu já
@@ -457,6 +463,14 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
         </>
       )}
       </SelecaoDePedidos>
+
+      {/* A faixa das conversas, presa no fim da tela.
+          
+          Por último na página, e não junto dos outros avisos: ela leva um
+          espaçador que precisa ser a última coisa do conteúdo, senão a
+          barra presa cobriria o último pedido da lista -- o espaço que o
+          painel já reserva embaixo é o da barra de menu, e só. */}
+      <FaixaDeConversas restaurantId={restaurant.id} conversas={conversasDoBalcao} />
     </div>
   );
 }

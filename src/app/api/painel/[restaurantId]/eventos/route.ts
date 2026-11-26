@@ -32,7 +32,7 @@ export const maxDuration = 15;
  * cozinha: não há nada para avisar.
  */
 async function retrato(restaurantId: string) {
-  const [pedidos, conversas, chamados] = await Promise.all([
+  const [pedidos, conversas, chamados, falas] = await Promise.all([
     db.order.aggregate({
       where: { restaurantId, origin: { not: "SALAO" }, status: { in: [...OPEN_ORDER_STATUSES] } },
       _count: { _all: true },
@@ -62,6 +62,23 @@ async function retrato(restaurantId: string) {
       _count: { _all: true },
       _max: { createdAt: true },
     }),
+    /**
+     * O que foi dito nas conversas da Lia, na última hora e meia.
+     *
+     * Entra no retrato para a faixa do balcão se mexer sozinha: sem isto,
+     * um cliente escrevendo e ficando sem resposta só apareceria lá no
+     * próximo pedido que mudasse de status -- que numa noite parada é
+     * nunca, e é justamente a noite em que a faixa importa.
+     *
+     * Contagem e data, as duas: só a data perderia a mensagem que chega
+     * no mesmo segundo que outra, e só a contagem perderia o caso de uma
+     * conversa velha sair da janela enquanto outra entra.
+     */
+    db.iaMensagem.aggregate({
+      where: { restaurantId, createdAt: { gte: new Date(Date.now() - 90 * 60 * 1000) } },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
   ]);
   return [
     pedidos._count._all,
@@ -71,6 +88,8 @@ async function retrato(restaurantId: string) {
     conversas._max.lastMessageAt?.getTime() ?? 0,
     chamados._count._all,
     chamados._max.createdAt?.getTime() ?? 0,
+    falas._count._all,
+    falas._max.createdAt?.getTime() ?? 0,
   ].join(":");
 }
 
