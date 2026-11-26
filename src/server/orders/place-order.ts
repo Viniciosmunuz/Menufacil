@@ -98,9 +98,20 @@ export const checkoutSchema = z
     changeFor: optionalText(20),
   })
   .superRefine((v, ctx) => {
-    if (v.paymentMethod === "CARD" && !v.cardType) {
-      ctx.addIssue({ code: "custom", path: ["cardType"], message: "Escolha crédito ou débito." });
-    }
+    // Crédito ou débito deixou de travar o pedido.
+    //
+    // Em 24/11/2026 um cliente respondeu "manda a máquina" e a Lia
+    // perguntou "crédito ou débito?" cinco vezes em quarenta minutos. Ele
+    // nunca respondeu -- porque para ele a resposta já tinha sido dada:
+    // leva a maquininha que eu escolho aí. O pedido morreu, e ele ficou
+    // mandando "cadê a salada".
+    //
+    // Quem decide isso é o dedo na maquininha, na porta. O `paymentText`
+    // já escreve só "Cartão" quando não há tipo, e o entregador sai com a
+    // máquina do mesmo jeito -- ela faz os dois.
+    //
+    // No site continua sendo escolhido, porque lá é um toque e a
+    // informação ajuda: quem obriga é o próprio formulário.
     // Troco é coisa da entrega: o entregador sai com a maleta e precisa
     // levar o dinheiro certo. Quem retira paga no balcão, onde tem caixa
     // -- exigir a resposta ali era travar o pedido por um dado que

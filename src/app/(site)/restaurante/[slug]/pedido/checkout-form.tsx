@@ -616,7 +616,15 @@ export function CheckoutForm({ restaurant }: { restaurant: RestaurantInfo }) {
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tipo do cartão">
                     {(["CREDIT", "DEBIT"] as CardType[]).map((c) => (
                       <label key={c} className={chipClasses(cardType === c)}>
-                        <input type="radio" name="cardType" value={c} checked={cardType === c} onChange={() => setCardType(c)} className="size-4 accent-brand" />
+                        <input
+                          type="radio"
+                          name="cardType"
+                          value={c}
+                          required
+                          checked={cardType === c}
+                          onChange={() => setCardType(c)}
+                          className="size-4 accent-brand"
+                        />
                         {cardTypeLabel[c]}
                       </label>
                     ))}
