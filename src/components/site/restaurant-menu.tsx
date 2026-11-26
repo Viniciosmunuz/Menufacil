@@ -861,6 +861,46 @@ export function RestaurantMenu({
     dialogRef.current?.close();
   }
 
+  /**
+   * A página de trás fica parada enquanto a folha está aberta.
+   *
+   * No iPhone o `showModal()` **não** segura a rolagem de trás -- é
+   * conhecido do Safari e vale também no navegador de dentro do
+   * WhatsApp, que é por onde quase todo cliente abre o cardápio. O que
+   * acontecia: o dedo rolava a página por baixo, a barra do navegador
+   * recolhia, a tela de referência mudava de tamanho no meio do caminho
+   * e a folha ficava deslocada -- a barra do "Adicionar" subia e o
+   * cardápio aparecia por baixo dela. Intermitente, porque dependia de
+   * ter rolado.
+   *
+   * `position: fixed` no corpo, e não só `overflow: hidden`: no iOS o
+   * `overflow` sozinho não segura. Guardar a altura rolada e devolvê-la
+   * ao fechar é o que impede a página de saltar para o topo quando a
+   * folha sai -- que seria trocar um incômodo por outro pior, porque o
+   * cliente perderia o lugar no cardápio.
+   */
+  useEffect(() => {
+    if (!product) return;
+    const corpo = document.body;
+    const rolado = window.scrollY;
+    const antes = {
+      position: corpo.style.position,
+      top: corpo.style.top,
+      left: corpo.style.left,
+      right: corpo.style.right,
+      width: corpo.style.width,
+    };
+    corpo.style.position = "fixed";
+    corpo.style.top = `-${rolado}px`;
+    corpo.style.left = "0";
+    corpo.style.right = "0";
+    corpo.style.width = "100%";
+    return () => {
+      Object.assign(corpo.style, antes);
+      window.scrollTo(0, rolado);
+    };
+  }, [product]);
+
   const groups = product?.optionGroups ?? [];
   const slots = product ? flavorSlots(product) : null;
   // o prato aceita acompanhamento e o restaurante tem o que oferecer
