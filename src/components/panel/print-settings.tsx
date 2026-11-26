@@ -69,6 +69,8 @@ const HELP_KEY = "mf_impressao_ajuda";
 /** todos os ajustes ficam recolhidos: a tela de pedidos é que precisa do espaço */
 const AJUSTES_KEY = "mf_ajustes_abertos";
 const RAWBT = "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+/** de quanto em quanto tempo o sino volta a tocar num pedido não aceito */
+const LEMBRETE_MS = 2 * 60_000;
 
 /** vale a partir de agora: os pedidos que já estão na tela não saem na impressora */
 function startNow() {
@@ -131,6 +133,8 @@ export function PrintSettings({
   const savedAjustes = useStored(AJUSTES_KEY);
   const frames = useRef<HTMLDivElement>(null);
   const soundBox = useRef<HTMLDivElement>(null);
+  /** em que lembrete cada pedido parado está; some quando ele sai da lista */
+  const lembrados = useRef(new Map<string, number>());
   const [pickingSound, setPickingSound] = useState(false);
   // o navegador barrou o som: o aparelho precisa de um toque para liberar
   const [somBloqueado, setSomBloqueado] = useState(false);
@@ -219,6 +223,57 @@ export function PrintSettings({
     // sendToPrinter acompanha o modo e o endereço, que já estão nas dependências
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fresh, mode, sound, soundName, base, app]);
+
+  /**
+   * O sino insiste enquanto ninguém aceita o pedido.
+   *
+   * O problema, dito por ele em 24/11/2026: o restaurante esquece. O
+   * pedido entra 22:30, o sino toca uma vez, o movimento engole, e o
+   * cliente fica esperando alguém apertar "Aceitar" -- sem que ninguém
+   * no balcão perceba que esqueceu.
+   *
+   * Então ele volta a tocar a cada dois minutos: 22:32, 22:34, 22:36,
+   * até alguém aceitar. A lista é a mesma de sempre (`pending`), que já
+   * quer dizer "chegou com o painel aberto e ainda não foi aceito" -- e
+   * já tem a saída pronta: o botão que marca o pedido como visto tira
+   * ele daqui, para o caso de um pedido que não vai ser aceito mesmo.
+   *
+   * A primeira vez que um pedido aparece ele não toca: só guarda em que
+   * minuto está. Sem isso, abrir o painel com um pedido de meia hora
+   * atrás faria o sino disparar na cara de quem acabou de chegar.
+   */
+  useEffect(() => {
+    if (!sound) return;
+    const marco = (o: Order) => Math.floor((Date.now() - new Date(o.entrouEm).getTime()) / LEMBRETE_MS);
+
+    const bater = () => {
+      let tocar = false;
+      for (const o of pending) {
+        const agora = marco(o);
+        const antes = lembrados.current.get(o.id);
+        // primeira vez que vejo este pedido: anoto e fico quieto
+        if (antes === undefined) {
+          lembrados.current.set(o.id, agora);
+          continue;
+        }
+        if (agora > antes) {
+          lembrados.current.set(o.id, agora);
+          // um toque por rodada, mesmo com três pedidos parados: três
+          // sinos juntos viram barulho, e barulho se ignora
+          tocar = true;
+        }
+      }
+      // quem saiu da lista (aceito ou dispensado) não ocupa mais memória
+      const vivos = new Set(pending.map((o) => o.id));
+      for (const id of lembrados.current.keys()) if (!vivos.has(id)) lembrados.current.delete(id);
+
+      if (tocar) void playSound(soundName).catch(() => {});
+    };
+
+    bater();
+    const t = setInterval(bater, 20_000);
+    return () => clearInterval(t);
+  }, [pending, sound, soundName]);
 
   // imprimindo pelo navegador, segura a tela acesa: aba congelada não imprime
   useEffect(() => {
