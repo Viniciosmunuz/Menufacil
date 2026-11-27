@@ -39,7 +39,6 @@ export type ProductFormData = {
   /** pizza montada: quantos sabores o cliente escolhe (o preço vem deles) */
   pizzaFlavors?: number | null;
   available: boolean;
-  featured: boolean;
   /** oferece os acompanhamentos do cardápio somados por cima */
   allowAddons?: boolean;
   optionGroups: EditableGroup[];
@@ -166,12 +165,6 @@ export function ProductForm({
             defaultChecked={v ? v.available === "on" : product.available}
             label="Disponível"
             hint="Desmarque quando acabar. Continua no cardápio como esgotado."
-          />
-          <Checkbox
-            name="featured"
-            defaultChecked={v ? v.featured === "on" : product.featured}
-            label="Destaque"
-            hint="Aparece no topo da sua página, em Destaques."
           />
           {podeAceitarAcompanhamento && (
             <Checkbox

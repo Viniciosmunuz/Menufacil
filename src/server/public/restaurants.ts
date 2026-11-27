@@ -217,7 +217,8 @@ const cardapioDoBanco = (slug: string) =>
         where: { slug },
     include: {
       openingHours: { orderBy: { weekday: "asc" }, select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
-      // Os banners da capa: só os ligados, na ordem que o dono pôs.
+      // Os banners da seção Destaques: só os ligados, na ordem que o dono
+      // pôs. Se a seção inteira está ligada é a página que decide.
       //
       // Entram no mesmo cache do cardápio, e por isso trocar um banner
       // passa pelo mesmo `derrubarCardapio()` que trocar um preço -- sem
@@ -225,7 +226,16 @@ const cardapioDoBanco = (slug: string) =>
       banners: {
         where: { ativo: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, imageUrl: true, titulo: true, escala: true, focoX: true, focoY: true },
+        select: {
+          id: true,
+          imageUrl: true,
+          titulo: true,
+          escala: true,
+          focoX: true,
+          focoY: true,
+          largura: true,
+          altura: true,
+        },
       },
       menuCategories: {
         // a seção marcada como "só no salão" não existe para quem pede
@@ -317,14 +327,16 @@ export const getPublicRestaurant = cache(async (slug: string, preview: boolean) 
 });
 
 /**
- * Os pratos que mais saíram nos últimos 30 dias, para o selo "Mais pedido"
- * do cardápio. No máximo três, e só com pelo menos cinco unidades vendidas:
- * com menos, o selo diria "mais pedido" de um prato que saiu duas vezes.
+ * O que cada prato vendeu nos últimos 30 dias, do que mais saiu para o
+ * que menos saiu.
  *
  * Conta o delivery e o totem; a mesa do salão fica de fora, como em todo
  * número do cardápio. Pedido cancelado não conta.
+ *
+ * Dentro de cache() porque o selo e a seção "Mais pedidos" perguntam a
+ * mesma coisa na mesma página: uma consulta só por acesso.
  */
-export async function maisPedidos(restaurantId: string): Promise<string[]> {
+export const vendasDoMes = cache(async (restaurantId: string) => {
   const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const linhas = await db.orderItem.groupBy({
     by: ["productId"],
@@ -334,9 +346,36 @@ export async function maisPedidos(restaurantId: string): Promise<string[]> {
     },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
-    take: 3,
+    take: 16,
   });
-  return linhas.filter((l) => l.productId && (l._sum.quantity ?? 0) >= 5).map((l) => l.productId!);
+  return linhas.flatMap((l) => (l.productId ? [{ productId: l.productId, quantidade: l._sum.quantity ?? 0 }] : []));
+});
+
+/**
+ * Os pratos que mais saíram nos últimos 30 dias, para o selo "Mais pedido"
+ * do cardápio. No máximo três, e só com pelo menos cinco unidades vendidas:
+ * com menos, o selo diria "mais pedido" de um prato que saiu duas vezes.
+ */
+export async function maisPedidos(restaurantId: string): Promise<string[]> {
+  return (await vendasDoMes(restaurantId))
+    .filter((v) => v.quantidade >= 5)
+    .slice(0, 3)
+    .map((v) => v.productId);
+}
+
+/**
+ * Os mais vendidos do mês para a seção "Mais pedidos", na ordem das vendas.
+ *
+ * A seção é escolhida pelo sistema: o dono não marca mais prato por
+ * prato -- ele só fixa algum que queira sempre ali, e esses vêm antes
+ * (isso é decidido no cardápio, que já tem os fixados em mãos).
+ *
+ * A régua é mais baixa que a do selo, duas unidades: a seção precisa de
+ * prato para existir, e restaurante pequeno não vende cinco de quase nada
+ * num mês. Uma unidade só é acaso, não preferência.
+ */
+export async function maisVendidos(restaurantId: string): Promise<string[]> {
+  return (await vendasDoMes(restaurantId)).filter((v) => v.quantidade >= 2).map((v) => v.productId);
 }
 
 /**

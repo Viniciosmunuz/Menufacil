@@ -156,6 +156,10 @@ model Restaurant {
   description String?
   logoUrl     String?
   coverUrl    String?
+  /// A seção Destaques do cardápio: os banners que passam sozinhos,
+  /// logo abaixo das abas. Desligada, ela some e o cardápio começa pelos
+  /// mais pedidos -- e é assim que todo restaurante nasce.
+  destaquesLigados Boolean @default(false)
   status      RestaurantStatus @default(DRAFT)
   featured    Boolean          @default(false)
 
@@ -558,11 +562,13 @@ model Product {
   priceCents      Int
   promoPriceCents Int?
   available       Boolean  @default(true)
+  /// fixado pelo dono na seção "Mais pedidos": aparece sempre, antes dos
+  /// que o sistema escolhe sozinho pelas vendas do mês
   featured        Boolean  @default(false)
   sortOrder       Int      @default(0)
-  /// a ordem na vitrine de destaques, que e outra da ordem dentro da
-  /// categoria: o destaque atravessa o cardapio inteiro, e quem escolhe
-  /// o que vem primeiro ali e o dono, nao a ordem das categorias
+  /// a ordem dos fixados em "Mais pedidos", que e outra da ordem dentro
+  /// da categoria: a secao atravessa o cardapio inteiro, e quem escolhe o
+  /// que vem primeiro ali e o dono, nao a ordem das categorias
   featuredOrder   Int      @default(0)
   // pizza montada: quantos sabores o cliente escolhe (1, 2, 3...). O preco e
   // o do sabor mais caro escolhido, nunca a soma nem a media.
@@ -1986,18 +1992,16 @@ model IaConversaAtendida {
   @@index([restaurantId, atendidaEm])
 }
 
-/// Um banner da capa do cardápio.
+/// Um banner da seção Destaques do cardápio.
 ///
-/// A capa era uma foto só, parada. Isto é a vitrine do restaurante: a
-/// promoção da semana, o combo de sábado, o aviso de que abriu aos
-/// domingos. Passam sozinhos e o cliente pode passar com o dedo.
+/// A promoção da semana, o combo de sábado, o aviso de que abriu aos
+/// domingos. Passam sozinhos e o cliente pode passar com o dedo. Moram
+/// numa seção própria, logo abaixo das abas, e não mais na capa: a capa
+/// era quatro vezes mais larga que alta, e arte de 16:9 sempre perdia
+/// letra no corte.
 ///
-/// Ocupa a mesma faixa da capa antiga, e na mesma altura, de propósito:
-/// alta, ela empurra o cardápio para fora da primeira tela, e o cliente
-/// rola antes de ver um prato -- que é o motivo de a capa ser baixa.
-///
-/// Sem nenhum banner ligado, a capa volta a ser a foto de sempre. É o
-/// que faz isto nascer sem quebrar nada para quem não usar.
+/// A seção só aparece com `Restaurant.destaquesLigados` e pelo menos um
+/// banner ligado.
 model Banner {
   id           String  @id @default(cuid())
   restaurantId String
@@ -2007,14 +2011,19 @@ model Banner {
   ativo        Boolean @default(true)
   sortOrder    Int     @default(0)
 
+  /// O tamanho do arquivo guardado. A imagem não é mais cortada ao subir,
+  /// então a proporção é a que o dono mandou -- e o enquadramento precisa
+  /// dela para saber onde a imagem inteira cabe. Vazio nos banners de
+  /// antes, que eram todos 1600 x 900.
+  largura Int?
+  altura  Int?
+
   /// O enquadramento, escolhido pelo dono depois de subir a arte.
   ///
-  /// A faixa e mais larga que alta do que a imagem, entao o navegador
-  /// corta de cima e de baixo -- e a logo cobre o canto de baixo a
-  /// esquerda. Arte boa com a letra no lugar errado era um banner
-  /// perdido; com estes tres numeros ela se ajeita sem refazer nada.
-  ///
-  /// escala em %, 100 = a imagem inteira. foco em %, 50 = centro.
+  /// escala: 0 = a imagem inteira (sobra fundo dos lados), 100 = preenche
+  /// a faixa (corta o que passar), 200 = o dobro disso. foco em %, 50 =
+  /// centro. Banner novo nasce com 0 -- quem grava é o `criarBanner`; o
+  /// padrão da coluna ficou 100, que é o que o código de antes entendia.
   escala Int @default(100)
   focoX  Int @default(50)
   focoY  Int @default(50)

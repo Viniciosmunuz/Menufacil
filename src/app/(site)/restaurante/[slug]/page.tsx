@@ -7,7 +7,6 @@ import { notFound } from "next/navigation";
 
 import { LogoIcon } from "@/components/brand/logo";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
-import { CapaPassando } from "@/components/site/capa-passando";
 import { CartPanel } from "@/components/site/cart-panel";
 import { ChatIa } from "@/components/site/chat-ia";
 import { FavoriteButton } from "@/components/site/favorites";
@@ -19,7 +18,7 @@ import { formatCents } from "@/lib/format";
 import { soRetirada } from "@/lib/opening-hours";
 import { WEEKDAYS, localClock, openStatusLabel } from "@/lib/opening-hours";
 import { SHARE_LOGO_SIZE, appUrl } from "@/lib/site";
-import { areasDeEntrega, getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
+import { areasDeEntrega, getPublicRestaurant, maisPedidos, maisVendidos } from "@/server/public/restaurants";
 import { iaNoCardapioLigada } from "@/server/ia/chat";
 import { lockedStore } from "@/server/public/store";
 
@@ -77,6 +76,9 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
       : "Entrega grátis";
   // o selo "Mais pedido" dos pratos que mais saíram no mês
   const campeoes = await maisPedidos(r.id);
+  // a seção "Mais pedidos": o sistema escolhe pelas vendas do mês, e os
+  // pratos que o dono fixou vêm antes (isso o cardápio já sabe)
+  const vendidos = await maisVendidos(r.id);
   // entrou pelo link do restaurante: nada que leve aos outros (voltar, favoritos)
   const standalone = (await lockedStore())?.slug === r.slug;
 
@@ -135,24 +137,18 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
           {/* Capa de ponta a ponta no celular, baixa como a de perfil do
-              LinkedIn: é moldura, não vitrine. Alta (240px), ela e o perfil
-              empurravam o cardápio para fora da primeira tela, e o cliente
-              tinha de rolar antes de ver um prato. */}
+              LinkedIn: é moldura, não vitrine. A vitrine agora é a seção
+              Destaques, logo abaixo das abas -- e por isso a capa voltou a
+              ser só a foto do restaurante. */}
           <section className="-mx-4 -mt-4 lg:mx-0 lg:mt-0">
-            {/* 88px no celular, não 112.
-                
-                Os 24px vieram de um pedido dele em 27/11/2026: o cartão
-                do destaque estava caindo debaixo da barra de baixo, e o
-                cliente abria o link e via a foto do prato com o preço
-                cortado. A capa é moldura; o prato é o que vende. No
-                computador ela continua alta, porque lá sobra tela. */}
-            <div className="relative h-[5.5rem] overflow-hidden bg-surface-2 sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
-              {/* Com banners ligados, a capa passa sozinha e o cliente
-                  arrasta. Sem nenhum, é a foto de sempre -- é o que faz
-                  isto nascer sem mudar nada para quem não usar. */}
-              {r.banners.length > 0 ? (
-                <CapaPassando banners={r.banners} />
-              ) : r.coverUrl ? (
+            {/* Sete de largura para dois de altura no celular: 111px num
+                aparelho de 390, um pouco mais que os 88 fixos de antes,
+                que deixavam a foto uma tira. Em proporção, e não em
+                pixel, para a foto sair com o mesmo corte em todo
+                celular. No computador ela continua alta, porque lá sobra
+                tela. */}
+            <div className="relative aspect-[7/2] overflow-hidden bg-surface-2 sm:aspect-auto sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
+              {r.coverUrl ? (
                 <Image src={r.coverUrl} alt="" fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
               ) : (
                 <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(249_104_11/0.25),transparent_60%)]">
@@ -162,30 +158,33 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               <div className="absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-bg/30" aria-hidden="true" />
               <div className="absolute inset-x-3 top-3 flex items-center justify-between">
                 {standalone ? <span /> : <BackButton />}
-                {/* Sem o botão de compartilhar.
-                    Ele saiu em 27/11/2026, a pedido dele: quem quer
-                    mandar o cardápio para alguém copia o endereço da
-                    barra, e o botão só ocupava o canto da capa -- que
-                    agora é vitrine, e cada coisa ali por cima da imagem
-                    tapa a promoção do dia. */}
+                {/* Sem o botão de compartilhar: saiu em 27/11/2026, a
+                    pedido dele. Quem quer mandar o cardápio para alguém
+                    copia o endereço da barra. */}
                 <div className="flex gap-2">
                   {!standalone && <FavoriteButton slug={r.slug} name={r.name} />}
                 </div>
               </div>
             </div>
 
-            <div className="relative -mt-8 px-4 lg:-mt-12 lg:px-6">
+            {/* A logo com 80px, avançando metade sobre a capa. Com 64 ela
+                sumia: é o rosto da casa, e o cliente reconhece o lugar por
+                ela antes de ler o nome. */}
+            <div className="relative -mt-10 px-4 lg:-mt-12 lg:px-6">
               <div className="flex items-end justify-between gap-3">
-                <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-lg lg:size-24">
+                <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-lg lg:size-24">
                   {r.logoUrl ? (
                     <Image src={r.logoUrl} alt={`Logo de ${r.name}`} fill sizes="96px" className="object-cover" />
                   ) : (
-                    <LogoIcon className="h-10" />
+                    <LogoIcon className="h-11" />
                   )}
                 </span>
+                {/* 28px de altura, a mesma dos selos e das bolinhas de
+                    endereço e horário: tudo o que é redondinho no topo
+                    tem um tamanho só. */}
                 <span
                   className={cn(
-                    "mb-1 inline-flex h-8 items-center gap-2 rounded-full px-3 text-[0.8rem] font-extrabold",
+                    "mb-1 inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[0.78rem] font-extrabold",
                     open ? "bg-success/15 text-success ring-1 ring-success/30" : "bg-surface-2 text-muted ring-1 ring-line",
                   )}
                 >
@@ -246,6 +245,9 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 canOrder={canOrder}
                 closedMessage={closedMessage}
                 maisPedidos={campeoes}
+                maisVendidos={vendidos}
+                // a seção Destaques só existe ligada, e com banner ligado
+                banners={r.destaquesLigados ? r.banners : []}
                 // o último pedido deste celular, de volta ao carrinho num toque
                 pedirDeNovo
               />

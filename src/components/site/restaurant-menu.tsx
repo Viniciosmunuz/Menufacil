@@ -20,6 +20,7 @@ import {
 import { combina, normalizar, palavrasDaBusca } from "@/lib/busca";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
+import { LIMITE_DOS_MAIS_PEDIDOS } from "@/lib/mais-pedidos";
 import {
   effectiveMax,
   halfAllowed,
@@ -46,6 +47,7 @@ import {
 } from "@/lib/pizza";
 
 import { addToCart, cartCount, cartSubtotal, useCart, type CartItem, type CartRestaurant } from "./cart-store";
+import { DestaquesPassando, type BannerDestaque } from "./destaques-passando";
 import { useDigitando } from "./digitando";
 import { QuantityStepper } from "./quantity-stepper";
 import { useUltimoPedido } from "./ultimo-pedido";
@@ -66,6 +68,14 @@ const ABA =
 const ABA_NA_VEZ = "border-brand font-extrabold text-brand";
 const ABA_PARADA = "border-transparent font-bold text-muted hover:text-ink";
 
+/**
+ * O título de cada seção do cardápio. 18px: com 20 ("Caldos", "Saladas")
+ * ele ficava do tamanho do nome do restaurante, e a página parecia ter
+ * dez títulos principais.
+ */
+const TITULO_DA_SECAO = "flex items-center gap-1.5 text-lg leading-tight font-extrabold";
+
+
 export type MenuProduct = {
   id: string;
   name: string;
@@ -74,8 +84,9 @@ export type MenuProduct = {
   priceCents: number;
   promoPriceCents: number | null;
   available: boolean;
+  /** fixado pelo dono na seção "Mais pedidos" */
   featured: boolean;
-  /** a ordem na vitrine de destaques, escolhida pelo dono */
+  /** a ordem dos fixados em "Mais pedidos", escolhida pelo dono */
   featuredOrder?: number | null;
   /** pizza montada: quantos sabores o cliente escolhe */
   pizzaFlavors?: number | null;
@@ -397,16 +408,25 @@ function AddonPicker({ addons, picks, onChange }: { addons: Addon[]; picks: Addo
   );
 }
 
+/**
+ * O "+" no canto da foto.
+ *
+ * 28px, o mesmo tamanho das outras bolinhas do cardápio (endereço,
+ * horários, aberto/fechado). Com 36px e um anel de 4px em volta ele
+ * passava dos 44px e cobria um quarto da foto do prato num cartão de
+ * meia tela. Não precisa ser alvo grande: quem recebe o toque é o cartão
+ * inteiro, o "+" só diz que dá para pedir.
+ */
 function AddBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "grid size-9 place-items-center rounded-full bg-brand text-brand-ink shadow-lg shadow-black/40 ring-4 ring-surface transition group-hover:bg-brand-hover group-active:scale-90",
+        "grid size-7 place-items-center rounded-full bg-brand text-brand-ink shadow-md shadow-black/30 ring-2 ring-surface transition group-hover:bg-brand-hover group-active:scale-90",
         className,
       )}
       aria-hidden="true"
     >
-      <Plus className="size-5" strokeWidth={2.6} />
+      <Plus className="size-4" strokeWidth={2.8} />
     </span>
   );
 }
@@ -429,14 +449,14 @@ function AddBadge({ className }: { className?: string }) {
  */
 function GavetaDeCategorias({
   aberta,
-  destaques,
+  maisPedidos,
   categorias,
   ativa,
   aoEscolher,
 }: {
   aberta: boolean;
-  /** foto dos destaques; undefined quando não há destaque nenhum */
-  destaques?: string | null;
+  /** foto dos mais pedidos; undefined quando a seção não existe */
+  maisPedidos?: string | null;
   categorias: { id: string; nome: string; foto: string | null }[];
   /** null antes de a rolagem decidir qual categoria está na vez */
   ativa: string | null;
@@ -445,7 +465,7 @@ function GavetaDeCategorias({
   if (categorias.length <= 1) return null;
 
   const itens = [
-    ...(destaques !== undefined ? [{ id: "destaques", nome: "Destaques", foto: destaques, estrela: true }] : []),
+    ...(maisPedidos !== undefined ? [{ id: "mais-pedidos", nome: "Mais pedidos", foto: maisPedidos, estrela: true }] : []),
     ...categorias.map((c) => ({ ...c, estrela: false })),
   ];
 
@@ -478,7 +498,7 @@ function GavetaDeCategorias({
                     <Image src={c.foto} alt="" width={192} height={192} className="h-full w-full object-cover" />
                   ) : (
                     <span className="grid size-full place-items-center">
-                      {c.estrela ? <Star className="size-6 fill-brand text-brand" /> : <LogoIcon className="h-6 opacity-40" />}
+                      {c.estrela ? <Flame className="size-6 fill-brand/25 text-brand" /> : <LogoIcon className="h-6 opacity-40" />}
                     </span>
                   )}
                 </span>
@@ -510,14 +530,14 @@ function ProductRow({
   empilhado?: boolean;
   /** um dos pratos que mais saíram no mês */
   maisPedido?: boolean;
-  /** o que a vitrine de destaques acrescenta: largura fixa e encaixe no arrasto */
+  /** o que a fileira de "Mais pedidos" acrescenta: largura fixa e encaixe no arrasto */
   className?: string;
   /**
-   * Já estamos dentro da vitrine de Destaques.
+   * Já estamos dentro da seção "Mais pedidos".
    *
-   * A estrela ao lado do nome existe para marcar o destaque no meio da
-   * lista. Dentro da seção que se chama Destaques, e que já tem a estrela
-   * no título, ela vira enfeite repetido em todo cartão.
+   * O selo "Mais pedido" existe para marcar o prato no meio da lista.
+   * Dentro da seção que tem esse nome, ele vira enfeite repetido em todo
+   * cartão.
    */
   naVitrine?: boolean;
 }) {
@@ -538,12 +558,7 @@ function ProductRow({
         )}
       >
         <span className={cn("order-2 flex min-w-0 flex-1 flex-col", !empilhado && "sm:order-1", !p.available && "opacity-55")}>
-          <span className="flex items-start gap-1.5 text-[0.95rem] leading-snug font-extrabold sm:text-base">
-            {p.featured && !naVitrine && (
-              <Star className="mt-0.5 size-4 shrink-0 fill-brand text-brand" aria-hidden="true" />
-            )}
-            {p.name}
-          </span>
+          <span className="text-[0.95rem] leading-snug font-extrabold sm:text-base">{p.name}</span>
           {/* Na vitrine a descrição é de uma linha só.
               
               Duas linhas somavam 34px a cada cartão, e eram esses 34px
@@ -590,16 +605,22 @@ function ProductRow({
               alt=""
               width={empilhado ? 384 : 192}
               height={empilhado ? 288 : 144}
-              className={cn("h-full w-full rounded-control object-cover", !p.available && "grayscale")}
+              // Por cima da moldura (absolute), e não dentro dela: no fluxo,
+              // a foto empurrava a moldura para a proporção do arquivo. Uma
+              // foto em pé deixava o cartão 60% mais alto que o vizinho, e
+              // a vitrine parecia ter cada prato de um tamanho. Assim quem
+              // manda é o 4:3 da moldura, e a foto só preenche.
+              className={cn("absolute inset-0 size-full rounded-control object-cover", !p.available && "grayscale")}
             />
           ) : (
-            <span className="grid size-full place-items-center rounded-control bg-surface-2">
+            <span className="absolute inset-0 grid place-items-center rounded-control bg-surface-2">
               <LogoIcon className="h-8 opacity-40" />
             </span>
           )}
-          {maisPedido && p.available && <SeloMaisPedido className="absolute top-1.5 left-1.5" />}
+          {/* dentro da seção "Mais pedidos" o selo seria o título repetido em todo cartão */}
+          {maisPedido && p.available && !naVitrine && <SeloMaisPedido className="absolute top-1.5 left-1.5" />}
           {p.available ? (
-            <AddBadge className="absolute right-1 bottom-1 sm:-right-1.5 sm:-bottom-1.5" />
+            <AddBadge className="absolute right-1.5 bottom-1.5 sm:-right-1 sm:-bottom-1" />
           ) : (
             <span className="absolute inset-0 grid place-items-center rounded-control bg-bg/55 text-xs font-extrabold text-ink">Esgotado</span>
           )}
@@ -622,6 +643,8 @@ export function RestaurantMenu({
   duasColunas = false,
   categoriasNaLateral = false,
   maisPedidos = [],
+  maisVendidos = [],
+  banners = [],
   pedirDeNovo = false,
   avisoDeFechado = false,
 }: {
@@ -679,6 +702,13 @@ export function RestaurantMenu({
   categoriasNaLateral?: boolean;
   /** ids dos pratos que mais saíram no mês: ganham o selo "Mais pedido" */
   maisPedidos?: string[];
+  /**
+   * Os mais vendidos do mês, na ordem das vendas: são eles que enchem a
+   * seção "Mais pedidos", depois dos pratos que o dono fixou.
+   */
+  maisVendidos?: string[];
+  /** os banners da seção Destaques; vazio, a seção não existe */
+  banners?: BannerDestaque[];
   /**
    * O cartão "Pedir de novo" no topo, com o último pedido deste celular.
    * Só no cardápio do link: no totem o aparelho é de todo mundo, e o último
@@ -746,21 +776,34 @@ export function RestaurantMenu({
   // as abas de seção só existem com mais de uma seção, fora do totem e fora
   // da busca; a barra de cima muda de acabamento quando elas aparecem
   const abasVisiveis = visible.length > 1 && !categoriasNaLateral && !buscando;
-  // Os destaques têm ordem própria, escolhida pelo dono, e não a ordem
-  // em que caem do cardápio.
+  // A seção "Mais pedidos".
   //
-  // Antes a vitrine saía na ordem das categorias: o destaque de "Caldos"
-  // vinha antes do de "Pizzas" porque Caldos é a primeira seção, e não
-  // porque alguém quis. Quem empata (tudo zerado, que é como nasce)
-  // continua na ordem de antes.
-  const featured = buscando
-    ? []
-    : categories
-        .flatMap((c) => c.products)
-        .filter((p) => p.featured && p.available)
-        .map((p, i) => ({ p, i }))
-        .sort((a, b) => (a.p.featuredOrder ?? 0) - (b.p.featuredOrder ?? 0) || a.i - b.i)
-        .map(({ p }) => p);
+  // Quem escolhe é o sistema, pelas vendas do mês. O dono não marca mais
+  // prato por prato; ele só fixa algum que queira sempre ali -- a
+  // novidade que ainda não vendeu, o prato da casa --, e os fixados vêm
+  // primeiro, na ordem dele. Os vendidos completam até oito.
+  //
+  // Esgotado fica de fora: aqui é vitrine, e vitrine de prato que não dá
+  // para pedir é propaganda do que não tem.
+  const vitrine = useMemo(() => {
+    if (buscando) return [];
+    const todos = categories.flatMap((c) => c.products);
+    const fixados = todos
+      .filter((p) => p.featured && p.available)
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => (a.p.featuredOrder ?? 0) - (b.p.featuredOrder ?? 0) || a.i - b.i)
+      .map(({ p }) => p);
+    const porId = new Map(todos.map((p) => [p.id, p]));
+    const lista = [...fixados];
+    for (const id of maisVendidos) {
+      if (lista.length >= LIMITE_DOS_MAIS_PEDIDOS) break;
+      const p = porId.get(id);
+      if (p && p.available && !p.featured) lista.push(p);
+    }
+    return lista;
+  }, [buscando, categories, maisVendidos]);
+  // a seção Destaques some na busca, como as outras vitrines
+  const destaques = buscando ? [] : banners;
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
   const campeoes = useMemo(() => new Set(maisPedidos), [maisPedidos]);
@@ -1069,8 +1112,8 @@ export function RestaurantMenu({
               onClick={() => pedirOutraVez(false)}
               className="flex w-full items-center gap-3 rounded-card border border-brand/40 bg-brand-soft p-3 text-left transition-colors hover:bg-brand/15"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
-                <RotateCcw className="size-4" aria-hidden="true" />
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
+                <RotateCcw className="size-3.5" aria-hidden="true" />
               </span>
 
               <span className="min-w-0 flex-1">
@@ -1089,8 +1132,8 @@ export function RestaurantMenu({
                 </span>
               </span>
 
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
-                <ShoppingBag className="size-4" aria-hidden="true" />
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
+                <ShoppingBag className="size-3.5" aria-hidden="true" />
               </span>
             </button>
           )}
@@ -1151,19 +1194,30 @@ export function RestaurantMenu({
             className="-mx-4 mt-3 flex gap-5 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
             aria-label="Categorias do cardápio"
           >
-            {featured.length > 0 && (
+            {/* As duas abas especiais têm o ícone laranja mesmo paradas,
+                ao contrário das outras: é o que diz que essas seções não
+                são categoria do cardápio. Com a linha embaixo marcando a
+                aba na vez, não há conflito de dois laranjas. */}
+            {destaques.length > 0 && (
               <button
                 type="button"
                 data-tab="destaques"
                 onClick={() => jump("destaques")}
                 className={cn(ABA, active === "destaques" ? ABA_NA_VEZ : ABA_PARADA)}
               >
-                {/* laranja mesmo parada, ao contrário dos outros ícones: é
-                    o que diz que esta seção é especial. Com a linha embaixo
-                    marcando a aba na vez, não há mais o conflito de dois
-                    laranjas que obrigou a apagá-la na versão de pílulas. */}
                 <Star className="size-4 fill-brand text-brand" aria-hidden="true" />
                 Destaques
+              </button>
+            )}
+            {vitrine.length > 0 && (
+              <button
+                type="button"
+                data-tab="mais-pedidos"
+                onClick={() => jump("mais-pedidos")}
+                className={cn(ABA, active === "mais-pedidos" ? ABA_NA_VEZ : ABA_PARADA)}
+              >
+                <Flame className="size-4 fill-brand/25 text-brand" aria-hidden="true" />
+                Mais pedidos
               </button>
             )}
             {visible.map((c) => {
@@ -1199,28 +1253,31 @@ export function RestaurantMenu({
       )}
 
       <div className="flex flex-col gap-8 pt-3">
-        {featured.length > 0 && (
+        {/* Sem título visível: a aba logo acima já diz "Destaques",
+            com a mesma estrela, a dois dedos de distância. O título para
+            leitor de tela continua, invisível. */}
+        {destaques.length > 0 && (
           <section id="destaques" data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
-            {/* Sem título aqui dentro.
-
-                A aba logo acima já diz "Destaques", com a mesma estrela
-                e a dois dedos de distância: era a mesma palavra duas
-                vezes em 40px de tela. E esses 40px custavam caro --
-                eles, mais o resto do topo, empurravam o cartão da
-                vitrine para debaixo da barra de baixo, e quem abria o
-                link via a foto do prato com o preço cortado. O título
-                para leitor de tela continua, invisível. */}
             <h2 className="sr-only">Destaques</h2>
-            <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+            <DestaquesPassando banners={destaques} />
+          </section>
+        )}
+
+        {vitrine.length > 0 && (
+          <section id="mais-pedidos" data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
+            {/* Com título, ao contrário dos Destaques: logo depois da
+                faixa de banners, uma fileira de pratos sem nome pareceria
+                continuação dela, e "mais pedidos" é justamente o que faz o
+                cliente confiar no prato. */}
+            <h2 className={TITULO_DA_SECAO}>
+              <Flame className="size-4 fill-brand/25 text-brand" aria-hidden="true" />
+              Mais pedidos
+            </h2>
+            <ul className="-mx-4 mt-2 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
               {/* O mesmo cartão da lista, só com largura fixa e encaixe no
-                  arrasto. Era um cartão escrito à parte, com a foto
-                  quadrada em vez de deitada: no celular dava 267px de
-                  altura contra 208px dos outros, quase 30% a mais, e a
-                  diferença aparecia assim que a vitrine e a primeira seção
-                  ficavam na mesma tela. Duplicado, ele também ia ficando
-                  para trás -- não tinha a descrição do prato nem o aviso de
-                  esgotado que a lista ganhou. */}
-              {featured.map((p) => (
+                  arrasto: a foto sai do mesmo tamanho da das categorias,
+                  e nenhum cartão fica maior que o outro. */}
+              {vitrine.map((p) => (
                 <ProductRow
                   key={p.id}
                   p={p}
@@ -1230,12 +1287,8 @@ export function RestaurantMenu({
                   maisPedido={campeoes.has(p.id)}
                   // A mesma largura da célula da lista, não um número
                   // parecido: a lista é uma grade de duas colunas com 12px
-                  // entre elas, e aqui é a mesma conta.
-                  //
-                  // O sangramento de 16px da fileira não entra: ela o
-                  // devolve como padding, então o 100% daqui já é o mesmo
-                  // espaço interno que a grade usa. Descontar de novo dava
-                  // 150px contra 166px -- medido, não deduzido.
+                  // entre elas, e aqui é a mesma conta. O sangramento de
+                  // 16px da fileira não entra: ela o devolve como padding.
                   className="w-[calc((100%-0.75rem)/2)] shrink-0 snap-start sm:w-48"
                   naVitrine
                 />
@@ -1267,7 +1320,7 @@ export function RestaurantMenu({
 
         {visible.map((c) => (
           <section key={c.id} id={`cat-${c.id}`} data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
-            <h2 className="text-xl font-extrabold">{c.name}</h2>
+            <h2 className={TITULO_DA_SECAO}>{c.name}</h2>
             {c.description && <p className="text-sm text-muted">{c.description}</p>}
             <ul className={cn("mt-3 grid grid-cols-2 gap-3", !duasColunas && "sm:grid-cols-1 2xl:grid-cols-2")}>
               {c.products.map((p) => (
@@ -1293,7 +1346,7 @@ export function RestaurantMenu({
         <div className="flex gap-3">
           <GavetaDeCategorias
             aberta={gavetaAberta}
-            destaques={featured.length > 0 ? (featured.find((p) => p.imageUrl)?.imageUrl ?? null) : undefined}
+            maisPedidos={vitrine.length > 0 ? (vitrine.find((p) => p.imageUrl)?.imageUrl ?? null) : undefined}
             categorias={visible.map((c) => ({
               id: `cat-${c.id}`,
               nome: c.name,

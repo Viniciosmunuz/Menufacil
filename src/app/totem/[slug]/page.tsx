@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { LogoIcon } from "@/components/brand/logo";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { isOpenNow } from "@/lib/opening-hours";
-import { getPublicRestaurant, maisPedidos } from "@/server/public/restaurants";
+import { getPublicRestaurant, maisPedidos, maisVendidos } from "@/server/public/restaurants";
 
 import { AtivarTotem } from "./ativar";
 import { assinaturaDoCardapio } from "@/server/totem/api/cardapio";
@@ -47,6 +47,9 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
   const assinatura = await assinaturaDoCardapio(r.id);
   // o selo "Mais pedido" dos pratos que mais saíram no mês
   const campeoes = await maisPedidos(r.id);
+  // a seção "Mais pedidos" vale no totem também: quem está de pé no
+  // balcão, sem saber o que pedir, é quem mais aproveita
+  const vendidos = await maisVendidos(r.id);
   const categorias = r.menuCategories.filter((c) => c.products.length > 0 && !c.pizzaFlavors);
   const sabores = r.menuCategories
     .filter((c) => c.pizzaFlavors)
@@ -146,6 +149,7 @@ export default async function TotemMenuPage({ params, searchParams }: PageProps<
             // olhos por uma lista parada
             categoriasNaLateral
             maisPedidos={campeoes}
+            maisVendidos={vendidos}
           />
         )}
       </div>

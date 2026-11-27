@@ -39,7 +39,6 @@ export default async function NewProductPage({ params, searchParams }: PageProps
           priceCents: null,
           promoPriceCents: null,
           available: true,
-          featured: false,
           allowAddons: false,
           optionGroups: [],
         }}

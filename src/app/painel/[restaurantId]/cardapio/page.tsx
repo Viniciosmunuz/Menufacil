@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, BookOpen, GalleryHorizontalEnd, ImageOff, Plus, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, GalleryHorizontalEnd, ImageOff, Pin, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -97,7 +97,7 @@ function ProductRow({ restaurantId, p, first, last }: { restaurantId: string; p:
         <span className="min-w-0 flex-1">
           <span className={cn("flex items-start gap-1.5 text-sm leading-tight font-bold", !p.available && "text-muted")}>
             <span className="min-w-0 flex-1">{p.name}</span>
-            {p.featured && <Star className="mt-0.5 size-3.5 shrink-0 fill-brand text-brand" aria-label="Destaque" />}
+            {p.featured && <Pin className="mt-0.5 size-3.5 shrink-0 fill-brand text-brand" aria-label="Fixado em Mais pedidos" />}
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <Price p={p} />
@@ -240,11 +240,12 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
         )}
         <NewCategoryButton restaurantId={restaurant.id} highlight={categories.length === 0} />
         {/* A terceira porta desta tela, e a única que não cria nada: é
-            onde se mexe no que o cliente vê antes de rolar o cardápio. */}
+            onde se mexe no que o cliente vê antes das categorias -- os
+            banners dos Destaques e os pratos fixados em Mais pedidos. */}
         {categories.length > 0 && (
           <Link href={`/painel/${restaurant.id}/cardapio/vitrine`} className={buttonClasses("secondary")}>
             <GalleryHorizontalEnd className="size-4" aria-hidden="true" />
-            Capa e destaques
+            Destaques e mais pedidos
           </Link>
         )}
       </div>

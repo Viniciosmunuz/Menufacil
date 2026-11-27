@@ -10,7 +10,7 @@ import { checkbox, fieldErrors, formObject, optionalText, parseMoneyToCents, tex
 import { requireRestaurantAccess, type RestaurantAccess } from "@/server/auth/dal";
 import { derrubarCardapio } from "@/server/public/restaurants";
 import { panelAudit } from "@/server/panel";
-import { ImageError, deleteImage, hasFile, saveImage } from "@/server/storage";
+import { ImageError, deleteImage, hasFile, saveImage, saveImageComMedida } from "@/server/storage";
 
 // Cardápio do restaurante. Regra de ouro: todo where leva o restaurantId de
 // quem tem acesso. Um id de outro restaurante enviado no formulário
@@ -137,7 +137,6 @@ const productSchema = z
     price: z.string({ error: "Informe o preço." }),
     promoPrice: z.string().optional(),
     available: checkbox,
-    featured: checkbox,
     allowAddons: checkbox,
     removeImage: checkbox,
   })
@@ -306,7 +305,9 @@ export async function saveProduct(_prev: MenuFormState, formData: FormData): Pro
     priceCents: p.priceCents,
     promoPriceCents: p.promoPriceCents,
     available: p.available,
-    featured: p.featured,
+    // O "fixado em Mais pedidos" não passa por aqui: mora na aba Destaques
+    // do cardápio. Se passasse, salvar o prato sem a caixinha na tela
+    // tiraria ele de lá sem ninguém ter pedido.
     allowAddons: p.allowAddons,
     imageUrl,
   };
@@ -437,9 +438,9 @@ export async function criarBanner(_prev: MenuFormState, formData: FormData): Pro
   const image = formData.get("image");
   if (!hasFile(image)) return { error: "Escolha a imagem do banner." };
 
-  let imageUrl: string;
+  let salvo: { url: string; width: number; height: number };
   try {
-    imageUrl = await saveImage({ restaurantId, kind: "banner", file: image });
+    salvo = await saveImageComMedida({ restaurantId, kind: "banner", file: image });
   } catch (error) {
     if (error instanceof ImageError) return { error: error.message };
     throw error;
@@ -454,9 +455,15 @@ export async function criarBanner(_prev: MenuFormState, formData: FormData): Pro
   const banner = await db.banner.create({
     data: {
       restaurantId,
-      imageUrl,
+      imageUrl: salvo.url,
       titulo: String(formData.get("titulo") ?? "").trim().slice(0, 60) || null,
       sortOrder: (ultimo?.sortOrder ?? 0) + 1,
+      largura: salvo.width || null,
+      altura: salvo.height || null,
+      // Nasce mostrando a imagem inteira: o dono vê tudo o que mandou e
+      // aproxima se quiser. Começar cortado escondia justamente a letra
+      // do canto, que era a reclamação.
+      escala: 0,
     },
     select: { id: true },
   });
@@ -464,6 +471,22 @@ export async function criarBanner(_prev: MenuFormState, formData: FormData): Pro
   await panelAudit(acc, "banner.criar", { bannerId: banner.id });
   await aoMudarOCardapio(acc);
   return { ok: true };
+}
+
+/**
+ * Liga e desliga a seção Destaques inteira.
+ *
+ * Desligada, ela some do cardápio e ele começa pelos mais pedidos -- e os
+ * banners continuam guardados, para voltar do jeito que estavam.
+ */
+export async function ligarDestaques(formData: FormData) {
+  const acc = await access(formData);
+  const atual = await db.restaurant.findUnique({ where: { id: acc.restaurant.id }, select: { destaquesLigados: true } });
+  if (!atual) return;
+  const ligados = !atual.destaquesLigados;
+  await db.restaurant.update({ where: { id: acc.restaurant.id }, data: { destaquesLigados: ligados } });
+  await panelAudit(acc, "destaques.ligar", { ligados });
+  await aoMudarOCardapio(acc);
 }
 
 /** liga e desliga um banner sem apagar a imagem */
@@ -529,32 +552,43 @@ export async function moverDestaque(formData: FormData) {
   if (moved) await aoMudarOCardapio(acc);
 }
 
-/** tira um prato da vitrine (ou devolve), sem abrir a edição dele */
+/**
+ * Fixa um prato em "Mais pedidos", ou solta.
+ *
+ * A seção é do sistema, que escolhe pelas vendas do mês. Fixar é o jeito
+ * de o dono pôr ali o que ainda não vendeu -- a novidade, o prato da
+ * casa. O `fixar` vem do formulário: "1" só fixa, "0" só solta. Assim um
+ * toque repetido (a tela atrasada, o dedo duas vezes) não desfaz o
+ * primeiro, como um alternar faria.
+ */
 export async function alternarDestaque(formData: FormData) {
   const acc = await access(formData);
   const restaurantId = acc.restaurant.id;
   const produto = await db.product.findFirst({
     where: { id: idOf(formData), restaurantId },
-    select: { id: true, featured: true },
+    select: { id: true, name: true, featured: true },
   });
   if (!produto) return;
 
-  // Entrando na vitrine, vai para o fim da fila: um prato novo no meio
-  // dos destaques empurraria os outros sem ninguém ter pedido.
-  const ultimo = produto.featured
-    ? null
-    : await db.product.findFirst({
+  const pedido = formData.get("fixar");
+  const fixar = pedido === "1" ? true : pedido === "0" ? false : !produto.featured;
+  if (fixar === produto.featured) return;
+
+  // Entrando, vai para o fim da fila: um prato novo no meio dos fixados
+  // empurraria os outros sem ninguém ter pedido.
+  const ultimo = fixar
+    ? await db.product.findFirst({
         where: { restaurantId, featured: true },
         orderBy: { featuredOrder: "desc" },
         select: { featuredOrder: true },
-      });
+      })
+    : null;
 
   await db.product.update({
     where: { id: produto.id },
-    data: produto.featured
-      ? { featured: false }
-      : { featured: true, featuredOrder: (ultimo?.featuredOrder ?? 0) + 1 },
+    data: fixar ? { featured: true, featuredOrder: (ultimo?.featuredOrder ?? 0) + 1 } : { featured: false },
   });
+  await panelAudit(acc, "menu.product_featured", { name: produto.name, value: fixar });
   await aoMudarOCardapio(acc);
 }
 
@@ -568,9 +602,9 @@ export async function alternarDestaque(formData: FormData) {
  * era refazer a imagem; com isto, ele aproxima um pouco e empurra para
  * o lado.
  *
- * Os números chegam presos na faixa que faz sentido: 100% a 200% de
- * aproximação e 0 a 100 de posição. Fora disso não é escolha de
- * ninguém, é formulário adulterado.
+ * Os números chegam presos na faixa que faz sentido: escala de 0 (a
+ * imagem inteira) a 200 (o dobro de preencher a faixa) e posição de 0 a
+ * 100. Fora disso não é escolha de ninguém, é formulário adulterado.
  */
 export async function enquadrarBanner(formData: FormData) {
   const acc = await access(formData);
@@ -584,7 +618,7 @@ export async function enquadrarBanner(formData: FormData) {
   await db.banner.updateMany({
     where: { id: idOf(formData), restaurantId },
     data: {
-      escala: preso("escala", 100, 200, 100),
+      escala: preso("escala", 0, 200, 0),
       focoX: preso("focoX", 0, 100, 50),
       focoY: preso("focoY", 0, 100, 50),
     },

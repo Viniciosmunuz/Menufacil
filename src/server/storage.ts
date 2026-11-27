@@ -24,10 +24,12 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "
 const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   logo: (img) => img.resize(512, 512, { fit: "cover" }),
   cover: (img) => img.resize(1600, 900, { fit: "cover" }),
-  // O banner ocupa a mesma faixa da capa, então é o mesmo corte. Nome
-  // próprio para o arquivo se reconhecer no armazenamento: trocar a
-  // capa não pode apagar um banner por engano.
-  banner: (img) => img.resize(1600, 900, { fit: "cover" }),
+  // O banner não é cortado ao subir. Antes saía em 16:9 à força, e um
+  // cartaz quadrado perdia o alto e o pé antes de o dono poder fazer
+  // nada; agora ele chega inteiro e o dono enquadra no painel, olhando.
+  // Nome próprio para o arquivo se reconhecer no armazenamento: trocar
+  // a capa não pode apagar um banner por engano.
+  banner: (img) => img.resize(1600, 1600, { fit: "inside", withoutEnlargement: true }),
   // 800 chega: a foto aparece no máximo numa folha de 512px de largura, e
   // o que se vê na lista é um quadrado de 112px. Guardar 1000 só engordava
   // o arquivo e o que a transformação tem de ler.
@@ -97,6 +99,17 @@ export function hasFile(value: FormDataEntryValue | null): value is File {
 }
 
 export async function saveImage(params: { restaurantId: string; kind: ImageKind; file: File }) {
+  return (await saveImageComMedida(params)).url;
+}
+
+/**
+ * Igual ao `saveImage`, e devolve também a medida do arquivo guardado.
+ *
+ * É o banner que precisa dela: ele não é mais cortado ao subir, então
+ * cada um tem a sua proporção, e é com ela que o cardápio sabe onde a
+ * imagem inteira cabe dentro da faixa.
+ */
+export async function saveImageComMedida(params: { restaurantId: string; kind: ImageKind; file: File }) {
   const { restaurantId, kind, file } = params;
   if (file.size > MAX_INPUT_BYTES) throw new ImageError("A foto é muito grande. Use uma de até 8 MB.");
   if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
@@ -111,8 +124,9 @@ export async function saveImage(params: { restaurantId: string; kind: ImageKind;
     throw new ImageError("Não consegui abrir essa foto. Tente outra ou tire um print dela.");
   }
 
+  const { width = 0, height = 0 } = await sharp(output).metadata();
   const key = `${restaurantId}/${kind}-${randomBytes(8).toString("hex")}.webp`;
-  return driver().put(key, output, "image/webp");
+  return { url: await driver().put(key, output, "image/webp"), width, height };
 }
 
 export async function deleteImage(url: string | null | undefined) {

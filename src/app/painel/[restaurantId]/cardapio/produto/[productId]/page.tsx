@@ -27,7 +27,6 @@ export default async function EditProductPage({ params }: PageProps<"/painel/[re
         priceCents: true,
         promoPriceCents: true,
         available: true,
-        featured: true,
         pizzaFlavors: true,
         allowAddons: true,
         optionGroups: {
