@@ -1165,6 +1165,28 @@ export function RestaurantMenu({
         </section>
       )}
 
+      {/* Os destaques ficam ACIMA da barra de abas, e não abaixo.
+          
+          A barra é a fronteira: acima dela é o restaurante (capa, logo,
+          nome, entrega), abaixo é o cardápio dividido em seções. O
+          banner não é seção -- não tem aba nem título -- e embaixo
+          ficava encostado no "Mais pedidos" como se fosse parte dele,
+          um órfão no meio da navegação. Aqui em cima ele é o que é: a
+          vitrine do restaurante.
+          
+          E a barra é grudenta: com o banner acima, ele sobe e sai do
+          caminho quando o cliente rola, que é o certo para uma
+          promoção. Some na busca, como as outras vitrines.
+          
+          A altura não muda: é a mesma coisa na tela, só a ordem de dois
+          blocos trocada. */}
+      {destaques.length > 0 && !buscando && (
+        <section id="destaques" className="mt-4">
+          <h2 className="sr-only">Destaques</h2>
+          <DestaquesPassando banners={destaques} />
+        </section>
+      )}
+
       {/* marca o começo do cardápio, para a busca voltar até aqui */}
       <div ref={topoRef} aria-hidden="true" />
       {/* No site a busca fica fina e mais perto dos selos de entrega e
@@ -1310,16 +1332,6 @@ export function RestaurantMenu({
       )}
 
       <div className="flex flex-col gap-8 pt-3">
-        {/* Sem título visível: a aba logo acima já diz "Destaques",
-            com a mesma estrela, a dois dedos de distância. O título para
-            leitor de tela continua, invisível. */}
-        {destaques.length > 0 && (
-          <section id="destaques" data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
-            <h2 className="sr-only">Destaques</h2>
-            <DestaquesPassando banners={destaques} />
-          </section>
-        )}
-
         {vitrine.length > 0 && (
           <section id="mais-pedidos" data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
             {/* Com título, ao contrário dos Destaques: logo depois da
