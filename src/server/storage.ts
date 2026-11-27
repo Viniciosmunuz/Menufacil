@@ -16,7 +16,7 @@ import sharp, { type Sharp } from "sharp";
 // quando existe BLOB_READ_WRITE_TOKEN. Outro provedor (S3/R2) entra aqui sem
 // mudar quem chama saveImage.
 
-export type ImageKind = "logo" | "cover" | "product" | "descanso" | "chat" | "entregador";
+export type ImageKind = "logo" | "cover" | "banner" | "product" | "descanso" | "chat" | "entregador";
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
@@ -24,6 +24,10 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "
 const presets: Record<ImageKind, (img: Sharp) => Sharp> = {
   logo: (img) => img.resize(512, 512, { fit: "cover" }),
   cover: (img) => img.resize(1600, 900, { fit: "cover" }),
+  // O banner ocupa a mesma faixa da capa, então é o mesmo corte. Nome
+  // próprio para o arquivo se reconhecer no armazenamento: trocar a
+  // capa não pode apagar um banner por engano.
+  banner: (img) => img.resize(1600, 900, { fit: "cover" }),
   // 800 chega: a foto aparece no máximo numa folha de 512px de largura, e
   // o que se vê na lista é um quadrado de 112px. Guardar 1000 só engordava
   // o arquivo e o que a transformação tem de ler.

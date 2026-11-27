@@ -282,6 +282,7 @@ model Restaurant {
   iaRascunhos         IaRascunho[]
   iaChamados          IaChamado[]
   iaAtendidas         IaConversaAtendida[]
+  banners             Banner[]
   menuCategories      MenuCategory[]
   products            Product[]
   orders              Order[]
@@ -559,6 +560,10 @@ model Product {
   available       Boolean  @default(true)
   featured        Boolean  @default(false)
   sortOrder       Int      @default(0)
+  /// a ordem na vitrine de destaques, que e outra da ordem dentro da
+  /// categoria: o destaque atravessa o cardapio inteiro, e quem escolhe
+  /// o que vem primeiro ali e o dono, nao a ordem das categorias
+  featuredOrder   Int      @default(0)
   // pizza montada: quantos sabores o cliente escolhe (1, 2, 3...). O preco e
   // o do sabor mais caro escolhido, nunca a soma nem a media.
   pizzaFlavors    Int?
@@ -1979,4 +1984,33 @@ model IaConversaAtendida {
 
   @@unique([restaurantId, contato])
   @@index([restaurantId, atendidaEm])
+}
+
+/// Um banner da capa do cardápio.
+///
+/// A capa era uma foto só, parada. Isto é a vitrine do restaurante: a
+/// promoção da semana, o combo de sábado, o aviso de que abriu aos
+/// domingos. Passam sozinhos e o cliente pode passar com o dedo.
+///
+/// Ocupa a mesma faixa da capa antiga, e na mesma altura, de propósito:
+/// alta, ela empurra o cardápio para fora da primeira tela, e o cliente
+/// rola antes de ver um prato -- que é o motivo de a capa ser baixa.
+///
+/// Sem nenhum banner ligado, a capa volta a ser a foto de sempre. É o
+/// que faz isto nascer sem quebrar nada para quem não usar.
+model Banner {
+  id           String  @id @default(cuid())
+  restaurantId String
+  imageUrl     String
+  /// o que o leitor de tela lê, e o que o dono reconhece na lista
+  titulo       String?
+  ativo        Boolean @default(true)
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, sortOrder])
 }

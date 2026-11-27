@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, BookOpen, ImageOff, Plus, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, GalleryHorizontalEnd, ImageOff, Plus, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -239,6 +239,14 @@ export default async function MenuPage({ params }: PageProps<"/painel/[restauran
           </Link>
         )}
         <NewCategoryButton restaurantId={restaurant.id} highlight={categories.length === 0} />
+        {/* A terceira porta desta tela, e a única que não cria nada: é
+            onde se mexe no que o cliente vê antes de rolar o cardápio. */}
+        {categories.length > 0 && (
+          <Link href={`/painel/${restaurant.id}/cardapio/vitrine`} className={buttonClasses("secondary")}>
+            <GalleryHorizontalEnd className="size-4" aria-hidden="true" />
+            Capa e destaques
+          </Link>
+        )}
       </div>
 
       {categories.length === 0 ? (

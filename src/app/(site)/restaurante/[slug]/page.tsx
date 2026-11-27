@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 
 import { LogoIcon } from "@/components/brand/logo";
 import { deliveryTimeLabel } from "@/components/public/restaurant-card";
+import { CapaPassando } from "@/components/site/capa-passando";
 import { CartPanel } from "@/components/site/cart-panel";
 import { ChatIa } from "@/components/site/chat-ia";
 import { FavoriteButton } from "@/components/site/favorites";
@@ -139,7 +140,12 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               tinha de rolar antes de ver um prato. */}
           <section className="-mx-4 -mt-4 lg:mx-0 lg:mt-0">
             <div className="relative h-28 overflow-hidden bg-surface-2 sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
-              {r.coverUrl ? (
+              {/* Com banners ligados, a capa passa sozinha e o cliente
+                  arrasta. Sem nenhum, é a foto de sempre -- é o que faz
+                  isto nascer sem mudar nada para quem não usar. */}
+              {r.banners.length > 0 ? (
+                <CapaPassando banners={r.banners} />
+              ) : r.coverUrl ? (
                 <Image src={r.coverUrl} alt="" fill priority sizes="(min-width: 1024px) 60rem, 100vw" className="object-cover" />
               ) : (
                 <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(249_104_11/0.25),transparent_60%)]">

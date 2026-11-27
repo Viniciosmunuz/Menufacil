@@ -217,6 +217,16 @@ const cardapioDoBanco = (slug: string) =>
         where: { slug },
     include: {
       openingHours: { orderBy: { weekday: "asc" }, select: { weekday: true, opensAt: true, closesAt: true, closed: true } },
+      // Os banners da capa: só os ligados, na ordem que o dono pôs.
+      //
+      // Entram no mesmo cache do cardápio, e por isso trocar um banner
+      // passa pelo mesmo `derrubarCardapio()` que trocar um preço -- sem
+      // isso, o banner novo só apareceria no minuto seguinte.
+      banners: {
+        where: { ativo: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, imageUrl: true, titulo: true },
+      },
       menuCategories: {
         // a seção marcada como "só no salão" não existe para quem pede
         // pelo link: ela é a taxa de embalagem, o couvert, o "para viagem"
@@ -239,6 +249,7 @@ const cardapioDoBanco = (slug: string) =>
               promoPriceCents: true,
               available: true,
               featured: true,
+              featuredOrder: true,
               pizzaFlavors: true,
               allowAddons: true,
               optionGroups: {

@@ -414,3 +414,146 @@ export async function toggleProductOption(formData: FormData) {
   });
   await aoMudarOCardapio(acc);
 }
+
+// ---- a vitrine: os banners da capa e a ordem dos destaques -------------
+//
+// As duas coisas respondem à mesma pergunta -- o que o cliente vê antes
+// de rolar o cardápio -- e por isso moram na mesma tela do painel.
+//
+// Toda alteração aqui passa pelo `aoMudarOCardapio`, como preço e foto:
+// os banners entram no mesmo cache do cardápio, e sem derrubá-lo o
+// banner novo só apareceria no minuto seguinte.
+
+/**
+ * Põe um banner novo na capa.
+ *
+ * Entra ligado e no fim da fila: quem acabou de subir a promoção da
+ * semana quer ela no ar, e mexer na ordem é outro gesto.
+ */
+export async function criarBanner(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+
+  const image = formData.get("image");
+  if (!hasFile(image)) return { error: "Escolha a imagem do banner." };
+
+  let imageUrl: string;
+  try {
+    imageUrl = await saveImage({ restaurantId, kind: "banner", file: image });
+  } catch (error) {
+    if (error instanceof ImageError) return { error: error.message };
+    throw error;
+  }
+
+  const ultimo = await db.banner.findFirst({
+    where: { restaurantId },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  const banner = await db.banner.create({
+    data: {
+      restaurantId,
+      imageUrl,
+      titulo: String(formData.get("titulo") ?? "").trim().slice(0, 60) || null,
+      sortOrder: (ultimo?.sortOrder ?? 0) + 1,
+    },
+    select: { id: true },
+  });
+
+  await panelAudit(acc, "banner.criar", { bannerId: banner.id });
+  await aoMudarOCardapio(acc);
+  return { ok: true };
+}
+
+/** liga e desliga um banner sem apagar a imagem */
+export async function alternarBanner(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+  const banner = await db.banner.findFirst({ where: { id: idOf(formData), restaurantId }, select: { id: true, ativo: true } });
+  if (!banner) return;
+  await db.banner.update({ where: { id: banner.id }, data: { ativo: !banner.ativo } });
+  await aoMudarOCardapio(acc);
+}
+
+/**
+ * Tira o banner da capa e apaga a imagem.
+ *
+ * Quem só quer parar de mostrar tem o interruptor ao lado; isto é para
+ * a promoção que acabou e não volta.
+ */
+export async function apagarBanner(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+  const banner = await db.banner.findFirst({ where: { id: idOf(formData), restaurantId }, select: { id: true, imageUrl: true } });
+  if (!banner) return;
+  await db.banner.delete({ where: { id: banner.id } });
+  await deleteImage(banner.imageUrl);
+  await panelAudit(acc, "banner.apagar", { bannerId: banner.id });
+  await aoMudarOCardapio(acc);
+}
+
+/** sobe ou desce um banner na fila da capa */
+export async function moverBanner(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+  const fila = await db.banner.findMany({
+    where: { restaurantId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  const moved = await swapOrder(fila, idOf(formData), formData.get("direction") === "up" ? -1 : 1, (id, sortOrder) =>
+    db.banner.updateMany({ where: { id, restaurantId }, data: { sortOrder } }),
+  );
+  if (moved) await aoMudarOCardapio(acc);
+}
+
+/**
+ * Sobe ou desce um prato na vitrine de destaques.
+ *
+ * Mexe no `featuredOrder`, que é outro campo do `sortOrder`: a ordem
+ * dentro da categoria continua a mesma. São duas listas diferentes com o
+ * mesmo prato dentro, e mudar uma não pode bagunçar a outra.
+ */
+export async function moverDestaque(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+  const fila = await db.product.findMany({
+    where: { restaurantId, featured: true },
+    orderBy: [{ featuredOrder: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  const moved = await swapOrder(fila, idOf(formData), formData.get("direction") === "up" ? -1 : 1, (id, featuredOrder) =>
+    db.product.updateMany({ where: { id, restaurantId }, data: { featuredOrder } }),
+  );
+  if (moved) await aoMudarOCardapio(acc);
+}
+
+/** tira um prato da vitrine (ou devolve), sem abrir a edição dele */
+export async function alternarDestaque(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+  const produto = await db.product.findFirst({
+    where: { id: idOf(formData), restaurantId },
+    select: { id: true, featured: true },
+  });
+  if (!produto) return;
+
+  // Entrando na vitrine, vai para o fim da fila: um prato novo no meio
+  // dos destaques empurraria os outros sem ninguém ter pedido.
+  const ultimo = produto.featured
+    ? null
+    : await db.product.findFirst({
+        where: { restaurantId, featured: true },
+        orderBy: { featuredOrder: "desc" },
+        select: { featuredOrder: true },
+      });
+
+  await db.product.update({
+    where: { id: produto.id },
+    data: produto.featured
+      ? { featured: false }
+      : { featured: true, featuredOrder: (ultimo?.featuredOrder ?? 0) + 1 },
+  });
+  await aoMudarOCardapio(acc);
+}

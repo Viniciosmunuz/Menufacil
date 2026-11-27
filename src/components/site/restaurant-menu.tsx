@@ -75,6 +75,8 @@ export type MenuProduct = {
   promoPriceCents: number | null;
   available: boolean;
   featured: boolean;
+  /** a ordem na vitrine de destaques, escolhida pelo dono */
+  featuredOrder?: number | null;
   /** pizza montada: quantos sabores o cliente escolhe */
   pizzaFlavors?: number | null;
   /** este prato aceita os acompanhamentos do cardápio somados por cima */
@@ -728,7 +730,21 @@ export function RestaurantMenu({
   // as abas de seção só existem com mais de uma seção, fora do totem e fora
   // da busca; a barra de cima muda de acabamento quando elas aparecem
   const abasVisiveis = visible.length > 1 && !categoriasNaLateral && !buscando;
-  const featured = buscando ? [] : categories.flatMap((c) => c.products).filter((p) => p.featured && p.available);
+  // Os destaques têm ordem própria, escolhida pelo dono, e não a ordem
+  // em que caem do cardápio.
+  //
+  // Antes a vitrine saía na ordem das categorias: o destaque de "Caldos"
+  // vinha antes do de "Pizzas" porque Caldos é a primeira seção, e não
+  // porque alguém quis. Quem empata (tudo zerado, que é como nasce)
+  // continua na ordem de antes.
+  const featured = buscando
+    ? []
+    : categories
+        .flatMap((c) => c.products)
+        .filter((p) => p.featured && p.available)
+        .map((p, i) => ({ p, i }))
+        .sort((a, b) => (a.p.featuredOrder ?? 0) - (b.p.featuredOrder ?? 0) || a.i - b.i)
+        .map(({ p }) => p);
   const topoRef = useRef<HTMLDivElement>(null);
   const chaveDaBusca = palavras.join(" ");
   const campeoes = useMemo(() => new Set(maisPedidos), [maisPedidos]);
@@ -1006,27 +1022,21 @@ export function RestaurantMenu({
           defeito de tela, não efeito. */}
       {/* o último pedido deste celular, quando ainda não começou outro aqui */}
       {deNovo && canOrder && !buscando && !mineInCart?.items.length && (
-        <section className="mt-4 rounded-card border border-brand/40 bg-brand-soft p-4">
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
-              <RotateCcw className="size-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-extrabold">Pedir de novo</h2>
-              <p className="line-clamp-2 text-sm text-muted">
-                {deNovo.linhas.map((l) => `${l.quantity}x ${l.name}`).join(" · ")}
-              </p>
-              {deNovo.faltaram > 0 && (
-                <p className="mt-1 text-xs font-semibold text-faint">
-                  {deNovo.faltaram === 1
-                    ? "1 item do último pedido não está disponível hoje e ficou de fora."
-                    : `${deNovo.faltaram} itens do último pedido não estão disponíveis hoje e ficaram de fora.`}
-                </p>
-              )}
-            </div>
-          </div>
+        /* Uma faixa de uma linha, e não um cartão.
+
+           O cartão de antes tinha título grande, a lista dos itens e um
+           botão de largura inteira embaixo: três alturas para dizer "o
+           de sempre?". No celular ele comia metade da primeira tela e
+           empurrava o cardápio para baixo -- e quem abre o link veio ver
+           comida, não um bloco laranja.
+
+           Agora cabe tudo numa linha: o símbolo que já dizia "de novo",
+           o que foi o pedido com o total junto, e o carrinho à direita
+           no lugar da seta, que diz para onde o toque leva. A faixa
+           inteira é o botão: alvo grande sem ocupar espaço grande. */
+        <section className="mt-4">
           {trocarCarrinho ? (
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-2 rounded-card border border-brand/40 bg-brand-soft p-3">
               <p className="text-sm font-semibold">Seu carrinho tem itens de outro restaurante. Trocar pelo pedido anterior?</p>
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={() => pedirOutraVez(true)}>
@@ -1038,10 +1048,35 @@ export function RestaurantMenu({
               </div>
             </div>
           ) : (
-            <Button className="mt-3 w-full" onClick={() => pedirOutraVez(false)}>
-              <ShoppingBag className="size-4" aria-hidden="true" />
-              Pôr no carrinho · {formatCents(deNovo.total)}
-            </Button>
+            <button
+              type="button"
+              onClick={() => pedirOutraVez(false)}
+              className="flex w-full items-center gap-3 rounded-card border border-brand/40 bg-brand-soft p-3 text-left transition-colors hover:bg-brand/15"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
+                <RotateCcw className="size-4" aria-hidden="true" />
+              </span>
+
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold">Pedir de novo</span>
+                {/* Os itens e o total na mesma linha, cortada no fim:
+                    quem reconhece o próprio pedido reconhece pelo começo
+                    ("1x Batata frita"), e o preço é o que decide o
+                    toque -- por isso ele vem antes do corte, e não
+                    depois da lista. */}
+                <span className="block truncate text-xs text-muted">
+                  <strong className="font-bold text-ink">{formatCents(deNovo.total)}</strong>
+                  {" · "}
+                  {deNovo.linhas.map((l) => `${l.quantity}x ${l.name}`).join(", ")}
+                  {deNovo.faltaram > 0 &&
+                    ` · ${deNovo.faltaram === 1 ? "1 item esgotou" : `${deNovo.faltaram} itens esgotaram`}`}
+                </span>
+              </span>
+
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-brand-ink">
+                <ShoppingBag className="size-4" aria-hidden="true" />
+              </span>
+            </button>
           )}
         </section>
       )}
