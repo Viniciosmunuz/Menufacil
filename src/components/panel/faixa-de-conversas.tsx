@@ -44,8 +44,11 @@ import type { ConversaAtiva } from "@/server/ia/conversas";
 // restaurante abriu aquela conversa e foi cuidar dela. Verde, porque é o
 // contrário do vermelho que estava ali, e diz de relance que aquele
 // número já tem dono.
+/** o estado como o cartão o mostra; hoje é o mesmo que o servidor manda */
+type EstadoNaTela = ConversaAtiva["estado"];
+
 const ESTADO: Record<
-  ConversaAtiva["estado"],
+  EstadoNaTela,
   { texto: string; ponto: string; letra: string; listra?: string }
 > = {
   "sem-resposta": { texto: "sem resposta", ponto: "bg-danger", letra: "text-danger", listra: "border-l-danger" },
@@ -56,8 +59,20 @@ const ESTADO: Record<
   encerrada: { texto: "encerrada", ponto: "bg-line-strong", letra: "text-faint" },
 };
 
-/** já resolvida: fica na faixa, mas apagada */
-const resolvida = (c: ConversaAtiva) => c.estado === "pedido" || c.estado === "encerrada";
+/**
+ * Já resolvida: fica na faixa, mas apagada.
+ *
+ * "Assumida" entrou aqui em 27/11/2026. Ela é verde e continua na fila
+ * -- mas, assim que alguém assume, ela deixa de pedir qualquer coisa de
+ * quem olha a tela, e acesa disputava o olho com quem ainda espera.
+ * Quem assumiu ainda vê o verde aceso por cinco segundos, que é o
+ * recibo do toque; depois ela apaga como as outras.
+ */
+const resolvida = (estado: EstadoNaTela) =>
+  estado === "pedido" || estado === "encerrada" || estado === "atendida";
+
+/** quanto tempo a conversa recém-assumida fica acesa antes de apagar */
+const RECIBO_MS = 5000;
 
 /** quanto tempo a faixa fechada fica à mostra quando chega conversa nova */
 const ESPIADA_MS = 60_000;
@@ -81,7 +96,15 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
   // responde a mesma coisa.
   const [recemMarcadas, setRecemMarcadas] = useState<Set<string>>(new Set());
 
-  const naTela = (c: ConversaAtiva) =>
+  // As que acabaram de ser assumidas aqui, e ainda estão acesas.
+  //
+  // Duas listas e não uma: a de cima faz o cartão ficar verde na hora e
+  // vale até o servidor concordar; esta só manda no brilho e vence em
+  // cinco segundos. Juntas numa só, o cartão voltaria ao vermelho no
+  // segundo seis, antes de o retrato seguinte chegar.
+  const [acesas, setAcesas] = useState<Set<string>>(new Set());
+
+  const naTela = (c: ConversaAtiva): EstadoNaTela =>
     c.estado === "sem-resposta" && recemMarcadas.has(c.contato) ? "atendida" : c.estado;
 
   // Nasce aberta toda vez que o painel abre, de propósito: fechada é
@@ -259,6 +282,16 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
                         // ficou registrado.
                         if (estado === "sem-resposta") {
                           setRecemMarcadas((m) => new Set(m).add(c.contato));
+                          setAcesas((m) => new Set(m).add(c.contato));
+                          setTimeout(
+                            () =>
+                              setAcesas((m) => {
+                                const sem = new Set(m);
+                                sem.delete(c.contato);
+                                return sem;
+                              }),
+                            RECIBO_MS,
+                          );
                           void marcarAtendida(restaurantId, c.contato).catch(() => {
                             setRecemMarcadas((m) => {
                               const sem = new Set(m);
@@ -278,10 +311,10 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
                         e.listra && cn("border-l-[3px]", e.listra),
                         // o que já passou fica apagado: a faixa é para achar
                         // quem espera, e o resolvido não pode disputar o olho
-                        resolvida(c) && "opacity-55",
-                        // atendida não apaga: ela acabou de sair do
-                        // vermelho, e quem apagou o vermelho quer ver
-                        // que apagou
+                        // A recém-assumida é a exceção, por cinco
+                        // segundos: quem acabou de tocar precisa ver que
+                        // o toque pegou antes de ela se apagar.
+                        resolvida(estado) && !acesas.has(c.contato) && "opacity-55",
                       )}
                     >
                       <span className="flex items-baseline gap-1.5">

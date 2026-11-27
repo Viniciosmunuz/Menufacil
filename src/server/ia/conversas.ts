@@ -272,14 +272,22 @@ export type ConversaAtiva = {
   quemAtendeu: string | null;
 };
 
-const PESO: Record<EstadoDaConversa, number> = {
-  "sem-resposta": 0,
-  atendida: 1,
-  atendente: 2,
-  atendendo: 3,
-  pedido: 4,
-  encerrada: 5,
-};
+/**
+ * A ordem da faixa: só uma coisa fura a fila do relógio.
+ *
+ * Antes era uma escada de cinco degraus -- quem esperava, quem foi
+ * assumido, quem a Lia atendia, quem virou pedido, quem encerrou. O
+ * efeito na tela foi o contrário do combinado: duas conversas de uma
+ * hora atrás, já assumidas, ocupavam a frente da faixa, e a cliente que
+ * tinha escrito há três minutos ficava em terceiro. A escada ordenava
+ * pelo que já aconteceu, e a faixa serve para o que está acontecendo.
+ *
+ * Agora é o relógio que manda, com uma exceção: **quem está sem
+ * resposta vem na frente**, porque é a razão de a faixa existir. O
+ * resto -- inclusive o que alguém já assumiu -- entra pela hora, do
+ * mais novo para o mais velho.
+ */
+const PRIMEIRO = (e: EstadoDaConversa) => (e === "sem-resposta" ? 0 : 1);
 
 export async function conversasAtivas(restaurantId: string): Promise<ConversaAtiva[]> {
   const desde = new Date(Date.now() - JANELA_DO_DIA_H * 60 * 60_000);
@@ -382,5 +390,8 @@ export async function conversasAtivas(restaurantId: string): Promise<ConversaAti
         quemAtendeu: assumida ? (marca!.quem?.trim() || null) : null,
       };
     })
-    .sort((a, b) => PESO[a.estado] - PESO[b.estado] || b.quando.getTime() - a.quando.getTime());
+    .sort(
+      (a, b) =>
+        PRIMEIRO(a.estado) - PRIMEIRO(b.estado) || b.quando.getTime() - a.quando.getTime(),
+    );
 }
