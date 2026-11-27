@@ -21,7 +21,7 @@ export default async function VitrinePage({ params }: { params: Promise<{ restau
     db.banner.findMany({
       where: { restaurantId: restaurant.id },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, imageUrl: true, titulo: true, ativo: true },
+      select: { id: true, imageUrl: true, titulo: true, ativo: true, escala: true, focoX: true, focoY: true },
     }),
     // Na mesma ordem em que a vitrine do cliente sai: é a lista que o
     // dono está olhando no celular dele, e uma ordem diferente aqui

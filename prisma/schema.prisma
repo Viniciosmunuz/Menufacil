@@ -2007,6 +2007,18 @@ model Banner {
   ativo        Boolean @default(true)
   sortOrder    Int     @default(0)
 
+  /// O enquadramento, escolhido pelo dono depois de subir a arte.
+  ///
+  /// A faixa e mais larga que alta do que a imagem, entao o navegador
+  /// corta de cima e de baixo -- e a logo cobre o canto de baixo a
+  /// esquerda. Arte boa com a letra no lugar errado era um banner
+  /// perdido; com estes tres numeros ela se ajeita sem refazer nada.
+  ///
+  /// escala em %, 100 = a imagem inteira. foco em %, 50 = centro.
+  escala Int @default(100)
+  focoX  Int @default(50)
+  focoY  Int @default(50)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

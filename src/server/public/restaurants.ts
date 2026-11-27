@@ -225,7 +225,7 @@ const cardapioDoBanco = (slug: string) =>
       banners: {
         where: { ativo: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, imageUrl: true, titulo: true },
+        select: { id: true, imageUrl: true, titulo: true, escala: true, focoX: true, focoY: true },
       },
       menuCategories: {
         // a seção marcada como "só no salão" não existe para quem pede

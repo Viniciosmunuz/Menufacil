@@ -557,3 +557,37 @@ export async function alternarDestaque(formData: FormData) {
   });
   await aoMudarOCardapio(acc);
 }
+
+/**
+ * O enquadramento do banner: aproximar e mover.
+ *
+ * Existe porque arte boa chegava no lugar errado. A faixa é mais larga
+ * que alta do que a imagem, então o navegador corta de cima e de baixo,
+ * e a logo cobre o canto de baixo à esquerda -- a primeira arte que ele
+ * fez na IA veio com "NO CARDÁPIO" exatamente ali. Sem isto, o caminho
+ * era refazer a imagem; com isto, ele aproxima um pouco e empurra para
+ * o lado.
+ *
+ * Os números chegam presos na faixa que faz sentido: 100% a 200% de
+ * aproximação e 0 a 100 de posição. Fora disso não é escolha de
+ * ninguém, é formulário adulterado.
+ */
+export async function enquadrarBanner(formData: FormData) {
+  const acc = await access(formData);
+  const restaurantId = acc.restaurant.id;
+
+  const preso = (nome: string, minimo: number, maximo: number, padrao: number) => {
+    const n = Number(formData.get(nome));
+    return Number.isFinite(n) ? Math.min(maximo, Math.max(minimo, Math.round(n))) : padrao;
+  };
+
+  await db.banner.updateMany({
+    where: { id: idOf(formData), restaurantId },
+    data: {
+      escala: preso("escala", 100, 200, 100),
+      focoX: preso("focoX", 0, 100, 50),
+      focoY: preso("focoY", 0, 100, 50),
+    },
+  });
+  await aoMudarOCardapio(acc);
+}

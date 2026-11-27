@@ -22,7 +22,37 @@ import { cn } from "@/lib/cn";
 // A passagem sozinha é um `scrollTo` no mesmo trilho, então as duas
 // coisas são o mesmo movimento e nunca discordam.
 
-export type BannerDaCapa = { id: string; imageUrl: string; titulo: string | null };
+export type BannerDaCapa = {
+  id: string;
+  imageUrl: string;
+  titulo: string | null;
+  /** o enquadramento escolhido no painel: 100 = imagem inteira, 50/50 = centro */
+  escala?: number | null;
+  focoX?: number | null;
+  focoY?: number | null;
+};
+
+/**
+ * O enquadramento, do jeito que o navegador entende.
+ *
+ * `objectPosition` escolhe que parte sobra quando a imagem é maior que
+ * a faixa, e é o que resolve o corte de cima e de baixo. O `scale`
+ * entra para o resto: aproximando, a parte escolhida cresce e o dono
+ * consegue tirar a letra de trás da logo sem refazer a arte.
+ *
+ * A origem do `scale` acompanha o foco de propósito. Com a origem no
+ * centro, aproximar empurrava de volta para o meio o que a pessoa tinha
+ * acabado de puxar para o canto, e o controle parecia quebrado.
+ */
+export function enquadrar(b: BannerDaCapa): React.CSSProperties {
+  const x = b.focoX ?? 50;
+  const y = b.focoY ?? 50;
+  const z = (b.escala ?? 100) / 100;
+  return {
+    objectPosition: `${x}% ${y}%`,
+    ...(z === 1 ? {} : { transform: `scale(${z})`, transformOrigin: `${x}% ${y}%` }),
+  };
+}
 
 /** quanto cada banner fica à mostra antes de o próximo entrar */
 const PASSA_EM_MS = 5000;
@@ -105,6 +135,7 @@ export function CapaPassando({ banners }: { banners: BannerDaCapa[] }) {
               priority={i === 0}
               sizes="(min-width: 1024px) 60rem, 100vw"
               className="object-cover"
+              style={enquadrar(b)}
             />
           </div>
         ))}

@@ -27,12 +27,15 @@ export function PreviaDaCapa({
   logoUrl,
   nome,
   vazia,
+  enquadramento,
 }: {
   imagem: string | null;
   logoUrl: string | null;
   nome: string;
   /** o texto de quando não há banner nenhum para mostrar */
   vazia?: string;
+  /** o mesmo cálculo do cardápio, para a prévia mentir zero */
+  enquadramento?: React.CSSProperties;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -43,7 +46,7 @@ export function PreviaDaCapa({
         {/* a faixa, na altura exata que o cliente tem no celular */}
         <div className="relative h-[5.5rem] w-full overflow-hidden bg-surface-3">
           {imagem ? (
-            <Image src={imagem} alt="" fill sizes="360px" className="object-cover" />
+            <Image src={imagem} alt="" fill sizes="360px" className="object-cover" style={enquadramento} />
           ) : (
             <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_70%_30%,rgb(249_104_11/0.25),transparent_60%)]">
               <LogoIcon className="h-10 opacity-50" />

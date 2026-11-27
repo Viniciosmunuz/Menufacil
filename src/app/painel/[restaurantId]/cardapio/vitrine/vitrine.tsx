@@ -11,6 +11,9 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 
+import { enquadrar } from "@/components/site/capa-passando";
+
+import { ControlesDoEnquadramento, type Enquadramento } from "./enquadrar";
 import { PreviaDaCapa } from "./previa";
 import { PromptDaIa } from "./prompt-da-ia";
 import {
@@ -36,6 +39,9 @@ export type BannerDoPainel = {
   imageUrl: string;
   titulo: string | null;
   ativo: boolean;
+  escala: number;
+  focoX: number;
+  focoY: number;
 };
 
 export type DestaqueDoPainel = {
@@ -113,6 +119,17 @@ function Banners({
   const ligados = banners.filter((b) => b.ativo);
   const escolhido = banners.find((b) => b.id === vendo) ?? ligados[0] ?? null;
 
+  // O enquadramento enquanto o dedo arrasta.
+  //
+  // `null` quer dizer "o que está salvo": é o estado em que a tela
+  // nasce e para o qual ela volta ao trocar de banner. Guardar sempre
+  // uma cópia faria o controle mostrar o ajuste do banner anterior no
+  // primeiro quadro depois da troca.
+  const [mexendo, setMexendo] = useState<Enquadramento | null>(null);
+  const aoVivo: Enquadramento | null = escolhido
+    ? (mexendo ?? { escala: escolhido.escala, focoX: escolhido.focoX, focoY: escolhido.focoY })
+    : null;
+
   // Subiu: o formulário se limpa, pronto para o próximo banner.
   //
   // O efeito depende do estado inteiro, e não do `ok`: o `ok` continua
@@ -141,12 +158,29 @@ function Banners({
         imagem={escolhido?.imageUrl ?? coverUrl}
         logoUrl={logoUrl}
         nome={nome}
+        enquadramento={
+          escolhido && aoVivo
+            ? enquadrar({ id: escolhido.id, imageUrl: escolhido.imageUrl, titulo: null, ...aoVivo })
+            : undefined
+        }
         vazia={
           escolhido
             ? `Prévia de "${escolhido.titulo || "sem nome"}", como o cliente vê no celular.`
             : "Sem banner ligado, é esta a capa que o cliente vê."
         }
       />
+
+      {/* Os controles grudados na prévia, porque só fazem sentido
+          olhando para ela: aproximar e mover são gestos de quem está
+          vendo o resultado mudar. */}
+      {escolhido && aoVivo && (
+        <ControlesDoEnquadramento
+          restaurantId={restaurantId}
+          bannerId={escolhido.id}
+          valor={aoVivo}
+          mudou={setMexendo}
+        />
+      )}
 
       {banners.length === 0 ? (
         <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
@@ -179,7 +213,11 @@ function Banners({
                   "ver esse aqui". */}
               <button
                 type="button"
-                onClick={() => setVendo(b.id)}
+                onClick={() => {
+                  setVendo(b.id);
+                  // volta a mostrar o que está salvo do banner novo
+                  setMexendo(null);
+                }}
                 aria-pressed={escolhido?.id === b.id}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
