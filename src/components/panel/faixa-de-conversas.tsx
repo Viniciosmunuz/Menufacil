@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronUp, MessageSquare, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, MessageSquare, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { marcarAtendida } from "@/app/painel/[restaurantId]/ia/actions";
 import { cn } from "@/lib/cn";
 import { formatPhone } from "@/lib/format";
 
@@ -39,11 +40,16 @@ import type { ConversaAtiva } from "@/server/ia/conversas";
 // Só os dois estados vivos têm cor no texto e listra na lateral: vermelho
 // quando o cliente está esperando alguém, verde enquanto a Lia está no meio
 // do atendimento. O resto é cinza, porque não pede nada de ninguém.
+// O sexto estado, "atendida", é o único que uma pessoa liga: alguém do
+// restaurante abriu aquela conversa e foi cuidar dela. Verde, porque é o
+// contrário do vermelho que estava ali, e diz de relance que aquele
+// número já tem dono.
 const ESTADO: Record<
   ConversaAtiva["estado"],
   { texto: string; ponto: string; letra: string; listra?: string }
 > = {
   "sem-resposta": { texto: "sem resposta", ponto: "bg-danger", letra: "text-danger", listra: "border-l-danger" },
+  atendida: { texto: "alguém assumiu", ponto: "bg-zap", letra: "text-zap-escuro", listra: "border-l-zap" },
   atendente: { texto: "atendente assumiu", ponto: "bg-warning", letra: "text-muted" },
   atendendo: { texto: "em atendimento", ponto: "bg-zap", letra: "text-zap-escuro", listra: "border-l-zap" },
   pedido: { texto: "virou pedido", ponto: "bg-success", letra: "text-faint" },
@@ -66,6 +72,17 @@ function desde(quando: Date) {
 
 export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: string; conversas: ConversaAtiva[] }) {
   const [aberta, setAberta] = useState<ConversaAtiva | null>(null);
+
+  // As que esta tela acabou de marcar.
+  //
+  // Quem marca é o servidor, e o retrato só volta na próxima rodada --
+  // até lá o cartão continuaria vermelho na cara de quem acabou de
+  // tocar nele. Esta lista é a ponte: some sozinha quando o servidor
+  // responde a mesma coisa.
+  const [recemMarcadas, setRecemMarcadas] = useState<Set<string>>(new Set());
+
+  const naTela = (c: ConversaAtiva) =>
+    c.estado === "sem-resposta" && recemMarcadas.has(c.contato) ? "atendida" : c.estado;
 
   // Nasce aberta toda vez que o painel abre, de propósito: fechada é
   // escolha do momento, não preferência guardada. Quem fechou porque a
@@ -105,6 +122,44 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
 
   useEffect(() => () => void (relogio.current && clearTimeout(relogio.current)), []);
 
+  /**
+   * As setas de passar para o lado.
+   *
+   * Num sábado cheio a fila passa de dez conversas, e as que não cabem
+   * ficam fora da tela. No celular o dedo arrasta e isso basta; no
+   * computador do balcão, não -- a barra de rolagem está escondida (ela
+   * engordava a faixa) e com o mouse não há o que arrastar. Sem seta, o
+   * que não coube simplesmente não existe.
+   *
+   * Cada seta só aparece quando há o que ver daquele lado: seta que não
+   * leva a lugar nenhum ensina a não clicar nelas.
+   */
+  const trilho = useRef<HTMLUListElement | null>(null);
+  const [sobra, setSobra] = useState({ esquerda: false, direita: false });
+
+  const medir = useCallback(() => {
+    const el = trilho.current;
+    if (!el) return setSobra({ esquerda: false, direita: false });
+    // a folga de 4 px é contra o arredondamento do navegador: no fim do
+    // trilho a conta dá 0,6 px de sobra e a seta ficava acesa à toa
+    setSobra({
+      esquerda: el.scrollLeft > 4,
+      direita: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [medir, conversas, mostrando]);
+
+  /** anda quase uma tela, deixando um cartão à vista para não perder o fio */
+  const andar = (lado: 1 | -1) => {
+    const el = trilho.current;
+    if (el) el.scrollBy({ left: lado * el.clientWidth * 0.8, behavior: "smooth" });
+  };
+
   /** a pessoa mexeu: a espiada vira decisão dela, e o relógio para */
   function assumeOControle() {
     if (relogio.current) {
@@ -117,7 +172,7 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
   // cartão seria uma tarja cinza tomando espaço para dizer "nada aqui"
   if (conversas.length === 0) return null;
 
-  const esperando = conversas.filter((c) => c.estado === "sem-resposta").length;
+  const esperando = conversas.filter((c) => naTela(c) === "sem-resposta").length;
 
   return (
     <>
@@ -171,15 +226,47 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
           </div>
 
           {mostrando && (
-            <ul className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="relative">
+              {/* As setas ficam por cima das pontas do trilho, com um
+                  degradê atrás: sem ele a seta cai em cima do nome do
+                  cartão de baixo e as duas coisas viram borrão. */}
+              <Seta lado="esquerda" aceso={sobra.esquerda} andar={() => andar(-1)} />
+              <Seta lado="direita" aceso={sobra.direita} andar={() => andar(1)} />
+
+              <ul
+                ref={trilho}
+                onScroll={medir}
+                className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
               {conversas.map((c) => {
-                const e = ESTADO[c.estado];
+                const estado = naTela(c);
+                const e = ESTADO[estado];
                 return (
                   <li key={c.contato} className="shrink-0">
                     <button
                       type="button"
                       onClick={() => {
                         assumeOControle();
+                        // Abrir para ler é assumir: quem toca no cartão
+                        // vermelho está indo cuidar daquele cliente. Sai
+                        // da fila sem pedir mais um clique de confirmação
+                        // -- clique a mais no balcão é clique que ninguém dá.
+                        //
+                        // Verde na hora aqui, e pelo servidor nos outros
+                        // aparelhos: falhou a gravação, o cartão volta ao
+                        // vermelho na próxima rodada, que é o certo --
+                        // ninguém pode achar que está atendido se não
+                        // ficou registrado.
+                        if (estado === "sem-resposta") {
+                          setRecemMarcadas((m) => new Set(m).add(c.contato));
+                          void marcarAtendida(restaurantId, c.contato).catch(() => {
+                            setRecemMarcadas((m) => {
+                              const sem = new Set(m);
+                              sem.delete(c.contato);
+                              return sem;
+                            });
+                          });
+                        }
                         setAberta(c);
                       }}
                       className={cn(
@@ -192,6 +279,9 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
                         // o que já passou fica apagado: a faixa é para achar
                         // quem espera, e o resolvido não pode disputar o olho
                         resolvida(c) && "opacity-55",
+                        // atendida não apaga: ela acabou de sair do
+                        // vermelho, e quem apagou o vermelho quer ver
+                        // que apagou
                       )}
                     >
                       <span className="flex items-baseline gap-1.5">
@@ -207,7 +297,12 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
                       <span className="mt-1.5 flex items-center gap-1.5">
                         <span className={cn("size-1.5 shrink-0 rounded-full", e.ponto)} aria-hidden="true" />
                         <span className={cn("truncate text-[0.6rem] font-medium", e.letra)}>
-                          {e.texto}
+                          {/* o nome de quem assumiu, que é a razão de
+                              isto existir: sem ele, os dois aparelhos
+                              ficam verdes e ninguém sabe quem foi */}
+                          {estado === "atendida" && c.quemAtendeu
+                            ? `${c.quemAtendeu.split(" ")[0]} assumiu`
+                            : e.texto}
                           {c.estado === "pedido" && c.pedido !== null ? ` #${c.pedido}` : ""}
                         </span>
                       </span>
@@ -215,13 +310,53 @@ export function FaixaDeConversas({ restaurantId, conversas }: { restaurantId: st
                   </li>
                 );
               })}
-            </ul>
+              </ul>
+            </div>
           )}
         </div>
       </div>
 
       {aberta && <Conversa conversa={aberta} restaurantId={restaurantId} fechar={() => setAberta(null)} />}
     </>
+  );
+}
+
+/**
+ * Uma seta de passar a fila para o lado.
+ *
+ * Apagada em vez de some: a faixa tem 114 px e é feita de cartões de
+ * largura fixa; uma seta que aparece e desaparece empurraria a fila dois
+ * pixels para o lado a cada rolagem, e o cartão que a pessoa estava
+ * mirando sairia de debaixo do dedo.
+ */
+function Seta({
+  lado,
+  aceso,
+  andar,
+}: {
+  lado: "esquerda" | "direita";
+  aceso: boolean;
+  andar: () => void;
+}) {
+  const esquerda = lado === "esquerda";
+  return (
+    <button
+      type="button"
+      onClick={andar}
+      disabled={!aceso}
+      aria-label={esquerda ? "Ver as conversas anteriores" : "Ver mais conversas"}
+      className={cn(
+        "absolute top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full border border-line bg-surface text-muted shadow-md transition-opacity",
+        esquerda ? "-left-1" : "-right-1",
+        aceso ? "opacity-100 hover:text-ink" : "pointer-events-none opacity-0",
+      )}
+    >
+      {esquerda ? (
+        <ChevronLeft className="size-4" aria-hidden="true" />
+      ) : (
+        <ChevronRight className="size-4" aria-hidden="true" />
+      )}
+    </button>
   );
 }
 

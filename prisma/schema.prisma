@@ -281,6 +281,7 @@ model Restaurant {
   iaMensagens         IaMensagem[]
   iaRascunhos         IaRascunho[]
   iaChamados          IaChamado[]
+  iaAtendidas         IaConversaAtendida[]
   menuCategories      MenuCategory[]
   products            Product[]
   orders              Order[]
@@ -1950,4 +1951,32 @@ model TentativaDeLogin {
 
   @@index([login, createdAt])
   @@index([createdAt])
+}
+
+/// Uma conversa da Lia que alguém do restaurante já assumiu.
+///
+/// Mora no banco, e não no aparelho, de propósito: o balcão e o celular
+/// do dono precisam concordar. Sem isso, quem atende pelo computador
+/// deixa o cartão vermelho no celular de quem está na rua, e os dois
+/// respondem o mesmo cliente -- que foi exatamente o que ele quis
+/// evitar.
+///
+/// Uma linha por conversa, atualizada no lugar: não é histórico de
+/// atendimento, é "alguém está cuidando desta aqui". Quem compara é a
+/// faixa, com a hora da última mensagem: mensagem mais nova que a marca
+/// quer dizer que o cliente voltou a esperar, e o vermelho volta.
+model IaConversaAtendida {
+  id           String @id @default(cuid())
+  restaurantId String
+  /// a mesma chave do historico: o telefone, ou `web:<sessao>` no cardapio
+  contato      String
+  /// quem marcou, para a faixa dizer "Vini ja viu" em vez de "voce atendeu"
+  quem         String?
+
+  atendidaEm DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, contato])
+  @@index([restaurantId, atendidaEm])
 }

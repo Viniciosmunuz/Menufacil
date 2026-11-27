@@ -3,6 +3,7 @@
 import { Headset, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { marcarAtendida } from "@/app/painel/[restaurantId]/ia/actions";
 import { CHOICE_KEY, SOUND_KEY, idList, playSound, read, remember, somEscolhido, useStored } from "@/lib/aviso-local";
 
 // A Lia chamou uma pessoa: sobe no canto, como o pedido e o recado.
@@ -63,7 +64,7 @@ function Espera({ desde }: { desde: string }) {
   return <span className="shrink-0 text-[0.7rem] font-bold opacity-90">{texto}</span>;
 }
 
-export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
+export function AvisosDaIa({ restaurantId, chamados }: { restaurantId: string; chamados: ChamadoNovo[] }) {
   const salvos = useStored(VISTOS_KEY);
   const som = useStored(SOUND_KEY) === "1";
   const escolha = somEscolhido(useStored(CHOICE_KEY));
@@ -95,7 +96,23 @@ export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
 
   if (novos.length === 0) return null;
 
-  const dispensar = (chaves: string[]) => remember(VISTOS_KEY, chaves, read(VISTOS_KEY));
+  /**
+   * Some com o aviso -- e, quando é um só, tira aquele número do
+   * vermelho na faixa das conversas.
+   *
+   * São a mesma pessoa esperando, mostrada em dois lugares: dispensar o
+   * aviso aqui e continuar vendo "sem resposta" lá embaixo seria o
+   * painel discordando de si mesmo. Em bloco ("e mais 3 esperando") só
+   * o aviso some: tirar a pilha da frente não é dizer que atendeu cada
+   * uma delas.
+   */
+  const dispensar = (chaves: string[], contato?: string) => {
+    // a falha fica no silêncio de propósito: o aviso tem de sumir da
+    // frente de quem clicou, e o vermelho da faixa volta sozinho na
+    // próxima rodada se a gravação não foi
+    if (contato) void marcarAtendida(restaurantId, contato).catch(() => {});
+    remember(VISTOS_KEY, chaves, read(VISTOS_KEY));
+  };
 
   return (
     <>
@@ -117,7 +134,7 @@ export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
               <span className="min-w-0 flex-1 truncate font-extrabold">{c.quem}</span>
               <button
                 type="button"
-                onClick={() => dispensar([c.chave])}
+                onClick={() => dispensar([c.chave], c.contato)}
                 aria-label={`Dispensar o aviso de ${c.quem}`}
                 className="-my-1 grid size-8 shrink-0 place-items-center rounded-control text-faint hover:bg-surface-2 hover:text-ink"
               >
@@ -136,7 +153,7 @@ export function AvisosDaIa({ chamados }: { chamados: ChamadoNovo[] }) {
               href={`https://wa.me/${c.contato.replace(/\D/g, "")}`}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => dispensar([c.chave])}
+              onClick={() => dispensar([c.chave], c.contato)}
               className="flex items-center justify-center gap-2 rounded-control bg-zap px-4 py-2 text-sm font-bold text-white hover:bg-zap-escuro"
             >
               <Headset className="size-4" aria-hidden="true" />

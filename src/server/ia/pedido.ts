@@ -567,25 +567,57 @@ async function buscarPedidos(ctx: ContextoDoPedido, entrada: Record<string, unkn
   if (!nome) return { texto: "Nenhum pedido de hoje com este número. Pergunte o nome que o cliente usou no pedido e busque de novo." };
   if (nome.length < 3) return erro("Nome curto demais para buscar. Peça o nome completo.");
 
-  // Pelo nome só aparece pedido esperando Pix, e só com o primeiro nome:
-  // quem pergunta não provou ser o dono do pedido, e ali tem endereço.
+  /**
+   * Pelo nome, e só com o primeiro nome de volta.
+   *
+   * Pelo número o cliente provou que o pedido é dele; pelo nome, não --
+   * qualquer um diz um nome. Por isso o que volta daqui é curto de
+   * propósito, e o que volta depende da fase do pedido:
+   *
+   * - **esperando Pix**: o valor vai junto, porque é o caso para que
+   *   esta busca nasceu -- quem pediu num celular e pagou no outro
+   *   precisa receber o código de novo.
+   * - **qualquer outra fase**: só o número e em que pé está. Nada de
+   *   valor, de itens, de endereço, de telefone.
+   *
+   * A segunda parte entrou em 27/11/2026: a Nara pediu do celular dela,
+   * perguntou "quantos minutos ainda?" do celular de quem pagou, deu o
+   * nome quando a Lia pediu -- e levou um "não achei seu pedido", à uma
+   * da manhã, porque o pedido já estava pago e a busca só enxergava os
+   * que esperavam Pix. A resposta estava na tela do painel, a dois
+   * metros dali. O que vaza no pior caso é que alguém pediu comida
+   * hoje; o que se perdia era a cliente achando que ninguém anotou.
+   */
   const porNome = await db.order.findMany({
     where: {
       restaurantId: ctx.restaurantId,
       origin: DO_WHATSAPP,
       createdAt: { gte: desde() },
-      status: "AWAITING_PAYMENT",
-      paymentMethod: "PIX",
+      status: { not: "CANCELED" },
       customerName: { contains: nome, mode: "insensitive" },
     },
     orderBy: { createdAt: "desc" },
     take: 3,
     select,
   });
-  if (porNome.length === 0) return { texto: "Nenhum pedido esperando Pix hoje com esse nome. Chame alguém da equipe." };
-  const linhas = porNome.map((o) => `#${o.number} — ${o.customerName.split(" ")[0]} — ${formatCents(o.totalCents)} — esperando o Pix`);
+  if (porNome.length === 0) return { texto: "Nenhum pedido de hoje com esse nome. Chame alguém da equipe." };
+
+  const esperandoPix = (o: (typeof porNome)[number]) =>
+    o.status === "AWAITING_PAYMENT" && o.paymentMethod === "PIX";
+
+  const linhas = porNome.map((o) =>
+    esperandoPix(o)
+      ? `#${o.number} — ${o.customerName.split(" ")[0]} — ${formatCents(o.totalCents)} — esperando o Pix`
+      : `#${o.number} — ${o.customerName.split(" ")[0]} — ${orderStatusLabel[o.status]}`,
+  );
+
   return {
-    texto: `Achados pelo nome (o número do WhatsApp é outro). Confirme com o cliente o número do pedido e o total antes de mandar o Pix:\n${linhas.join("\n")}`,
+    texto:
+      `Achados pelo nome (o número do WhatsApp é outro, então o cliente não provou que o pedido é dele).\n` +
+      `${linhas.join("\n")}\n\n` +
+      `Pode dizer em que pé está o pedido. **Não diga endereço, itens, valor nem telefone** -- quem está perguntando pode não ser o dono do pedido. ` +
+      `Só mande o Pix se a linha disser "esperando o Pix", e antes confirme com o cliente o número do pedido e o total. ` +
+      `Para cancelar ou mudar qualquer coisa, chame alguém da equipe.`,
   };
 }
 

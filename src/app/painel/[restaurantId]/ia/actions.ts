@@ -40,6 +40,37 @@ export async function verConversa(
 }
 
 /**
+ * "Eu assumi esta conversa", para todos os aparelhos do restaurante.
+ *
+ * Mora no banco e não no navegador de propósito, e foi ele quem pediu
+ * assim: com a marca no aparelho, quem atende pelo computador do balcão
+ * deixa o cartão vermelho no celular de quem está na rua, e os dois
+ * respondem o mesmo cliente.
+ *
+ * Grava o nome de quem marcou junto. Numa casa onde a conta do painel é
+ * a mesma para todo mundo isso não diz muita coisa; onde há login por
+ * pessoa, diz quem já está cuidando -- que é a razão de existir disto.
+ *
+ * Um registro por conversa, atualizado no lugar: não é histórico, é o
+ * estado de agora. E não precisa desfazer: a marca vale só até a
+ * próxima mensagem do cliente, e aí o vermelho volta sozinho.
+ */
+export async function marcarAtendida(restaurantId: string, contato: string): Promise<void> {
+  const { restaurant, user } = await requireDono(restaurantId);
+  const quem = user.name.trim() || null;
+
+  await db.iaConversaAtendida.upsert({
+    where: { restaurantId_contato: { restaurantId: restaurant.id, contato } },
+    update: { quem, atendidaEm: new Date() },
+    create: { restaurantId: restaurant.id, contato, quem },
+  });
+
+  // A tela de Pedidos é que mostra a faixa; sem isto, o aparelho que
+  // marcou só veria o verde na próxima volta do retrato.
+  refresh();
+}
+
+/**
  * Põe ou tira um número de uma das listas, direto da conversa.
  *
  * O mesmo que o dono faria digitando lá em cima; a diferença é que aqui

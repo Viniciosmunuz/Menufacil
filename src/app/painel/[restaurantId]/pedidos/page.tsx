@@ -231,7 +231,10 @@ export default async function RestaurantOrdersPage({ params, searchParams }: Pag
            null quando não tem o que mostrar. */
         recados={
           <>
-            <AvisosDaIa chamados={chamados.map((c) => ({ ...c, desde: c.quando.toISOString() }))} />
+            <AvisosDaIa
+              restaurantId={restaurant.id}
+              chamados={chamados.map((c) => ({ ...c, desde: c.quando.toISOString() }))}
+            />
             <AvisosDeMensagem mensagens={recados} base={base} />
           </>
         }

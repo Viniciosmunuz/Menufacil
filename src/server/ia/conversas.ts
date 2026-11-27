@@ -250,7 +250,13 @@ function ehFecho(texto: string, temPedido: boolean): boolean {
   return FECHOS.has(limpo) || limpo.split(" ").every((p) => FECHOS.has(p));
 }
 
-export type EstadoDaConversa = "sem-resposta" | "atendente" | "atendendo" | "pedido" | "encerrada";
+export type EstadoDaConversa =
+  | "sem-resposta"
+  | "atendida"
+  | "atendente"
+  | "atendendo"
+  | "pedido"
+  | "encerrada";
 
 export type ConversaAtiva = {
   contato: string;
@@ -262,14 +268,17 @@ export type ConversaAtiva = {
   estado: EstadoDaConversa;
   /** o número do pedido que saiu desta conversa, quando saiu */
   pedido: number | null;
+  /** quem do restaurante assumiu esta conversa, quando alguém assumiu */
+  quemAtendeu: string | null;
 };
 
 const PESO: Record<EstadoDaConversa, number> = {
   "sem-resposta": 0,
-  atendente: 1,
-  atendendo: 2,
-  pedido: 3,
-  encerrada: 4,
+  atendida: 1,
+  atendente: 2,
+  atendendo: 3,
+  pedido: 4,
+  encerrada: 5,
 };
 
 export async function conversasAtivas(restaurantId: string): Promise<ConversaAtiva[]> {
@@ -304,14 +313,22 @@ export async function conversasAtivas(restaurantId: string): Promise<ConversaAti
    * do WhatsApp.
    */
   const numeros = [...new Set(candidatas.flatMap((l) => variantes(l.contato)))];
-  const [pedidos, clientes] = await Promise.all([
+  const [pedidos, clientes, atendidas] = await Promise.all([
     db.order.findMany({
       where: { restaurantId, customerWhatsapp: { in: numeros }, createdAt: { gte: desde } },
       orderBy: { createdAt: "desc" },
       select: { customerWhatsapp: true, number: true },
     }),
     db.customer.findMany({ where: { whatsapp: { in: numeros } }, select: { whatsapp: true, name: true } }),
+    // Quem alguém do restaurante já assumiu. Vem do banco e não do
+    // aparelho: o balcão e o celular do dono têm de concordar, senão os
+    // dois respondem o mesmo cliente.
+    db.iaConversaAtendida.findMany({
+      where: { restaurantId, contato: { in: candidatas.map((l) => l.contato) } },
+      select: { contato: true, quem: true, atendidaEm: true },
+    }),
   ]);
+  const marcaDe = new Map(atendidas.map((a) => [a.contato, a]));
   const porNumero = new Map(clientes.map((c) => [c.whatsapp, c.name]));
   // o mais recente de cada número, que é o que a conversa fechou
   const pedidoDe = new Map<string, number>();
@@ -330,9 +347,21 @@ export async function conversasAtivas(restaurantId: string): Promise<ConversaAti
       // pedido e depois escreveu de novo continua esperando resposta --
       // a não ser que o que ele escreveu tenha sido um fecho.
       const esperando = l.papel === "CLIENTE" && !ehFecho(l.texto, numero !== null);
+
+      // Alguém já assumiu esta conversa?
+      //
+      // A marca tem de ser mais nova que a última mensagem. Quem foi
+      // atendido às oito e escreve de novo às nove está esperando outra
+      // vez, e o vermelho tem de voltar -- marca velha não cala cliente
+      // novo.
+      const marca = marcaDe.get(l.contato);
+      const assumida = marca !== undefined && marca.atendidaEm.getTime() >= l.createdAt.getTime();
+
       const estado: EstadoDaConversa =
         esperando
-          ? "sem-resposta"
+          ? assumida
+            ? "atendida"
+            : "sem-resposta"
           : l.papel === "HUMANO"
             ? "atendente"
             : numero !== null
@@ -350,6 +379,7 @@ export async function conversasAtivas(restaurantId: string): Promise<ConversaAti
         quando: l.createdAt,
         estado,
         pedido: numero,
+        quemAtendeu: assumida ? (marca!.quem?.trim() || null) : null,
       };
     })
     .sort((a, b) => PESO[a.estado] - PESO[b.estado] || b.quando.getTime() - a.quando.getTime());
