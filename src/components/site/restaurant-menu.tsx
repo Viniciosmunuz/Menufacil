@@ -743,6 +743,31 @@ export function RestaurantMenu({
   const teclado = useDigitando();
   const buscaRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * A busca mora atrás de uma lupa, e não numa barra sempre à mostra.
+   *
+   * A barra fixa custava uma linha inteira da primeira tela para uma
+   * coisa que a maioria não usa: quem abre o link de um restaurante
+   * pequeno rola o cardápio, não procura pelo nome. Agora ela é a
+   * primeira aba da fila -- do tamanho de um ícone -- e abre o campo
+   * quando alguém toca.
+   *
+   * No totem fica como era: lá o cardápio é longo, o aparelho é de
+   * balcão e a pessoa está de pé, procurando um prato específico.
+   */
+  const [buscaAberta, setBuscaAberta] = useState(false);
+
+  const abrirBusca = () => {
+    setBuscaAberta(true);
+    // o foco depois da pintura, senão o campo ainda não existe
+    requestAnimationFrame(() => buscaRef.current?.focus());
+  };
+
+  const fecharBusca = () => {
+    setQuery("");
+    setBuscaAberta(false);
+  };
+
   // Onde cada prato é procurado, em dois níveis. Primeiro o nome. Se
   // nenhum nome tiver tudo o que foi digitado, vale o texto completo:
   // descrição, a seção ("bebidas" traz as bebidas) e, no montador de
@@ -1154,7 +1179,8 @@ export function RestaurantMenu({
           categoriasNaLateral ? "mt-4" : "mt-1",
         )}
       >
-        <div className={cn(categoriasNaLateral && "flex items-center gap-2")}>
+        {(categoriasNaLateral || buscaAberta || buscando) && (
+        <div className={cn(categoriasNaLateral ? "flex items-center gap-2" : "pb-3")}>
         {categoriasNaLateral && visible.length > 1 && (
           <button
             type="button"
@@ -1177,12 +1203,31 @@ export function RestaurantMenu({
             placeholder="Buscar no cardápio"
             aria-label="Buscar no cardápio"
             className={cn(
-              "w-full rounded-2xl border border-line bg-surface-2 pr-4 pl-10 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none",
-              categoriasNaLateral ? "h-11" : "h-9",
+              "w-full rounded-2xl border border-line bg-surface-2 pl-10 text-base text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none",
+              // o X do próprio navegador sai: o nosso fecha a busca
+              // inteira, o dele só limpava o texto -- dois X colados
+              // fazendo coisas diferentes
+              "[&::-webkit-search-cancel-button]:hidden",
+              categoriasNaLateral ? "h-11 pr-4" : "h-9 pr-10",
             )}
           />
+          {/* O X fecha a busca e devolve as abas.
+              Enquanto se digita as abas somem (a tela fica para o
+              resultado), então sem este botão a lupa que abriu some
+              junto e não sobra caminho de volta. */}
+          {!categoriasNaLateral && (
+            <button
+              type="button"
+              onClick={fecharBusca}
+              aria-label="Fechar a busca"
+              className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-faint hover:bg-surface-3 hover:text-ink"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          )}
         </label>
         </div>
+        )}
         {/* buscando, as abas de categoria saem: a tela mostra só o resultado */}
         {abasVisiveis && (
           <nav
@@ -1204,6 +1249,23 @@ export function RestaurantMenu({
                 à vista quando o cliente abre o link, e uma aba que leva
                 para onde a pessoa já está é um clique que não faz nada.
                 As outras levam para seções que estão lá embaixo. */}
+            {/* A lupa é a primeira da fila, no lugar que era da
+                estrela dos Destaques. Ela não leva a seção nenhuma --
+                abre o campo de busca, que antes ocupava uma linha
+                inteira da primeira tela. No totem não entra: lá a
+                barra continua à mostra, porque o cardápio é longo e a
+                pessoa está de pé procurando um prato. */}
+            {!categoriasNaLateral && (
+              <button
+                type="button"
+                onClick={abrirBusca}
+                aria-label="Buscar no cardápio"
+                aria-expanded={buscaAberta}
+                className={cn(ABA, "px-0", buscaAberta ? ABA_NA_VEZ : ABA_PARADA)}
+              >
+                <Search className={cn("size-4", buscaAberta ? "text-brand" : "text-faint")} aria-hidden="true" />
+              </button>
+            )}
             {vitrine.length > 0 && (
               <button
                 type="button"
