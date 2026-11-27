@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, Flame, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, Search, ShoppingBag, Star, X } from "lucide-react";
+import { CircleCheck, Flame, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, Search, ShoppingBag, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1194,21 +1194,16 @@ export function RestaurantMenu({
             className="-mx-4 mt-3 flex gap-5 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
             aria-label="Categorias do cardápio"
           >
-            {/* As duas abas especiais têm o ícone laranja mesmo paradas,
-                ao contrário das outras: é o que diz que essas seções não
-                são categoria do cardápio. Com a linha embaixo marcando a
-                aba na vez, não há conflito de dois laranjas. */}
-            {destaques.length > 0 && (
-              <button
-                type="button"
-                data-tab="destaques"
-                onClick={() => jump("destaques")}
-                className={cn(ABA, active === "destaques" ? ABA_NA_VEZ : ABA_PARADA)}
-              >
-                <Star className="size-4 fill-brand text-brand" aria-hidden="true" />
-                Destaques
-              </button>
-            )}
+            {/* A aba especial tem o ícone laranja mesmo parada, ao
+                contrário das outras: é o que diz que esta seção não é
+                categoria do cardápio. Com a linha embaixo marcando a
+                aba na vez, não há conflito de dois laranjas.
+
+                **Destaques não tem aba**, e saiu em 27/11/2026 a pedido
+                dele. A seção é a primeira coisa depois da barra: está
+                à vista quando o cliente abre o link, e uma aba que leva
+                para onde a pessoa já está é um clique que não faz nada.
+                As outras levam para seções que estão lá embaixo. */}
             {vitrine.length > 0 && (
               <button
                 type="button"
