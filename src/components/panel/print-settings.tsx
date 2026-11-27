@@ -374,11 +374,12 @@ export function PrintSettings({
                 <ReceiptText className="size-5 shrink-0" aria-hidden="true" />
                 Pedido #{order.number} chegou agora
               </p>
-              <p className="text-sm text-ink/90">
-                {mode === "off"
-                  ? "Confira o pedido e aceite. O cliente vê a mudança no link que já foi com o pedido dele."
-                  : "A via foi enviada para a impressora. Ao aceitar, o cliente vê a mudança no link do pedido."}
-              </p>
+              {/* Sem parágrafo explicando o que os botões fazem.
+                  Ele dizia que a via já saiu e que o cliente vê a mudança
+                  no link -- as duas coisas verdadeiras e as duas lidas uma
+                  vez, na primeira semana. Depois disso é um bloco de texto
+                  entre o título e o botão, num aviso que existe para ser
+                  resolvido de relance no meio do movimento. */}
               <div className="flex flex-wrap items-center gap-2">
                 <form action={acceptAction}>
                   <input type="hidden" name="restaurantId" value={restaurantId} />
@@ -387,26 +388,50 @@ export function PrintSettings({
                   <input type="hidden" name="to" value={order.accept?.to ?? ""} />
                   <StepButton label={order.accept?.label ?? "Aceitar pedido"} notify={order.notify} size="sm" />
                 </form>
+                <Button size="sm" variant="ghost" onClick={() => remember(SEEN_KEY, [order.id], read(SEEN_KEY))}>
+                  Depois
+                </Button>
+
+                {/* Imprimir de novo virou só a impressora, e foi para o
+                    fim da fila.
+                    O desenho da linha é a ordem de uso: aceitar é o que
+                    se faz com quase todo pedido, "depois" é o escape, e
+                    imprimir de novo só acontece quando o papel enroscou
+                    ou a via sumiu. Com a palavra junto, os três botões
+                    tinham o mesmo peso e o olho tinha de ler para
+                    escolher. */}
                 {mode === "nuvem" ? (
                   // quem imprime é o computador do balcão: o painel só destrava
                   // a via para ela sair de novo lá
                   <form action={reprintAction}>
                     <input type="hidden" name="restaurantId" value={restaurantId} />
                     <input type="hidden" name="orderId" value={order.id} />
-                    <SubmitButton size="sm" variant="secondary" pendingText="Mandando...">
+                    <SubmitButton
+                      size="sm"
+                      variant="secondary"
+                      className="px-2.5"
+                      aria-label="Imprimir de novo"
+                      title="Imprimir de novo"
+                      // sem palavra no lugar do ícone o botão fica um
+                      // quadrado vazio enquanto manda; as reticências
+                      // cabem no mesmo espaço e dizem que está indo
+                      pendingText="..."
+                    >
                       <Printer className="size-4" aria-hidden="true" />
-                      Imprimir de novo
                     </SubmitButton>
                   </form>
                 ) : mode !== "off" ? (
-                  <Button size="sm" variant="secondary" onClick={() => sendToPrinter(order.id)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="px-2.5"
+                    aria-label="Imprimir de novo"
+                    title="Imprimir de novo"
+                    onClick={() => sendToPrinter(order.id)}
+                  >
                     <Printer className="size-4" aria-hidden="true" />
-                    Imprimir de novo
                   </Button>
                 ) : null}
-                <Button size="sm" variant="ghost" onClick={() => remember(SEEN_KEY, [order.id], read(SEEN_KEY))}>
-                  Depois
-                </Button>
               </div>
             </div>
           ))}
