@@ -1181,7 +1181,7 @@ export function RestaurantMenu({
           A altura não muda: é a mesma coisa na tela, só a ordem de dois
           blocos trocada. */}
       {destaques.length > 0 && !buscando && (
-        <section id="destaques" className="mt-4">
+        <section id="destaques" className="mt-2">
           <h2 className="sr-only">Destaques</h2>
           <DestaquesPassando banners={destaques} />
         </section>
@@ -1194,7 +1194,12 @@ export function RestaurantMenu({
           alta, alinhada ao botão da gaveta e fácil de tocar de pé. */}
       <div
         className={cn(
-          "sticky top-0 z-20 -mx-4 bg-bg px-4 pt-3 lg:top-[4.75rem] lg:mx-0 lg:px-0",
+          // O respiro de cima é pequeno: ele existe para a barra não
+          // encostar no topo quando gruda ao rolar, e no celular cada
+          // pixel aqui empurra o cardápio para baixo. Era pt-3 e, com o
+          // banner logo acima, virava uma faixa branca no meio da
+          // primeira tela.
+          "sticky top-0 z-20 -mx-4 bg-bg px-4 pt-1.5 lg:top-[4.75rem] lg:mx-0 lg:px-0 lg:pt-3",
           // com abas, a linha de base delas já fecha a barra; sem abas, a
           // barra precisa da sua própria borda para não boiar sobre a lista
           abasVisiveis ? "pb-0" : "border-b border-line pb-3",
@@ -1258,7 +1263,12 @@ export function RestaurantMenu({
             // border-b: assim a barra de 3px da aba escolhida cobre a de
             // 1px em vez de ficar empilhada em cima dela, que desenhava
             // duas listras.
-            className="-mx-4 mt-3 flex gap-5 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              "-mx-4 flex gap-5 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden",
+              // o respiro entre a busca e as abas só existe quando a
+              // busca está aberta; fechada, não há de quem se afastar
+              categoriasNaLateral || buscaAberta || buscando ? "mt-3" : "mt-0",
+            )}
             aria-label="Categorias do cardápio"
           >
             {/* A aba especial tem o ícone laranja mesmo parada, ao
