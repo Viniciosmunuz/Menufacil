@@ -271,8 +271,21 @@ function Destaques({
             <input type="hidden" name="restaurantId" value={restaurantId} />
             {/* A imagem sobe inteira, do jeito que veio: o corte quem
                 escolhe é o dono, no editor de cima, olhando. */}
+            {/* O tamanho exato, escrito.
+
+                A faixa é 10 por 3, e 1600 x 480 é ela em pixel. Outra
+                proporção não quebra nada -- a imagem entra inteira e o
+                que sobra vira fundo desfocado -- mas nesta medida ela
+                preenche de ponta a ponta, sem borda nenhuma. Ele pediu
+                o número porque é o que a IA de imagem precisa ouvir. */}
             <div className="max-w-[18rem]">
-              <ImageField name="image" label="Nova imagem" currentUrl={null} shape="wide" />
+              <ImageField
+                name="image"
+                label="Nova imagem"
+                currentUrl={null}
+                shape="wide"
+                hint="1600 x 480 pixels (10:3) preenche a faixa inteira."
+              />
             </div>
             <Input name="titulo" placeholder="Nome da imagem (só você vê)" maxLength={60} className="max-w-sm" />
             <SubmitButton size="sm" className="self-start" pendingText="Subindo...">
