@@ -57,6 +57,34 @@ export function ChatIa({
   aberto: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
+
+  /**
+   * A bolha nasce escondida e entra quando o cliente rola.
+   *
+   * Quem abre o link cai na primeira tela, que é onde mora a decisão:
+   * a capa, o nome, os destaques. Um rosto parado no canto ali disputa
+   * essa tela com o cardápio, e quem acabou de chegar ainda não tem
+   * pergunta nenhuma para fazer.
+   *
+   * Rolou, é porque está procurando -- e é aí que perguntar passa a
+   * fazer sentido. Ela desliza para dentro e fica.
+   *
+   * Um caminho só de ida, de propósito: subir de volta ao topo não a
+   * esconde outra vez. Uma bolha que pisca a cada rolagem seria pior
+   * que uma bolha parada.
+   */
+  const [rolou, setRolou] = useState(false);
+  useEffect(() => {
+    if (rolou) return;
+    // meia tela: longe o bastante para não disparar num toque torto,
+    // perto o bastante para ela já estar lá quando a dúvida aparecer
+    const gatilho = () => {
+      if (window.scrollY > window.innerHeight * 0.5) setRolou(true);
+    };
+    gatilho();
+    window.addEventListener("scroll", gatilho, { passive: true });
+    return () => window.removeEventListener("scroll", gatilho);
+  }, [rolou]);
   const [falas, setFalas] = useState<Fala[]>([]);
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
@@ -124,8 +152,11 @@ export function ChatIa({
           // direita faz esse papel e não há conflito), "sempre" é a barra
           // à mostra em qualquer largura, como no totem.
           className={cn(
-            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom)_+_4.5rem)] z-40 size-12 transition-transform active:scale-95 lg:bottom-6",
+            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom)_+_4.5rem)] z-40 size-10 active:scale-95 lg:bottom-6",
             "[body[data-carrinho='1']_&]:max-lg:hidden [body[data-carrinho='sempre']_&]:hidden",
+            // entra deslizando do canto, em vez de simplesmente estar lá
+            "transition-all duration-300",
+            rolou ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-3 scale-90 opacity-0",
           )}
         >
           <span className="block size-full overflow-hidden rounded-full bg-brand-soft shadow-lg shadow-ink/20">
@@ -149,7 +180,7 @@ export function ChatIa({
               sem ele vira uma mancha. */}
           <span
             className={cn(
-              "absolute -top-0.5 -right-0.5 size-3.5 rounded-full ring-2 ring-bg",
+              "absolute -top-0.5 -right-0.5 size-3 rounded-full ring-2 ring-bg",
               lojaAberta ? "bg-success" : "bg-danger",
             )}
           />

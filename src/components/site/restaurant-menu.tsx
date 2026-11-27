@@ -544,7 +544,23 @@ function ProductRow({
             )}
             {p.name}
           </span>
-          {p.description && <span className="mt-1 line-clamp-2 text-[0.78rem] leading-snug text-muted sm:text-[0.82rem]">{p.description}</span>}
+          {/* Na vitrine a descrição é de uma linha só.
+              
+              Duas linhas somavam 34px a cada cartão, e eram esses 34px
+              que empurravam o preço para debaixo da barra de baixo em
+              quem abria o link num celular pequeno. Ali quem vende é a
+              foto e o nome; a descrição inteira está a um toque, no
+              cartão do prato. Na lista do cardápio continuam as duas. */}
+          {p.description && (
+            <span
+              className={cn(
+                "mt-1 text-[0.78rem] leading-snug text-muted sm:text-[0.82rem]",
+                empilhado ? "truncate" : "line-clamp-2",
+              )}
+            >
+              {p.description}
+            </span>
+          )}
           <span className="mt-auto pt-2">
             {p.available ? <Price p={p} flavors={flavors} /> : <span className="text-sm font-bold text-faint">Esgotado</span>}
           </span>
@@ -1182,13 +1198,19 @@ export function RestaurantMenu({
         </p>
       )}
 
-      <div className="flex flex-col gap-8 pt-5">
+      <div className="flex flex-col gap-8 pt-3">
         {featured.length > 0 && (
           <section id="destaques" data-menu-section className="scroll-mt-36 lg:scroll-mt-52">
-            <h2 className="mb-3 flex items-center gap-2 text-xl font-extrabold">
-              <Star className="size-5 fill-brand text-brand" aria-hidden="true" />
-              Destaques
-            </h2>
+            {/* Sem título aqui dentro.
+
+                A aba logo acima já diz "Destaques", com a mesma estrela
+                e a dois dedos de distância: era a mesma palavra duas
+                vezes em 40px de tela. E esses 40px custavam caro --
+                eles, mais o resto do topo, empurravam o cartão da
+                vitrine para debaixo da barra de baixo, e quem abria o
+                link via a foto do prato com o preço cortado. O título
+                para leitor de tela continua, invisível. */}
+            <h2 className="sr-only">Destaques</h2>
             <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
               {/* O mesmo cartão da lista, só com largura fixa e encaixe no
                   arrasto. Era um cartão escrito à parte, com a foto

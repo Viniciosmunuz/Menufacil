@@ -11,7 +11,7 @@ import { CapaPassando } from "@/components/site/capa-passando";
 import { CartPanel } from "@/components/site/cart-panel";
 import { ChatIa } from "@/components/site/chat-ia";
 import { FavoriteButton } from "@/components/site/favorites";
-import { BackButton, ShareButton } from "@/components/site/restaurant-actions";
+import { BackButton } from "@/components/site/restaurant-actions";
 import { InfoDoRestaurante } from "@/components/site/info-do-restaurante";
 import { RestaurantMenu } from "@/components/site/restaurant-menu";
 import { cn } from "@/lib/cn";
@@ -139,7 +139,14 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               empurravam o cardápio para fora da primeira tela, e o cliente
               tinha de rolar antes de ver um prato. */}
           <section className="-mx-4 -mt-4 lg:mx-0 lg:mt-0">
-            <div className="relative h-28 overflow-hidden bg-surface-2 sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
+            {/* 88px no celular, não 112.
+                
+                Os 24px vieram de um pedido dele em 27/11/2026: o cartão
+                do destaque estava caindo debaixo da barra de baixo, e o
+                cliente abria o link e via a foto do prato com o preço
+                cortado. A capa é moldura; o prato é o que vende. No
+                computador ela continua alta, porque lá sobra tela. */}
+            <div className="relative h-[5.5rem] overflow-hidden bg-surface-2 sm:h-40 lg:h-48 lg:rounded-card lg:border lg:border-line">
               {/* Com banners ligados, a capa passa sozinha e o cliente
                   arrasta. Sem nenhum, é a foto de sempre -- é o que faz
                   isto nascer sem mudar nada para quem não usar. */}
@@ -155,16 +162,21 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
               <div className="absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-bg/30" aria-hidden="true" />
               <div className="absolute inset-x-3 top-3 flex items-center justify-between">
                 {standalone ? <span /> : <BackButton />}
+                {/* Sem o botão de compartilhar.
+                    Ele saiu em 27/11/2026, a pedido dele: quem quer
+                    mandar o cardápio para alguém copia o endereço da
+                    barra, e o botão só ocupava o canto da capa -- que
+                    agora é vitrine, e cada coisa ali por cima da imagem
+                    tapa a promoção do dia. */}
                 <div className="flex gap-2">
-                  <ShareButton title={r.name} />
                   {!standalone && <FavoriteButton slug={r.slug} name={r.name} />}
                 </div>
               </div>
             </div>
 
-            <div className="relative -mt-10 px-4 lg:-mt-12 lg:px-6">
+            <div className="relative -mt-8 px-4 lg:-mt-12 lg:px-6">
               <div className="flex items-end justify-between gap-3">
-                <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-lg lg:size-24">
+                <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-bg bg-surface-3 shadow-lg lg:size-24">
                   {r.logoUrl ? (
                     <Image src={r.logoUrl} alt={`Logo de ${r.name}`} fill sizes="96px" className="object-cover" />
                   ) : (
@@ -183,7 +195,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
                 </span>
               </div>
 
-              <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
+              <h1 className="mt-1.5 text-xl leading-tight font-extrabold tracking-tight sm:text-4xl">{r.name}</h1>
 
               {/* os selos de entrega e, do lado, as bolinhas de endereço e horários */}
               <InfoDoRestaurante
