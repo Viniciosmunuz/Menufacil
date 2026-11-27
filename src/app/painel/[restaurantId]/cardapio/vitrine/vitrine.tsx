@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronUp, ImagePlus, Star, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { ImageField } from "@/components/panel/image-field";
 import { Alert } from "@/components/ui/alert";
@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/format";
 
+import { PreviaDaCapa } from "./previa";
 import { PromptDaIa } from "./prompt-da-ia";
 import {
   alternarBanner,
@@ -87,9 +88,30 @@ function Setas({
   );
 }
 
-function Banners({ restaurantId, banners }: { restaurantId: string; banners: BannerDoPainel[] }) {
+function Banners({
+  restaurantId,
+  banners,
+  logoUrl,
+  coverUrl,
+  nome,
+}: {
+  restaurantId: string;
+  banners: BannerDoPainel[];
+  logoUrl: string | null;
+  coverUrl: string | null;
+  nome: string;
+}) {
   const [state, action] = useActionState<MenuFormState, FormData>(criarBanner, {});
   const form = useRef<HTMLFormElement>(null);
+
+  // Qual banner a prévia está mostrando.
+  //
+  // Começa no primeiro ligado, que é o que o cliente vê ao abrir o
+  // link. Tocar numa linha troca a prévia -- é assim que o dono
+  // confere um por um sem publicar nada.
+  const [vendo, setVendo] = useState<string | null>(null);
+  const ligados = banners.filter((b) => b.ativo);
+  const escolhido = banners.find((b) => b.id === vendo) ?? ligados[0] ?? null;
 
   // Subiu: o formulário se limpa, pronto para o próximo banner.
   //
@@ -111,6 +133,20 @@ function Banners({ restaurantId, banners }: { restaurantId: string; banners: Ban
       </div>
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
+
+      {/* A prévia primeiro, porque é o resultado.
+          A lista abaixo é o que mexe nele; quem chega nesta tela quer
+          ver como está antes de decidir o que mudar. */}
+      <PreviaDaCapa
+        imagem={escolhido?.imageUrl ?? coverUrl}
+        logoUrl={logoUrl}
+        nome={nome}
+        vazia={
+          escolhido
+            ? `Prévia de "${escolhido.titulo || "sem nome"}", como o cliente vê no celular.`
+            : "Sem banner ligado, é esta a capa que o cliente vê."
+        }
+      />
 
       {banners.length === 0 ? (
         <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-sm text-faint">
@@ -138,13 +174,27 @@ function Banners({ restaurantId, banners }: { restaurantId: string; banners: Ban
               {/* A faixa do cliente é deitada e baixa; a miniatura tem a
                   mesma proporção para o dono ver o corte que vai sair, e
                   não uma versão quadrada que mente sobre o enquadramento. */}
-              <span className="relative aspect-[16/6] w-28 shrink-0 overflow-hidden rounded-control bg-surface-2 sm:w-40">
-                <Image src={b.imageUrl} alt={b.titulo ?? ""} fill sizes="160px" className="object-cover" />
-              </span>
-
-              <span className="min-w-0 flex-1 truncate text-sm font-bold">
-                {b.titulo || <span className="font-normal text-faint">Sem nome</span>}
-              </span>
+              {/* A miniatura e o nome são um botão só: tocar troca a
+                  prévia lá de cima. É o gesto que o dono já faria para
+                  "ver esse aqui". */}
+              <button
+                type="button"
+                onClick={() => setVendo(b.id)}
+                aria-pressed={escolhido?.id === b.id}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <span
+                  className={cn(
+                    "relative aspect-[16/6] w-28 shrink-0 overflow-hidden rounded-control bg-surface-2 ring-offset-2 ring-offset-surface sm:w-40",
+                    escolhido?.id === b.id && "ring-2 ring-brand",
+                  )}
+                >
+                  <Image src={b.imageUrl} alt={b.titulo ?? ""} fill sizes="160px" className="object-cover" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                  {b.titulo || <span className="font-normal text-faint">Sem nome</span>}
+                </span>
+              </button>
 
               <form action={alternarBanner} className="shrink-0">
                 <input type="hidden" name="restaurantId" value={restaurantId} />
@@ -283,15 +333,29 @@ export function Vitrine({
   restaurantId,
   banners,
   destaques,
+  logoUrl,
+  coverUrl,
+  nome,
 }: {
   restaurantId: string;
   banners: BannerDoPainel[];
   destaques: DestaqueDoPainel[];
+  logoUrl: string | null;
+  coverUrl: string | null;
+  nome: string;
 }) {
   return (
-    <div className="flex flex-col gap-8">
-      <Banners restaurantId={restaurantId} banners={banners} />
-      <Destaques restaurantId={restaurantId} destaques={destaques} />
+    // As duas seções em cartões, e não soltas uma embaixo da outra: são
+    // dois assuntos (a faixa de cima e a prateleira de baixo) e, sem
+    // moldura, a lista de banners encostava no título dos destaques e
+    // parecia uma coisa só.
+    <div className="flex flex-col gap-5">
+      <div className="rounded-card border border-line bg-surface p-4">
+        <Banners restaurantId={restaurantId} banners={banners} logoUrl={logoUrl} coverUrl={coverUrl} nome={nome} />
+      </div>
+      <div className="rounded-card border border-line bg-surface p-4">
+        <Destaques restaurantId={restaurantId} destaques={destaques} />
+      </div>
     </div>
   );
 }

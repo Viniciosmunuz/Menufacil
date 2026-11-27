@@ -14,7 +14,10 @@ export default async function VitrinePage({ params }: { params: Promise<{ restau
   const { restaurantId } = await params;
   const { restaurant } = await requireRestaurantAccess(restaurantId);
 
-  const [banners, destaques] = await Promise.all([
+  // A logo entra na prévia, por cima do banner, como o cliente vê. Não
+  // vem do `requireRestaurantAccess`, que só carrega o que manda em
+  // permissão -- aqui ela é conteúdo.
+  const [banners, destaques, marca] = await Promise.all([
     db.banner.findMany({
       where: { restaurantId: restaurant.id },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -36,6 +39,10 @@ export default async function VitrinePage({ params }: { params: Promise<{ restau
         category: { select: { name: true } },
       },
     }),
+    db.restaurant.findUnique({
+      where: { id: restaurant.id },
+      select: { logoUrl: true, coverUrl: true },
+    }),
   ]);
 
   return (
@@ -55,6 +62,9 @@ export default async function VitrinePage({ params }: { params: Promise<{ restau
 
       <Vitrine
         restaurantId={restaurant.id}
+        logoUrl={marca?.logoUrl ?? null}
+        coverUrl={marca?.coverUrl ?? null}
+        nome={restaurant.name}
         banners={banners}
         destaques={destaques.map((p) => ({
           id: p.id,
