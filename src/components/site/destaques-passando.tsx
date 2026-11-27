@@ -132,11 +132,30 @@ export function BannerEnquadrado({
 /** quanto cada banner fica à mostra antes de o próximo entrar */
 const PASSA_EM_MS = 5000;
 
+/**
+ * Quanto tempo a faixa fica parada depois que o cliente passa na mão.
+ *
+ * Quem arrastou escolheu o que quer olhar, e a faixa voltando a andar
+ * cinco segundos depois tira da frente dele o banner que ele mesmo foi
+ * buscar. Cinco minutos é tempo de ler o cardápio e montar o pedido;
+ * depois disso a pessoa já esqueceu que mexeu, e a faixa volta a girar.
+ *
+ * Recarregar a página zera: é estado de tela, não de cliente.
+ */
+const PARADA_NA_MAO_MS = 5 * 60_000;
+
+/** quanto esperar, depois de o dedo sair, para o encaixe terminar */
+const ENCAIXE_MS = 350;
+
 export function DestaquesPassando({ banners }: { banners: BannerDestaque[] }) {
   const trilho = useRef<HTMLDivElement | null>(null);
   const [atual, setAtual] = useState(0);
   // a pessoa pôs o dedo (ou o mouse) na faixa: ela decide o ritmo agora
   const parado = useRef(false);
+  /** até quando a faixa fica parada porque o cliente passou na mão */
+  const paradaAte = useRef(0);
+  /** em qual banner o dedo encostou, para saber se ele passou mesmo */
+  const aoEncostar = useRef(0);
 
   const irPara = useCallback((i: number, suave = true) => {
     const el = trilho.current;
@@ -165,6 +184,8 @@ export function DestaquesPassando({ banners }: { banners: BannerDestaque[] }) {
     const t = setInterval(() => {
       const el = trilho.current;
       if (!el || parado.current) return;
+      // passou na mão há pouco: a faixa é dela, não do relógio
+      if (Date.now() < paradaAte.current) return;
       // aba escondida não anima nada: o navegador segura o `scrollTo` e,
       // quando a pessoa volta, a faixa dispara todas as voltas de uma vez
       if (document.visibilityState !== "visible") return;
@@ -186,14 +207,44 @@ export function DestaquesPassando({ banners }: { banners: BannerDestaque[] }) {
     parado.current = false;
   };
 
+  /** o dedo encostou: anota onde estava, para comparar quando soltar */
+  const encostou = () => {
+    segurar();
+    const el = trilho.current;
+    aoEncostar.current = el && el.clientWidth ? Math.round(el.scrollLeft / el.clientWidth) : 0;
+  };
+
+  /**
+   * O dedo saiu: se a faixa mudou de banner, ela para por cinco minutos.
+   *
+   * A conta espera o encaixe terminar. Quando o dedo sai, a rolagem
+   * ainda anda com o impulso e só então encosta no próximo banner --
+   * comparando na hora, um arrasto de verdade ainda marcaria o banner
+   * antigo e a faixa voltaria a girar por cima dele.
+   *
+   * Um toque que não arrastou nada não conta: tocar na arte para ver
+   * melhor não é pedir para a faixa parar.
+   */
+  const largou = () => {
+    soltar();
+    const inicio = aoEncostar.current;
+    setTimeout(() => {
+      const el = trilho.current;
+      if (!el || !el.clientWidth) return;
+      if (Math.round(el.scrollLeft / el.clientWidth) !== inicio) {
+        paradaAte.current = Date.now() + PARADA_NA_MAO_MS;
+      }
+    }, ENCAIXE_MS);
+  };
+
   return (
     <div className={cn("relative overflow-hidden rounded-card border border-line bg-surface-2", FAIXA_DO_DESTAQUE)}>
       <div
         ref={trilho}
         onScroll={aoRolar}
-        onPointerDown={segurar}
-        onPointerUp={soltar}
-        onPointerCancel={soltar}
+        onPointerDown={encostou}
+        onPointerUp={largou}
+        onPointerCancel={largou}
         onMouseEnter={segurar}
         onMouseLeave={soltar}
         className="flex size-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -221,7 +272,11 @@ export function DestaquesPassando({ banners }: { banners: BannerDestaque[] }) {
             <button
               key={b.id}
               type="button"
-              onClick={() => irPara(i)}
+              onClick={() => {
+                // tocar na bolinha é escolher: não precisa de conferência
+                paradaAte.current = Date.now() + PARADA_NA_MAO_MS;
+                irPara(i);
+              }}
               aria-label={`Ver o destaque ${i + 1} de ${banners.length}`}
               aria-current={i === atual}
               className={cn(
